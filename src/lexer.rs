@@ -38,39 +38,43 @@ pub enum TokenType {
     EndOfFile,
     EndOfLine,
 
-    LParen,
-    RParen, // ( )
-    Lcb,
-    Rcb, // { }
-    Lsb,
-    Rsb,    // [ ]
-    Assign, // =
-    Plus,
-    Minus, // + -
-    AddAssign,
-    SubAssign, // += -=
-    Star,
-    Slash,
-    Percent,   // * / %
-    MulAssign, // *=
-    DivAssign, // /=
-    ModAssign, // %=
-    Eq,
-    Neq, // == !=
-    Lt,
-    Lte,
-    Gt,
-    Gte, // < <= > >=
-    LShift,
-    RShift,       // << >>
-    LShiftAssign, // <<=
-    RShiftAssign, // >>=
-    Stick,
-    Ampersand,
-    Xor, // | & ^
-    OrAssign,
-    AndAssign,
-    XorAssign, // |= &= ^=
+    LParen,        // (
+    RParen,        // )
+    Lcb,           // {
+    Rcb,           // }
+    Lsb,           // [
+    Rsb,           // ]
+    Assign,        // =
+    Plus,          // +
+    AddAssign,     // +=
+    Minus,         // -
+    SubAssign,     // -=
+    Star,          // *
+    MulAssign,     // *=
+    Slash,         // /
+    DivAssign,     // /=
+    Percent,       // %
+    ModAssign,     // %=
+    Eq,            // ==
+    Neq,           // !=
+    Lt,            // <
+    Lte,           // <=
+    Gt,            // >
+    Gte,           // >=
+    LShift,        // <<
+    RShift,        // >>
+    LShiftAssign,  // <<=
+    RShiftAssign,  // >>=
+    Stick,         // |
+    Ampersand,     // &
+    Xor,           // | & ^
+    OrAssign,      // |=
+    AndAssign,     // &=
+    XorAssign,     // ^=
+    Comma,         // ,
+    Dot,           // .
+    Colon,         // :
+    Arrow,         // ->
 
     KwLet,
     KwFunc,
@@ -89,6 +93,11 @@ pub enum TokenType {
     KwAlias,
     KwUse,
     KwExtern,
+    KwStatic,
+    KwMut,
+    KwConst,
+    KwOr,
+    KwAnd,
 
     Identifier(String),
     Integer(usize),
@@ -126,6 +135,10 @@ impl std::fmt::Display for TokenType {
             TokenType::OrAssign => write!(f, "|="),
             TokenType::Xor => write!(f, "^"),
             TokenType::XorAssign => write!(f, "^="),
+            TokenType::Comma => write!(f, ","),
+            TokenType::Dot => write!(f, "."),
+            TokenType::Colon => write!(f, ":"),
+            TokenType::Arrow => write!(f, "->"),
 
             TokenType::Lt => write!(f, "<"),
             TokenType::Lte => write!(f, "<="),
@@ -155,6 +168,12 @@ impl std::fmt::Display for TokenType {
             TokenType::KwModule => write!(f, "module"),
             TokenType::KwUse => write!(f, "use"),
             TokenType::KwExtern => write!(f, "extern"),
+            TokenType::KwStatic => write!(f, "static"),
+            TokenType::KwMut => write!(f, "mut"),
+            TokenType::KwConst => write!(f, "const"),
+
+            TokenType::KwOr => write!(f, "or"),
+            TokenType::KwAnd => write!(f, "and"),
 
             TokenType::Identifier(val) => write!(f, "identifier: \"{}\"", val),
             TokenType::Integer(val) => write!(f, "integer: \"{}\"", val),
@@ -167,19 +186,44 @@ impl std::fmt::Display for TokenType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    lexem: TokenType,
-    location: Location,
+    pub lexem: TokenType,
+    pub location: Location,
 }
 
 impl Token {
     pub fn new(lexem: TokenType, location: Location) -> Self {
         Self { lexem, location }
     }
+
+    pub fn get_location(&self) -> Location {
+        self.location.clone()
+    }
+
+    pub fn is_identifier(&self) -> bool {
+        match self.lexem {
+            TokenType::Identifier(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_integer(&self) -> bool {
+        match self.lexem {
+            TokenType::Integer(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_decimal(&self) -> bool {
+        match self.lexem {
+            TokenType::Decimal(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]:{}", self.location, self.lexem)
+        write!(f, "[{}]: \"{}\"", self.location, self.lexem)
     }
 }
 
@@ -243,7 +287,17 @@ impl Lexer {
     }
 
     pub fn get(&mut self) -> Token {
-        let tkn = self.get_next();
+        let tkn = self.get_next(false);
+
+        if self.verbose {
+            println!("{}", tkn);
+        }
+
+        tkn
+    }
+
+    pub fn get_singular(&mut self) -> Token {
+        let tkn = self.get_next(true);
 
         if self.verbose {
             println!("{}", tkn);
@@ -258,15 +312,30 @@ impl Lexer {
             return tkn;
         }
 
-        self.next_token = Some(self.get_next());
+        self.next_token = Some(self.get_next(false));
 
         self.next_token.clone().unwrap()
+    }
+
+    pub fn peek_singular(&mut self) -> Token {
+        if self.next_token.is_some() {
+            let tkn = self.next_token.clone().unwrap();
+            return tkn;
+        }
+
+        self.next_token = Some(self.get_next(true));
+
+        self.next_token.clone().unwrap()
+    }
+
+    pub fn get_location(&self) -> Location {
+        self.location.clone()
     }
 }
 
 /* Private methods */
 impl Lexer {
-    pub fn peek_char(&mut self) -> char {
+    fn peek_char(&mut self) -> char {
         if self.next_char.is_some() {
             return self.next_char.unwrap();
         }
@@ -276,7 +345,7 @@ impl Lexer {
         self.next_char.unwrap()
     }
 
-    pub fn get_char(&mut self) -> char {
+    fn get_char(&mut self) -> char {
         if self.next_char.is_some() {
             let ch = self.next_char.unwrap();
             self.next_char = None;
@@ -307,7 +376,7 @@ impl Lexer {
         }
     }
 
-    fn get_next(&mut self) -> Token {
+    fn get_next(&mut self, singular: bool) -> Token {
         if self.next_token.is_some() {
             let token = self.next_token.clone().unwrap();
             self.next_token = None;
@@ -362,12 +431,12 @@ impl Lexer {
             '>' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
                     return Token::new(TokenType::Gte, self.location.clone());
                 }
 
-                if self.peek_char() == '>' {
+                if self.peek_char() == '>' && !singular {
                     self.get_char();
 
                     if self.peek_char() == '=' {
@@ -384,12 +453,12 @@ impl Lexer {
             '<' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
                     return Token::new(TokenType::Lte, self.location.clone());
                 }
 
-                if self.peek_char() == '<' {
+                if self.peek_char() == '<' && !singular {
                     self.get_char();
 
                     if self.peek_char() == '=' {
@@ -406,7 +475,7 @@ impl Lexer {
             '+' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::AddAssign, self.location.clone());
@@ -418,10 +487,16 @@ impl Lexer {
             '-' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::SubAssign, self.location.clone());
+                }
+
+                if self.peek_char() == '>' && !singular {
+                    self.get_char();
+
+                    return Token::new(TokenType::Arrow, self.location.clone());
                 }
 
                 Token::new(TokenType::Minus, self.location.clone())
@@ -430,7 +505,7 @@ impl Lexer {
             '/' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::DivAssign, self.location.clone());
@@ -442,7 +517,7 @@ impl Lexer {
             '%' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::ModAssign, self.location.clone());
@@ -454,7 +529,7 @@ impl Lexer {
             '*' => {
                 self.get_char();
 
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::MulAssign, self.location.clone());
@@ -468,7 +543,7 @@ impl Lexer {
 
                 let ch = self.peek_char();
 
-                if ch == '=' {
+                if ch == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::Neq, self.location.clone());
@@ -479,7 +554,7 @@ impl Lexer {
 
             '=' => {
                 self.get_char();
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::Eq, self.location.clone());
@@ -490,7 +565,7 @@ impl Lexer {
 
             '&' => {
                 self.get_char();
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::AndAssign, self.location.clone());
@@ -501,25 +576,40 @@ impl Lexer {
 
             '^' => {
                 self.get_char();
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::XorAssign, self.location.clone());
+                    return Token::new(TokenType::XorAssign, self.get_location());
                 }
 
-                Token::new(TokenType::Xor, self.location.clone())
+                Token::new(TokenType::Xor, self.get_location())
             }
 
             '|' => {
                 self.get_char();
-                if self.peek_char() == '=' {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::OrAssign, self.location.clone());
+                    return Token::new(TokenType::OrAssign, self.get_location());
                 }
 
-                Token::new(TokenType::Stick, self.location.clone())
+                Token::new(TokenType::Stick, self.get_location())
             }
+
+            ':' => {
+                self.get_char();
+                Token::new(TokenType::Colon, self.get_location())
+            },
+
+            '.' => {
+                self.get_char();
+                Token::new(TokenType::Dot, self.get_location())
+            },
+
+            ',' => {
+                self.get_char();
+                Token::new(TokenType::Comma, self.get_location())
+            },
 
             _ => {
                 if next_char.is_ascii_digit() {
@@ -530,7 +620,7 @@ impl Lexer {
                     return self.get_string_token();
                 }
 
-                Token::new(TokenType::Unknown, self.location.clone())
+                Token::new(TokenType::Unknown, self.get_location())
             }
         }
     }
@@ -586,10 +676,12 @@ impl Lexer {
         }
 
         match &text[..] {
-            "mod" => Token::new(TokenType::KwModule, location),
+            "module" => Token::new(TokenType::KwModule, location),
             "struct" => Token::new(TokenType::KwStruct, location),
-            "alias" => Token::new(TokenType::KwAlias, location),
             "let" => Token::new(TokenType::KwLet, location),
+            "mut" => Token::new(TokenType::KwMut, location),
+            "const" => Token::new(TokenType::KwConst, location),
+            "alias" => Token::new(TokenType::KwAlias, location),
             "func" => Token::new(TokenType::KwFunc, location),
             "if" => Token::new(TokenType::KwIf, location),
             "elif" => Token::new(TokenType::KwElif, location),
@@ -598,11 +690,14 @@ impl Lexer {
             "do" => Token::new(TokenType::KwDo, location),
             "while" => Token::new(TokenType::KwWhile, location),
             "for" => Token::new(TokenType::KwFor, location),
-            "break" => Token::new(TokenType::KwBreak, location),
             "continue" => Token::new(TokenType::KwContinue, location),
+            "break" => Token::new(TokenType::KwBreak, location),
             "return" => Token::new(TokenType::KwReturn, location),
             "extern" => Token::new(TokenType::KwExtern, location),
+            "static" => Token::new(TokenType::KwStatic, location),
             "use" => Token::new(TokenType::KwUse, location),
+            "or" => Token::new(TokenType::KwOr, location),
+            "and" => Token::new(TokenType::KwAnd, location),
             _ => Token::new(TokenType::Identifier(text), location),
         }
     }

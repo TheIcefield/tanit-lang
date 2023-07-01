@@ -1,0 +1,13 @@
+module module_1 {  
+    func func_4(arg_1: i32) {
+        alias my_type = i32
+        struct hello {
+            f1: i32
+            f2: opa
+        }
+
+        while a < 5 {
+            return
+        }
+    }
+}
