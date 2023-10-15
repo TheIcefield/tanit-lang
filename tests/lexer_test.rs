@@ -1,10 +1,14 @@
 #[test]
 fn lexer_test() {
-    use garnet_script::lexer::{Lexer, Location, Token, TokenType};
+    use tanit::lexer::{Lexer, Token, TokenType, Location};
 
     static SRC: &str = "hello func let + 65 -= <<\n struct alpha";
 
-    let mut lexer = Lexer::from_string(SRC, true).unwrap();
+    let lexer = Lexer::from_string(SRC, true);
+
+    assert_eq!(lexer.is_ok(), true);
+
+    let mut lexer = lexer.unwrap();
 
     assert_eq!(
         lexer.get(),

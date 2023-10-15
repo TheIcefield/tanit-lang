@@ -83,6 +83,19 @@ impl Parser {
     }
 
     pub fn consume_token(&mut self, token_type: TokenType) -> Option<Token> {
+        
+        loop {
+            let tkn = self.lexer.peek();
+
+            if tkn.lexem == token_type {
+                return Some(self.lexer.get());
+            } else if tkn.lexem == TokenType::EndOfLine {
+                self.lexer.get();
+            } else {
+                break;
+            }
+        }
+        
         let tkn = self.lexer.peek();
 
         if tkn.lexem == token_type {
@@ -90,7 +103,6 @@ impl Parser {
 
             return Some(tkn);
         }
-
 
         self.error_listener.syntax_error(
             &format!(

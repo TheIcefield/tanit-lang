@@ -1,4 +1,4 @@
-use garnet_script::{lexer, error_listener, parser};
+use tanit::{lexer, error_listener, parser};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
