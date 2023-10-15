@@ -1,16 +1,17 @@
 use crate::lexer::TokenType;
-use crate::parser::{Id, Parser, ast, put_intent, ast::Ast};
+use crate::ast::{Ast, IAst, Stream, variables};
+use crate::parser::{Id, Parser, put_intent};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub fields:     Vec<ast::variables::Node>,
+    pub fields:     Vec<variables::Node>,
 }
 
-impl ast::IAst for Node {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Node {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<struct name=\"{}\">",
             put_intent(intent), self.identifier)?;
 
@@ -39,11 +40,11 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
 
     Some(Node{
         identifier,
-        fields: Vec::<ast::variables::Node>::new()
+        fields: Vec::<variables::Node>::new()
     })
 }
 
-pub fn parse_body_external(parser: &mut Parser) -> Option<Vec<ast::variables::Node>> {
+pub fn parse_body_external(parser: &mut Parser) -> Option<Vec<variables::Node>> {
     parser.consume_token(TokenType::Lcb)?;
 
     let fields = parse_body_internal(parser);
@@ -53,8 +54,8 @@ pub fn parse_body_external(parser: &mut Parser) -> Option<Vec<ast::variables::No
     fields
 }
 
-pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<ast::variables::Node>> {
-    let mut fields = Vec::<ast::variables::Node>::new();
+pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> {
+    let mut fields = Vec::<variables::Node>::new();
     
     loop {
         let next = parser.peek_token();
@@ -68,7 +69,7 @@ pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<ast::variables::No
             },
 
             TokenType::Identifier(_) => {
-                let field = ast::variables::parse_param(parser)?;
+                let field = variables::parse_param(parser)?;
 
                 fields.push(field);
             },

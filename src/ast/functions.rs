@@ -1,18 +1,19 @@
 use crate::lexer::TokenType;
-use crate::parser::{Id, put_intent, ast, ast::Stream, Parser, ast::variables, ast::scopes, ast::types};
+use crate::ast::{IAst, Ast, Stream, variables, scopes, types};
+use crate::parser::{Id, put_intent, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier:  Id,
-    pub return_type: ast::types::Node,
+    pub return_type: types::Node,
     pub parameters:  Vec<variables::Node>,
     pub body:        Option<scopes::Scope>,
     pub is_static:   bool,
 }
 
-impl ast::IAst for Node {
+impl IAst for Node {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<function name=\"{}\" is_static=\"{}\">",
                    put_intent(intent), self.identifier, self.is_static)?;
@@ -49,7 +50,7 @@ impl ast::IAst for Node {
     }
 }
 
-pub fn parse_func_def(parser: &mut Parser) -> Option<ast::Ast> {
+pub fn parse_func_def(parser: &mut Parser) -> Option<Ast> {
     let mut node = parse_header(parser)?;
 
     let next = parser.peek_token();
@@ -68,7 +69,7 @@ pub fn parse_func_def(parser: &mut Parser) -> Option<ast::Ast> {
         },
     }
 
-    Some(ast::Ast::FuncDef { node })
+    Some(Ast::FuncDef { node })
 }
 
 pub fn parse_header(parser: &mut Parser) -> Option<Node> {
@@ -112,13 +113,13 @@ pub fn parse_header_params(parser: &mut Parser) -> Option<Vec<variables::Node>> 
 
     let mut parameters = Vec::<variables::Node>::new();
     loop {
-        let next = parser.lexer.peek();
+        let next = parser.peek_token();
 
         if next.is_identifier() {
             let param = variables::parse_param(parser)?;
             parameters.push(param);
 
-            let next = parser.lexer.peek();
+            let next = parser.peek_token();
             if next.lexem == TokenType::Comma {
                 parser.get_token();
             } else if next.lexem == TokenType::RParen {
@@ -143,7 +144,7 @@ pub fn parse_header_params(parser: &mut Parser) -> Option<Vec<variables::Node>> 
     Some(parameters)
 }
 
-pub fn parse_body(parser: &mut Parser) -> Option<ast::scopes::Scope> {
+pub fn parse_body(parser: &mut Parser) -> Option<scopes::Scope> {
     scopes::parse_local_external(parser)
 }
 

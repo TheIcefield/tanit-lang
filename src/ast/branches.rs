@@ -1,31 +1,32 @@
 use crate::lexer::TokenType;
-use crate::parser::{ast, ast::Ast, put_intent, Parser};
+use crate::ast::{Ast, IAst, Stream, scopes, expressions};
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct LoopNode {
-    body:           ast::scopes::Scope,
+    body:           scopes::Scope,
     condition:      Option<Box<Ast>>,
 }
 
 #[derive(Clone)]
 pub struct Break {
-    pub expr: Option<Box<ast::Ast>>,
+    pub expr: Option<Box<Ast>>,
 }
 
 #[derive(Clone)]
 pub struct Continue {
-    pub expr: Option<Box<ast::Ast>>,
+    pub expr: Option<Box<Ast>>,
 }
 
 #[derive(Clone)]
 pub struct Return {
-    pub expr: Option<Box<ast::Ast>>,
+    pub expr: Option<Box<Ast>>,
 }
 
-impl ast::IAst for LoopNode {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for LoopNode {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<loop>", put_intent(intent))?;
 
         match &self.condition {
@@ -47,8 +48,8 @@ impl ast::IAst for LoopNode {
     }
 }
 
-impl ast::IAst for Break {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Break {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.expr {
             Some(cond) => {
                 writeln!(stream, "{}<break>", put_intent(intent))?;
@@ -64,8 +65,8 @@ impl ast::IAst for Break {
     }
 }
 
-impl ast::IAst for Continue {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Continue {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.expr {
             Some(cond) => {
                 writeln!(stream, "{}<continue>", put_intent(intent))?;
@@ -81,8 +82,8 @@ impl ast::IAst for Continue {
     }
 }
 
-impl ast::IAst for Return {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Return {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.expr {
             Some(cond) => {
                 writeln!(stream, "{}<return>", put_intent(intent))?;
@@ -101,7 +102,7 @@ impl ast::IAst for Return {
 pub fn parse_loop(parser: &mut Parser) -> Option<Ast> {
     parser.consume_token(TokenType::KwLoop)?;
 
-    let body = ast::scopes::parse_local_external(parser)?;
+    let body = scopes::parse_local_external(parser)?;
 
     Some(Ast::LoopStmt { node: LoopNode {
         body,
@@ -114,7 +115,7 @@ pub fn parse_while(parser: &mut Parser) -> Option<Ast> {
 
     let condition = parse_condition(parser)?;
 
-    let body = ast::scopes::parse_local_external(parser)?;
+    let body = scopes::parse_local_external(parser)?;
 
     Some(Ast::LoopStmt { node: LoopNode {
         body,
@@ -130,7 +131,7 @@ pub fn parse_break(parser: &mut Parser) -> Option<Ast> {
     match parser.peek_token().lexem {
         TokenType::EndOfLine => { },
         _ => {
-            node.expr = Some(Box::new(ast::expressions::parse_expression(parser)?))
+            node.expr = Some(Box::new(expressions::parse_expression(parser)?))
         }, 
     }
 
@@ -145,7 +146,7 @@ pub fn parse_continue(parser: &mut Parser) -> Option<Ast> {
     match parser.peek_token().lexem {
         TokenType::EndOfLine => { },
         _ => {
-            node.expr = Some(Box::new(ast::expressions::parse_expression(parser)?))
+            node.expr = Some(Box::new(expressions::parse_expression(parser)?))
         }, 
     }
 
@@ -160,7 +161,7 @@ pub fn parse_return(parser: &mut Parser) -> Option<Ast> {
     match parser.peek_token().lexem {
         TokenType::EndOfLine => { },
         _ => {
-            node.expr = Some(Box::new(ast::expressions::parse_expression(parser)?))
+            node.expr = Some(Box::new(expressions::parse_expression(parser)?))
         }, 
     }
 
@@ -168,5 +169,5 @@ pub fn parse_return(parser: &mut Parser) -> Option<Ast> {
 }
 
 pub fn parse_condition(parser: &mut Parser) -> Option<Ast> {
-    ast::expressions::parse_expression(parser)
+    expressions::parse_expression(parser)
 }

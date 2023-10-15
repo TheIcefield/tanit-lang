@@ -1,13 +1,14 @@
 use crate::lexer::TokenType;
-use crate::parser::{ast, ast::Ast, Parser};
+use crate::{ast, ast::{Ast, IAst, Stream}};
+use crate::parser::Parser;
 
 #[derive(Clone)]
 pub struct Scope {
     pub statements: Vec<Ast>
 }
 
-impl ast::IAst for Scope {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Scope {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         for stmt in self.statements.iter() {
             stmt.traverse(stream, intent + 1)?;
         }

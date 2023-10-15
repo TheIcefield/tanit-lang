@@ -1,11 +1,10 @@
-pub mod ast;
-
 use crate::error_listener::ErrorListener;
+use crate::ast::{Ast, scopes};
 use crate::lexer::{Lexer, Token, TokenType, Location};
 
-type ParseResult = Result<ast::Ast, ErrorListener>;
+type ParseResult = Result<Ast, ErrorListener>;
 
-type Id = String;
+pub type Id = String;
 
 pub struct Parser {
     error_listener: ErrorListener,
@@ -140,15 +139,15 @@ pub fn put_intent(intent: usize) -> String {
     res
 }
 
-pub fn dump_ast(output: String, ast: &ast::Ast) -> std::io::Result<()> {
+pub fn dump_ast(output: String, ast: &Ast) -> std::io::Result<()> {
     let mut stream = std::fs::File::create(format!("{}.xml", output)).unwrap();
     ast.traverse(&mut stream, 0)
 }
 
-fn parse_program(parser: &mut Parser) -> Option<ast::Ast> {
-    Some(ast::Ast::GScope {
-        node: ast::scopes::Scope {
-            statements: ast::scopes::parse_global_internal(parser)?,
+fn parse_program(parser: &mut Parser) -> Option<Ast> {
+    Some(Ast::GScope {
+        node: scopes::Scope {
+            statements: scopes::parse_global_internal(parser)?,
         }
     })
 }

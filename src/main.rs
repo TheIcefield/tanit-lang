@@ -1,7 +1,7 @@
 use garnet_script::{lexer, error_listener, parser};
 
 fn main() {
-    let mut source_file = "main.grs".to_string();
+    let mut source_file = "main.tt".to_string();
     let mut output_file = "a".to_string();
     let mut dump_tokens = false;
     let mut dump_ast = true;

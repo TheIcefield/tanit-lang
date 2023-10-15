@@ -1,19 +1,20 @@
 use crate::lexer::TokenType;
+use crate::ast::{Ast, IAst, Stream, types};
 use crate::parser::put_intent;
-use crate::parser::{Id, Parser, ast};
+use crate::parser::{Id, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub var_type: ast::types::Node,
+    pub var_type: types::Node,
     pub is_global: bool,
     pub is_mutable: bool
 }
 
-impl ast::IAst for Node {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Node {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<variable name=\"{}\" is_global=\"{}\" is_mutable=\"{}\">",
                   put_intent(intent), self.identifier, self.is_global, self.is_mutable)?;
 
@@ -25,7 +26,7 @@ impl ast::IAst for Node {
     }
 }
 
-pub fn parse_def_stmt(parser: &mut Parser) -> Option<ast::Ast> {
+pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
     let next = parser.peek_token();
     
     let is_global = match next.lexem {
@@ -64,9 +65,9 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<ast::Ast> {
 
     parser.consume_token(TokenType::Colon)?;
 
-    let var_type = ast::types::parse(parser)?;
+    let var_type = types::parse(parser)?;
 
-    Some(ast::Ast::VarDef { node: Node {
+    Some(Ast::VarDef { node: Node {
         identifier,
         var_type,
         is_global,
@@ -80,7 +81,7 @@ pub fn parse_param(parser: &mut Parser) -> Option<Node> {
 
     parser.consume_token(TokenType::Colon)?;
 
-    let var_type = ast::types::parse(parser)?;
+    let var_type = types::parse(parser)?;
 
     Some(Node{
         identifier,

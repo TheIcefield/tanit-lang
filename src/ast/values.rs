@@ -1,4 +1,5 @@
-use crate::parser::{ast, put_intent};
+use crate::parser::put_intent;
+use crate::ast::{IAst, Stream};
 
 use std::io::Write;
 
@@ -12,9 +13,9 @@ pub enum ValueType {
     Alias,
 }
 
-impl ast::IAst for ValueType {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
-        write!(stream, "{}<value val=\">", put_intent(intent))?;
+impl IAst for ValueType {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+        write!(stream, "{}<value val=\"", put_intent(intent))?;
         
         match self {
             ValueType::Identifier(id) => write!(stream, "{}", id)?,

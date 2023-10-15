@@ -1,16 +1,17 @@
 use crate::lexer::TokenType;
-use crate::parser::{Id, ast, put_intent, Parser};
+use crate::ast::{Stream, IAst, Ast, types};
+use crate::parser::{Id, put_intent, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub value: ast::types::Node,
+    pub value: types::Node,
 }
 
-impl ast::IAst for Node {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Node {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<alias name=\"{}\">",
             put_intent(intent), self.identifier)?;
 
@@ -22,15 +23,15 @@ impl ast::IAst for Node {
     }
 }
 
-pub fn parse(parser: &mut Parser) -> Option<ast::Ast> {
+pub fn parse(parser: &mut Parser) -> Option<Ast> {
     parser.consume_token(TokenType::KwAlias)?;
 
     let identifier = parser.consume_identifier()?;
 
     parser.consume_token(TokenType::Assign)?;
 
-    let value = ast::types::parse(parser)?;
+    let value = types::parse(parser)?;
 
-    Some(ast::Ast::AliasDef { node: Node { identifier, value } } )
+    Some(Ast::AliasDef { node: Node { identifier, value } } )
 }
 

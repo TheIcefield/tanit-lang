@@ -1,5 +1,6 @@
 use crate::lexer::TokenType;
-use crate::parser::{Id, ast, Parser, put_intent};
+use crate::ast::{IAst, Stream};
+use crate::parser::{Id, Parser, put_intent};
 
 use std::io::Write;
 
@@ -9,8 +10,8 @@ pub struct Node {
     pub children: Vec<Node>,
 }
 
-impl ast::IAst for Node {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Node {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<type name=\"{}\">",
             put_intent(intent), self.identifier)?;
 

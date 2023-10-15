@@ -1,6 +1,7 @@
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
-use crate::parser::{ast, ast::Ast, Parser};
+use crate::ast::{Ast, IAst, Stream};
+use crate::parser::Parser;
 
 use std::io::Write;
 
@@ -14,8 +15,8 @@ pub struct Expression {
     pub term: Option<Box<Ast>>
 }
 
-impl ast::IAst for Expression {
-    fn traverse(&self, stream: &mut ast::Stream, intent: usize) -> std::io::Result<()> {
+impl IAst for Expression {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.operation {
             Some(op) => {
                 writeln!(stream, "{}<operation operator=\"{}\">",
@@ -53,7 +54,7 @@ pub fn parse_expression(parser: &mut Parser) -> Option<Ast> {
 fn parse_assign(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_logical_or(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
           TokenType::AddAssign    
         | TokenType::SubAssign    
@@ -65,7 +66,7 @@ fn parse_assign(parser: &mut Parser) -> Option<Ast> {
         | TokenType::XorAssign    
         | TokenType::LShiftAssign 
         | TokenType::RShiftAssign => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -89,10 +90,10 @@ fn parse_assign(parser: &mut Parser) -> Option<Ast> {
 fn parse_logical_or(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_logical_and(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::KwOr => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(TokenType::KwOr);
 
             let rhs = parse_expression(parser)?;
@@ -116,10 +117,10 @@ fn parse_logical_or(parser: &mut Parser) -> Option<Ast> {
 fn parse_logical_and(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_bitwise_or(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::KwOr => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(TokenType::KwAnd);
 
             let rhs = parse_expression(parser)?;
@@ -143,10 +144,10 @@ fn parse_logical_and(parser: &mut Parser) -> Option<Ast> {
 fn parse_bitwise_or(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_bitwise_xor(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Stick => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(TokenType::Stick);
 
             let rhs = parse_expression(parser)?;
@@ -170,10 +171,10 @@ fn parse_bitwise_or(parser: &mut Parser) -> Option<Ast> {
 fn parse_bitwise_xor(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_bitwise_and(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Xor => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(TokenType::Xor);
 
             let rhs = parse_expression(parser)?;
@@ -197,10 +198,10 @@ fn parse_bitwise_xor(parser: &mut Parser) -> Option<Ast> {
 fn parse_bitwise_and(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_logical_eq(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Xor => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(TokenType::Ampersand);
 
             let rhs = parse_expression(parser)?;
@@ -224,10 +225,10 @@ fn parse_bitwise_and(parser: &mut Parser) -> Option<Ast> {
 fn parse_logical_eq(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_logical_less_or_greater(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Eq | TokenType::Neq => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -251,11 +252,11 @@ fn parse_logical_eq(parser: &mut Parser) -> Option<Ast> {
 fn parse_logical_less_or_greater(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_shift(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Lt | TokenType::Lte |
         TokenType::Gt | TokenType::Gte => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -279,10 +280,10 @@ fn parse_logical_less_or_greater(parser: &mut Parser) -> Option<Ast> {
 fn parse_shift(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_add_or_sub(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::LShift | TokenType::RShift  => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -306,10 +307,10 @@ fn parse_shift(parser: &mut Parser) -> Option<Ast> {
 fn parse_add_or_sub(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_mul_or_div(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Plus | TokenType::Minus => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -333,12 +334,12 @@ fn parse_add_or_sub(parser: &mut Parser) -> Option<Ast> {
 fn parse_mul_or_div(parser: &mut Parser) -> Option<Ast> {
     let lhs = parse_factor(parser)?;
 
-    let next = parser.lexer.get();
+    let next = parser.peek_token();
     match next.lexem {
         TokenType::Star |
         TokenType::Slash |
         TokenType::Percent => {
-            parser.lexer.get();
+            parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
@@ -360,7 +361,7 @@ fn parse_mul_or_div(parser: &mut Parser) -> Option<Ast> {
 }
 
 fn parse_factor(parser: &mut Parser) -> Option<Ast> {
-    let next = parser.lexer.peek();
+    let next = parser.peek_token();
 
     match next.lexem {
         //   TokenType::Plus
