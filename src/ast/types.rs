@@ -12,14 +12,20 @@ pub struct Node {
 
 impl IAst for Node {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<type name=\"{}\">",
-            put_intent(intent), self.identifier)?;
+        if self.children.is_empty()
+        {
+            writeln!(stream, "{}<type name=\"{}\"/>", put_intent(intent), self.identifier)?;
+            return Ok(())
+        }
+
+        writeln!(stream, "{}<type name=\"{}\">", put_intent(intent), self.identifier)?;
 
         for i in self.children.iter() {
             i.traverse(stream, intent + 1)?;
         }
 
         writeln!(stream, "{}</type>", put_intent(intent))?;
+            
 
         Ok(())
     }

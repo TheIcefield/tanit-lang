@@ -69,7 +69,8 @@ pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> 
             },
 
             TokenType::Identifier(_) => {
-                let field = variables::parse_param(parser)?;
+                let mut field = variables::parse_param(parser)?;
+                field.is_field = true;
 
                 fields.push(field);
             },
@@ -86,5 +87,4 @@ pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> 
 
     Some(fields)
 }
-
 

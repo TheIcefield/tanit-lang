@@ -83,7 +83,6 @@ impl Parser {
     }
 
     pub fn consume_token(&mut self, token_type: TokenType) -> Option<Token> {
-        
         loop {
             let tkn = self.lexer.peek();
 
@@ -116,6 +115,16 @@ impl Parser {
     }
 
     pub fn consume_identifier(&mut self) -> Option<Id> {
+        loop {
+            let tkn = self.lexer.peek();
+
+            if tkn.lexem == TokenType::EndOfLine {
+                self.lexer.get();
+            } else {
+                break;
+            }
+        }
+
         let tkn = self.peek_token();
 
         match tkn.lexem {
