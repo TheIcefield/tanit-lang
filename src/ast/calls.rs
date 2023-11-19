@@ -1,10 +1,27 @@
 use crate::lexer::TokenType;
-use crate::parser::{ast, ast::Ast, Parser};
+use crate::ast::{Ast, IAst, expressions};
+use crate::parser::{Parser, put_intent};
+
+use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier: String,
     pub arguments: Vec<Ast>,
+}
+
+impl IAst for Node {
+    fn traverse(&self, stream: &mut super::Stream, intent: usize) -> std::io::Result<()> {
+        writeln!(stream, "{}<call name=\"{}\">", put_intent(intent), self.identifier)?;
+
+        for arg in self.arguments.iter() {
+            arg.traverse(stream, intent + 1)?
+        }
+
+        writeln!(stream, "{}</call>", put_intent(intent))?;
+
+        Ok(())
+    }
 }
 
 pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
@@ -13,18 +30,19 @@ pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
     let mut args = Vec::<Ast>::new();
 
     loop {
-        let next = parser.lexer.peek();
+        let next = parser.peek_token();
 
         if next.lexem == TokenType::RParen {
             break;
         }
 
-        let expr = ast::expression_node::parse_expression(parser)?;
+        let expr = expressions::parse_expression(parser)?;
         args.push(expr);
 
-        let next = parser.lexer.peek();
+        let next = parser.peek_token();
         if next.lexem == TokenType::Comma { // continue parsing if ','
-            parser.lexer.get();
+            parser.get_token();
+            continue;
         } else if next.lexem == TokenType::RParen { // end parsing if ')'
             break;
         } else {
@@ -34,7 +52,7 @@ pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
         }
     }
 
-    parser.consume_token(TokenType::LParen)?;
+    parser.consume_token(TokenType::RParen)?;
 
     Some(args)
 }

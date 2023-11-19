@@ -3,7 +3,7 @@ pub mod values;
 pub mod variables;
 pub mod aliases;
 pub mod functions;
-// pub mod calls;
+pub mod calls;
 pub mod structs;
 pub mod branches;
 pub mod scopes;

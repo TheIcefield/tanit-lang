@@ -1,6 +1,6 @@
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
-use crate::ast::{Ast, IAst, Stream};
+use crate::ast::{Ast, IAst, Stream, calls};
 use crate::parser::Parser;
 
 use std::io::Write;
@@ -383,15 +383,15 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
         TokenType::Identifier(identifier) => {
             parser.get_token();
 
-            // let next = parser.peek_token();
-            // if next.lexem == TokenType::LParen { // if call
-            //     let arguments = ast::calls::parse_call(parser)?;
+            let next = parser.peek_token();
+            if next.lexem == TokenType::LParen { // if call
+                let arguments = calls::parse_call(parser)?;
 
-            //     return Some(Box::new(Ast::Call(ast::call_node::Node{
-            //         identifier,
-            //         arguments
-            //     })))
-            // }
+                return Some(Ast::Value { node: values::ValueType::Call(calls::Node {
+                    identifier,
+                    arguments
+                }) });
+            }
 
             return Some(Ast::Value { node: values::ValueType::Identifier(identifier) });
         }

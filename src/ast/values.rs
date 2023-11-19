@@ -1,10 +1,11 @@
 use crate::parser::put_intent;
-use crate::ast::{IAst, Stream};
+use crate::ast::{IAst, Stream, calls};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub enum ValueType {
+    Call(calls::Node),
     Identifier(String),
     Text(String),
     Integer(usize),
@@ -19,6 +20,9 @@ impl IAst for ValueType {
             },
             ValueType::Text(text) => {
                 writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
+            },
+            ValueType::Call(node) => {
+                node.traverse(stream, intent)?
             },
             ValueType::Integer(val) => {
                 writeln!(stream, "{}<value type=\"int\" value=\"{}\"/>", put_intent(intent), val)?
