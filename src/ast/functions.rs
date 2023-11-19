@@ -7,7 +7,7 @@ use std::io::Write;
 #[derive(Clone)]
 pub struct Node {
     pub identifier:  Id,
-    pub return_type: types::Node,
+    pub return_type: types::Type,
     pub parameters:  Vec<variables::Node>,
     pub body:        Option<scopes::Scope>,
     pub is_static:   bool,
@@ -98,11 +98,11 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
     let next = parser.peek_token();
     let return_type = if next.lexem == TokenType::Arrow {
         parser.get_token();
-        types::parse(parser)?
+        types::parse_type(parser)?
     } else {
-        types::Node {
+        types::Type {
             identifier: "void".to_string(),
-            children: Vec::<types::Node>::new(),
+            children: Vec::<types::Type>::new(),
         }
     };
 

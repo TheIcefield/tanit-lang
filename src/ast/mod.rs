@@ -1,7 +1,6 @@
 pub mod types;
 pub mod values;
 pub mod variables;
-pub mod aliases;
 pub mod functions;
 pub mod calls;
 pub mod structs;
@@ -36,9 +35,9 @@ pub enum Ast {
 
     Value { node: values::ValueType },
 
-    TypeDecl { node: types::Node },
+    TypeDecl { node: types::Type },
 
-    AliasDef { node: aliases::Node },
+    AliasDef { node: types::Alias },
 
     Expression { node: Box<expressions::Expression> },
 

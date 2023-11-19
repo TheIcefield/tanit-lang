@@ -1,16 +1,22 @@
 use crate::lexer::TokenType;
-use crate::ast::{IAst, Stream};
+use crate::ast::{Ast, IAst, Stream};
 use crate::parser::{Id, Parser, put_intent};
 
 use std::io::Write;
 
 #[derive(Clone)]
-pub struct Node {
+pub struct Type {
     pub identifier: Id,
-    pub children: Vec<Node>,
+    pub children: Vec<Type>,
 }
 
-impl IAst for Node {
+#[derive(Clone)]
+pub struct Alias {
+    pub identifier: Id,
+    pub value: Type,
+}
+
+impl IAst for Type {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         if self.children.is_empty()
         {
@@ -31,26 +37,39 @@ impl IAst for Node {
     }
 }
 
-pub fn parse(parser: &mut Parser) -> Option<Node> {
+impl IAst for Alias {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+        writeln!(stream, "{}<alias name=\"{}\">",
+            put_intent(intent), self.identifier)?;
+
+        self.value.traverse(stream, intent + 1)?;
+
+        writeln!(stream, "{}</alias>", put_intent(intent))?;
+
+        Ok(())
+    }
+}
+
+pub fn parse_type(parser: &mut Parser) -> Option<Type> {
     let identifier = parser.consume_identifier()?;
-    let mut children = Vec::<Node>::new();
+    let mut children = Vec::<Type>::new();
 
     if parser.peek_singular().lexem == TokenType::Lt {
         children = parse_template_args(parser)?;
     }
 
-    Some( Node {
+    Some( Type {
         identifier,
         children
     })
 }
 
-pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Node>> {
+pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Type>> {
     parser.consume_token(TokenType::Lt)?;
 
-    let mut children = Vec::<Node>::new();
+    let mut children = Vec::<Type>::new();
     loop {
-        let child = parse(parser)?;
+        let child = parse_type(parser)?;
         children.push(child);
 
         let next = parser.peek_singular();
@@ -64,4 +83,16 @@ pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Node>> {
     parser.get_singular();
 
     Some(children)
+}
+
+pub fn parse_alias_def(parser: &mut Parser) -> Option<Ast> {
+    parser.consume_token(TokenType::KwAlias)?;
+
+    let identifier = parser.consume_identifier()?;
+
+    parser.consume_token(TokenType::Assign)?;
+
+    let value = parse_type(parser)?;
+
+    Some(Ast::AliasDef { node: Alias { identifier, value } } )
 }

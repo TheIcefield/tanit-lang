@@ -54,7 +54,7 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             // TokenType::KwExtern => ast::externs::parse(parser)?,
 
-            TokenType::KwAlias => ast::aliases::parse(parser)?,
+            TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
 
             _ => {
                 parser.error(&format!(
@@ -99,7 +99,7 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
 
-            TokenType::KwAlias => ast::aliases::parse(parser)?,
+            TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
 
             // TokenType::KwIf => ast::branch_node::parse_if(parser)?,
 

@@ -10,7 +10,7 @@ use super::expressions;
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub var_type:   types::Node,
+    pub var_type:   types::Type,
     pub is_field:   bool,
     pub is_global:  bool,
     pub is_mutable: bool
@@ -79,13 +79,13 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
 
-    let mut var_type: Option<types::Node> = None;
+    let mut var_type: Option<types::Type> = None;
     let mut rvalue: Option<Ast> = None;
     
     if TokenType::Colon == next.lexem {
         parser.consume_token(TokenType::Colon)?;
 
-        var_type = Some(types::parse(parser)?);
+        var_type = Some(types::parse_type(parser)?);
     }
     
     let next = parser.peek_token();
@@ -111,9 +111,9 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
     }
 
     if var_type.is_none() && rvalue.is_some() {
-        var_type = Some(types::Node {
+        var_type = Some(types::Type {
             identifier: "rvalue_type".to_string(),
-            children: Vec::<types::Node>::new()
+            children: Vec::<types::Type>::new()
         });
     }
 
@@ -144,7 +144,7 @@ pub fn parse_param(parser: &mut Parser) -> Option<Node> {
 
     parser.consume_token(TokenType::Colon)?;
 
-    let var_type = types::parse(parser)?;
+    let var_type = types::parse_type(parser)?;
 
     Some(Node{
         identifier,

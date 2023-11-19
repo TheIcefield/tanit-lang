@@ -294,3 +294,42 @@ fn functions_test() {
     }
 
 }
+
+#[test]
+fn types_test() {
+    use tanit::ast;
+    use tanit::{error_listener, lexer, parser};
+
+    static SRC_PATH: &str = "./examples/types.tt";
+
+    let lexer = lexer::Lexer::from_file(SRC_PATH, false).unwrap();
+
+    let error_listener = error_listener::ErrorListener::new();
+
+    let mut parser = parser::Parser::new(lexer, error_listener);
+
+    let res = if let ast::Ast::FuncDef { node } =
+        tanit::ast::functions::parse_func_def(&mut parser).unwrap()
+    {
+        assert_eq!(node.identifier, String::from("main"));
+        assert_eq!(node.return_type.identifier, String::from("void"));
+        assert_eq!(node.is_static, false);
+        assert_eq!(node.parameters.len(), 0);
+
+        node.body.unwrap()
+    } else {
+        panic!("res has to be \'function definition\'");
+    };
+
+    if let tanit::ast::Ast::AliasDef { node } = &res.statements[0] {
+        assert_eq!(node.identifier, "Items".to_string());
+
+        assert_eq!(node.value.identifier, "Vec".to_string());
+        assert_eq!(node.value.children.len(), 1);
+        assert_eq!(node.value.children[0].identifier, "Item".to_string());
+    } else {
+        panic!("res has to be \'alias definition\'");
+    };
+
+}
+
