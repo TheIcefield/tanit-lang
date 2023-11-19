@@ -9,24 +9,24 @@ pub enum ValueType {
     Text(String),
     Integer(usize),
     Decimal(f64),
-    Struct,
-    Alias,
 }
 
 impl IAst for ValueType {
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        write!(stream, "{}<value val=\"", put_intent(intent))?;
-        
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {       
         match self {
-            ValueType::Identifier(id) => write!(stream, "{}", id)?,
-            ValueType::Text(text) => write!(stream, "{}", text)?,
-            ValueType::Integer(val) => write!(stream, "{}", val)?,
-            ValueType::Decimal(val) => write!(stream, "{}", val)?,
-            ValueType::Struct => write!(stream, "struct")?,
-            ValueType::Alias => write!(stream, "alias")?,
+            ValueType::Identifier(id) => {
+                writeln!(stream, "{}<variable name=\"{}\"/>", put_intent(intent), id)?
+            },
+            ValueType::Text(text) => {
+                writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
+            },
+            ValueType::Integer(val) => {
+                writeln!(stream, "{}<value type=\"int\" value=\"{}\"/>", put_intent(intent), val)?
+            },
+            ValueType::Decimal(val) => {
+                writeln!(stream, "{}<value type=\"float\" value=\"{}\"/>", put_intent(intent), val)?
+            }
         }
-        
-        writeln!(stream, "\">\n{}</value>", put_intent(intent))?;
         
         Ok(())
     }

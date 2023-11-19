@@ -375,6 +375,11 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             return Some(Ast::Value { node: values::ValueType::Integer(val) });
         },
 
+        TokenType::Decimal(val) => {
+            parser.get_token();
+            return Some(Ast::Value { node: values::ValueType::Decimal(val) })
+        },
+
         TokenType::Identifier(identifier) => {
             parser.get_token();
 

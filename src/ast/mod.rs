@@ -11,6 +11,9 @@ pub mod modules;
 pub mod expressions;
 // pub mod externs;
 
+use crate::parser::put_intent;
+use std::io::Write;
+
 type Stream = std::fs::File;
 
 trait IAst {
@@ -29,7 +32,9 @@ pub enum Ast {
 
     FuncDef { node: functions::Node },
 
-    VarDef { node: variables::Node },
+    VariableDef { node: variables::Node },
+
+    Value { node: values::ValueType },
 
     TypeDecl { node: types::Node },
 
@@ -38,8 +43,6 @@ pub enum Ast {
     Expression { node: Box<expressions::Expression> },
 
     LoopStmt { node: branches::LoopNode,},
-
-    Value { node: values::ValueType },
 
     BreakStmt { node: branches::Break },
 
@@ -56,12 +59,16 @@ impl Ast {
             Ast::ModuleDef { node } => node.traverse(stream, intent)?,
             Ast::StructDef { node } => node.traverse(stream, intent)?,
             Ast::FuncDef { node } => node.traverse(stream, intent)?,
-            Ast::VarDef { node } => node.traverse(stream, intent)?,
+            Ast::VariableDef { node } => {
+                writeln!(stream, "{}<definition>", put_intent(intent))?;
+                node.traverse(stream, intent + 1)?;
+                writeln!(stream, "{}</definition>", put_intent(intent))?;
+            },
+            Ast::Value { node } => node.traverse(stream, intent)?,
             Ast::TypeDecl { node } => node.traverse(stream, intent)?,
             Ast::AliasDef { node } => node.traverse(stream, intent)?,
             Ast::Expression { node } => node.traverse(stream, intent)?,
             Ast::LoopStmt { node } => node.traverse(stream, intent)?,
-            Ast::Value { node } => node.traverse(stream, intent)?,
             Ast::BreakStmt { node } => node.traverse(stream, intent)?,
             Ast::ContinueStmt { node } => node.traverse(stream, intent)?,
             Ast::ReturnStmt { node } => node.traverse(stream, intent)?,    

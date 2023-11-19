@@ -53,10 +53,18 @@ impl IAst for Node {
 pub fn parse_func_def(parser: &mut Parser) -> Option<Ast> {
     let mut node = parse_header(parser)?;
 
+    loop {
+        let tkn = parser.peek_token();
+
+        if tkn.lexem == TokenType::EndOfLine {
+            parser.get_token();
+        } else {
+            break;
+        }
+    }
+
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::EndOfLine => { },
-
         TokenType::Lcb => {
             node.body = parse_body(parser);
         },
@@ -93,7 +101,7 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
         types::parse(parser)?
     } else {
         types::Node {
-            identifier: "()".to_string(),
+            identifier: "void".to_string(),
             children: Vec::<types::Node>::new(),
         }
     };

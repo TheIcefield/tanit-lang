@@ -1,5 +1,6 @@
 module module_1 {  
-    func func_4(arg_1: i32) {
+    func func_4(arg_1: i32)
+    {
         alias my_type = i32
         struct hello {
             f1: i32

@@ -5,6 +5,8 @@ use crate::parser::{Id, Parser};
 
 use std::io::Write;
 
+use super::expressions;
+
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
@@ -53,7 +55,7 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
         },
 
         _ => {
-            parser.error("Unexpected token, 'let' or 'static' allowed", next.location);
+            parser.error("Unexpected token. There only \"let\", \"static\", allowed", next.location);
             return None;
         }
     };
@@ -75,17 +77,65 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
 
     let identifier = parser.consume_identifier()?;
 
-    parser.consume_token(TokenType::Colon)?;
+    let next = parser.peek_token();
 
-    let var_type = types::parse(parser)?;
+    let mut var_type: Option<types::Node> = None;
+    let mut rvalue: Option<Ast> = None;
+    
+    if TokenType::Colon == next.lexem {
+        parser.consume_token(TokenType::Colon)?;
 
-    Some(Ast::VarDef { node: Node {
+        var_type = Some(types::parse(parser)?);
+    }
+    
+    let next = parser.peek_token();
+
+    if TokenType::Assign == next.lexem {
+        parser.get_token();
+
+        rvalue = expressions::parse_expression(parser);
+    }
+
+    if var_type.is_none() && rvalue.is_none() {
+        parser.error(
+            &format!("Variable {} defined without type. Need to specify type or use with rvalue", identifier),
+            next.location);
+        return None;
+    }
+
+    if var_type.is_none() && is_global {
+        parser.error(
+            &format!("Variable {} defined without type, but marked as static. Need to specify type", identifier),
+            next.location);
+        return None;
+    }
+
+    if var_type.is_none() && rvalue.is_some() {
+        var_type = Some(types::Node {
+            identifier: "rvalue_type".to_string(),
+            children: Vec::<types::Node>::new()
+        });
+    }
+
+    let var_node = Some(Ast::VariableDef { node: Node {
         identifier,
-        var_type,
+        var_type: var_type.unwrap(),
         is_field: false,
         is_global,
-        is_mutable}}
-    )
+        is_mutable
+    }});
+
+    if rvalue.is_some() {
+        return Some(Ast::Expression { node: Box::new(expressions::Expression {
+            operation: Some(TokenType::Assign),
+            lhs: Some(Box::new(var_node.unwrap())),
+            rhs: Some(Box::new(rvalue.unwrap())),
+            term: None
+        })});
+    }
+
+    var_node
+    
 }
 
 /* parse function param */

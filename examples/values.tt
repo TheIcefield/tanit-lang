@@ -1,0 +1,7 @@
+func main()
+{
+    let const PI: f32
+    let mut radian = PI / 2
+
+    radian <<= 3 * PI / 4
+}

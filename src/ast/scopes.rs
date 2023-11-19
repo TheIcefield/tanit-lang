@@ -49,11 +49,8 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
             TokenType::KwFunc => ast::functions::parse_func_def(parser)?,
             
             TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
-            
-            // TokenType::KwStatic => {
-                
-            //     ast::variables::parse_def_stmt(parser)?
-            // },
+
+            TokenType::KwStatic => ast::variables::parse_def_stmt(parser)?,
 
             // TokenType::KwExtern => ast::externs::parse(parser)?,
 
@@ -98,11 +95,9 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
                 continue;
             },
 
-            TokenType::KwLet => ast::modules::parse(parser)?,
+            TokenType::KwLet => ast::variables::parse_def_stmt(parser)?,
 
             TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
-
-            // TokenType::KwStatic => ast::variable_node::parse_def_stmt(parser)?,
 
             TokenType::KwAlias => ast::aliases::parse(parser)?,
 
