@@ -8,12 +8,12 @@ pub struct Location {
 
 impl Location {
     pub fn new() -> Self {
-        Self { row: 0, col: 0 }
+        Self { row: 1, col: 1 }
     }
 
     pub fn new_line(&mut self) {
         self.row += 1;
-        self.col = 0;
+        self.col = 1;
     }
 
     pub fn shift(&mut self) {
@@ -24,6 +24,12 @@ impl Location {
 impl std::fmt::Display for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}", self.row, self.col)
+    }
+}
+
+impl Default for Location {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -262,33 +268,33 @@ impl Lexer {
 impl Lexer {
     pub fn peek_char(&mut self) -> char {
         if self.next_char.is_some() {
-            return self.next_char.clone().unwrap();
+            return self.next_char.unwrap();
         }
 
         self.next_char = Some(self.get_char());
 
-        self.next_char.clone().unwrap()
+        self.next_char.unwrap()
     }
 
     pub fn get_char(&mut self) -> char {
         if self.next_char.is_some() {
-            let ch = self.next_char.clone().unwrap();
+            let ch = self.next_char.unwrap();
             self.next_char = None;
             return ch;
         }
 
         let mut buf: [u8; 1] = [0];
 
-        self.input.read(&mut buf);
+        let res = self.input.read(&mut buf);
 
-        if buf[0] == 0 {
+        if res.is_err() || buf[0] == 0 {
             self.is_eof = true;
         } else {
             self.location.shift();
         }
 
         self.next_char = Some(buf[0] as char);
-        self.next_char.clone().unwrap()
+        self.next_char.unwrap()
     }
 
     fn skip_spaces(&mut self) {
@@ -320,37 +326,37 @@ impl Lexer {
             '\n' => {
                 self.location.new_line();
                 self.get_char();
-                return Token::new(TokenType::EndOfLine, self.location.clone());
+                Token::new(TokenType::EndOfLine, self.location.clone())
             }
 
             '(' => {
                 self.get_char();
-                return Token::new(TokenType::LParen, self.location.clone());
+                Token::new(TokenType::LParen, self.location.clone())
             }
 
             ')' => {
                 self.get_char();
-                return Token::new(TokenType::RParen, self.location.clone());
+                Token::new(TokenType::RParen, self.location.clone())
             }
 
             '[' => {
                 self.get_char();
-                return Token::new(TokenType::Lsb, self.location.clone());
+                Token::new(TokenType::Lsb, self.location.clone())
             }
 
             ']' => {
                 self.get_char();
-                return Token::new(TokenType::Rsb, self.location.clone());
+                Token::new(TokenType::Rsb, self.location.clone())
             }
 
             '{' => {
                 self.get_char();
-                return Token::new(TokenType::Lcb, self.location.clone());
+                Token::new(TokenType::Lcb, self.location.clone())
             }
 
             '}' => {
                 self.get_char();
-                return Token::new(TokenType::Rcb, self.location.clone());
+                Token::new(TokenType::Rcb, self.location.clone())
             }
 
             '>' => {
@@ -372,7 +378,7 @@ impl Lexer {
                     return Token::new(TokenType::RShift, self.location.clone());
                 }
 
-                return Token::new(TokenType::Gt, self.location.clone());
+                Token::new(TokenType::Gt, self.location.clone())
             }
 
             '<' => {
@@ -394,7 +400,7 @@ impl Lexer {
                     return Token::new(TokenType::LShift, self.location.clone());
                 }
 
-                return Token::new(TokenType::Lt, self.location.clone());
+                Token::new(TokenType::Lt, self.location.clone())
             }
 
             '+' => {
@@ -406,7 +412,7 @@ impl Lexer {
                     return Token::new(TokenType::AddAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Plus, self.location.clone());
+                Token::new(TokenType::Plus, self.location.clone())
             }
 
             '-' => {
@@ -418,7 +424,7 @@ impl Lexer {
                     return Token::new(TokenType::SubAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Minus, self.location.clone());
+                Token::new(TokenType::Minus, self.location.clone())
             }
 
             '/' => {
@@ -430,7 +436,7 @@ impl Lexer {
                     return Token::new(TokenType::DivAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Slash, self.location.clone());
+                Token::new(TokenType::Slash, self.location.clone())
             }
 
             '%' => {
@@ -442,7 +448,7 @@ impl Lexer {
                     return Token::new(TokenType::ModAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Percent, self.location.clone());
+                Token::new(TokenType::Percent, self.location.clone())
             }
 
             '*' => {
@@ -454,7 +460,7 @@ impl Lexer {
                     return Token::new(TokenType::MulAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Star, self.location.clone());
+                Token::new(TokenType::Star, self.location.clone())
             }
 
             '!' => {
@@ -468,7 +474,7 @@ impl Lexer {
                     return Token::new(TokenType::Neq, self.location.clone());
                 }
 
-                return Token::new(TokenType::Unknown, self.location.clone());
+                Token::new(TokenType::Unknown, self.location.clone())
             }
 
             '=' => {
@@ -479,7 +485,7 @@ impl Lexer {
                     return Token::new(TokenType::Eq, self.location.clone());
                 }
 
-                return Token::new(TokenType::Assign, self.location.clone());
+                Token::new(TokenType::Assign, self.location.clone())
             }
 
             '&' => {
@@ -490,7 +496,7 @@ impl Lexer {
                     return Token::new(TokenType::AndAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Ampersand, self.location.clone());
+                Token::new(TokenType::Ampersand, self.location.clone())
             }
 
             '^' => {
@@ -501,7 +507,7 @@ impl Lexer {
                     return Token::new(TokenType::XorAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Xor, self.location.clone());
+                Token::new(TokenType::Xor, self.location.clone())
             }
 
             '|' => {
@@ -512,7 +518,7 @@ impl Lexer {
                     return Token::new(TokenType::OrAssign, self.location.clone());
                 }
 
-                return Token::new(TokenType::Stick, self.location.clone());
+                Token::new(TokenType::Stick, self.location.clone())
             }
 
             _ => {
@@ -524,7 +530,7 @@ impl Lexer {
                     return self.get_string_token();
                 }
 
-                return Token::new(TokenType::Unknown, self.location.clone());
+                Token::new(TokenType::Unknown, self.location.clone())
             }
         }
     }
@@ -543,7 +549,7 @@ impl Lexer {
                 is_float = true;
             }
 
-            text.push(self.get_char() as char);
+            text.push(self.get_char());
         }
 
         if is_float {
@@ -566,7 +572,7 @@ impl Lexer {
             val.unwrap()
         };
 
-        return Token::new(TokenType::Integer(val), location);
+        Token::new(TokenType::Integer(val), location)
     }
 
     fn get_string_token(&mut self) -> Token {
@@ -576,34 +582,34 @@ impl Lexer {
 
         while !self.is_eof && (self.peek_char().is_ascii_alphanumeric() || self.peek_char() == '_')
         {
-            text.push(self.get_char() as char);
+            text.push(self.get_char());
         }
 
         match &text[..] {
-            "mod" => return Token::new(TokenType::KwModule, location),
-            "struct" => return Token::new(TokenType::KwStruct, location),
-            "alias" => return Token::new(TokenType::KwAlias, location),
-            "let" => return Token::new(TokenType::KwLet, location),
-            "func" => return Token::new(TokenType::KwFunc, location),
-            "if" => return Token::new(TokenType::KwIf, location),
-            "elif" => return Token::new(TokenType::KwElif, location),
-            "else" => return Token::new(TokenType::KwElse, location),
-            "loop" => return Token::new(TokenType::KwLoop, location),
-            "do" => return Token::new(TokenType::KwDo, location),
-            "while" => return Token::new(TokenType::KwWhile, location),
-            "for" => return Token::new(TokenType::KwFor, location),
-            "break" => return Token::new(TokenType::KwBreak, location),
-            "continue" => return Token::new(TokenType::KwContinue, location),
-            "return" => return Token::new(TokenType::KwReturn, location),
-            "extern" => return Token::new(TokenType::KwExtern, location),
-            "use" => return Token::new(TokenType::KwUse, location),
-            _ => return Token::new(TokenType::Identifier(text), location),
+            "mod" => Token::new(TokenType::KwModule, location),
+            "struct" => Token::new(TokenType::KwStruct, location),
+            "alias" => Token::new(TokenType::KwAlias, location),
+            "let" => Token::new(TokenType::KwLet, location),
+            "func" => Token::new(TokenType::KwFunc, location),
+            "if" => Token::new(TokenType::KwIf, location),
+            "elif" => Token::new(TokenType::KwElif, location),
+            "else" => Token::new(TokenType::KwElse, location),
+            "loop" => Token::new(TokenType::KwLoop, location),
+            "do" => Token::new(TokenType::KwDo, location),
+            "while" => Token::new(TokenType::KwWhile, location),
+            "for" => Token::new(TokenType::KwFor, location),
+            "break" => Token::new(TokenType::KwBreak, location),
+            "continue" => Token::new(TokenType::KwContinue, location),
+            "return" => Token::new(TokenType::KwReturn, location),
+            "extern" => Token::new(TokenType::KwExtern, location),
+            "use" => Token::new(TokenType::KwUse, location),
+            _ => Token::new(TokenType::Identifier(text), location),
         }
     }
 }
 
-pub fn dump_tokens(tokens: &Vec<Token>) {
+pub fn dump_tokens(tokens: &[Token]) {
     for tkn in tokens.iter() {
         println!("{}", tkn);
     }
-} 
+}

@@ -2,7 +2,7 @@ image: "rust:latest"
 
 default:
   before_script:
-    - rustc --version 
+    - rustc --version
     - cargo --version
 
 stages:
@@ -20,7 +20,7 @@ lint-code:
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
-    
+
 format-code:
   stage: test
   script:
@@ -32,3 +32,4 @@ audit-code:
   script:
     - cargo install cargo-audit
     - cargo audit
+

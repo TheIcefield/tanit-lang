@@ -14,7 +14,7 @@ fn main() {
         }
     }
 
-    if source_file.len() == 0 {
+    if source_file.is_empty() {
         println!("Error: Source file not specified");
         return;
     }
@@ -25,7 +25,7 @@ fn main() {
             Err(e) => {
                 println!("Error: {}", e);
                 return;
-            },
+            }
             Ok(lexer) => lexer,
         }
     };
@@ -33,5 +33,4 @@ fn main() {
     let tokens = lexer.collect();
 
     lexer::dump_tokens(&tokens);
-    
 }
