@@ -1,6 +1,6 @@
 #[test]
 fn lexer_test() {
-    use tanit::lexer::{Lexer, Token, TokenType, Location};
+    use tanit::lexer::{Lexer, Location, Token, TokenType};
 
     static SRC: &str = "hello func let + 65 -= <<\n struct alpha";
 

@@ -1,6 +1,6 @@
+use crate::ast::{calls, Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
-use crate::ast::{Ast, IAst, Stream, calls};
 use crate::parser::Parser;
 
 use std::io::Write;
@@ -12,35 +12,32 @@ pub struct Expression {
     pub operation: Option<TokenType>,
     pub lhs: Option<Box<Ast>>,
     pub rhs: Option<Box<Ast>>,
-    pub term: Option<Box<Ast>>
+    pub term: Option<Box<Ast>>,
 }
 
 impl IAst for Expression {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        match &self.operation {
-            Some(op) => {
-                writeln!(stream, "{}<operation operator=\"{}\">",
-                    put_intent(intent), op)?;
+        if let Some(op) = &self.operation {
+            writeln!(
+                stream,
+                "{}<operation operator=\"{}\">",
+                put_intent(intent),
+                op
+            )?;
 
-                match &self.lhs {
-                    Some(lhs) => lhs.traverse(stream, intent + 1)?,
-                    _ => { },
-                }
+            if let Some(lhs) = &self.lhs {
+                lhs.traverse(stream, intent + 1)?
+            }
 
-                match &self.rhs {
-                    Some(rhs) => rhs.traverse(stream, intent + 1)?,
-                    _ => { },
-                }
+            if let Some(rhs) = &self.rhs {
+                rhs.traverse(stream, intent + 1)?
+            }
 
-                writeln!(stream, "{}</operation>", put_intent(intent))?;
-
-            },
-            _ => {},
+            writeln!(stream, "{}</operation>", put_intent(intent))?;
         }
-        
-        match &self.term {
-            Some(t) => t.traverse(stream, intent)?,
-            _ => { },
+
+        if let Some(term) = &self.term {
+            term.traverse(stream, intent + 1)?
         }
 
         Ok(())
@@ -56,15 +53,15 @@ fn parse_assign(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-          TokenType::AddAssign    
-        | TokenType::SubAssign    
-        | TokenType::MulAssign    
-        | TokenType::DivAssign    
-        | TokenType::ModAssign    
-        | TokenType::OrAssign     
-        | TokenType::AndAssign    
-        | TokenType::XorAssign    
-        | TokenType::LShiftAssign 
+        TokenType::AddAssign
+        | TokenType::SubAssign
+        | TokenType::MulAssign
+        | TokenType::DivAssign
+        | TokenType::ModAssign
+        | TokenType::OrAssign
+        | TokenType::AndAssign
+        | TokenType::XorAssign
+        | TokenType::LShiftAssign
         | TokenType::RShiftAssign => {
             parser.get_token();
             let operation = Some(next.lexem);
@@ -72,18 +69,17 @@ fn parse_assign(parser: &mut Parser) -> Option<Ast> {
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
 
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -98,19 +94,18 @@ fn parse_logical_or(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -125,19 +120,18 @@ fn parse_logical_and(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -152,19 +146,18 @@ fn parse_bitwise_or(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -179,19 +172,18 @@ fn parse_bitwise_xor(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -206,19 +198,18 @@ fn parse_bitwise_and(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -233,19 +224,18 @@ fn parse_logical_eq(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -254,26 +244,24 @@ fn parse_logical_less_or_greater(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::Lt | TokenType::Lte |
-        TokenType::Gt | TokenType::Gte => {
+        TokenType::Lt | TokenType::Lte | TokenType::Gt | TokenType::Gte => {
             parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -282,25 +270,24 @@ fn parse_shift(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::LShift | TokenType::RShift  => {
+        TokenType::LShift | TokenType::RShift => {
             parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -315,19 +302,18 @@ fn parse_add_or_sub(parser: &mut Parser) -> Option<Ast> {
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -336,27 +322,24 @@ fn parse_mul_or_div(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::Star |
-        TokenType::Slash |
-        TokenType::Percent => {
+        TokenType::Star | TokenType::Slash | TokenType::Percent => {
             parser.get_token();
             let operation = Some(next.lexem);
 
             let rhs = parse_expression(parser)?;
             let rhs = Some(Box::new(rhs));
-                                                
-            return Some(Ast::Expression { node: Box::new(
-                Expression {
+
+            Some(Ast::Expression {
+                node: Box::new(Expression {
                     operation,
                     lhs: Some(Box::new(lhs)),
                     rhs,
-                    term: None 
-                }) })
-        },
-
-        _ => {
-            return Some(lhs);
+                    term: None,
+                }),
+            })
         }
+
+        _ => Some(lhs),
     }
 }
 
@@ -368,54 +351,55 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
         // | TokenType::Minus => {
         //     // parse unary 'operators'
         // }
-
         TokenType::Integer(val) => {
             parser.get_token();
-
-            return Some(Ast::Value { node: values::ValueType::Integer(val) });
-        },
+            Some(Ast::Value {
+                node: values::ValueType::Integer(val),
+            })
+        }
 
         TokenType::Decimal(val) => {
             parser.get_token();
-            return Some(Ast::Value { node: values::ValueType::Decimal(val) })
-        },
+            Some(Ast::Value {
+                node: values::ValueType::Decimal(val),
+            })
+        }
 
         TokenType::Identifier(identifier) => {
             parser.get_token();
 
             let next = parser.peek_token();
-            if next.lexem == TokenType::LParen { // if call
+            if next.lexem == TokenType::LParen {
+                // if call
                 let arguments = calls::parse_call(parser)?;
 
-                return Some(Ast::Value { node: values::ValueType::Call(calls::Node {
-                    identifier,
-                    arguments
-                }) });
+                return Some(Ast::Value {
+                    node: values::ValueType::Call(calls::Node {
+                        identifier,
+                        arguments,
+                    }),
+                });
             }
 
-            return Some(Ast::Value { node: values::ValueType::Identifier(identifier) });
+            Some(Ast::Value {
+                node: values::ValueType::Identifier(identifier),
+            })
         }
 
         TokenType::LParen => {
             parser.consume_token(TokenType::LParen)?;
-            
+
             let expr = parse_expression(parser)?;
 
             parser.consume_token(TokenType::RParen)?;
 
-            return Some(expr);
+            Some(expr)
         }
 
         _ => {
-            parser.error(
-                    "Unexpected token within expression",
-                    next.get_location()
-                );
+            parser.error("Unexpected token within expression", next.get_location());
 
-            return None;
+            None
         }
-
     }
 }
-
-

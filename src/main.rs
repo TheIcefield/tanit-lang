@@ -1,4 +1,4 @@
-use tanit::{lexer, error_listener, parser};
+use tanit::{error_listener, lexer, parser};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -7,6 +7,7 @@ fn main() {
     let mut dump_ast = true;
 
     let argv = std::env::args().collect::<Vec<String>>();
+    #[allow(clippy::needless_range_loop)]
     for mut i in 1..argv.len() {
         if argv[i] == "-i" {
             i += 1;
@@ -49,10 +50,8 @@ fn main() {
     };
 
     if dump_ast {
-        match parser::dump_ast(output_file, &ast) {
-            Err(err) => println!("{}", err),
-            _ => {}
+        if let Err(err) = parser::dump_ast(output_file, &ast) {
+            println!("{}", err)
         }
     }
-    
 }

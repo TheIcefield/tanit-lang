@@ -1,13 +1,13 @@
+pub mod branches;
+pub mod calls;
+pub mod expressions;
+pub mod functions;
+pub mod modules;
+pub mod scopes;
+pub mod structs;
 pub mod types;
 pub mod values;
 pub mod variables;
-pub mod functions;
-pub mod calls;
-pub mod structs;
-pub mod branches;
-pub mod scopes;
-pub mod modules;
-pub mod expressions;
 // pub mod externs;
 
 use crate::parser::put_intent;
@@ -21,12 +21,12 @@ trait IAst {
 
 #[derive(Clone)]
 pub enum Ast {
-    GScope { node: scopes::Scope, },
-    
-    LScope { node: scopes::Scope, },
-    
-    ModuleDef { node: modules::Node, },
-    
+    GScope { node: scopes::Scope },
+
+    LScope { node: scopes::Scope },
+
+    ModuleDef { node: modules::Node },
+
     StructDef { node: structs::Node },
 
     FuncDef { node: functions::Node },
@@ -41,7 +41,7 @@ pub enum Ast {
 
     Expression { node: Box<expressions::Expression> },
 
-    LoopStmt { node: branches::LoopNode,},
+    LoopStmt { node: branches::LoopNode },
 
     BreakStmt { node: branches::Break },
 
@@ -62,7 +62,7 @@ impl Ast {
                 writeln!(stream, "{}<definition>", put_intent(intent))?;
                 node.traverse(stream, intent + 1)?;
                 writeln!(stream, "{}</definition>", put_intent(intent))?;
-            },
+            }
             Ast::Value { node } => node.traverse(stream, intent)?,
             Ast::TypeDecl { node } => node.traverse(stream, intent)?,
             Ast::AliasDef { node } => node.traverse(stream, intent)?,
@@ -70,10 +70,9 @@ impl Ast {
             Ast::LoopStmt { node } => node.traverse(stream, intent)?,
             Ast::BreakStmt { node } => node.traverse(stream, intent)?,
             Ast::ContinueStmt { node } => node.traverse(stream, intent)?,
-            Ast::ReturnStmt { node } => node.traverse(stream, intent)?,    
+            Ast::ReturnStmt { node } => node.traverse(stream, intent)?,
         }
 
         Ok(())
     }
 }
-

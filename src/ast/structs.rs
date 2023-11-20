@@ -1,26 +1,30 @@
+use crate::ast::{variables, Ast, IAst, Stream};
 use crate::lexer::TokenType;
-use crate::ast::{Ast, IAst, Stream, variables};
-use crate::parser::{Id, Parser, put_intent};
+use crate::parser::{put_intent, Id, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub fields:     Vec<variables::Node>,
+    pub fields: Vec<variables::Node>,
 }
 
 impl IAst for Node {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<struct name=\"{}\">",
-            put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<struct name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         for field in self.fields.iter() {
             field.traverse(stream, intent + 1)?;
         }
 
         writeln!(stream, "{}</struct>", put_intent(intent))?;
-    
+
         Ok(())
     }
 }
@@ -38,9 +42,9 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
 
     let identifier = parser.consume_identifier()?;
 
-    Some(Node{
+    Some(Node {
         identifier,
-        fields: Vec::<variables::Node>::new()
+        fields: Vec::<variables::Node>::new(),
     })
 }
 
@@ -56,7 +60,7 @@ pub fn parse_body_external(parser: &mut Parser) -> Option<Vec<variables::Node>> 
 
 pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> {
     let mut fields = Vec::<variables::Node>::new();
-    
+
     loop {
         let next = parser.peek_token();
 
@@ -66,19 +70,20 @@ pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> 
             TokenType::EndOfLine => {
                 parser.get_token();
                 continue;
-            },
+            }
 
             TokenType::Identifier(_) => {
                 let mut field = variables::parse_param(parser)?;
                 field.is_field = true;
 
                 fields.push(field);
-            },
+            }
 
             _ => {
                 parser.error(
                     "Unexpected token when parsing struct fields",
-                    next.get_location());
+                    next.get_location(),
+                );
 
                 return None;
             }
@@ -87,4 +92,3 @@ pub fn parse_body_internal(parser: &mut Parser) -> Option<Vec<variables::Node>> 
 
     Some(fields)
 }
-

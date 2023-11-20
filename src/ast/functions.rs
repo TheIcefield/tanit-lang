@@ -1,22 +1,27 @@
+use crate::ast::{scopes, types, variables, Ast, IAst, Stream};
 use crate::lexer::TokenType;
-use crate::ast::{IAst, Ast, Stream, variables, scopes, types};
-use crate::parser::{Id, put_intent, Parser};
+use crate::parser::{put_intent, Id, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
 pub struct Node {
-    pub identifier:  Id,
+    pub identifier: Id,
     pub return_type: types::Type,
-    pub parameters:  Vec<variables::Node>,
-    pub body:        Option<scopes::Scope>,
-    pub is_static:   bool,
+    pub parameters: Vec<variables::Node>,
+    pub body: Option<scopes::Scope>,
+    pub is_static: bool,
 }
 
 impl IAst for Node {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<function name=\"{}\" is_static=\"{}\">",
-                   put_intent(intent), self.identifier, self.is_static)?;
+        writeln!(
+            stream,
+            "{}<function name=\"{}\" is_static=\"{}\">",
+            put_intent(intent),
+            self.identifier,
+            self.is_static
+        )?;
 
         writeln!(stream, "{}<return-type>", put_intent(intent + 1))?;
 
@@ -37,11 +42,11 @@ impl IAst for Node {
                 writeln!(stream, "{}<body>", put_intent(intent + 1))?;
 
                 node.traverse(stream, intent + 1)?;
-    
-                writeln!(stream, "{}</body>", put_intent(intent + 1))?;
-            },
 
-            None => {},
+                writeln!(stream, "{}</body>", put_intent(intent + 1))?;
+            }
+
+            None => {}
         }
 
         writeln!(stream, "{}</function>", put_intent(intent))?;
@@ -67,14 +72,15 @@ pub fn parse_func_def(parser: &mut Parser) -> Option<Ast> {
     match next.lexem {
         TokenType::Lcb => {
             node.body = parse_body(parser);
-        },
+        }
 
         _ => {
-            parser.error(&format!(
-                "Unexpected token \"{}\", allowed EOL or \'}}\'", next),
-                next.get_location());
+            parser.error(
+                &format!("Unexpected token \"{}\", allowed EOL or \'}}\'", next),
+                next.get_location(),
+            );
             return None;
-        },
+        }
     }
 
     Some(Ast::FuncDef { node })
@@ -106,8 +112,7 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
         }
     };
 
-
-    Some(Node{
+    Some(Node {
         identifier,
         return_type,
         parameters,
@@ -133,20 +138,22 @@ pub fn parse_header_params(parser: &mut Parser) -> Option<Vec<variables::Node>> 
             } else if next.lexem == TokenType::RParen {
                 continue;
             } else {
-                parser.error(&format!(
-                    "Unexpected token \"{}\", allowed \',\' or \')\'", next),
-                    next.get_location());
+                parser.error(
+                    &format!("Unexpected token \"{}\", allowed \',\' or \')\'", next),
+                    next.get_location(),
+                );
                 return None;
             }
         } else if next.lexem == TokenType::RParen {
             parser.get_token();
             break;
         } else {
-            parser.error(&format!(
-                "Unexpected token \"{}\", allowed identifier or \')\'", next),
-                next.get_location());
+            parser.error(
+                &format!("Unexpected token \"{}\", allowed identifier or \')\'", next),
+                next.get_location(),
+            );
             return None;
-        }        
+        }
     }
 
     Some(parameters)
@@ -155,4 +162,3 @@ pub fn parse_header_params(parser: &mut Parser) -> Option<Vec<variables::Node>> 
 pub fn parse_body(parser: &mut Parser) -> Option<scopes::Scope> {
     scopes::parse_local_external(parser)
 }
-

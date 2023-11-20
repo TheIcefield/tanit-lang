@@ -1,6 +1,6 @@
+use crate::ast::{expressions, Ast, IAst};
 use crate::lexer::TokenType;
-use crate::ast::{Ast, IAst, expressions};
-use crate::parser::{Parser, put_intent};
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
@@ -12,7 +12,12 @@ pub struct Node {
 
 impl IAst for Node {
     fn traverse(&self, stream: &mut super::Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<call name=\"{}\">", put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<call name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         for arg in self.arguments.iter() {
             arg.traverse(stream, intent + 1)?
@@ -40,14 +45,15 @@ pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
         args.push(expr);
 
         let next = parser.peek_token();
-        if next.lexem == TokenType::Comma { // continue parsing if ','
+        if next.lexem == TokenType::Comma {
+            // continue parsing if ','
             parser.get_token();
             continue;
-        } else if next.lexem == TokenType::RParen { // end parsing if ')'
+        } else if next.lexem == TokenType::RParen {
+            // end parsing if ')'
             break;
         } else {
-            parser.error("Unexpected token when parsing call",
-                         next.get_location());
+            parser.error("Unexpected token when parsing call", next.get_location());
             return None;
         }
     }

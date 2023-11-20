@@ -1,10 +1,13 @@
 use crate::lexer::TokenType;
-use crate::{ast, ast::{Ast, IAst, Stream}};
 use crate::parser::Parser;
+use crate::{
+    ast,
+    ast::{Ast, IAst, Stream},
+};
 
 #[derive(Clone)]
 pub struct Scope {
-    pub statements: Vec<Ast>
+    pub statements: Vec<Ast>,
 }
 
 impl IAst for Scope {
@@ -16,7 +19,6 @@ impl IAst for Scope {
         Ok(())
     }
 }
-
 
 pub fn parse_global_external(parser: &mut Parser) -> Option<Scope> {
     parser.consume_token(TokenType::Lcb)?;
@@ -37,29 +39,29 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
         let child = match next.lexem {
             TokenType::Rcb | TokenType::EndOfFile => {
                 break;
-            },
+            }
 
             TokenType::EndOfLine => {
                 parser.get_token();
                 continue;
-            },
+            }
 
             TokenType::KwModule => ast::modules::parse(parser)?,
 
             TokenType::KwFunc => ast::functions::parse_func_def(parser)?,
-            
+
             TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
 
             TokenType::KwStatic => ast::variables::parse_def_stmt(parser)?,
 
             // TokenType::KwExtern => ast::externs::parse(parser)?,
-
             TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
 
             _ => {
-                parser.error(&format!(
-                    "Unexpected token \"{}\"", next),
-                    next.get_location());
+                parser.error(
+                    &format!("Unexpected token \"{}\"", next),
+                    next.get_location(),
+                );
                 return None;
             }
         };
@@ -70,7 +72,6 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
     Some(children)
 }
 
-
 pub fn parse_local_external(parser: &mut Parser) -> Option<Scope> {
     parser.consume_token(TokenType::Lcb)?;
 
@@ -78,7 +79,7 @@ pub fn parse_local_external(parser: &mut Parser) -> Option<Scope> {
 
     parser.consume_token(TokenType::Rcb)?;
 
-    Some(Scope{statements})
+    Some(Scope { statements })
 }
 
 pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
@@ -93,7 +94,7 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
             TokenType::EndOfLine => {
                 parser.get_token();
                 continue;
-            },
+            }
 
             TokenType::KwLet => ast::variables::parse_def_stmt(parser)?,
 
@@ -102,13 +103,11 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
             TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
 
             // TokenType::KwIf => ast::branch_node::parse_if(parser)?,
-
             TokenType::KwLoop => ast::branches::parse_loop(parser)?,
 
             TokenType::KwWhile => ast::branches::parse_while(parser)?,
 
             // TokenType::KwFor => ast::branch_node::parse_for(parser)?,
-
             TokenType::KwReturn => ast::branches::parse_return(parser)?,
 
             TokenType::KwBreak => ast::branches::parse_break(parser)?,
@@ -120,12 +119,13 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
             TokenType::EndOfFile => {
                 parser.error("Unexpected end of file", next.get_location());
                 return None;
-            },
+            }
 
             _ => {
-                parser.error(&format!(
-                    "Unexpected token \"{}\"", next),
-                    next.get_location());
+                parser.error(
+                    &format!("Unexpected token \"{}\"", next),
+                    next.get_location(),
+                );
                 return None;
             }
         };

@@ -38,43 +38,43 @@ pub enum TokenType {
     EndOfFile,
     EndOfLine,
 
-    LParen,        // (
-    RParen,        // )
-    Lcb,           // {
-    Rcb,           // }
-    Lsb,           // [
-    Rsb,           // ]
-    Assign,        // =
-    Plus,          // +
-    AddAssign,     // +=
-    Minus,         // -
-    SubAssign,     // -=
-    Star,          // *
-    MulAssign,     // *=
-    Slash,         // /
-    DivAssign,     // /=
-    Percent,       // %
-    ModAssign,     // %=
-    Eq,            // ==
-    Neq,           // !=
-    Lt,            // <
-    Lte,           // <=
-    Gt,            // >
-    Gte,           // >=
-    LShift,        // <<
-    RShift,        // >>
-    LShiftAssign,  // <<=
-    RShiftAssign,  // >>=
-    Stick,         // |
-    Ampersand,     // &
-    Xor,           // | & ^
-    OrAssign,      // |=
-    AndAssign,     // &=
-    XorAssign,     // ^=
-    Comma,         // ,
-    Dot,           // .
-    Colon,         // :
-    Arrow,         // ->
+    LParen,       // (
+    RParen,       // )
+    Lcb,          // {
+    Rcb,          // }
+    Lsb,          // [
+    Rsb,          // ]
+    Assign,       // =
+    Plus,         // +
+    AddAssign,    // +=
+    Minus,        // -
+    SubAssign,    // -=
+    Star,         // *
+    MulAssign,    // *=
+    Slash,        // /
+    DivAssign,    // /=
+    Percent,      // %
+    ModAssign,    // %=
+    Eq,           // ==
+    Neq,          // !=
+    Lt,           // <
+    Lte,          // <=
+    Gt,           // >
+    Gte,          // >=
+    LShift,       // <<
+    RShift,       // >>
+    LShiftAssign, // <<=
+    RShiftAssign, // >>=
+    Stick,        // |
+    Ampersand,    // &
+    Xor,          // | & ^
+    OrAssign,     // |=
+    AndAssign,    // &=
+    XorAssign,    // ^=
+    Comma,        // ,
+    Dot,          // .
+    Colon,        // :
+    Arrow,        // ->
 
     KwLet,
     KwFunc,
@@ -200,24 +200,15 @@ impl Token {
     }
 
     pub fn is_identifier(&self) -> bool {
-        match self.lexem {
-            TokenType::Identifier(_) => true,
-            _ => false,
-        }
+        matches!(self.lexem, TokenType::Identifier(_))
     }
 
     pub fn is_integer(&self) -> bool {
-        match self.lexem {
-            TokenType::Integer(_) => true,
-            _ => false,
-        }
+        matches!(self.lexem, TokenType::Integer(_))
     }
 
     pub fn is_decimal(&self) -> bool {
-        match self.lexem {
-            TokenType::Decimal(_) => true,
-            _ => false,
-        }
+        matches!(self.lexem, TokenType::Decimal(_))
     }
 }
 
@@ -599,17 +590,17 @@ impl Lexer {
             ':' => {
                 self.get_char();
                 Token::new(TokenType::Colon, self.get_location())
-            },
+            }
 
             '.' => {
                 self.get_char();
                 Token::new(TokenType::Dot, self.get_location())
-            },
+            }
 
             ',' => {
                 self.get_char();
                 Token::new(TokenType::Comma, self.get_location())
-            },
+            }
 
             _ => {
                 if next_char.is_ascii_digit() {

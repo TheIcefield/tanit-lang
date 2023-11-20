@@ -1,6 +1,6 @@
+use crate::ast::{scopes, Ast};
 use crate::error_listener::ErrorListener;
-use crate::ast::{Ast, scopes};
-use crate::lexer::{Lexer, Token, TokenType, Location};
+use crate::lexer::{Lexer, Location, Token, TokenType};
 
 type ParseResult = Result<Ast, ErrorListener>;
 
@@ -70,7 +70,6 @@ impl Parser {
             return Some(tkn);
         }
 
-
         self.error_listener.syntax_error(
             &format!(
                 "Unexpected token: \"{}\", but was expected: \"{}\"",
@@ -79,7 +78,7 @@ impl Parser {
             tkn.location,
         );
 
-        return None;
+        None
     }
 
     pub fn consume_token(&mut self, token_type: TokenType) -> Option<Token> {
@@ -94,7 +93,7 @@ impl Parser {
                 break;
             }
         }
-        
+
         let tkn = self.lexer.peek();
 
         if tkn.lexem == token_type {
@@ -111,7 +110,7 @@ impl Parser {
             tkn.location,
         );
 
-        return None;
+        None
     }
 
     pub fn consume_identifier(&mut self) -> Option<Id> {
@@ -130,8 +129,8 @@ impl Parser {
         match tkn.lexem {
             TokenType::Identifier(id) => {
                 self.get_token();
-                return Some(id);
-            },
+                Some(id)
+            }
 
             _ => {
                 self.error_listener.syntax_error(
@@ -142,19 +141,19 @@ impl Parser {
                     tkn.location,
                 );
 
-                return None;
+                None
             }
         }
     }
 
     pub fn error(&mut self, message: &str, location: Location) {
         self.error_listener.syntax_error(message, location);
-    } 
+    }
 }
 
 pub fn put_intent(intent: usize) -> String {
     let mut res = "".to_string();
-    for _ in 0..intent-1 {
+    for _ in 0..intent - 1 {
         res.push(' ');
     }
     res
@@ -169,6 +168,6 @@ fn parse_program(parser: &mut Parser) -> Option<Ast> {
     Some(Ast::GScope {
         node: scopes::Scope {
             statements: scopes::parse_global_internal(parser)?,
-        }
+        },
     })
 }

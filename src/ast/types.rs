@@ -1,6 +1,6 @@
-use crate::lexer::TokenType;
 use crate::ast::{Ast, IAst, Stream};
-use crate::parser::{Id, Parser, put_intent};
+use crate::lexer::TokenType;
+use crate::parser::{put_intent, Id, Parser};
 
 use std::io::Write;
 
@@ -18,20 +18,28 @@ pub struct Alias {
 
 impl IAst for Type {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        if self.children.is_empty()
-        {
-            writeln!(stream, "{}<type name=\"{}\"/>", put_intent(intent), self.identifier)?;
-            return Ok(())
+        if self.children.is_empty() {
+            writeln!(
+                stream,
+                "{}<type name=\"{}\"/>",
+                put_intent(intent),
+                self.identifier
+            )?;
+            return Ok(());
         }
 
-        writeln!(stream, "{}<type name=\"{}\">", put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<type name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         for i in self.children.iter() {
             i.traverse(stream, intent + 1)?;
         }
 
         writeln!(stream, "{}</type>", put_intent(intent))?;
-            
 
         Ok(())
     }
@@ -39,8 +47,12 @@ impl IAst for Type {
 
 impl IAst for Alias {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<alias name=\"{}\">",
-            put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<alias name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         self.value.traverse(stream, intent + 1)?;
 
@@ -58,9 +70,9 @@ pub fn parse_type(parser: &mut Parser) -> Option<Type> {
         children = parse_template_args(parser)?;
     }
 
-    Some( Type {
+    Some(Type {
         identifier,
-        children
+        children,
     })
 }
 
@@ -94,5 +106,7 @@ pub fn parse_alias_def(parser: &mut Parser) -> Option<Ast> {
 
     let value = parse_type(parser)?;
 
-    Some(Ast::AliasDef { node: Alias { identifier, value } } )
+    Some(Ast::AliasDef {
+        node: Alias { identifier, value },
+    })
 }

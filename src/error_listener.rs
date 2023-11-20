@@ -9,7 +9,9 @@ pub struct ErrorListener {
 
 impl ErrorListener {
     pub fn new() -> Self {
-        Self { errors: Errors::new() }
+        Self {
+            errors: Errors::new(),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -17,11 +19,13 @@ impl ErrorListener {
     }
 
     pub fn syntax_error(&mut self, message: &str, location: Location) {
-        self.errors.push(format!("Syntax Error as [{}]: {}", location, message));
+        self.errors
+            .push(format!("Syntax Error as [{}]: {}", location, message));
     }
 
     pub fn semantic_error(&mut self, message: &str, location: Location) {
-        self.errors.push(format!("Semantic Error as [{}]: {}", location, message));
+        self.errors
+            .push(format!("Semantic Error as [{}]: {}", location, message));
     }
 
     pub fn take_errors(&mut self) -> Errors {

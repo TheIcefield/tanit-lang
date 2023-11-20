@@ -1,6 +1,6 @@
+use crate::ast::{scopes, Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
-use crate::ast::{Ast, IAst, Stream, scopes};
 use crate::parser::{Id, Parser};
 
 use std::io::Write;
@@ -13,8 +13,12 @@ pub struct Node {
 
 impl IAst for Node {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<module name=\"{}\">",
-            put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<module name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         self.body.traverse(stream, intent)?;
 
@@ -40,7 +44,7 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
     Some(Node {
         identifier,
         body: scopes::Scope {
-            statements: Vec::<Ast>::new()
+            statements: Vec::<Ast>::new(),
         },
     })
 }

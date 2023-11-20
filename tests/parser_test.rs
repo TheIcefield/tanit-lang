@@ -249,7 +249,10 @@ fn functions_test() {
     };
 
     let res = if let tanit::ast::Ast::Expression { node } = &res.statements[0] {
-        assert_eq!(node.operation.clone().unwrap(), tanit::lexer::TokenType::Assign);
+        assert_eq!(
+            node.operation.clone().unwrap(),
+            tanit::lexer::TokenType::Assign
+        );
 
         let res = if let tanit::ast::Ast::Value { node } = *node.rhs.clone().unwrap() {
             node
@@ -262,7 +265,7 @@ fn functions_test() {
                 assert_eq!(node.identifier, "f".to_string());
                 assert_eq!(node.arguments.len(), 2);
                 node.arguments
-            },
+            }
             _ => panic!("value has to be \'call\'"),
         };
 
@@ -275,7 +278,7 @@ fn functions_test() {
         match node {
             tanit::ast::values::ValueType::Identifier(id) => {
                 assert_eq!(*id, "a".to_string());
-            },
+            }
             _ => panic!("first arg has to be \'identifier\'"),
         }
     } else {
@@ -286,13 +289,12 @@ fn functions_test() {
         match node {
             tanit::ast::values::ValueType::Integer(val) => {
                 assert_eq!(*val, 1);
-            },
+            }
             _ => panic!("second arg has to be \'1\'"),
         }
     } else {
         panic!("second arg has to be \'value\'");
     }
-
 }
 
 #[test]
@@ -330,6 +332,4 @@ fn types_test() {
     } else {
         panic!("res has to be \'alias definition\'");
     };
-
 }
-

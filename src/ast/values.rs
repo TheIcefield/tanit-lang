@@ -1,5 +1,5 @@
+use crate::ast::{calls, IAst, Stream};
 use crate::parser::put_intent;
-use crate::ast::{IAst, Stream, calls};
 
 use std::io::Write;
 
@@ -13,26 +13,29 @@ pub enum ValueType {
 }
 
 impl IAst for ValueType {
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {       
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             ValueType::Identifier(id) => {
                 writeln!(stream, "{}<variable name=\"{}\"/>", put_intent(intent), id)?
-            },
+            }
             ValueType::Text(text) => {
                 writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
-            },
-            ValueType::Call(node) => {
-                node.traverse(stream, intent)?
-            },
-            ValueType::Integer(val) => {
-                writeln!(stream, "{}<value type=\"int\" value=\"{}\"/>", put_intent(intent), val)?
-            },
-            ValueType::Decimal(val) => {
-                writeln!(stream, "{}<value type=\"float\" value=\"{}\"/>", put_intent(intent), val)?
             }
+            ValueType::Call(node) => node.traverse(stream, intent)?,
+            ValueType::Integer(val) => writeln!(
+                stream,
+                "{}<value type=\"int\" value=\"{}\"/>",
+                put_intent(intent),
+                val
+            )?,
+            ValueType::Decimal(val) => writeln!(
+                stream,
+                "{}<value type=\"float\" value=\"{}\"/>",
+                put_intent(intent),
+                val
+            )?,
         }
-        
+
         Ok(())
     }
 }
-
