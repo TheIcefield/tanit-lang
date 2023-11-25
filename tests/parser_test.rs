@@ -1,3 +1,5 @@
+use tanit::ast::types::Type;
+
 #[test]
 fn module_test() {
     use tanit::ast;
@@ -68,13 +70,24 @@ fn struct_test() {
         assert_eq!(node.fields[0].is_mutable, true);
 
         let mut field_type = node.fields[0].var_type.clone();
-        assert_eq!(field_type.identifier, String::from("i32"));
+
+        assert!(matches!(field_type, Type::I32));
 
         assert_eq!(node.fields[1].identifier, String::from("f2"));
 
         field_type = node.fields[1].var_type.clone();
-        assert_eq!(field_type.identifier, String::from("Vec"));
-        assert_eq!(field_type.children[0].identifier, String::from("i32"));
+
+        if let Type::Template {
+            identifier,
+            arguments,
+        } = &field_type
+        {
+            assert_eq!(*identifier, String::from("Vec"));
+            assert_eq!(arguments.len(), 1);
+            assert!(matches!(arguments[0], Type::I32));
+        } else {
+            panic!("wrong type");
+        }
     } else {
         panic!("res should be \'ModuleDef\'");
     };
@@ -103,9 +116,14 @@ fn variables_test() {
 
     let res = if let ast::Ast::FuncDef { node } = res {
         assert_eq!(node.identifier, String::from("main"));
-        assert_eq!(node.return_type.identifier, String::from("void"));
         assert_eq!(node.parameters.is_empty(), true);
         assert_eq!(node.is_static, false);
+
+        if let Type::Tuple { components } = &node.return_type {
+            assert!(components.is_empty());
+        } else {
+            panic!("Type expected to be an empty tuple");
+        }
 
         node.body
     } else {
@@ -116,10 +134,10 @@ fn variables_test() {
 
     if let tanit::ast::Ast::VariableDef { node } = res.statements.remove(0) {
         assert_eq!(node.identifier, String::from("PI"));
-        assert_eq!(node.var_type.identifier, String::from("f32"));
-        assert_eq!(node.is_mutable, false);
-        assert_eq!(node.is_global, false);
-        assert_eq!(node.is_field, false);
+        assert!(!node.is_mutable);
+        assert!(!node.is_global);
+        assert!(!node.is_field);
+        assert!(matches!(node.var_type, Type::F32));
     } else {
         panic!("first statement has to be \'variable definition\'");
     }
@@ -219,16 +237,16 @@ fn functions_test() {
         tanit::ast::functions::parse_func_def(&mut parser).unwrap()
     {
         assert_eq!(node.identifier, String::from("f"));
-        assert_eq!(node.return_type.identifier, String::from("f32"));
-        assert_eq!(node.is_static, false);
+        assert!(!node.is_static);
+        assert!(matches!(node.return_type, Type::F32));
 
         let arg = node.parameters.remove(0);
         assert_eq!(arg.identifier, "a".to_string());
-        assert_eq!(arg.var_type.identifier, "f32".to_string());
+        assert!(matches!(arg.var_type, Type::F32));
 
         let arg = node.parameters.remove(0);
         assert_eq!(arg.identifier, "b".to_string());
-        assert_eq!(arg.var_type.identifier, "f32".to_string());
+        assert!(matches!(arg.var_type, Type::F32));
 
         assert_eq!(node.body.is_some(), true);
     } else {
@@ -239,9 +257,14 @@ fn functions_test() {
         tanit::ast::functions::parse_func_def(&mut parser).unwrap()
     {
         assert_eq!(node.identifier, String::from("main"));
-        assert_eq!(node.return_type.identifier, String::from("void"));
-        assert_eq!(node.is_static, false);
-        assert_eq!(node.parameters.len(), 0);
+        assert!(!node.is_static);
+        assert!(node.parameters.is_empty());
+
+        if let Type::Tuple { components } = &node.return_type {
+            assert!(components.is_empty());
+        } else {
+            panic!("Type expected to be an empty tuple");
+        }
 
         node.body.unwrap()
     } else {
@@ -314,9 +337,14 @@ fn types_test() {
         tanit::ast::functions::parse_func_def(&mut parser).unwrap()
     {
         assert_eq!(node.identifier, String::from("main"));
-        assert_eq!(node.return_type.identifier, String::from("void"));
-        assert_eq!(node.is_static, false);
-        assert_eq!(node.parameters.len(), 0);
+        assert!(!node.is_static);
+        assert!(node.parameters.is_empty());
+
+        if let Type::Tuple { components } = &node.return_type {
+            assert!(components.is_empty());
+        } else {
+            panic!("Type expected to be an empty tuple");
+        }
 
         node.body.unwrap()
     } else {
@@ -326,10 +354,40 @@ fn types_test() {
     if let tanit::ast::Ast::AliasDef { node } = &res.statements[0] {
         assert_eq!(node.identifier, "Items".to_string());
 
-        assert_eq!(node.value.identifier, "Vec".to_string());
-        assert_eq!(node.value.children.len(), 1);
-        assert_eq!(node.value.children[0].identifier, "Item".to_string());
+        if let Type::Template {
+            identifier,
+            arguments,
+        } = &node.value
+        {
+            assert_eq!(identifier, "Vec");
+            assert_eq!(arguments.len(), 1);
+            if let Type::Custom(id) = &arguments[0] {
+                assert_eq!(id, "Item");
+            } else {
+                panic!("Type is expected to be \"Item\"")
+            }
+        } else {
+            panic!("Alias type expected to be an template type");
+        }
     } else {
         panic!("res has to be \'alias definition\'");
     };
+
+    // if let tanit::ast::Ast::AliasDef { node } = &res.statements[0] {
+    //     assert_eq!(node.identifier, "Items".to_string());
+
+    //     if let Type::Template { identifier, arguments } = &node.value {
+    //         assert_eq!(identifier, "Vec");
+    //         assert_eq!(arguments.len(), 1);
+    //         if let Type::Custom(id) = &arguments[0] {
+    //             assert_eq!(id, "Item");
+    //         } else {
+    //             panic!("Type is expected to be \"Item\"")
+    //         }
+    //     } else {
+    //         panic!("Alias type expected to be an template type");
+    //     }
+    // } else {
+    //     panic!("res has to be \'alias definition\'");
+    // };
 }

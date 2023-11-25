@@ -124,10 +124,7 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
     }
 
     if var_type.is_none() && rvalue.is_some() {
-        var_type = Some(types::Type {
-            identifier: "rvalue_type".to_string(),
-            children: Vec::<types::Type>::new(),
-        });
+        var_type = Some(types::Type::Custom("rvalue_type".to_string()));
     }
 
     let var_node = Ast::VariableDef {

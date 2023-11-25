@@ -106,9 +106,8 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
         parser.get_token();
         types::parse_type(parser)?
     } else {
-        types::Type {
-            identifier: "void".to_string(),
-            children: Vec::<types::Type>::new(),
+        types::Type::Tuple {
+            components: Vec::<types::Type>::new(),
         }
     };
 
