@@ -13,21 +13,23 @@ pub struct Scope {
 impl IAst for Scope {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         for stmt in self.statements.iter() {
-            stmt.traverse(stream, intent + 1)?;
+            stmt.traverse(stream, intent)?;
         }
 
         Ok(())
     }
 }
 
-pub fn parse_global_external(parser: &mut Parser) -> Option<Scope> {
+pub fn parse_global_external(parser: &mut Parser) -> Option<Ast> {
     parser.consume_token(TokenType::Lcb)?;
 
     let statements = parse_global_internal(parser)?;
 
     parser.consume_token(TokenType::Rcb)?;
 
-    Some(Scope { statements })
+    Some(Ast::GScope {
+        node: Scope { statements },
+    })
 }
 
 pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
@@ -72,14 +74,16 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
     Some(children)
 }
 
-pub fn parse_local_external(parser: &mut Parser) -> Option<Scope> {
+pub fn parse_local_external(parser: &mut Parser) -> Option<Ast> {
     parser.consume_token(TokenType::Lcb)?;
 
     let statements = parse_local_internal(parser)?;
 
     parser.consume_token(TokenType::Rcb)?;
 
-    Some(Scope { statements })
+    Some(Ast::LScope {
+        node: Scope { statements },
+    })
 }
 
 pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
@@ -102,7 +106,8 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
 
-            // TokenType::KwIf => ast::branch_node::parse_if(parser)?,
+            TokenType::KwIf => ast::branches::parse_if(parser)?,
+
             TokenType::KwLoop => ast::branches::parse_loop(parser)?,
 
             TokenType::KwWhile => ast::branches::parse_while(parser)?,

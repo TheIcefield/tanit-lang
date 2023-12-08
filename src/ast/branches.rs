@@ -5,8 +5,15 @@ use crate::parser::{put_intent, Parser};
 use std::io::Write;
 
 #[derive(Clone)]
+pub struct Branch {
+    condition: Box<Ast>,
+    main_body: Box<Ast>,
+    else_body: Option<Box<Ast>>,
+}
+
+#[derive(Clone)]
 pub struct LoopNode {
-    body: scopes::Scope,
+    body: Box<Ast>,
     condition: Option<Box<Ast>>,
 }
 
@@ -96,10 +103,44 @@ impl IAst for Return {
     }
 }
 
+impl IAst for Branch {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+        writeln!(stream, "{}<branch>", put_intent(intent))?;
+
+        {
+            writeln!(stream, "{}<condition>", put_intent(intent + 1))?;
+
+            self.condition.traverse(stream, intent + 2)?;
+
+            writeln!(stream, "{}</condition>", put_intent(intent + 1))?;
+        }
+
+        {
+            writeln!(stream, "{}<true>", put_intent(intent + 1))?;
+
+            self.main_body.traverse(stream, intent + 2)?;
+
+            writeln!(stream, "{}</true>", put_intent(intent + 1))?;
+        }
+
+        if let Some(else_body) = &self.else_body {
+            writeln!(stream, "{}<false>", put_intent(intent + 1))?;
+
+            else_body.traverse(stream, intent + 2)?;
+
+            writeln!(stream, "{}</false>", put_intent(intent + 1))?;
+        }
+
+        writeln!(stream, "{}</branch>", put_intent(intent))?;
+
+        Ok(())
+    }
+}
+
 pub fn parse_loop(parser: &mut Parser) -> Option<Ast> {
     parser.consume_token(TokenType::KwLoop)?;
 
-    let body = scopes::parse_local_external(parser)?;
+    let body = Box::new(scopes::parse_local_external(parser)?);
 
     Some(Ast::LoopStmt {
         node: LoopNode {
@@ -114,7 +155,7 @@ pub fn parse_while(parser: &mut Parser) -> Option<Ast> {
 
     let condition = parse_condition(parser)?;
 
-    let body = scopes::parse_local_external(parser)?;
+    let body = Box::new(scopes::parse_local_external(parser)?);
 
     Some(Ast::LoopStmt {
         node: LoopNode {
@@ -161,6 +202,41 @@ pub fn parse_return(parser: &mut Parser) -> Option<Ast> {
     }
 
     Some(Ast::ReturnStmt { node })
+}
+
+pub fn parse_if(parser: &mut Parser) -> Option<Ast> {
+    parser.consume_token(TokenType::KwIf)?;
+
+    let condition = Box::new(parse_condition(parser)?);
+
+    let main_body = Box::new(scopes::parse_local_external(parser)?);
+
+    let else_body = if parser.peek_token().lexem == TokenType::KwElse {
+        parser.get_token();
+
+        let next = parser.peek_token();
+        match next.lexem {
+            TokenType::KwIf => Some(Box::new(parse_if(parser)?)),
+            TokenType::Lcb => Some(Box::new(scopes::parse_local_external(parser)?)),
+            _ => {
+                parser.error(
+                    &format!("Unexpected token \"{}\" in branch expression", next),
+                    next.get_location(),
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    Some(Ast::IfStmt {
+        node: Branch {
+            condition,
+            main_body,
+            else_body,
+        },
+    })
 }
 
 pub fn parse_condition(parser: &mut Parser) -> Option<Ast> {

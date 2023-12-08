@@ -41,6 +41,8 @@ pub enum Ast {
 
     Expression { node: Box<expressions::Expression> },
 
+    IfStmt { node: branches::Branch },
+
     LoopStmt { node: branches::LoopNode },
 
     BreakStmt { node: branches::Break },
@@ -53,24 +55,25 @@ pub enum Ast {
 impl Ast {
     pub fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
-            Ast::GScope { node } => node.traverse(stream, intent)?,
-            Ast::LScope { node } => node.traverse(stream, intent)?,
-            Ast::ModuleDef { node } => node.traverse(stream, intent)?,
-            Ast::StructDef { node } => node.traverse(stream, intent)?,
-            Ast::FuncDef { node } => node.traverse(stream, intent)?,
-            Ast::VariableDef { node } => {
+            Self::GScope { node } => node.traverse(stream, intent)?,
+            Self::LScope { node } => node.traverse(stream, intent)?,
+            Self::ModuleDef { node } => node.traverse(stream, intent)?,
+            Self::StructDef { node } => node.traverse(stream, intent)?,
+            Self::FuncDef { node } => node.traverse(stream, intent)?,
+            Self::VariableDef { node } => {
                 writeln!(stream, "{}<definition>", put_intent(intent))?;
                 node.traverse(stream, intent + 1)?;
                 writeln!(stream, "{}</definition>", put_intent(intent))?;
             }
-            Ast::Value { node } => node.traverse(stream, intent)?,
-            Ast::TypeDecl { node } => node.traverse(stream, intent)?,
-            Ast::AliasDef { node } => node.traverse(stream, intent)?,
-            Ast::Expression { node } => node.traverse(stream, intent)?,
-            Ast::LoopStmt { node } => node.traverse(stream, intent)?,
-            Ast::BreakStmt { node } => node.traverse(stream, intent)?,
-            Ast::ContinueStmt { node } => node.traverse(stream, intent)?,
-            Ast::ReturnStmt { node } => node.traverse(stream, intent)?,
+            Self::Value { node } => node.traverse(stream, intent)?,
+            Self::TypeDecl { node } => node.traverse(stream, intent)?,
+            Self::AliasDef { node } => node.traverse(stream, intent)?,
+            Self::Expression { node } => node.traverse(stream, intent)?,
+            Self::IfStmt { node } => node.traverse(stream, intent)?,
+            Self::LoopStmt { node } => node.traverse(stream, intent)?,
+            Self::BreakStmt { node } => node.traverse(stream, intent)?,
+            Self::ContinueStmt { node } => node.traverse(stream, intent)?,
+            Self::ReturnStmt { node } => node.traverse(stream, intent)?,
         }
 
         Ok(())

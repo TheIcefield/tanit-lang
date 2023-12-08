@@ -8,7 +8,7 @@ use std::io::Write;
 #[derive(Clone)]
 pub struct Node {
     pub identifier: Id,
-    pub body: scopes::Scope,
+    pub body: Box<Ast>,
 }
 
 impl IAst for Node {
@@ -20,7 +20,7 @@ impl IAst for Node {
             self.identifier
         )?;
 
-        self.body.traverse(stream, intent)?;
+        self.body.traverse(stream, intent + 1)?;
 
         writeln!(stream, "{}</module>", put_intent(intent))?;
 
@@ -31,7 +31,7 @@ impl IAst for Node {
 pub fn parse(parser: &mut Parser) -> Option<Ast> {
     let mut node = parse_header(parser)?;
 
-    node.body = parse_body(parser)?;
+    node.body = Box::new(parse_body(parser)?);
 
     Some(Ast::ModuleDef { node })
 }
@@ -43,12 +43,14 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
 
     Some(Node {
         identifier,
-        body: scopes::Scope {
-            statements: Vec::<Ast>::new(),
-        },
+        body: Box::new(Ast::GScope {
+            node: scopes::Scope {
+                statements: Vec::new(),
+            },
+        }),
     })
 }
 
-pub fn parse_body(parser: &mut Parser) -> Option<scopes::Scope> {
+pub fn parse_body(parser: &mut Parser) -> Option<Ast> {
     scopes::parse_global_external(parser)
 }

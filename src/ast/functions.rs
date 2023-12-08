@@ -9,7 +9,7 @@ pub struct Node {
     pub identifier: Id,
     pub return_type: types::Type,
     pub parameters: Vec<variables::Node>,
-    pub body: Option<scopes::Scope>,
+    pub body: Option<Box<Ast>>,
     pub is_static: bool,
 }
 
@@ -41,7 +41,7 @@ impl IAst for Node {
             Some(node) => {
                 writeln!(stream, "{}<body>", put_intent(intent + 1))?;
 
-                node.traverse(stream, intent + 1)?;
+                node.traverse(stream, intent + 2)?;
 
                 writeln!(stream, "{}</body>", put_intent(intent + 1))?;
             }
@@ -71,7 +71,7 @@ pub fn parse_func_def(parser: &mut Parser) -> Option<Ast> {
     let next = parser.peek_token();
     match next.lexem {
         TokenType::Lcb => {
-            node.body = parse_body(parser);
+            node.body = Some(Box::new(parse_body(parser)?));
         }
 
         _ => {
@@ -158,6 +158,6 @@ pub fn parse_header_params(parser: &mut Parser) -> Option<Vec<variables::Node>> 
     Some(parameters)
 }
 
-pub fn parse_body(parser: &mut Parser) -> Option<scopes::Scope> {
+pub fn parse_body(parser: &mut Parser) -> Option<Ast> {
     scopes::parse_local_external(parser)
 }

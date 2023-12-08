@@ -153,7 +153,7 @@ impl Parser {
 
 pub fn put_intent(intent: usize) -> String {
     let mut res = "".to_string();
-    for _ in 0..intent - 1 {
+    for _ in 0..intent {
         res.push(' ');
     }
     res
