@@ -57,6 +57,7 @@ pub enum TokenType {
     ModAssign,    // %=
     Eq,           // ==
     Neq,          // !=
+    Not,          // !
     Lt,           // <
     Lte,          // <=
     Gt,           // >
@@ -149,6 +150,7 @@ impl std::fmt::Display for TokenType {
             TokenType::RShiftAssign => write!(f, ">>="),
             TokenType::Eq => write!(f, "=="),
             TokenType::Neq => write!(f, "!="),
+            TokenType::Not => write!(f, "!"),
 
             TokenType::KwLet => write!(f, "let"),
             TokenType::KwFunc => write!(f, "func"),
@@ -538,7 +540,7 @@ impl Lexer {
                     return Token::new(TokenType::Neq, self.location.clone());
                 }
 
-                Token::new(TokenType::Unknown, self.location.clone())
+                Token::new(TokenType::Not, self.location.clone())
             }
 
             '=' => {
