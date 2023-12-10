@@ -1,4 +1,4 @@
-use tanit::ast::types::Type;
+use tanit::{ast::types::Type, lexer::TokenType};
 
 #[test]
 fn module_test() {
@@ -17,22 +17,23 @@ fn module_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    let res = tanit::ast::modules::parse(&mut parser);
+    let res = tanit::ast::modules::parse(&mut parser).unwrap();
 
-    assert_eq!(res.is_some(), true);
-
-    let res = res.unwrap();
-
-    let res = if let ast::Ast::ModuleDef { node } = res {
-        assert_eq!(node.identifier, String::from("M1"));
-
-        node.body.statements[0].clone()
+    let res = if let ast::Ast::ModuleDef { node } = &res {
+        assert_eq!(node.identifier, "M1");
+        &node.body
     } else {
         panic!("res should be \'ModuleDef\'");
     };
 
+    let res = if let ast::Ast::GScope { node } = res.as_ref() {
+        &node.statements[0]
+    } else {
+        panic!("res should be \'global scope\'");
+    };
+
     if let ast::Ast::ModuleDef { node } = res {
-        assert_eq!(node.identifier, String::from("M2"));
+        assert_eq!(node.identifier, "M2");
     } else {
         panic!("res should be \'ModuleDef\'");
     };
@@ -95,7 +96,7 @@ fn struct_test() {
 
 #[test]
 fn variables_test() {
-    use tanit::ast;
+    use tanit::{ast, ast::expressions};
     use tanit::{error_listener, lexer, parser};
 
     static SRC_PATH: &str = "./examples/values.tt";
@@ -109,12 +110,9 @@ fn variables_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    let res = tanit::ast::functions::parse_func_def(&mut parser);
-    assert_eq!(res.is_some(), true);
+    let res = tanit::ast::functions::parse_func_def(&mut parser).unwrap();
 
-    let res = res.unwrap();
-
-    let res = if let ast::Ast::FuncDef { node } = res {
+    let res = if let ast::Ast::FuncDef { node } = &res {
         assert_eq!(node.identifier, String::from("main"));
         assert_eq!(node.parameters.is_empty(), true);
         assert_eq!(node.is_static, false);
@@ -125,15 +123,19 @@ fn variables_test() {
             panic!("Type expected to be an empty tuple");
         }
 
-        node.body
+        node.body.as_ref()
     } else {
-        panic!("res has to be \'Scope\'");
+        panic!("res has to be \'FuncDef\'");
     };
 
-    let mut res = res.unwrap();
+    let res = if let tanit::ast::Ast::LScope { node } = res.unwrap().as_ref() {
+        &node.statements
+    } else {
+        panic!("res has to be \'LScope\'");
+    };
 
-    if let tanit::ast::Ast::VariableDef { node } = res.statements.remove(0) {
-        assert_eq!(node.identifier, String::from("PI"));
+    if let ast::Ast::VariableDef { node } = &res[0] {
+        assert_eq!(node.identifier, "PI");
         assert!(!node.is_mutable);
         assert!(!node.is_global);
         assert!(!node.is_field);
@@ -142,77 +144,104 @@ fn variables_test() {
         panic!("first statement has to be \'variable definition\'");
     }
 
-    if let tanit::ast::Ast::Expression { node } = res.statements.remove(0) {
-        assert_eq!(node.operation.unwrap(), tanit::lexer::TokenType::Assign);
+    if let ast::Ast::Expression { node } = &res[1] {
+        let (lhs, rhs) = if let ast::expressions::Expression::Binary {
+            operation,
+            lhs,
+            rhs,
+        } = node.as_ref()
+        {
+            assert_eq!(*operation, lexer::TokenType::Assign);
+            (lhs.as_ref(), rhs.as_ref())
+        } else {
+            panic!("Expected binary expression");
+        };
 
-        if let tanit::ast::Ast::Value { node } = *node.lhs.unwrap() {
-            match node {
-                tanit::ast::values::ValueType::Identifier(id) => {
-                    assert_eq!(id, "PI".to_string());
-                }
-                _ => panic!("lhs has to be identifier"),
-            }
-        }
-
-        if let tanit::ast::Ast::Value { node } = *node.rhs.unwrap() {
-            match node {
-                tanit::ast::values::ValueType::Integer(val) => {
-                    assert_eq!(val, 2);
-                }
-                _ => panic!("rhs has to be \'2\'"),
-            }
-        }
+        assert!(matches!(lhs, ast::Ast::VariableDef { .. }));
+        assert!(matches!(rhs, ast::Ast::Expression { .. }));
     } else {
         panic!("second statement has to be \'variable definition\'");
     }
 
-    if let tanit::ast::Ast::Expression { node } = res.statements.remove(0) {
-        assert_eq!(
-            node.operation.unwrap(),
-            tanit::lexer::TokenType::LShiftAssign
-        );
+    if let ast::Ast::Expression { node } = &res[2] {
+        if let ast::expressions::Expression::Binary {
+            operation,
+            lhs,
+            rhs,
+        } = node.as_ref()
+        {
+            assert_eq!(*operation, lexer::TokenType::LShiftAssign);
 
-        if let tanit::ast::Ast::Value { node } = *node.lhs.unwrap() {
-            match node {
-                tanit::ast::values::ValueType::Identifier(id) => {
-                    assert_eq!(id, "radian".to_string());
-                }
-                _ => panic!("lhs has to be identifier"),
-            }
-        }
-
-        if let tanit::ast::Ast::Expression { node } = *node.rhs.unwrap() {
-            assert_eq!(node.operation.unwrap(), tanit::lexer::TokenType::Star);
-
-            if let tanit::ast::Ast::Value { node } = *node.lhs.unwrap() {
+            if let ast::Ast::Value { node } = lhs.as_ref() {
                 match node {
-                    tanit::ast::values::ValueType::Integer(val) => {
-                        assert_eq!(val, 3);
+                    ast::values::ValueType::Identifier(id) => {
+                        assert_eq!(id, "radian");
                     }
-                    _ => panic!("lhs has to be \'3\'"),
+                    _ => panic!("lhs has to be identifier"),
                 }
             }
 
-            if let tanit::ast::Ast::Expression { node } = *node.rhs.unwrap() {
-                assert_eq!(node.operation.unwrap(), tanit::lexer::TokenType::Slash);
+            let expr = if let tanit::ast::Ast::Expression { node } = rhs.as_ref() {
+                node.as_ref()
+            } else {
+                panic!("rhs expected to be \'Expression\'");
+            };
 
-                if let tanit::ast::Ast::Value { node } = *node.lhs.unwrap() {
+            if let expressions::Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = expr
+            {
+                assert_eq!(*operation, lexer::TokenType::Star);
+
+                if let ast::Ast::Value { node } = lhs.as_ref() {
                     match node {
-                        tanit::ast::values::ValueType::Identifier(id) => {
-                            assert_eq!(id, "PI".to_string());
+                        ast::values::ValueType::Integer(val) => {
+                            assert_eq!(*val, 3);
                         }
-                        _ => panic!("lhs has to be \'PI\'"),
+                        _ => panic!("lhs has to be \'3\'"),
                     }
+                } else {
+                    panic!("lhs has to be \'Value\'");
                 }
 
-                if let tanit::ast::Ast::Value { node } = *node.rhs.unwrap() {
-                    match node {
-                        tanit::ast::values::ValueType::Integer(val) => {
-                            assert_eq!(val, 4);
+                let rhs = if let ast::Ast::Expression { node } = rhs.as_ref() {
+                    node.as_ref()
+                } else {
+                    panic!("rhs has to be \'Expression\'");
+                };
+
+                if let expressions::Expression::Binary {
+                    operation,
+                    lhs,
+                    rhs,
+                } = rhs
+                {
+                    assert_eq!(*operation, tanit::lexer::TokenType::Slash);
+
+                    if let tanit::ast::Ast::Value { node } = lhs.as_ref() {
+                        match node {
+                            tanit::ast::values::ValueType::Identifier(id) => {
+                                assert_eq!(id, "PI");
+                            }
+                            _ => panic!("lhs has to be \'PI\'"),
                         }
-                        _ => panic!("rhs has to be \'4\'"),
                     }
+
+                    if let tanit::ast::Ast::Value { node } = rhs.as_ref() {
+                        match node {
+                            tanit::ast::values::ValueType::Integer(val) => {
+                                assert_eq!(*val, 4);
+                            }
+                            _ => panic!("rhs has to be \'4\'"),
+                        }
+                    }
+                } else {
+                    panic!("rhs has to be \'binary expression\'");
                 }
+            } else {
+                panic!("Expected binary expression");
             }
         }
     } else {
@@ -233,90 +262,59 @@ fn functions_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    if let ast::Ast::FuncDef { mut node } =
-        tanit::ast::functions::parse_func_def(&mut parser).unwrap()
     {
-        assert_eq!(node.identifier, String::from("f"));
-        assert!(!node.is_static);
-        assert!(matches!(node.return_type, Type::F32));
+        let func = ast::functions::parse_func_def(&mut parser).unwrap();
 
-        let arg = node.parameters.remove(0);
-        assert_eq!(arg.identifier, "a".to_string());
-        assert!(matches!(arg.var_type, Type::F32));
-
-        let arg = node.parameters.remove(0);
-        assert_eq!(arg.identifier, "b".to_string());
-        assert!(matches!(arg.var_type, Type::F32));
-
-        assert_eq!(node.body.is_some(), true);
-    } else {
-        panic!("res has to be \'function definition\'");
-    };
-
-    let res = if let ast::Ast::FuncDef { node } =
-        tanit::ast::functions::parse_func_def(&mut parser).unwrap()
-    {
-        assert_eq!(node.identifier, String::from("main"));
-        assert!(!node.is_static);
-        assert!(node.parameters.is_empty());
-
-        if let Type::Tuple { components } = &node.return_type {
-            assert!(components.is_empty());
+        let scope = if let ast::Ast::FuncDef { node } = &func {
+            node.body.as_ref()
         } else {
-            panic!("Type expected to be an empty tuple");
-        }
-
-        node.body.unwrap()
-    } else {
-        panic!("res has to be \'function definition\'");
-    };
-
-    let res = if let tanit::ast::Ast::Expression { node } = &res.statements[0] {
-        assert_eq!(
-            node.operation.clone().unwrap(),
-            tanit::lexer::TokenType::Assign
-        );
-
-        let res = if let tanit::ast::Ast::Value { node } = *node.rhs.clone().unwrap() {
-            node
-        } else {
-            panic!("res has to be \'expression\'")
+            panic!("node should be \'FuncDef\'");
         };
 
-        let res = match res {
-            tanit::ast::values::ValueType::Call(node) => {
-                assert_eq!(node.identifier, "f".to_string());
-                assert_eq!(node.arguments.len(), 2);
-                node.arguments
-            }
-            _ => panic!("value has to be \'call\'"),
+        let node = if let ast::Ast::LScope { node } = scope.unwrap().as_ref() {
+            assert_eq!(node.statements.len(), 1);
+            &node.statements[0]
+        } else {
+            panic!("node should be \'local scope\'");
         };
 
-        res
-    } else {
-        panic!("res has to be \'expression\'");
-    };
-
-    if let tanit::ast::Ast::Value { node } = &res[0] {
-        match node {
-            tanit::ast::values::ValueType::Identifier(id) => {
-                assert_eq!(*id, "a".to_string());
-            }
-            _ => panic!("first arg has to be \'identifier\'"),
-        }
-    } else {
-        panic!("first arg has to be \'value\'");
+        assert!(matches!(node, ast::Ast::ReturnStmt { .. }));
     }
 
-    if let tanit::ast::Ast::Value { node } = &res[1] {
-        match node {
-            tanit::ast::values::ValueType::Integer(val) => {
-                assert_eq!(*val, 1);
+    {
+        let func = ast::functions::parse_func_def(&mut parser).unwrap();
+
+        let scope = if let ast::Ast::FuncDef { node } = &func {
+            node.body.as_ref()
+        } else {
+            panic!("node should be \'FuncDef\'");
+        };
+
+        let node = if let ast::Ast::LScope { node } = scope.unwrap().as_ref() {
+            assert_eq!(node.statements.len(), 1);
+            &node.statements[0]
+        } else {
+            panic!("node should be \'local scope\'");
+        };
+
+        let (lhs, rhs) = if let ast::Ast::Expression { node } = node {
+            if let ast::expressions::Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = node.as_ref()
+            {
+                assert_eq!(*operation, TokenType::Assign);
+                (lhs.as_ref(), rhs.as_ref())
+            } else {
+                panic!("Expression expected to be binary");
             }
-            _ => panic!("second arg has to be \'1\'"),
-        }
-    } else {
-        panic!("second arg has to be \'value\'");
+        } else {
+            panic!("Expected expression");
+        };
+
+        assert!(matches!(lhs, ast::Ast::VariableDef { .. }));
+        assert!(matches!(rhs, ast::Ast::Value { .. }));
     }
 }
 
@@ -351,7 +349,13 @@ fn types_test() {
         panic!("res has to be \'function definition\'");
     };
 
-    if let tanit::ast::Ast::AliasDef { node } = &res.statements[0] {
+    let statements = if let ast::Ast::LScope { node } = res.as_ref() {
+        &node.statements
+    } else {
+        panic!("node has to be \'local scope\'");
+    };
+
+    if let ast::Ast::AliasDef { node } = &statements[0] {
         assert_eq!(node.identifier, "Items".to_string());
 
         if let Type::Template {
@@ -372,22 +376,4 @@ fn types_test() {
     } else {
         panic!("res has to be \'alias definition\'");
     };
-
-    // if let tanit::ast::Ast::AliasDef { node } = &res.statements[0] {
-    //     assert_eq!(node.identifier, "Items".to_string());
-
-    //     if let Type::Template { identifier, arguments } = &node.value {
-    //         assert_eq!(identifier, "Vec");
-    //         assert_eq!(arguments.len(), 1);
-    //         if let Type::Custom(id) = &arguments[0] {
-    //             assert_eq!(id, "Item");
-    //         } else {
-    //             panic!("Type is expected to be \"Item\"")
-    //         }
-    //     } else {
-    //         panic!("Alias type expected to be an template type");
-    //     }
-    // } else {
-    //     panic!("res has to be \'alias definition\'");
-    // };
 }

@@ -16,7 +16,7 @@ pub enum Expression {
     Binary {
         operation: TokenType,
         lhs: Box<Ast>,
-        rhs: Box<Ast>
+        rhs: Box<Ast>,
     },
 }
 
@@ -26,7 +26,7 @@ impl IAst for Expression {
             Self::Unary { operation, node } => {
                 writeln!(
                     stream,
-                    "{}<operation style=\"Unary\" operator=\"{}\">",
+                    "{}<operation style=\"unary\" operator=\"{}\">",
                     put_intent(intent),
                     operation
                 )?;
@@ -35,10 +35,14 @@ impl IAst for Expression {
 
                 writeln!(stream, "{}</operation>", put_intent(intent))?;
             }
-            Self::Binary { operation, lhs, rhs } => {
+            Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => {
                 writeln!(
                     stream,
-                    "{}<operation style=\"Binary\" operator=\"{}\">",
+                    "{}<operation style=\"binary\" operator=\"{}\">",
                     put_intent(intent),
                     operation
                 )?;
@@ -64,7 +68,8 @@ fn parse_assign(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::AddAssign
+        TokenType::Assign
+        | TokenType::AddAssign
         | TokenType::SubAssign
         | TokenType::MulAssign
         | TokenType::DivAssign
@@ -309,7 +314,7 @@ fn parse_add_or_sub(parser: &mut Parser) -> Option<Ast> {
 }
 
 fn parse_mul_or_div(parser: &mut Parser) -> Option<Ast> {
-    let lhs = parse_factor(parser)?;
+    let lhs = parse_dot(parser)?;
 
     let next = parser.peek_token();
     match next.lexem {
@@ -332,11 +337,35 @@ fn parse_mul_or_div(parser: &mut Parser) -> Option<Ast> {
     }
 }
 
+fn parse_dot(parser: &mut Parser) -> Option<Ast> {
+    let lhs = parse_factor(parser)?;
+
+    let next = parser.peek_token();
+    match next.lexem {
+        TokenType::Dot => {
+            parser.get_token();
+            let operation = next.lexem;
+
+            let rhs = Box::new(parse_expression(parser)?);
+
+            Some(Ast::Expression {
+                node: Box::new(Expression::Binary {
+                    operation,
+                    lhs: Box::new(lhs),
+                    rhs,
+                }),
+            })
+        }
+
+        _ => Some(lhs),
+    }
+}
+
 fn parse_factor(parser: &mut Parser) -> Option<Ast> {
     let next = parser.peek_token();
 
     match next.lexem {
-          TokenType::Plus
+        TokenType::Plus
         | TokenType::Minus
         | TokenType::Ampersand
         | TokenType::Star
@@ -345,7 +374,9 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             let operation = next.lexem;
             let node = Box::new(parse_expression(parser)?);
 
-            Some(Ast::Expression { node: Expression::Unary { operation, node } })
+            Some(Ast::Expression {
+                node: Box::new(Expression::Unary { operation, node }),
+            })
         }
         TokenType::Integer(val) => {
             parser.get_token();
@@ -375,6 +406,25 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                         arguments,
                     }),
                 });
+            } else if next.lexem == TokenType::Dcolon {
+                // if ::
+                parser.get_token();
+
+                let operation = next.lexem;
+
+                let lhs = Box::new(Ast::Value {
+                    node: values::ValueType::Identifier(identifier),
+                });
+
+                let rhs = Box::new(parse_factor(parser)?);
+
+                return Some(Ast::Expression {
+                    node: Box::new(Expression::Binary {
+                        operation,
+                        lhs,
+                        rhs,
+                    }),
+                });
             }
 
             Some(Ast::Value {
@@ -393,7 +443,10 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
         }
 
         _ => {
-            parser.error("Unexpected token within expression", next.get_location());
+            parser.error(
+                &format!("Unexpected token \"{}\" within expression", next),
+                next.get_location(),
+            );
 
             None
         }

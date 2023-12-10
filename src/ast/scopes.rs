@@ -64,7 +64,7 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
                     &format!("Unexpected token \"{}\"", next),
                     next.get_location(),
                 );
-                return None;
+                continue;
             }
         };
 
@@ -131,7 +131,7 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
                     &format!("Unexpected token \"{}\"", next),
                     next.get_location(),
                 );
-                return None;
+                continue;
             }
         };
 

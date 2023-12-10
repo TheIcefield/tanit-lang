@@ -139,11 +139,10 @@ pub fn parse_def_stmt(parser: &mut Parser) -> Option<Ast> {
 
     if let Some(rhs) = rvalue {
         return Some(Ast::Expression {
-            node: Box::new(expressions::Expression {
-                operation: Some(TokenType::Assign),
-                lhs: Some(Box::new(var_node)),
-                rhs: Some(Box::new(rhs)),
-                term: None,
+            node: Box::new(expressions::Expression::Binary {
+                operation: TokenType::Assign,
+                lhs: Box::new(var_node),
+                rhs: Box::new(rhs),
             }),
         });
     }

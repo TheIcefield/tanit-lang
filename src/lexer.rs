@@ -75,6 +75,7 @@ pub enum TokenType {
     Comma,        // ,
     Dot,          // .
     Colon,        // :
+    Dcolon,       // ::
     Arrow,        // ->
 
     KwLet,
@@ -138,6 +139,7 @@ impl std::fmt::Display for TokenType {
             TokenType::Comma => write!(f, ","),
             TokenType::Dot => write!(f, "."),
             TokenType::Colon => write!(f, ":"),
+            TokenType::Dcolon => write!(f, "::"),
             TokenType::Arrow => write!(f, "->"),
 
             TokenType::Lt => write!(f, "<"),
@@ -589,6 +591,12 @@ impl Lexer {
 
             ':' => {
                 self.get_char();
+                if self.peek_char() == ':' && !singular {
+                    self.get_char();
+
+                    return Token::new(TokenType::Dcolon, self.get_location());
+                }
+
                 Token::new(TokenType::Colon, self.get_location())
             }
 
