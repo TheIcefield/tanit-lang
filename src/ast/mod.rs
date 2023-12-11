@@ -1,5 +1,4 @@
 pub mod branches;
-pub mod calls;
 pub mod expressions;
 pub mod functions;
 pub mod modules;

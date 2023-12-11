@@ -1,4 +1,4 @@
-use crate::ast::{calls, values, Ast, IAst, Stream};
+use crate::ast::{values, Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::Parser;
@@ -396,13 +396,13 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             let next = parser.peek_token();
             if next.lexem == TokenType::LParen {
                 // if call
-                let arguments = calls::parse_call(parser)?;
+                let arguments = values::parse_call(parser)?;
 
                 return Some(Ast::Value {
-                    node: values::Value::Call(calls::Node {
+                    node: values::Value::Call {
                         identifier,
                         arguments,
-                    }),
+                    },
                 });
             } else if next.lexem == TokenType::Dcolon {
                 // if ::
@@ -423,6 +423,16 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                         rhs,
                     }),
                 });
+            } else if next.lexem == TokenType::Lcb {
+                // if struct
+                let components = values::parse_struct_value(parser)?;
+
+                return Some(Ast::Value {
+                    node: values::Value::Struct {
+                        identifier,
+                        components,
+                    },
+                });
             }
 
             Some(Ast::Value {
@@ -436,11 +446,10 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             /* If parsed `()` then we return empty tuple */
             if parser.peek_token().lexem == TokenType::RParen {
                 parser.consume_token(TokenType::RParen)?;
-                let node = values::Tuple {
-                    components: Vec::new(),
-                };
                 return Some(Ast::Value {
-                    node: values::Value::Tuple(node),
+                    node: values::Value::Tuple {
+                        components: Vec::new(),
+                    },
                 });
             }
 
@@ -485,9 +494,11 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             }
 
             Some(Ast::Value {
-                node: values::Value::Tuple(values::Tuple { components }),
+                node: values::Value::Tuple { components },
             })
         }
+
+        TokenType::Lsb => values::parse_array_value(parser),
 
         _ => {
             parser.error(
