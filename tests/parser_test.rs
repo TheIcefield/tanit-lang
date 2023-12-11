@@ -174,7 +174,7 @@ fn variables_test() {
 
             if let ast::Ast::Value { node } = lhs.as_ref() {
                 match node {
-                    ast::values::ValueType::Identifier(id) => {
+                    ast::values::Value::Identifier(id) => {
                         assert_eq!(id, "radian");
                     }
                     _ => panic!("lhs has to be identifier"),
@@ -197,7 +197,7 @@ fn variables_test() {
 
                 if let ast::Ast::Value { node } = lhs.as_ref() {
                     match node {
-                        ast::values::ValueType::Integer(val) => {
+                        ast::values::Value::Integer(val) => {
                             assert_eq!(*val, 3);
                         }
                         _ => panic!("lhs has to be \'3\'"),
@@ -222,7 +222,7 @@ fn variables_test() {
 
                     if let tanit::ast::Ast::Value { node } = lhs.as_ref() {
                         match node {
-                            tanit::ast::values::ValueType::Identifier(id) => {
+                            tanit::ast::values::Value::Identifier(id) => {
                                 assert_eq!(id, "PI");
                             }
                             _ => panic!("lhs has to be \'PI\'"),
@@ -231,7 +231,7 @@ fn variables_test() {
 
                     if let tanit::ast::Ast::Value { node } = rhs.as_ref() {
                         match node {
-                            tanit::ast::values::ValueType::Integer(val) => {
+                            tanit::ast::values::Value::Integer(val) => {
                                 assert_eq!(*val, 4);
                             }
                             _ => panic!("rhs has to be \'4\'"),

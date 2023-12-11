@@ -33,7 +33,7 @@ pub enum Ast {
 
     VariableDef { node: variables::Node },
 
-    Value { node: values::ValueType },
+    Value { node: values::Value },
 
     TypeDecl { node: types::Type },
 

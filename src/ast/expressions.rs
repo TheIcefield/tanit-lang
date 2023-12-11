@@ -1,11 +1,9 @@
-use crate::ast::{calls, Ast, IAst, Stream};
+use crate::ast::{calls, values, Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::Parser;
 
 use std::io::Write;
-
-use super::values;
 
 #[derive(Clone)]
 pub enum Expression {
@@ -381,14 +379,14 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
         TokenType::Integer(val) => {
             parser.get_token();
             Some(Ast::Value {
-                node: values::ValueType::Integer(val),
+                node: values::Value::Integer(val),
             })
         }
 
         TokenType::Decimal(val) => {
             parser.get_token();
             Some(Ast::Value {
-                node: values::ValueType::Decimal(val),
+                node: values::Value::Decimal(val),
             })
         }
 
@@ -401,7 +399,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                 let arguments = calls::parse_call(parser)?;
 
                 return Some(Ast::Value {
-                    node: values::ValueType::Call(calls::Node {
+                    node: values::Value::Call(calls::Node {
                         identifier,
                         arguments,
                     }),
@@ -413,7 +411,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                 let operation = next.lexem;
 
                 let lhs = Box::new(Ast::Value {
-                    node: values::ValueType::Identifier(identifier),
+                    node: values::Value::Identifier(identifier),
                 });
 
                 let rhs = Box::new(parse_factor(parser)?);
@@ -428,18 +426,67 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             }
 
             Some(Ast::Value {
-                node: values::ValueType::Identifier(identifier),
+                node: values::Value::Identifier(identifier),
             })
         }
 
         TokenType::LParen => {
             parser.consume_token(TokenType::LParen)?;
 
+            /* If parsed `()` then we return empty tuple */
+            if parser.peek_token().lexem == TokenType::RParen {
+                parser.consume_token(TokenType::RParen)?;
+                let node = values::Tuple {
+                    components: Vec::new(),
+                };
+                return Some(Ast::Value {
+                    node: values::Value::Tuple(node),
+                });
+            }
+
+            let mut components = Vec::<Box<Ast>>::new();
+
             let expr = parse_expression(parser)?;
 
-            parser.consume_token(TokenType::RParen)?;
+            let is_tuple = match &expr {
+                Ast::Expression { .. } => false,
+                Ast::Value { .. } => true,
+                _ => {
+                    parser.error("Unexpected node parsed", next.get_location());
+                    return None;
+                }
+            };
 
-            Some(expr)
+            /* If parsed one expression, we return expression */
+            if !is_tuple {
+                parser.consume_token(TokenType::RParen)?;
+                return Some(expr);
+            }
+
+            /* else try parse tuple */
+            components.push(Box::new(expr));
+
+            loop {
+                let next = parser.peek_token();
+
+                if next.lexem == TokenType::RParen {
+                    parser.consume_token(TokenType::RParen)?;
+                    break;
+                } else if next.lexem == TokenType::Comma {
+                    parser.consume_token(TokenType::Comma)?;
+                    components.push(Box::new(parse_expression(parser)?));
+                } else {
+                    parser.error(
+                        &format!("Unexpected token \"{}\" within tuple", next),
+                        next.get_location(),
+                    );
+                    return None;
+                }
+            }
+
+            Some(Ast::Value {
+                node: values::Value::Tuple(values::Tuple { components }),
+            })
         }
 
         _ => {
