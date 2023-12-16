@@ -9,7 +9,7 @@ pub mod values;
 pub mod variables;
 // pub mod externs;
 
-use crate::parser::put_intent;
+use crate::{lexer::TokenType, parser::put_intent};
 use std::io::Write;
 
 type Stream = std::fs::File;
@@ -76,5 +76,38 @@ impl Ast {
         }
 
         Ok(())
+    }
+
+    pub fn get_type(&self) -> Option<types::Type> {
+        match self {
+            Self::Expression { node } => match node.as_ref() {
+                expressions::Expression::Binary {
+                    operation,
+                    lhs,
+                    rhs,
+                } => match operation {
+                    TokenType::Neq
+                    | TokenType::Eq
+                    | TokenType::Lt
+                    | TokenType::Lte
+                    | TokenType::Gt
+                    | TokenType::Gte => Some(types::Type::Bool),
+
+                    _ => {
+                        let lhs_type = lhs.get_type();
+                        let rhs_type = rhs.get_type();
+
+                        if lhs_type == rhs_type {
+                            return lhs_type;
+                        }
+
+                        None
+                    }
+                },
+                expressions::Expression::Unary { node, .. } => node.get_type(),
+            },
+            Self::AliasDef { node } => Some(node.value.clone()),
+            _ => None,
+        }
     }
 }

@@ -160,7 +160,7 @@ pub fn put_intent(intent: usize) -> String {
 }
 
 pub fn dump_ast(output: String, ast: &Ast) -> std::io::Result<()> {
-    let mut stream = std::fs::File::create(format!("{}.xml", output)).unwrap();
+    let mut stream = std::fs::File::create(format!("{}_ast.xml", output)).unwrap();
     ast.traverse(&mut stream, 0)
 }
 

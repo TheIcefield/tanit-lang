@@ -2,6 +2,7 @@ use crate::ast::{Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
+use std::fmt::Debug;
 use std::io::Write;
 
 use super::expressions::parse_expression;
@@ -141,6 +142,73 @@ impl IAst for Type {
         }
 
         Ok(())
+    }
+}
+
+impl Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ref { is_mut, ref_to } => {
+                write!(f, "&")?;
+
+                if *is_mut {
+                    write!(f, "mut")?;
+                }
+
+                write!(f, "{:?}", ref_to)
+            }
+            Self::Ptr { is_mut, ptr_to } => {
+                write!(f, "*")?;
+
+                if *is_mut {
+                    write!(f, "mut")?;
+                }
+
+                write!(f, "{:?}", ptr_to)
+            }
+            Self::Template {
+                identifier,
+                arguments,
+            } => {
+                write!(f, "{}<", identifier)?;
+                for i in arguments.iter() {
+                    write!(f, "{:?}", i)?;
+                }
+                write!(f, ">")
+            }
+            Self::Tuple { components } => {
+                write!(f, "(")?;
+
+                for i in components.iter() {
+                    write!(f, "{:?}", i)?;
+                }
+
+                write!(f, ")")
+            }
+            Self::Array { value_type, .. } => write!(f, "[{:?}]", value_type),
+            Self::Custom(s) => write!(f, "{}", s),
+            Self::Bool => writeln!(f, "bool"),
+            Self::Byte => writeln!(f, "byte"),
+            Self::I8 => writeln!(f, "i8"),
+            Self::I16 => writeln!(f, "i16"),
+            Self::I32 => writeln!(f, "i32"),
+            Self::I64 => writeln!(f, "i64"),
+            Self::I128 => writeln!(f, "i128"),
+            Self::U8 => writeln!(f, "u8"),
+            Self::U16 => writeln!(f, "u16"),
+            Self::U32 => writeln!(f, "u32"),
+            Self::U64 => writeln!(f, "u64"),
+            Self::U128 => writeln!(f, "u128"),
+            Self::F32 => writeln!(f, "f32"),
+            Self::F64 => writeln!(f, "f64"),
+            Self::Str => writeln!(f, "str"),
+        }
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        !self.ne(other)
     }
 }
 
