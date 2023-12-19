@@ -53,16 +53,16 @@ fn main() {
         Ok(ast) => ast,
     };
 
-    let error_listener = error_listener::ErrorListener::new();
-    let mut symbol_table = analyzer::SymbolTable::new(error_listener);
-
-    symbol_table.analyze(&mut ast, analyzer::Scope::new());
-
     if dump_ast {
         if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
             println!("{}", err)
         }
     }
+
+    let error_listener = error_listener::ErrorListener::new();
+    let mut symbol_table = analyzer::SymbolTable::new(error_listener);
+
+    symbol_table.analyze(&mut ast, analyzer::Scope::new());
 
     if dump_symtable {
         if let Err(err) = analyzer::dump_symtable(output_file, &symbol_table) {

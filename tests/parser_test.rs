@@ -1,4 +1,7 @@
-use tanit::{ast::types::Type, lexer::TokenType};
+use tanit::{
+    ast::{structs::EnumField, types::Type},
+    lexer::TokenType,
+};
 
 #[test]
 fn module_test() {
@@ -56,41 +59,76 @@ fn struct_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    let res = tanit::ast::structs::parse_struct_def(&mut parser);
-
-    assert_eq!(res.is_some(), true);
-
-    let res = res.unwrap();
+    let res = tanit::ast::structs::StructNode::parse_def(&mut parser).unwrap();
 
     if let ast::Ast::StructDef { node } = res {
         assert_eq!(node.identifier, String::from("S1"));
 
-        assert_eq!(node.fields[0].identifier, String::from("f1"));
-        assert_eq!(node.fields[0].is_field, true);
-        assert_eq!(node.fields[0].is_global, false);
-        assert_eq!(node.fields[0].is_mutable, true);
-
-        let mut field_type = node.fields[0].var_type.clone();
-
+        let field_type = node.fields.get("f1").unwrap();
         assert!(matches!(field_type, Type::I32));
 
-        assert_eq!(node.fields[1].identifier, String::from("f2"));
-
-        field_type = node.fields[1].var_type.clone();
+        let field_type = node.fields.get("f2").unwrap();
 
         if let Type::Template {
             identifier,
             arguments,
         } = &field_type
         {
-            assert_eq!(*identifier, String::from("Vec"));
+            assert_eq!(identifier, "Vec");
             assert_eq!(arguments.len(), 1);
             assert!(matches!(arguments[0], Type::I32));
         } else {
             panic!("wrong type");
         }
     } else {
-        panic!("res should be \'ModuleDef\'");
+        panic!("res should be \'StructDef\'");
+    };
+}
+
+#[test]
+fn enum_test() {
+    use tanit::ast;
+    use tanit::{error_listener, lexer, parser};
+
+    static SRC_PATH: &str = "./examples/structs.tt";
+
+    let lexer = lexer::Lexer::from_file(SRC_PATH, false);
+
+    assert_eq!(lexer.is_ok(), true);
+
+    let lexer = lexer.unwrap();
+
+    let error_listener = error_listener::ErrorListener::new();
+
+    let mut parser = parser::Parser::new(lexer, error_listener);
+
+    tanit::ast::structs::StructNode::parse_def(&mut parser).unwrap();
+
+    let res = tanit::ast::structs::EnumNode::parse_def(&mut parser).unwrap();
+
+    if let ast::Ast::EnumDef { node } = &res {
+        assert_eq!(node.identifier, "E1");
+
+        assert!(matches!(node.fields.get("f1"), Some(&EnumField::Common)));
+
+        if let EnumField::TupleLike(components) = node.fields.get("f2").unwrap() {
+            assert_eq!(components.len(), 2);
+            assert!(matches!(components[0], Type::I32));
+            assert!(matches!(components[1], Type::I32));
+        } else {
+            panic!("wrong type");
+        }
+
+        let field = node.fields.get("f3").unwrap();
+        if let EnumField::StructLike(components) = &field {
+            assert_eq!(components.len(), 2);
+            assert!(matches!(components.get("f1"), Some(&Type::I32)));
+            assert!(matches!(components.get("f2"), Some(&Type::F32)));
+        } else {
+            panic!("wrong type");
+        }
+    } else {
+        panic!("res should be \'EnumDef\'");
     };
 }
 
@@ -138,7 +176,6 @@ fn variables_test() {
         assert_eq!(node.identifier, "PI");
         assert!(!node.is_mutable);
         assert!(!node.is_global);
-        assert!(!node.is_field);
         assert!(matches!(node.var_type, Type::F32));
     } else {
         panic!("first statement has to be \'variable definition\'");

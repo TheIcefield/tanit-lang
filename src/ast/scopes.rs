@@ -52,12 +52,14 @@ pub fn parse_global_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             TokenType::KwFunc => ast::functions::parse_func_def(parser)?,
 
-            TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
+            TokenType::KwStruct => ast::structs::StructNode::parse_def(parser)?,
+
+            TokenType::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
 
             TokenType::KwStatic => ast::variables::parse_def_stmt(parser)?,
 
             // TokenType::KwExtern => ast::externs::parse(parser)?,
-            TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
+            TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
 
             _ => {
                 parser.error(
@@ -102,9 +104,11 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             TokenType::KwLet => ast::variables::parse_def_stmt(parser)?,
 
-            TokenType::KwStruct => ast::structs::parse_struct_def(parser)?,
+            TokenType::KwStruct => ast::structs::StructNode::parse_def(parser)?,
 
-            TokenType::KwAlias => ast::types::parse_alias_def(parser)?,
+            TokenType::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
+
+            TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
 
             TokenType::KwIf => ast::branches::parse_if(parser)?,
 

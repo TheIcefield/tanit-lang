@@ -249,6 +249,24 @@ impl SymbolTable {
                 );
             }
 
+            Ast::EnumDef { node } => {
+                if self.check_identifier_existance(&node.identifier, &scope) {
+                    self.error(&format!(
+                        "Identifier \"{}\" defined multiple times",
+                        &node.identifier
+                    ));
+                    return;
+                }
+
+                self.insert(
+                    &node.identifier,
+                    Symbol::Definition {
+                        stype: SymbolData::Enum,
+                        scope: scope.clone(),
+                    },
+                );
+            }
+
             Ast::VariableDef { node } => {
                 if self.check_identifier_existance(&node.identifier, &scope) {
                     self.error(&format!(

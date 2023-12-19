@@ -104,7 +104,7 @@ pub fn parse_header(parser: &mut Parser) -> Option<Node> {
     let next = parser.peek_token();
     let return_type = if next.lexem == TokenType::Arrow {
         parser.get_token();
-        types::parse_type(parser)?
+        types::Type::parse(parser)?
     } else {
         types::Type::Tuple {
             components: Vec::<types::Type>::new(),

@@ -100,9 +100,9 @@ fn parse_logical_or(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::KwOr => {
+        TokenType::Or => {
             parser.get_token();
-            let operation = TokenType::KwOr;
+            let operation = TokenType::Or;
 
             let rhs = Box::new(parse_expression(parser)?);
 
@@ -124,9 +124,9 @@ fn parse_logical_and(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::KwOr => {
+        TokenType::And => {
             parser.get_token();
-            let operation = TokenType::KwAnd;
+            let operation = TokenType::And;
 
             let rhs = Box::new(parse_expression(parser)?);
 
@@ -196,7 +196,7 @@ fn parse_bitwise_and(parser: &mut Parser) -> Option<Ast> {
 
     let next = parser.peek_token();
     match next.lexem {
-        TokenType::Xor => {
+        TokenType::Ampersand => {
             parser.get_token();
             let operation = TokenType::Ampersand;
 

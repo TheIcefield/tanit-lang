@@ -67,8 +67,10 @@ pub enum TokenType {
     LShiftAssign, // <<=
     RShiftAssign, // >>=
     Stick,        // |
+    Or,           // ||
     Ampersand,    // &
-    Xor,          // | & ^
+    And,          // &&
+    Xor,          // ^
     OrAssign,     // |=
     AndAssign,    // &=
     XorAssign,    // ^=
@@ -91,14 +93,13 @@ pub enum TokenType {
     KwReturn,
     KwModule,
     KwStruct,
+    KwEnum,
     KwAlias,
     KwUse,
     KwExtern,
     KwStatic,
     KwMut,
     KwConst,
-    KwOr,
-    KwAnd,
 
     Identifier(String),
     Integer(usize),
@@ -110,78 +111,78 @@ pub enum TokenType {
 impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TokenType::EndOfFile => write!(f, "EOF"),
-            TokenType::EndOfLine => write!(f, "EOL"),
-            TokenType::LParen => write!(f, "("),
-            TokenType::RParen => write!(f, ")"),
-            TokenType::Lcb => write!(f, "{{"),
-            TokenType::Rcb => write!(f, "}}"),
-            TokenType::Lsb => write!(f, "["),
-            TokenType::Rsb => write!(f, "]"),
+            Self::EndOfFile => write!(f, "EOF"),
+            Self::EndOfLine => write!(f, "EOL"),
+            Self::LParen => write!(f, "("),
+            Self::RParen => write!(f, ")"),
+            Self::Lcb => write!(f, "{{"),
+            Self::Rcb => write!(f, "}}"),
+            Self::Lsb => write!(f, "["),
+            Self::Rsb => write!(f, "]"),
 
-            TokenType::Assign => write!(f, "="),
-            TokenType::Plus => write!(f, "+"),
-            TokenType::AddAssign => write!(f, "+="),
-            TokenType::Minus => write!(f, "-"),
-            TokenType::SubAssign => write!(f, "-="),
-            TokenType::Star => write!(f, "*"),
-            TokenType::MulAssign => write!(f, "*="),
-            TokenType::Slash => write!(f, "/"),
-            TokenType::DivAssign => write!(f, "/="),
-            TokenType::Percent => write!(f, "%"),
-            TokenType::ModAssign => write!(f, "%="),
-            TokenType::Ampersand => write!(f, "&"),
-            TokenType::AndAssign => write!(f, "&="),
-            TokenType::Stick => write!(f, "|"),
-            TokenType::OrAssign => write!(f, "|="),
-            TokenType::Xor => write!(f, "^"),
-            TokenType::XorAssign => write!(f, "^="),
-            TokenType::Comma => write!(f, ","),
-            TokenType::Dot => write!(f, "."),
-            TokenType::Colon => write!(f, ":"),
-            TokenType::Dcolon => write!(f, "::"),
-            TokenType::Arrow => write!(f, "->"),
+            Self::Assign => write!(f, "="),
+            Self::Plus => write!(f, "+"),
+            Self::AddAssign => write!(f, "+="),
+            Self::Minus => write!(f, "-"),
+            Self::SubAssign => write!(f, "-="),
+            Self::Star => write!(f, "*"),
+            Self::MulAssign => write!(f, "*="),
+            Self::Slash => write!(f, "/"),
+            Self::DivAssign => write!(f, "/="),
+            Self::Percent => write!(f, "%"),
+            Self::ModAssign => write!(f, "%="),
+            Self::Ampersand => write!(f, "&"),
+            Self::And => write!(f, "&&"),
+            Self::AndAssign => write!(f, "&="),
+            Self::Stick => write!(f, "|"),
+            Self::Or => write!(f, "||"),
+            Self::OrAssign => write!(f, "|="),
+            Self::Xor => write!(f, "^"),
+            Self::XorAssign => write!(f, "^="),
+            Self::Comma => write!(f, ","),
+            Self::Dot => write!(f, "."),
+            Self::Colon => write!(f, ":"),
+            Self::Dcolon => write!(f, "::"),
+            Self::Arrow => write!(f, "->"),
 
-            TokenType::Lt => write!(f, "<"),
-            TokenType::Lte => write!(f, "<="),
-            TokenType::Gt => write!(f, ">"),
-            TokenType::Gte => write!(f, ">="),
-            TokenType::LShift => write!(f, "<<"),
-            TokenType::LShiftAssign => write!(f, "<<="),
-            TokenType::RShift => write!(f, ">>"),
-            TokenType::RShiftAssign => write!(f, ">>="),
-            TokenType::Eq => write!(f, "=="),
-            TokenType::Neq => write!(f, "!="),
-            TokenType::Not => write!(f, "!"),
+            Self::Lt => write!(f, "<"),
+            Self::Lte => write!(f, "<="),
+            Self::Gt => write!(f, ">"),
+            Self::Gte => write!(f, ">="),
+            Self::LShift => write!(f, "<<"),
+            Self::LShiftAssign => write!(f, "<<="),
+            Self::RShift => write!(f, ">>"),
+            Self::RShiftAssign => write!(f, ">>="),
+            Self::Eq => write!(f, "=="),
+            Self::Neq => write!(f, "!="),
+            Self::Not => write!(f, "!"),
 
-            TokenType::KwLet => write!(f, "let"),
-            TokenType::KwFunc => write!(f, "func"),
-            TokenType::KwIf => write!(f, "if"),
-            TokenType::KwElse => write!(f, "else"),
-            TokenType::KwDo => write!(f, "do"),
-            TokenType::KwWhile => write!(f, "while"),
-            TokenType::KwFor => write!(f, "for"),
-            TokenType::KwLoop => write!(f, "loop"),
-            TokenType::KwContinue => write!(f, "continue"),
-            TokenType::KwBreak => write!(f, "break"),
-            TokenType::KwReturn => write!(f, "return"),
-            TokenType::KwStruct => write!(f, "struct"),
-            TokenType::KwAlias => write!(f, "alias"),
-            TokenType::KwModule => write!(f, "module"),
-            TokenType::KwUse => write!(f, "use"),
-            TokenType::KwExtern => write!(f, "extern"),
-            TokenType::KwStatic => write!(f, "static"),
-            TokenType::KwMut => write!(f, "mut"),
-            TokenType::KwConst => write!(f, "const"),
+            Self::KwLet => write!(f, "let"),
+            Self::KwFunc => write!(f, "func"),
+            Self::KwIf => write!(f, "if"),
+            Self::KwElse => write!(f, "else"),
+            Self::KwDo => write!(f, "do"),
+            Self::KwWhile => write!(f, "while"),
+            Self::KwFor => write!(f, "for"),
+            Self::KwLoop => write!(f, "loop"),
+            Self::KwContinue => write!(f, "continue"),
+            Self::KwBreak => write!(f, "break"),
+            Self::KwReturn => write!(f, "return"),
+            Self::KwStruct => write!(f, "struct"),
+            Self::KwEnum => write!(f, "enum"),
+            Self::KwAlias => write!(f, "alias"),
+            Self::KwModule => write!(f, "module"),
+            Self::KwUse => write!(f, "use"),
+            Self::KwExtern => write!(f, "extern"),
+            Self::KwStatic => write!(f, "static"),
+            Self::KwMut => write!(f, "mut"),
+            Self::KwConst => write!(f, "const"),
 
-            TokenType::KwOr => write!(f, "or"),
-            TokenType::KwAnd => write!(f, "and"),
+            Self::Identifier(val) => write!(f, "identifier: \"{}\"", val),
+            Self::Integer(val) => write!(f, "integer: \"{}\"", val),
+            Self::Decimal(val) => write!(f, "float: \"{}\"", val),
 
-            TokenType::Identifier(val) => write!(f, "identifier: \"{}\"", val),
-            TokenType::Integer(val) => write!(f, "integer: \"{}\"", val),
-            TokenType::Decimal(val) => write!(f, "float: \"{}\"", val),
-
-            TokenType::Unknown => write!(f, "unknown token"),
+            Self::Unknown => write!(f, "unknown token"),
         }
     }
 }
@@ -558,10 +559,16 @@ impl Lexer {
 
             '&' => {
                 self.get_char();
-                if self.peek_char() == '=' && !singular {
+                if self.peek_char() == '&' && !singular {
                     self.get_char();
 
                     return Token::new(TokenType::AndAssign, self.location.clone());
+                }
+
+                if self.peek_char() == '=' && !singular {
+                    self.get_char();
+
+                    return Token::new(TokenType::And, self.location.clone());
                 }
 
                 Token::new(TokenType::Ampersand, self.location.clone())
@@ -584,6 +591,12 @@ impl Lexer {
                     self.get_char();
 
                     return Token::new(TokenType::OrAssign, self.get_location());
+                }
+
+                if self.peek_char() == '|' && !singular {
+                    self.get_char();
+
+                    return Token::new(TokenType::Or, self.get_location());
                 }
 
                 Token::new(TokenType::Stick, self.get_location())
@@ -677,6 +690,7 @@ impl Lexer {
         match &text[..] {
             "module" => Token::new(TokenType::KwModule, location),
             "struct" => Token::new(TokenType::KwStruct, location),
+            "enum" => Token::new(TokenType::KwEnum, location),
             "let" => Token::new(TokenType::KwLet, location),
             "mut" => Token::new(TokenType::KwMut, location),
             "const" => Token::new(TokenType::KwConst, location),
@@ -694,8 +708,6 @@ impl Lexer {
             "extern" => Token::new(TokenType::KwExtern, location),
             "static" => Token::new(TokenType::KwStatic, location),
             "use" => Token::new(TokenType::KwUse, location),
-            "or" => Token::new(TokenType::KwOr, location),
-            "and" => Token::new(TokenType::KwAnd, location),
             _ => Token::new(TokenType::Identifier(text), location),
         }
     }

@@ -46,10 +46,166 @@ pub enum Type {
     Str,
 }
 
+impl Type {
+    pub fn parse(parser: &mut Parser) -> Option<Type> {
+        let next = parser.peek_token();
+
+        if parser.peek_token().lexem == TokenType::Ampersand {
+            let mut is_mut = false;
+            parser.get_token();
+
+            if matches!(parser.peek_token().lexem, TokenType::KwMut) {
+                is_mut = true;
+                parser.get_token();
+            }
+
+            return Some(Type::Ref {
+                is_mut,
+                ref_to: Box::new(Self::parse(parser)?),
+            });
+        }
+
+        if next.lexem == TokenType::Star {
+            let mut is_mut = false;
+            parser.get_token();
+
+            if matches!(parser.peek_token().lexem, TokenType::KwMut) {
+                is_mut = true;
+                parser.get_token();
+            }
+
+            return Some(Type::Ptr {
+                is_mut,
+                ptr_to: Box::new(Self::parse(parser)?),
+            });
+        }
+
+        if next.lexem == TokenType::LParen {
+            return Self::parse_tuple_def(parser);
+        }
+
+        if next.lexem == TokenType::Lsb {
+            return Self::parse_array_def(parser);
+        }
+
+        let identifier = parser.consume_identifier()?;
+
+        match &identifier[..] {
+            "bool" => return Some(Type::Bool),
+            "byte" => return Some(Type::Byte),
+            "i8" => return Some(Type::I8),
+            "i16" => return Some(Type::I16),
+            "i32" => return Some(Type::I32),
+            "i64" => return Some(Type::I64),
+            "i128" => return Some(Type::I128),
+            "u8" => return Some(Type::U8),
+            "u16" => return Some(Type::U16),
+            "u32" => return Some(Type::U32),
+            "u64" => return Some(Type::U64),
+            "u128" => return Some(Type::U128),
+            "f32" => return Some(Type::F32),
+            "f64" => return Some(Type::F64),
+            "str" => return Some(Type::Str),
+            _ => {}
+        }
+
+        if parser.peek_singular().lexem == TokenType::Lt {
+            let arguments = Self::parse_template_args(parser)?;
+
+            return Some(Type::Template {
+                identifier,
+                arguments,
+            });
+        }
+
+        Some(Type::Custom(identifier))
+    }
+
+    pub fn parse_tuple_def(parser: &mut Parser) -> Option<Type> {
+        parser.consume_token(TokenType::LParen)?;
+
+        let mut children = Vec::<Type>::new();
+        loop {
+            if parser.peek_token().lexem == TokenType::RParen {
+                break;
+            }
+
+            let child = Self::parse(parser)?;
+            children.push(child);
+
+            if parser.peek_token().lexem == TokenType::Comma {
+                parser.get_token();
+                continue;
+            }
+        }
+
+        parser.consume_token(TokenType::RParen)?;
+
+        Some(Type::Tuple {
+            components: children,
+        })
+    }
+
+    pub fn parse_array_def(parser: &mut Parser) -> Option<Type> {
+        parser.consume_token(TokenType::Lsb)?;
+
+        let mut size: Option<Box<Ast>> = None;
+
+        let value_type = Box::new(Self::parse(parser)?);
+
+        if parser.peek_token().lexem == TokenType::Colon {
+            parser.get_token();
+
+            size = Some(Box::new(parse_expression(parser)?));
+        }
+
+        parser.consume_token(TokenType::Rsb)?;
+
+        Some(Type::Array { size, value_type })
+    }
+
+    pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Type>> {
+        parser.consume_token(TokenType::Lt)?;
+
+        let mut children = Vec::<Type>::new();
+        loop {
+            let child = Self::parse(parser)?;
+            children.push(child);
+
+            let next = parser.peek_singular();
+            if next.lexem == TokenType::Gt {
+                break;
+            } else {
+                parser.consume_token(TokenType::Comma)?;
+            }
+        }
+
+        parser.get_singular();
+
+        Some(children)
+    }
+}
+
 #[derive(Clone)]
 pub struct Alias {
     pub identifier: Id,
     pub value: Type,
+}
+
+impl Alias {
+    pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
+        parser.consume_token(TokenType::KwAlias)?;
+
+        let identifier = parser.consume_identifier()?;
+
+        parser.consume_token(TokenType::Assign)?;
+
+        let value = Type::parse(parser)?;
+
+        Some(Ast::AliasDef {
+            node: Alias { identifier, value },
+        })
+    }
 }
 
 impl IAst for Type {
@@ -124,21 +280,21 @@ impl IAst for Type {
                 )?;
             }
 
-            Self::Bool => writeln!(stream, "{}<type identifier=bool>", put_intent(intent))?,
-            Self::Byte => writeln!(stream, "{}<type identifier=byte>", put_intent(intent))?,
-            Self::I8 => writeln!(stream, "{}<type identifier=i8>", put_intent(intent))?,
-            Self::I16 => writeln!(stream, "{}<type identifier=i16>", put_intent(intent))?,
-            Self::I32 => writeln!(stream, "{}<type identifier=i32>", put_intent(intent))?,
-            Self::I64 => writeln!(stream, "{}<type identifier=i64>", put_intent(intent))?,
-            Self::I128 => writeln!(stream, "{}<type identifier=i128>", put_intent(intent))?,
-            Self::U8 => writeln!(stream, "{}<type identifier=u8>", put_intent(intent))?,
-            Self::U16 => writeln!(stream, "{}<type identifier=u16>", put_intent(intent))?,
-            Self::U32 => writeln!(stream, "{}<type identifier=u32>", put_intent(intent))?,
-            Self::U64 => writeln!(stream, "{}<type identifier=u64>", put_intent(intent))?,
-            Self::U128 => writeln!(stream, "{}<type identifier=u128>", put_intent(intent))?,
-            Self::F32 => writeln!(stream, "{}<type identifier=f32>", put_intent(intent))?,
-            Self::F64 => writeln!(stream, "{}<type identifier=f64>", put_intent(intent))?,
-            Self::Str => writeln!(stream, "{}<type identifier=str>", put_intent(intent))?,
+            Self::Bool => writeln!(stream, "{}<type identifier=\"bool\"/>", put_intent(intent))?,
+            Self::Byte => writeln!(stream, "{}<type identifier=\"byte\"/>", put_intent(intent))?,
+            Self::I8 => writeln!(stream, "{}<type identifier=\"i8\"/>", put_intent(intent))?,
+            Self::I16 => writeln!(stream, "{}<type identifier=\"i16\"/>", put_intent(intent))?,
+            Self::I32 => writeln!(stream, "{}<type identifier=\"i32\"/>", put_intent(intent))?,
+            Self::I64 => writeln!(stream, "{}<type identifier=\"i64\"/>", put_intent(intent))?,
+            Self::I128 => writeln!(stream, "{}<type identifier=\"i128\"/>", put_intent(intent))?,
+            Self::U8 => writeln!(stream, "{}<type identifier=\"u8\"/>", put_intent(intent))?,
+            Self::U16 => writeln!(stream, "{}<type identifier=\"u16\"/>", put_intent(intent))?,
+            Self::U32 => writeln!(stream, "{}<type identifier=\"u32\"/>", put_intent(intent))?,
+            Self::U64 => writeln!(stream, "{}<type identifier=\"u64\"/>", put_intent(intent))?,
+            Self::U128 => writeln!(stream, "{}<type identifier=\"u128\"/>", put_intent(intent))?,
+            Self::F32 => writeln!(stream, "{}<type identifier=\"f32\"/>", put_intent(intent))?,
+            Self::F64 => writeln!(stream, "{}<type identifier=\"f64\"/>", put_intent(intent))?,
+            Self::Str => writeln!(stream, "{}<type identifier=\"str\"/>", put_intent(intent))?,
         }
 
         Ok(())
@@ -227,156 +383,4 @@ impl IAst for Alias {
 
         Ok(())
     }
-}
-
-pub fn parse_type(parser: &mut Parser) -> Option<Type> {
-    let next = parser.peek_token();
-
-    if parser.peek_token().lexem == TokenType::Ampersand {
-        let mut is_mut = false;
-        parser.get_token();
-
-        if matches!(parser.peek_token().lexem, TokenType::KwMut) {
-            is_mut = true;
-            parser.get_token();
-        }
-
-        return Some(Type::Ref {
-            is_mut,
-            ref_to: Box::new(parse_type(parser)?),
-        });
-    }
-
-    if next.lexem == TokenType::Star {
-        let mut is_mut = false;
-        parser.get_token();
-
-        if matches!(parser.peek_token().lexem, TokenType::KwMut) {
-            is_mut = true;
-            parser.get_token();
-        }
-
-        return Some(Type::Ptr {
-            is_mut,
-            ptr_to: Box::new(parse_type(parser)?),
-        });
-    }
-
-    if next.lexem == TokenType::LParen {
-        return parse_tuple_def(parser);
-    }
-
-    if next.lexem == TokenType::Lsb {
-        return parse_array_def(parser);
-    }
-
-    let identifier = parser.consume_identifier()?;
-
-    match &identifier[..] {
-        "bool" => return Some(Type::Bool),
-        "byte" => return Some(Type::Byte),
-        "i8" => return Some(Type::I8),
-        "i16" => return Some(Type::I16),
-        "i32" => return Some(Type::I32),
-        "i64" => return Some(Type::I64),
-        "i128" => return Some(Type::I128),
-        "u8" => return Some(Type::U8),
-        "u16" => return Some(Type::U16),
-        "u32" => return Some(Type::U32),
-        "u64" => return Some(Type::U64),
-        "u128" => return Some(Type::U128),
-        "f32" => return Some(Type::F32),
-        "f64" => return Some(Type::F64),
-        "str" => return Some(Type::Str),
-        _ => {}
-    }
-
-    if parser.peek_singular().lexem == TokenType::Lt {
-        let arguments = parse_template_args(parser)?;
-
-        return Some(Type::Template {
-            identifier,
-            arguments,
-        });
-    }
-
-    Some(Type::Custom(identifier))
-}
-
-pub fn parse_tuple_def(parser: &mut Parser) -> Option<Type> {
-    parser.consume_token(TokenType::LParen)?;
-
-    let mut children = Vec::<Type>::new();
-    loop {
-        if parser.peek_token().lexem == TokenType::RParen {
-            break;
-        }
-
-        let child = parse_type(parser)?;
-        children.push(child);
-
-        if parser.peek_token().lexem == TokenType::Comma {
-            parser.get_token();
-            continue;
-        }
-    }
-
-    parser.consume_token(TokenType::RParen)?;
-
-    Some(Type::Tuple {
-        components: children,
-    })
-}
-
-pub fn parse_array_def(parser: &mut Parser) -> Option<Type> {
-    parser.consume_token(TokenType::Lsb)?;
-
-    let mut size: Option<Box<Ast>> = None;
-
-    let value_type = Box::new(parse_type(parser)?);
-
-    if parser.peek_token().lexem == TokenType::Colon {
-        parser.get_token();
-
-        size = Some(Box::new(parse_expression(parser)?));
-    }
-
-    parser.consume_token(TokenType::Rsb)?;
-
-    Some(Type::Array { size, value_type })
-}
-
-pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Type>> {
-    parser.consume_token(TokenType::Lt)?;
-
-    let mut children = Vec::<Type>::new();
-    loop {
-        let child = parse_type(parser)?;
-        children.push(child);
-
-        let next = parser.peek_singular();
-        if next.lexem == TokenType::Gt {
-            break;
-        } else {
-            parser.consume_token(TokenType::Comma)?;
-        }
-    }
-
-    parser.get_singular();
-
-    Some(children)
-}
-
-pub fn parse_alias_def(parser: &mut Parser) -> Option<Ast> {
-    parser.consume_token(TokenType::KwAlias)?;
-
-    let identifier = parser.consume_identifier()?;
-
-    parser.consume_token(TokenType::Assign)?;
-
-    let value = parse_type(parser)?;
-
-    Some(Ast::AliasDef {
-        node: Alias { identifier, value },
-    })
 }

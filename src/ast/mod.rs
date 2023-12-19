@@ -9,8 +9,7 @@ pub mod values;
 pub mod variables;
 // pub mod externs;
 
-use crate::{lexer::TokenType, parser::put_intent};
-use std::io::Write;
+use crate::lexer::TokenType;
 
 type Stream = std::fs::File;
 
@@ -26,7 +25,9 @@ pub enum Ast {
 
     ModuleDef { node: modules::Node },
 
-    StructDef { node: structs::Node },
+    StructDef { node: structs::StructNode },
+
+    EnumDef { node: structs::EnumNode },
 
     FuncDef { node: functions::Node },
 
@@ -58,12 +59,9 @@ impl Ast {
             Self::LScope { node } => node.traverse(stream, intent)?,
             Self::ModuleDef { node } => node.traverse(stream, intent)?,
             Self::StructDef { node } => node.traverse(stream, intent)?,
+            Self::EnumDef { node } => node.traverse(stream, intent)?,
             Self::FuncDef { node } => node.traverse(stream, intent)?,
-            Self::VariableDef { node } => {
-                writeln!(stream, "{}<definition>", put_intent(intent))?;
-                node.traverse(stream, intent + 1)?;
-                writeln!(stream, "{}</definition>", put_intent(intent))?;
-            }
+            Self::VariableDef { node } => node.traverse(stream, intent)?,
             Self::Value { node } => node.traverse(stream, intent)?,
             Self::TypeDecl { node } => node.traverse(stream, intent)?,
             Self::AliasDef { node } => node.traverse(stream, intent)?,
