@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::lexer::Location;
+use crate::ast::structs::EnumField;
+use crate::ast::{expressions, structs};
+use crate::lexer::{Location, TokenType};
 use crate::{
     ast::{types, values, Ast, GetType},
     error_listener::ErrorListener,
@@ -12,38 +14,83 @@ pub type Scope = Vec<String>;
 
 #[derive(Clone)]
 pub enum SymbolData {
-    Module,
-    Struct,
-    Function {
+    ModuleDef {
+        full_name: Vec<String>
+    },
+    StructDef {
+        components: Vec<types::Type>
+    },
+    EnumDef {
+        components: Vec<structs::EnumField>
+    },
+    FunctionDef {
         args: Vec<types::Type>,
         return_type: types::Type,
+        is_declaration: bool,
     },
-    Tuple,
-    Enum,
+    VariableDef {
+        var_type: types::Type,
+        is_initialization: bool,
+    },
     Type,
-    Variable,
 }
 
 impl SymbolData {
     pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
         match self {
-            Self::Function { args, return_type } => {
-                writeln!(stream, "function ({:?}) -> {:?}", args, return_type)
+            Self::ModuleDef { full_name } =>
+                writeln!(stream, "{:?}", full_name),
+
+            Self::FunctionDef { args, return_type, is_declaration } =>
+                writeln!(stream, "Function {}: ({:?}) -> {:?}",
+                    if *is_declaration { "declaration" }
+                    else { "definition" },
+                    args,
+                    return_type),
+
+            Self::StructDef { components } =>
+                writeln!(stream, "Struct definition: {{{:?}}}", components),
+            
+            Self::EnumDef { components } => {
+                write!(stream, "Enum definition: <")?;
+
+                for comp in components.iter() {
+                    match comp {
+                        EnumField::Common => write!(stream, "common")?,
+                        EnumField::TupleLike(t) => {
+                            write!(stream, "( ")?;
+                            for tc in t.iter() {
+                                write!(stream, "{:?}", *tc)?;
+                            }
+                            write!(stream, ")")?;
+                        }
+                        EnumField::StructLike(s) => {
+                            write!(stream, "{{ ")?;
+                            for sc in s.iter() {
+                                write!(stream, "{:?}", *sc.1)?;
+                            }
+                            write!(stream, "}}")?;
+                        }
+                    }
+                }
+
+                writeln!(stream, ">")
             }
-            Self::Enum => writeln!(stream, "enum"),
-            Self::Module => writeln!(stream, "module"),
-            Self::Struct => writeln!(stream, "struct"),
-            Self::Tuple => writeln!(stream, "tuple"),
+
+            Self::VariableDef { var_type, is_initialization } =>
+                writeln!(stream, "Variable {}: {:?}",
+                    if *is_initialization { "initialization" }
+                    else { "definition" },
+                    var_type),
+
             Self::Type => writeln!(stream, "type"),
-            Self::Variable => writeln!(stream, "variable"),
         }
     }
 }
 
-#[derive(Clone)]
-pub enum Symbol {
-    Definition { stype: SymbolData, scope: Scope },
-    Declaration { stype: SymbolData, scope: Scope },
+pub struct Symbol {
+    pub scope: Scope,
+    pub data: SymbolData
 }
 
 pub struct SymbolTable {
@@ -69,22 +116,16 @@ impl SymbolTable {
         }
     }
 
-    pub fn check_identifier_existance(&self, id: &str, scope: &Scope) -> bool {
+    pub fn check_identifier_existance(&self, id: &str, scope: &Scope) -> Option<&Symbol> {
         if let Some(ss) = self.table.get(id) {
             for s in ss.iter() {
-                let s_scope = match s {
-                    Symbol::Definition { scope, .. } => scope,
-
-                    Symbol::Declaration { scope, .. } => scope,
-                };
-
-                if scope.starts_with(s_scope) {
-                    return true;
+                if scope.starts_with(&s.scope) {
+                    return Some(s);
                 }
             }
-            false
+            None
         } else {
-            false
+            None
         }
     }
 
@@ -99,41 +140,33 @@ impl SymbolTable {
             return false;
         };
 
-        if self.check_identifier_existance(identifier, in_scope) {
-            let ss = self.table.get(identifier).unwrap();
-
-            for s in ss.iter() {
-                if let Symbol::Definition {
-                    stype: SymbolData::Function { args, .. },
-                    scope,
-                } = s
-                {
-                    if in_scope.starts_with(scope) {
-                        if args.len() != arguments.len() {
-                            self.error(&format!(
-                                "Expected to get \"{}\" parameters, but was \"{}\" supplied",
-                                args.len(),
-                                arguments.len()
-                            ));
-                            return false;
-                        }
-
-                        for i in args.iter() {
-                            for j in arguments.iter() {
-                                let j_type = j.get_type().unwrap();
-                                if j_type != *i {
-                                    self.error(&format!(
-                                        "Mismatched types: expected \"{:?}\", but \"{:?}\" was provided",
-                                        i, j_type));
-                                    return false;
-                                }
+        if let Some(ss) = self.check_identifier_existance(identifier, in_scope) {
+            match &ss.data {
+                SymbolData::FunctionDef { args, .. } => {
+                    if args.len() != arguments.len() {
+                        self.error(&format!(
+                            "Expected to get \"{}\" parameters, but was \"{}\" supplied",
+                            args.len(),
+                            arguments.len()
+                        ));
+                        return false;
+                    }
+    
+                    for i in args.iter() {
+                        for j in arguments.iter() {
+                            let j_type = j.get_type().unwrap();
+                            if j_type != *i {
+                                self.error(&format!(
+                                    "Mismatched types: expected \"{:?}\", but \"{:?}\" was provided",
+                                    i, j_type));
+                                return false;
                             }
                         }
                     }
                 }
-            }
+                _ => {}
+            }             
         }
-
         false
     }
 
@@ -148,7 +181,7 @@ impl SymbolTable {
             }
 
             Ast::FuncDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if let Some(_ss) = self.check_identifier_existance(&node.identifier, &scope) {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -156,38 +189,26 @@ impl SymbolTable {
                     return;
                 }
 
-                let data = SymbolData::Function {
-                    args: {
-                        let mut arguments = Vec::<types::Type>::new();
-                        for p in node.parameters.iter() {
-                            arguments.push(p.var_type.clone())
-                        }
-                        arguments
-                    },
-                    return_type: node.return_type.clone(),
-                };
+                let mut arguments = Vec::<types::Type>::new();
+                for p in node.parameters.iter() {
+                    arguments.push(p.var_type.clone())
+                }
 
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: data.clone(),
+                    Symbol {
                         scope: scope.clone(),
-                    },
+                        data: SymbolData::FunctionDef {
+                            args: arguments.clone(),
+                            return_type: node.return_type.clone(),
+                            is_declaration: node.body.is_some()
+                        }
+                    }
                 );
-
-                if node.body.is_some() {
-                    self.insert(
-                        &node.identifier,
-                        Symbol::Declaration {
-                            stype: data,
-                            scope: scope.clone(),
-                        },
-                    );
-                }
             }
 
             Ast::AliasDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if let Some(_ss) = self.check_identifier_existance(&node.identifier, &scope) {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -197,15 +218,15 @@ impl SymbolTable {
 
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: SymbolData::Type,
+                    Symbol {
+                        data: SymbolData::Type,
                         scope: scope.clone(),
                     },
                 );
             }
 
             Ast::ModuleDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if self.check_identifier_existance(&node.identifier, &scope).is_some() {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -222,15 +243,17 @@ impl SymbolTable {
 
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: SymbolData::Module,
+                    Symbol {
+                        data: SymbolData::ModuleDef {
+                            full_name: vec![node.identifier.clone()]
+                        },
                         scope: scope.clone(),
                     },
                 );
             }
 
             Ast::StructDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if self.check_identifier_existance(&node.identifier, &scope).is_some() {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -241,20 +264,25 @@ impl SymbolTable {
                 let mut new_scope = scope.clone();
                 new_scope.push(node.identifier.clone());
                 for internal in node.internals.iter_mut() {
-                    self.analyze(internal, new_scope.clone())
+                    self.analyze(internal, new_scope.clone());
+                }
+
+                let mut components = Vec::<types::Type>::new();
+                for field in node.fields.iter() {
+                    components.push(field.1.clone());
                 }
 
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: SymbolData::Struct,
-                        scope: scope.clone(),
-                    },
+                    Symbol {
+                        data: SymbolData::StructDef { components },
+                        scope: scope.clone()
+                    }
                 );
             }
 
             Ast::EnumDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if let Some(_ss) = self.check_identifier_existance(&node.identifier, &scope) {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -268,17 +296,22 @@ impl SymbolTable {
                     self.analyze(internal, new_scope.clone())
                 }
 
+                let mut components = Vec::<EnumField>::new();
+                for field in node.fields.iter() {
+                    components.push(field.1.clone());
+                }
+
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: SymbolData::Enum,
+                    Symbol {
+                        data: SymbolData::EnumDef { components },
                         scope: scope.clone(),
                     },
                 );
             }
 
             Ast::VariableDef { node } => {
-                if self.check_identifier_existance(&node.identifier, &scope) {
+                if self.check_identifier_existance(&node.identifier, &scope).is_some() {
                     self.error(&format!(
                         "Identifier \"{}\" defined multiple times",
                         &node.identifier
@@ -288,16 +321,19 @@ impl SymbolTable {
 
                 self.insert(
                     &node.identifier,
-                    Symbol::Definition {
-                        stype: SymbolData::Variable,
+                    Symbol {
                         scope: scope.clone(),
-                    },
+                        data: SymbolData::VariableDef {
+                            var_type: node.var_type.clone(),
+                            is_initialization: false,
+                        }
+                    }
                 );
             }
 
             Ast::Value { node } => {
                 if let values::Value::Identifier(id) = node {
-                    if !self.check_identifier_existance(id, &scope) {
+                    if self.check_identifier_existance(id, &scope).is_none() {
                         self.error(&format!("Cannot find \"{}\" in this scope", id));
                     }
                 }
@@ -305,6 +341,42 @@ impl SymbolTable {
                 if let values::Value::Call { .. } = node {
                     if !self.check_call_args(node, &scope) {
                         self.error("Wrong call arguments")
+                    }
+                }
+            }
+
+            Ast::Expression { node } => {
+                match node.as_mut() {
+                    expressions::Expression::Binary { operation, lhs, rhs } => {
+                        if let Ast::VariableDef { node } = lhs.as_ref() {
+                            if *operation == TokenType::Assign {
+                                if self.check_identifier_existance(&node.identifier, &scope).is_some() {
+                                    self.error(&format!(
+                                        "Identifier \"{}\" defined multiple times",
+                                        &node.identifier
+                                    ));
+                                    return;
+                                }
+                
+                                self.insert(
+                                    &node.identifier,
+                                    Symbol {
+                                        scope: scope.clone(),
+                                        data: SymbolData::VariableDef {
+                                            var_type: node.var_type.clone(),
+                                            is_initialization: true,
+                                        }
+                                    }
+                                );
+                            } else {
+                                self.analyze(lhs.as_mut(), scope.clone());
+                            }
+
+                            self.analyze(rhs.as_mut(), scope);
+                        }
+                    }
+                    expressions::Expression::Unary { node, .. } => {
+                        self.analyze(node.as_mut(), scope)
                     }
                 }
             }
@@ -326,17 +398,9 @@ impl SymbolTable {
             for s in ss.iter() {
                 write!(stream, "+--- ")?;
 
-                match s {
-                    Symbol::Definition { stype, scope } => {
-                        write!(stream, "Definition ({:?}) ", scope)?;
-                        stype.traverse(stream)?;
-                    }
+                s.data.traverse(stream)?;
 
-                    Symbol::Declaration { stype, scope } => {
-                        write!(stream, "Declaration ({:?}) ", scope)?;
-                        stype.traverse(stream)?;
-                    }
-                }
+                writeln!(stream, " at [{:?}]", s.scope)?;
             }
         }
         Ok(())

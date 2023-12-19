@@ -19,20 +19,21 @@ fn scope_test() {
 
     table.insert(
         "Main",
-        Symbol::Declaration {
-            stype: SymbolData::Module,
+        Symbol {
+            data: SymbolData::ModuleDef { full_name: vec!["Main".to_string()] },
             scope: vec!["g_1".to_string()],
         },
     );
 
     table.insert(
         "main",
-        Symbol::Definition {
-            stype: SymbolData::Function {
+        Symbol {
+            data: SymbolData::FunctionDef {
                 args: Vec::new(),
                 return_type: Type::Tuple {
                     components: Vec::new(),
                 },
+                is_declaration: true
             },
             scope: vec!["g_1".to_string(), "Main".to_string()],
         },
@@ -40,49 +41,50 @@ fn scope_test() {
 
     table.insert(
         "bar",
-        Symbol::Definition {
-            stype: SymbolData::Function {
+        Symbol {
+            data: SymbolData::FunctionDef {
                 args: Vec::new(),
                 return_type: Type::Tuple {
                     components: Vec::new(),
                 },
+                is_declaration: true
             },
-            scope: vec!["g_1".to_string(), "Main".to_string()],
+            scope: vec!["@s".to_string(), "Main".to_string()],
         },
     );
 
     table.insert(
         "var",
-        Symbol::Definition {
-            stype: SymbolData::Variable,
-            scope: vec!["g_1".to_string(), "Main".to_string(), "main".to_string()],
+        Symbol {
+            data: SymbolData::VariableDef { var_type: Type::I32, is_initialization: true },
+            scope: vec!["@s".to_string(), "Main".to_string(), "main".to_string()],
         },
     );
 
     // check if main inside Main
-    assert!(table.check_identifier_existance("main", &vec!["g_1".to_string(), "Main".to_string()]));
+    assert!(table.check_identifier_existance("main", &vec!["g_1".to_string(), "Main".to_string()]).is_some());
 
     // check if baz not defined in Main
-    assert!(!table.check_identifier_existance("baz", &vec!["g_1".to_string(), "Main".to_string()]));
+    assert!(!table.check_identifier_existance("baz", &vec!["g_1".to_string(), "Main".to_string()]).is_some());
 
     // check if var defined in main
     assert!(table.check_identifier_existance(
         "var",
         &vec!["g_1".to_string(), "Main".to_string(), "main".to_string()]
-    ));
+    ).is_some());
 
     // check if var unaccessible in Main
-    assert!(!table.check_identifier_existance("var", &vec!["g_1".to_string(), "Main".to_string()]));
+    assert!(!table.check_identifier_existance("var", &vec!["g_1".to_string(), "Main".to_string()]).is_some());
 
     // check if var unaccessible in bar
     assert!(!table.check_identifier_existance(
         "var",
         &vec!["g_1".to_string(), "Main".to_string(), "bar".to_string()]
-    ));
+    ).is_some());
 
     // check if bar accessible in bar
     assert!(table.check_identifier_existance(
         "bar",
         &vec!["g_1".to_string(), "Main".to_string(), "bar".to_string()]
-    ));
+    ).is_some());
 }

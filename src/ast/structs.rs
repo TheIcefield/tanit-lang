@@ -121,6 +121,18 @@ impl IAst for StructNode {
         }
 
         for field in self.fields.iter() {
+            writeln!(stream,
+                "{}<field name=\"{}\">",
+                put_intent(intent + 1),
+                field.0
+            )?;
+
+            field.1.traverse(stream, intent + 2)?;
+
+            writeln!(stream, "{}</field>", put_intent(intent + 1))?;
+        }
+
+        for field in self.fields.iter() {
             writeln!(
                 stream,
                 "{}<field name=\"{}\">",
@@ -151,6 +163,7 @@ impl EnumField {
         let next = parser.peek_token();
         match next.lexem {
             TokenType::EndOfLine => Ok(EnumField::Common),
+
             TokenType::LParen => {
                 if let types::Type::Tuple { components } = types::Type::parse_tuple_def(parser)? {
                     Ok(Self::TupleLike(components))
@@ -158,6 +171,7 @@ impl EnumField {
                     Err(UNEXPECTED_TOKEN_ERROR_STR)
                 }
             }
+
             TokenType::Lcb => {
                 if let Ast::StructDef { node } = StructNode::parse_body_external(parser)? {
                     if !node.internals.is_empty() {
@@ -168,6 +182,7 @@ impl EnumField {
                 }
                 Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
             }
+
             _ => {
                 parser.error(
                     &format!("Unexpected token during parsing enum: {}", next),
