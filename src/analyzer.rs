@@ -139,18 +139,9 @@ impl SymbolTable {
 
     pub fn analyze(&mut self, ast: &mut Ast, scope: Scope) {
         match ast {
-            Ast::GScope { node } => {
+            Ast::GScope { node } | Ast::LScope { node } => {
                 let mut new_scope = scope.clone();
-                new_scope.push("g_scope".to_string());
-                for n in node.statements.iter_mut() {
-                    self.analyze(n, new_scope.clone());
-                }
-            }
-
-            Ast::LScope { node } => {
-                let mut new_scope = scope.clone();
-                new_scope.push("l_scope".to_string());
-
+                new_scope.push("@s".to_string());
                 for n in node.statements.iter_mut() {
                     self.analyze(n, new_scope.clone());
                 }
@@ -222,6 +213,13 @@ impl SymbolTable {
                     return;
                 }
 
+                {
+                    let mut new_scope = scope.clone();
+                    new_scope.push(node.identifier.clone());
+
+                    self.analyze(node.body.as_mut(), new_scope);
+                }
+
                 self.insert(
                     &node.identifier,
                     Symbol::Definition {
@@ -240,6 +238,12 @@ impl SymbolTable {
                     return;
                 }
 
+                let mut new_scope = scope.clone();
+                new_scope.push(node.identifier.clone());
+                for internal in node.internals.iter_mut() {
+                    self.analyze(internal, new_scope.clone())
+                }
+
                 self.insert(
                     &node.identifier,
                     Symbol::Definition {
@@ -256,6 +260,12 @@ impl SymbolTable {
                         &node.identifier
                     ));
                     return;
+                }
+
+                let mut new_scope = scope.clone();
+                new_scope.push(node.identifier.clone());
+                for internal in node.internals.iter_mut() {
+                    self.analyze(internal, new_scope.clone())
                 }
 
                 self.insert(

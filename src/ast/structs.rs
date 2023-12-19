@@ -9,15 +9,19 @@ use std::io::Write;
 pub struct StructNode {
     pub identifier: Id,
     pub fields: HashMap<Id, types::Type>,
+    pub internals: Vec<Ast>,
 }
 
 impl StructNode {
     pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
-        let mut node = Self::parse_header(parser)?;
+        let identifier = Self::parse_header(parser)?.identifier;
 
-        node.fields = Self::parse_body_external(parser)?;
+        if let Ast::StructDef { mut node } = Self::parse_body_external(parser)? {
+            node.identifier = identifier;
+            return Some(Ast::StructDef { node });
+        }
 
-        Some(Ast::StructDef { node })
+        None
     }
 
     pub fn parse_header(parser: &mut Parser) -> Option<StructNode> {
@@ -28,10 +32,11 @@ impl StructNode {
         Some(StructNode {
             identifier,
             fields: HashMap::new(),
+            internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Option<HashMap<Id, types::Type>> {
+    pub fn parse_body_external(parser: &mut Parser) -> Option<Ast> {
         parser.consume_token(TokenType::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
@@ -41,8 +46,9 @@ impl StructNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Option<HashMap<Id, types::Type>> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Option<Ast> {
         let mut fields = HashMap::<Id, types::Type>::new();
+        let mut internals = Vec::<Ast>::new();
 
         loop {
             let next = parser.peek_token();
@@ -53,6 +59,14 @@ impl StructNode {
                 TokenType::EndOfLine => {
                     parser.get_token();
                     continue;
+                }
+
+                TokenType::KwStruct => {
+                    internals.push(StructNode::parse_def(parser)?);
+                }
+
+                TokenType::KwEnum => {
+                    internals.push(EnumNode::parse_def(parser)?);
                 }
 
                 TokenType::Identifier(id) => {
@@ -82,7 +96,13 @@ impl StructNode {
             }
         }
 
-        Some(fields)
+        Some(Ast::StructDef {
+            node: Self {
+                identifier: String::new(),
+                fields,
+                internals,
+            },
+        })
     }
 }
 
@@ -94,6 +114,10 @@ impl IAst for StructNode {
             put_intent(intent),
             self.identifier
         )?;
+
+        for internal in self.internals.iter() {
+            internal.traverse(stream, intent + 1)?;
+        }
 
         for field in self.fields.iter() {
             writeln!(
@@ -133,7 +157,16 @@ impl EnumField {
                     None
                 }
             }
-            TokenType::Lcb => Some(Self::StructLike(StructNode::parse_body_external(parser)?)),
+            TokenType::Lcb => {
+                if let Ast::StructDef { node } = StructNode::parse_body_external(parser)? {
+                    if !node.internals.is_empty() {
+                        parser.error("Internal structs are not allowed here", next.get_location());
+                    }
+
+                    return Some(EnumField::StructLike(node.fields));
+                }
+                None
+            }
             _ => {
                 parser.error(
                     &format!("Unexpected token during parsing enum: {}", next),
@@ -173,15 +206,19 @@ impl IAst for EnumField {
 pub struct EnumNode {
     pub identifier: Id,
     pub fields: HashMap<Id, EnumField>,
+    pub internals: Vec<Ast>,
 }
 
 impl EnumNode {
     pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
-        let mut node = Self::parse_header(parser)?;
+        let identifier = Self::parse_header(parser)?.identifier;
 
-        node.fields = Self::parse_body_external(parser)?;
+        if let Ast::EnumDef { mut node } = Self::parse_body_external(parser)? {
+            node.identifier = identifier;
+            return Some(Ast::EnumDef { node });
+        }
 
-        Some(Ast::EnumDef { node })
+        None
     }
 
     pub fn parse_header(parser: &mut Parser) -> Option<EnumNode> {
@@ -192,10 +229,11 @@ impl EnumNode {
         Some(EnumNode {
             identifier,
             fields: HashMap::new(),
+            internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Option<HashMap<Id, EnumField>> {
+    pub fn parse_body_external(parser: &mut Parser) -> Option<Ast> {
         parser.consume_token(TokenType::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
@@ -205,8 +243,9 @@ impl EnumNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Option<HashMap<Id, EnumField>> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Option<Ast> {
         let mut fields = HashMap::<Id, EnumField>::new();
+        let mut internals = Vec::<Ast>::new();
 
         loop {
             let next = parser.peek_token();
@@ -217,6 +256,14 @@ impl EnumNode {
                 TokenType::EndOfLine => {
                     parser.get_token();
                     continue;
+                }
+
+                TokenType::KwStruct => {
+                    internals.push(StructNode::parse_def(parser)?);
+                }
+
+                TokenType::KwEnum => {
+                    internals.push(EnumNode::parse_def(parser)?);
                 }
 
                 TokenType::Identifier(id) => {
@@ -246,7 +293,13 @@ impl EnumNode {
             }
         }
 
-        Some(fields)
+        Some(Ast::EnumDef {
+            node: Self {
+                identifier: String::new(),
+                fields,
+                internals,
+            },
+        })
     }
 }
 
@@ -258,6 +311,10 @@ impl IAst for EnumNode {
             put_intent(intent),
             self.identifier
         )?;
+
+        for internal in self.internals.iter() {
+            internal.traverse(stream, intent + 1)?;
+        }
 
         for field in self.fields.iter() {
             if matches!(field.1, EnumField::Common) {
