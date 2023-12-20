@@ -1,12 +1,16 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{types, values, Ast, GetType, IAst, Stream};
-use crate::error_listener::{UNEXPECTED_NODE_PARSED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
+use crate::error_listener::{
+    MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
+    UNEXPECTED_TOKEN_ERROR_STR,
+};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::Parser;
 
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Expression {
     Unary {
         operation: TokenType,
@@ -476,6 +480,82 @@ impl Expression {
 }
 
 impl IAst for Expression {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        match self {
+            Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => {
+                let mut lhs_type = lhs.get_type();
+                let rhs_type = rhs.get_type();
+
+                if let Ast::VariableDef { node } = lhs.as_mut() {
+                    if *operation == TokenType::Assign
+                        || *operation == TokenType::SubAssign
+                        || *operation == TokenType::AddAssign
+                        || *operation == TokenType::DivAssign
+                        || *operation == TokenType::ModAssign
+                        || *operation == TokenType::MulAssign
+                        || *operation == TokenType::AndAssign
+                        || *operation == TokenType::OrAssign
+                        || *operation == TokenType::XorAssign
+                        || *operation == TokenType::LShiftAssign
+                        || *operation == TokenType::RShiftAssign
+                    {
+                        if analyzer
+                            .check_identifier_existance(&node.identifier)
+                            .is_ok()
+                        {
+                            analyzer.error(&format!(
+                                "Identifier \"{}\" defined multiple times",
+                                &node.identifier
+                            ));
+                            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+                        }
+
+                        if let types::Type::Custom(t) = &node.var_type {
+                            if "@auto" == t {
+                                node.var_type = rhs_type.clone();
+                                lhs_type = rhs_type.clone();
+                            }
+                        }
+
+                        if node.var_type != rhs_type {
+                            analyzer.error(
+                                &format!("Variable \"{:?}\" defined with type \"{:?}\", but is assigned to \"{:?}\"",
+                                    node.identifier, node.var_type, rhs_type));
+                        }
+
+                        analyzer.add_symbol(
+                            &node.identifier,
+                            analyzer.create_symbol(SymbolData::VariableDef {
+                                var_type: node.var_type.clone(),
+                                is_initialization: true,
+                            }),
+                        );
+                    } else {
+                        lhs.analyze(analyzer)?;
+                    }
+
+                    rhs.analyze(analyzer)?;
+                } else {
+                    lhs.analyze(analyzer)?;
+                }
+
+                if lhs_type != rhs_type {
+                    analyzer.error(&format!(
+                        "Cannot perform operation with objects with different types: {:?} and {:?}",
+                        lhs_type, rhs_type
+                    ));
+                }
+
+                rhs.analyze(analyzer)
+            }
+            Self::Unary { node, .. } => node.analyze(analyzer),
+        }
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             Self::Unary { operation, node } => {
@@ -515,7 +595,7 @@ impl IAst for Expression {
 }
 
 impl GetType for Expression {
-    fn get_type(&self) -> Option<types::Type> {
+    fn get_type(&self) -> types::Type {
         match self {
             Self::Binary {
                 operation,
@@ -527,7 +607,7 @@ impl GetType for Expression {
                 | TokenType::Lt
                 | TokenType::Lte
                 | TokenType::Gt
-                | TokenType::Gte => Some(types::Type::Bool),
+                | TokenType::Gte => types::Type::Bool,
 
                 _ => {
                     let lhs_type = lhs.get_type();
@@ -537,7 +617,9 @@ impl GetType for Expression {
                         return lhs_type;
                     }
 
-                    None
+                    types::Type::Tuple {
+                        components: Vec::new(),
+                    }
                 }
             },
             Self::Unary { node, .. } => node.get_type(),

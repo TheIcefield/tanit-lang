@@ -1,3 +1,5 @@
+use crate::analyzer::Analyzer;
+
 pub mod branches;
 pub mod expressions;
 pub mod functions;
@@ -12,16 +14,16 @@ pub mod variables;
 type Stream = std::fs::File;
 
 pub trait IAst {
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
 }
 
 pub trait GetType {
-    fn get_type(&self) -> Option<types::Type> {
-        None
-    }
+    fn get_type(&self) -> types::Type;
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Ast {
     Scope { node: scopes::Scope },
 
@@ -72,11 +74,45 @@ impl Ast {
         }
     }
 
-    pub fn get_type(&self) -> Option<types::Type> {
+    pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str> {
+        match self {
+            Ast::Scope { node } => node.analyze(analyzer),
+
+            Ast::FuncDef { node } => node.analyze(analyzer),
+
+            Ast::AliasDef { node } => node.analyze(analyzer),
+
+            Ast::ModuleDef { node } => node.analyze(analyzer),
+
+            Ast::StructDef { node } => node.analyze(analyzer),
+
+            Ast::EnumDef { node } => node.analyze(analyzer),
+
+            Ast::VariableDef { node } => node.analyze(analyzer),
+
+            Ast::Value { node } => node.analyze(analyzer),
+
+            Ast::Expression { node } => node.analyze(analyzer),
+
+            Ast::BranchStmt { node } => node.analyze(analyzer),
+
+            Ast::ContinueStmt { node } => node.analyze(analyzer),
+
+            Ast::ReturnStmt { node } => node.analyze(analyzer),
+
+            Ast::BreakStmt { node } => node.analyze(analyzer),
+
+            Ast::TypeDecl { node } => node.analyze(analyzer),
+        }
+    }
+
+    pub fn get_type(&self) -> types::Type {
         match self {
             Self::Expression { node } => node.get_type(),
             Self::AliasDef { node } => node.get_type(),
-            _ => None,
+            Self::Value { node } => node.get_type(),
+            Self::VariableDef { node } => node.get_type(),
+            _ => todo!("GetType"),
         }
     }
 }

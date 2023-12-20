@@ -38,6 +38,10 @@ impl Parser {
         Ok(ast.unwrap())
     }
 
+    pub fn error_listener(&mut self) -> ErrorListener {
+        std::mem::take(&mut self.error_listener)
+    }
+
     pub fn get_token(&mut self) -> Token {
         let next = self.lexer.peek();
 

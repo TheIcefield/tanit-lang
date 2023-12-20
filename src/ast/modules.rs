@@ -1,11 +1,13 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{scopes, Ast, IAst, Stream};
+use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::{Id, Parser};
 
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ModuleNode {
     pub identifier: Id,
     pub body: Box<Ast>,
@@ -38,6 +40,32 @@ impl ModuleNode {
 }
 
 impl IAst for ModuleNode {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if analyzer
+            .check_identifier_existance(&self.identifier)
+            .is_ok()
+        {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.scope.push(&self.identifier);
+        self.body.analyze(analyzer)?;
+        analyzer.scope.pop();
+
+        analyzer.add_symbol(
+            &self.identifier,
+            analyzer.create_symbol(SymbolData::ModuleDef {
+                full_name: vec![self.identifier.clone()],
+            }),
+        );
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,

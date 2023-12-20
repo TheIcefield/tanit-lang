@@ -6,7 +6,7 @@ use crate::{
     ast::{Ast, IAst, Stream},
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Scope {
     pub statements: Vec<Ast>,
     pub is_global: bool,
@@ -150,6 +150,15 @@ impl Scope {
 }
 
 impl IAst for Scope {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        analyzer.scope.push("@s");
+        for n in self.statements.iter_mut() {
+            n.analyze(analyzer)?;
+        }
+        analyzer.scope.pop();
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         for stmt in self.statements.iter() {
             stmt.traverse(stream, intent)?;
