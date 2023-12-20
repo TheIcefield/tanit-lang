@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::lexer::Location;
 use crate::{
-    ast::{types, values, Ast},
+    ast::{types, values, Ast, GetType},
     error_listener::ErrorListener,
 };
 

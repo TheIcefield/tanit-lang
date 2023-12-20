@@ -9,12 +9,16 @@ pub mod values;
 pub mod variables;
 // pub mod externs;
 
-use crate::lexer::TokenType;
-
 type Stream = std::fs::File;
 
-trait IAst {
+pub trait IAst {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
+}
+
+pub trait GetType {
+    fn get_type(&self) -> Option<types::Type> {
+        None
+    }
 }
 
 #[derive(Clone)]
@@ -55,56 +59,29 @@ pub enum Ast {
 impl Ast {
     pub fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
-            Self::GScope { node } => node.traverse(stream, intent)?,
-            Self::LScope { node } => node.traverse(stream, intent)?,
-            Self::ModuleDef { node } => node.traverse(stream, intent)?,
-            Self::StructDef { node } => node.traverse(stream, intent)?,
-            Self::EnumDef { node } => node.traverse(stream, intent)?,
-            Self::FuncDef { node } => node.traverse(stream, intent)?,
-            Self::VariableDef { node } => node.traverse(stream, intent)?,
-            Self::Value { node } => node.traverse(stream, intent)?,
-            Self::TypeDecl { node } => node.traverse(stream, intent)?,
-            Self::AliasDef { node } => node.traverse(stream, intent)?,
-            Self::Expression { node } => node.traverse(stream, intent)?,
-            Self::IfStmt { node } => node.traverse(stream, intent)?,
-            Self::LoopStmt { node } => node.traverse(stream, intent)?,
-            Self::BreakStmt { node } => node.traverse(stream, intent)?,
-            Self::ContinueStmt { node } => node.traverse(stream, intent)?,
-            Self::ReturnStmt { node } => node.traverse(stream, intent)?,
+            Self::GScope { node } => node.traverse(stream, intent),
+            Self::LScope { node } => node.traverse(stream, intent),
+            Self::ModuleDef { node } => node.traverse(stream, intent),
+            Self::StructDef { node } => node.traverse(stream, intent),
+            Self::EnumDef { node } => node.traverse(stream, intent),
+            Self::FuncDef { node } => node.traverse(stream, intent),
+            Self::VariableDef { node } => node.traverse(stream, intent),
+            Self::Value { node } => node.traverse(stream, intent),
+            Self::TypeDecl { node } => node.traverse(stream, intent),
+            Self::AliasDef { node } => node.traverse(stream, intent),
+            Self::Expression { node } => node.traverse(stream, intent),
+            Self::IfStmt { node } => node.traverse(stream, intent),
+            Self::LoopStmt { node } => node.traverse(stream, intent),
+            Self::BreakStmt { node } => node.traverse(stream, intent),
+            Self::ContinueStmt { node } => node.traverse(stream, intent),
+            Self::ReturnStmt { node } => node.traverse(stream, intent),
         }
-
-        Ok(())
     }
 
     pub fn get_type(&self) -> Option<types::Type> {
         match self {
-            Self::Expression { node } => match node.as_ref() {
-                expressions::Expression::Binary {
-                    operation,
-                    lhs,
-                    rhs,
-                } => match operation {
-                    TokenType::Neq
-                    | TokenType::Eq
-                    | TokenType::Lt
-                    | TokenType::Lte
-                    | TokenType::Gt
-                    | TokenType::Gte => Some(types::Type::Bool),
-
-                    _ => {
-                        let lhs_type = lhs.get_type();
-                        let rhs_type = rhs.get_type();
-
-                        if lhs_type == rhs_type {
-                            return lhs_type;
-                        }
-
-                        None
-                    }
-                },
-                expressions::Expression::Unary { node, .. } => node.get_type(),
-            },
-            Self::AliasDef { node } => Some(node.value.clone()),
+            Self::Expression { node } => node.get_type(),
+            Self::AliasDef { node } => node.get_type(),
             _ => None,
         }
     }

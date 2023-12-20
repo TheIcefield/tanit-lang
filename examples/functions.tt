@@ -5,5 +5,5 @@ func f(a: f32, b: f32) -> f32
 
 func main()
 {
-    let res = f(a, 1)
+    let res = f(a: 1, 2, c: 1 + 2)
 }

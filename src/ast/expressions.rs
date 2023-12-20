@@ -1,4 +1,4 @@
-use crate::ast::{values, Ast, IAst, Stream};
+use crate::ast::{types, values, Ast, GetType, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::Parser;
@@ -54,6 +54,37 @@ impl IAst for Expression {
         }
 
         Ok(())
+    }
+}
+
+impl GetType for Expression {
+    fn get_type(&self) -> Option<types::Type> {
+        match self {
+            Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => match operation {
+                TokenType::Neq
+                | TokenType::Eq
+                | TokenType::Lt
+                | TokenType::Lte
+                | TokenType::Gt
+                | TokenType::Gte => Some(types::Type::Bool),
+
+                _ => {
+                    let lhs_type = lhs.get_type();
+                    let rhs_type = rhs.get_type();
+
+                    if lhs_type == rhs_type {
+                        return lhs_type;
+                    }
+
+                    None
+                }
+            },
+            Self::Unary { node, .. } => node.get_type(),
+        }
     }
 }
 

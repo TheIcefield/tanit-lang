@@ -1,14 +1,20 @@
-use crate::ast::{expressions, Ast, IAst, Stream};
+use crate::ast::{expressions, types, Ast, GetType, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
 #[derive(Clone)]
+pub enum CallParam {
+    Notified(String, Box<Ast>),
+    Positional(usize, Box<Ast>),
+}
+
+#[derive(Clone)]
 pub enum Value {
     Call {
         identifier: String,
-        arguments: Vec<Ast>,
+        arguments: Vec<CallParam>,
     },
     Struct {
         identifier: String,
@@ -27,11 +33,12 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
+    pub fn parse_call(parser: &mut Parser) -> Option<Vec<CallParam>> {
         parser.consume_token(TokenType::LParen)?;
 
-        let mut args = Vec::<Ast>::new();
+        let mut args = Vec::<CallParam>::new();
 
+        let mut i = 0;
         loop {
             let next = parser.peek_token();
 
@@ -40,7 +47,30 @@ impl Value {
             }
 
             let expr = expressions::parse_expression(parser)?;
-            args.push(expr);
+
+            let param_id = if let Ast::Value {
+                node: Self::Identifier(id),
+            } = &expr
+            {
+                if parser.peek_token().lexem == TokenType::Colon {
+                    parser.consume_token(TokenType::Colon)?;
+                    Some(id.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let param = if let Some(id) = param_id {
+                CallParam::Notified(id, Box::new(expressions::parse_expression(parser)?))
+            } else {
+                CallParam::Positional(i, Box::new(expr))
+            };
+
+            args.push(param);
+
+            i += 1;
 
             let next = parser.peek_token();
             if next.lexem == TokenType::Comma {
@@ -151,7 +181,25 @@ impl IAst for Value {
                 )?;
 
                 for arg in arguments.iter() {
-                    arg.traverse(stream, intent + 1)?
+                    match arg {
+                        CallParam::Notified(id, expr) => {
+                            writeln!(stream, "{}<param name=\"{}\">", put_intent(intent + 1), id)?;
+
+                            expr.traverse(stream, intent + 2)?;
+                        }
+                        CallParam::Positional(index, expr) => {
+                            writeln!(
+                                stream,
+                                "{}<param index=\"{}\">",
+                                put_intent(intent + 1),
+                                index
+                            )?;
+
+                            expr.traverse(stream, intent + 2)?;
+                        }
+                    }
+
+                    writeln!(stream, "{}</param>", put_intent(intent + 1))?;
                 }
 
                 writeln!(stream, "{}</call>", put_intent(intent))?;
@@ -238,5 +286,13 @@ impl IAst for Value {
         }
 
         Ok(())
+    }
+}
+
+impl GetType for CallParam {
+    fn get_type(&self) -> Option<types::Type> {
+        match self {
+            Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(),
+        }
     }
 }

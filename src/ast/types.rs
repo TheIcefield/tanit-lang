@@ -6,6 +6,7 @@ use std::fmt::Debug;
 use std::io::Write;
 
 use super::expressions::parse_expression;
+use super::GetType;
 
 #[derive(Clone)]
 pub enum Type {
@@ -382,5 +383,11 @@ impl IAst for Alias {
         writeln!(stream, "{}</alias>", put_intent(intent))?;
 
         Ok(())
+    }
+}
+
+impl GetType for Alias {
+    fn get_type(&self) -> Option<Type> {
+        Some(self.value.clone())
     }
 }
