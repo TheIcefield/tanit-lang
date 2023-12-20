@@ -12,18 +12,128 @@ pub enum Value {
     },
     Struct {
         identifier: String,
-        components: Vec<(String, Box<Ast>)>,
+        components: Vec<(String, Ast)>,
     },
     Tuple {
-        components: Vec<Box<Ast>>,
+        components: Vec<Ast>,
     },
     Array {
-        components: Vec<Box<Ast>>,
+        components: Vec<Ast>,
     },
     Identifier(String),
     Text(String),
     Integer(usize),
     Decimal(f64),
+}
+
+impl Value {
+    pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
+        parser.consume_token(TokenType::LParen)?;
+
+        let mut args = Vec::<Ast>::new();
+
+        loop {
+            let next = parser.peek_token();
+
+            if next.lexem == TokenType::RParen {
+                break;
+            }
+
+            let expr = expressions::parse_expression(parser)?;
+            args.push(expr);
+
+            let next = parser.peek_token();
+            if next.lexem == TokenType::Comma {
+                // continue parsing if ','
+                parser.get_token();
+                continue;
+            } else if next.lexem == TokenType::RParen {
+                // end parsing if ')'
+                break;
+            } else {
+                parser.error("Unexpected token when parsing call", next.get_location());
+                return None;
+            }
+        }
+
+        parser.consume_token(TokenType::RParen)?;
+
+        Some(args)
+    }
+
+    pub fn parse_array(parser: &mut Parser) -> Option<Ast> {
+        parser.consume_token(TokenType::Lsb)?;
+
+        let mut components = Vec::<Ast>::new();
+
+        loop {
+            let next = parser.peek_token();
+
+            if next.lexem == TokenType::Rsb {
+                break;
+            }
+            components.push(expressions::parse_expression(parser)?);
+
+            let next = parser.peek_token();
+            if next.lexem == TokenType::Comma {
+                // continue parsing if ','
+                parser.get_token();
+                continue;
+            } else if next.lexem == TokenType::Rsb {
+                // end parsing if ']'
+                break;
+            } else {
+                parser.error("Unexpected token when parsing call", next.get_location());
+                return None;
+            }
+        }
+
+        parser.consume_token(TokenType::Rsb)?;
+
+        Some(Ast::Value {
+            node: Value::Array { components },
+        })
+    }
+
+    pub fn parse_struct(parser: &mut Parser) -> Option<Vec<(String, Ast)>> {
+        parser.consume_token(TokenType::Lcb)?;
+
+        let mut components = Vec::<(String, Ast)>::new();
+
+        loop {
+            let next = parser.peek_token();
+
+            if next.lexem == TokenType::Rcb {
+                break;
+            }
+
+            let identifier = parser.consume_identifier()?;
+
+            parser.consume_token(TokenType::Colon)?;
+
+            components.push((identifier, expressions::parse_expression(parser)?));
+
+            let next = parser.peek_token();
+            if next.lexem == TokenType::Comma {
+                // continue parsing if ','
+                parser.get_token();
+                continue;
+            } else if next.lexem == TokenType::Rcb {
+                // end parsing if '}'
+                break;
+            } else {
+                parser.error(
+                    "Unexpected token when parsing struct value",
+                    next.get_location(),
+                );
+                return None;
+            }
+        }
+
+        parser.consume_token(TokenType::Rcb)?;
+
+        Some(components)
+    }
 }
 
 impl IAst for Value {
@@ -129,112 +239,4 @@ impl IAst for Value {
 
         Ok(())
     }
-}
-
-pub fn parse_call(parser: &mut Parser) -> Option<Vec<Ast>> {
-    parser.consume_token(TokenType::LParen)?;
-
-    let mut args = Vec::<Ast>::new();
-
-    loop {
-        let next = parser.peek_token();
-
-        if next.lexem == TokenType::RParen {
-            break;
-        }
-
-        let expr = expressions::parse_expression(parser)?;
-        args.push(expr);
-
-        let next = parser.peek_token();
-        if next.lexem == TokenType::Comma {
-            // continue parsing if ','
-            parser.get_token();
-            continue;
-        } else if next.lexem == TokenType::RParen {
-            // end parsing if ')'
-            break;
-        } else {
-            parser.error("Unexpected token when parsing call", next.get_location());
-            return None;
-        }
-    }
-
-    parser.consume_token(TokenType::RParen)?;
-
-    Some(args)
-}
-
-pub fn parse_array_value(parser: &mut Parser) -> Option<Ast> {
-    parser.consume_token(TokenType::Lsb)?;
-
-    let mut components = Vec::<Box<Ast>>::new();
-
-    loop {
-        let next = parser.peek_token();
-
-        if next.lexem == TokenType::Rsb {
-            break;
-        }
-        components.push(Box::new(expressions::parse_expression(parser)?));
-
-        let next = parser.peek_token();
-        if next.lexem == TokenType::Comma {
-            // continue parsing if ','
-            parser.get_token();
-            continue;
-        } else if next.lexem == TokenType::Rsb {
-            // end parsing if ']'
-            break;
-        } else {
-            parser.error("Unexpected token when parsing call", next.get_location());
-            return None;
-        }
-    }
-
-    parser.consume_token(TokenType::Rsb)?;
-
-    Some(Ast::Value {
-        node: Value::Array { components },
-    })
-}
-
-pub fn parse_struct_value(parser: &mut Parser) -> Option<Vec<(String, Box<Ast>)>> {
-    parser.consume_token(TokenType::Lcb)?;
-
-    let mut components = Vec::<(String, Box<Ast>)>::new();
-
-    loop {
-        let next = parser.peek_token();
-
-        if next.lexem == TokenType::Rcb {
-            break;
-        }
-
-        let identifier = parser.consume_identifier()?;
-
-        parser.consume_token(TokenType::Colon)?;
-
-        components.push((identifier, Box::new(expressions::parse_expression(parser)?)));
-
-        let next = parser.peek_token();
-        if next.lexem == TokenType::Comma {
-            // continue parsing if ','
-            parser.get_token();
-            continue;
-        } else if next.lexem == TokenType::Rcb {
-            // end parsing if '}'
-            break;
-        } else {
-            parser.error(
-                "Unexpected token when parsing struct value",
-                next.get_location(),
-            );
-            return None;
-        }
-    }
-
-    parser.consume_token(TokenType::Rcb)?;
-
-    Some(components)
 }

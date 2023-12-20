@@ -396,7 +396,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             let next = parser.peek_token();
             if next.lexem == TokenType::LParen {
                 // if call
-                let arguments = values::parse_call(parser)?;
+                let arguments = values::Value::parse_call(parser)?;
 
                 return Some(Ast::Value {
                     node: values::Value::Call {
@@ -425,7 +425,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                 });
             } else if next.lexem == TokenType::Lcb {
                 // if struct
-                let components = values::parse_struct_value(parser)?;
+                let components = values::Value::parse_struct(parser)?;
 
                 return Some(Ast::Value {
                     node: values::Value::Struct {
@@ -453,7 +453,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                 });
             }
 
-            let mut components = Vec::<Box<Ast>>::new();
+            let mut components = Vec::<Ast>::new();
 
             let expr = parse_expression(parser)?;
 
@@ -473,7 +473,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             }
 
             /* else try parse tuple */
-            components.push(Box::new(expr));
+            components.push(expr);
 
             loop {
                 let next = parser.peek_token();
@@ -483,7 +483,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
                     break;
                 } else if next.lexem == TokenType::Comma {
                     parser.consume_token(TokenType::Comma)?;
-                    components.push(Box::new(parse_expression(parser)?));
+                    components.push(parse_expression(parser)?);
                 } else {
                     parser.error(
                         &format!("Unexpected token \"{}\" within tuple", next),
@@ -498,7 +498,7 @@ fn parse_factor(parser: &mut Parser) -> Option<Ast> {
             })
         }
 
-        TokenType::Lsb => values::parse_array_value(parser),
+        TokenType::Lsb => values::Value::parse_array(parser),
 
         _ => {
             parser.error(
