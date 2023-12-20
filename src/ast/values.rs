@@ -1,17 +1,21 @@
 use crate::ast::{expressions::Expression, types, Ast, GetType, IAst, Stream};
-use crate::error_listener::UNEXPECTED_TOKEN_ERROR_STR;
+use crate::error_listener::{
+    IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
+};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
-#[derive(Clone)]
+use super::types::Type;
+
+#[derive(Clone, PartialEq)]
 pub enum CallParam {
     Notified(String, Box<Ast>),
     Positional(usize, Box<Ast>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
     Call {
         identifier: String,
@@ -168,6 +172,36 @@ impl Value {
 }
 
 impl IAst for Value {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        match self {
+            Self::Integer(_) => Ok(()),
+
+            Self::Decimal(_) => Ok(()),
+
+            Self::Text(_) => Ok(()),
+
+            Self::Identifier(id) => {
+                if analyzer.check_identifier_existance(id).is_ok() {
+                    analyzer.error(&format!("Cannot find \"{}\" in this scope", id));
+                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                }
+
+                Ok(())
+            }
+
+            Self::Call { .. } => {
+                if analyzer.check_call_args(self).is_err() {
+                    analyzer.error("Wrong call arguments");
+                    return Err(WRONG_CALL_ARGUMENTS_ERROR_STR);
+                }
+
+                Ok(())
+            }
+
+            _ => todo!("Analyzer all values"),
+        }
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             Self::Call {
@@ -290,8 +324,22 @@ impl IAst for Value {
     }
 }
 
+impl GetType for Value {
+    fn get_type(&self) -> types::Type {
+        match self {
+            Self::Text(_) => Type::Ref {
+                is_mut: false,
+                ref_to: Box::new(Type::Str),
+            },
+            Self::Decimal(_) => Type::F32,
+            Self::Integer(_) => Type::I32,
+            _ => todo!("Implement other values get_type"),
+        }
+    }
+}
+
 impl GetType for CallParam {
-    fn get_type(&self) -> Option<types::Type> {
+    fn get_type(&self) -> types::Type {
         match self {
             Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(),
         }

@@ -1,12 +1,16 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{expressions::Expression, types, Ast, IAst, Stream};
-use crate::error_listener::{UNEXPECTED_TOKEN_ERROR_STR, VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR};
+use crate::error_listener::{
+    MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
+    VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR,
+};
 use crate::lexer::TokenType;
 use crate::parser::put_intent;
 use crate::parser::{Id, Parser};
 
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct VariableNode {
     pub identifier: Id,
     pub var_type: types::Type,
@@ -140,8 +144,32 @@ impl VariableNode {
 }
 
 impl IAst for VariableNode {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if analyzer
+            .check_identifier_existance(&self.identifier)
+            .is_ok()
+        {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.add_symbol(
+            &self.identifier,
+            analyzer.create_symbol(SymbolData::VariableDef {
+                var_type: self.var_type.clone(),
+                is_initialization: false,
+            }),
+        );
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream,
+        writeln!(
+            stream,
             "{}<variable name=\"{}\" is_global=\"{}\" is_mutable=\"{}\">",
             put_intent(intent),
             self.identifier,

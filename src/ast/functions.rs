@@ -1,15 +1,16 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{scopes, types, variables::VariableNode, Ast, IAst, Stream};
-use crate::error_listener::UNEXPECTED_TOKEN_ERROR_STR;
+use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct FunctionNode {
     pub identifier: Id,
     pub return_type: types::Type,
-    pub parameters: Vec<VariableNode>,
+    pub parameters: Vec<Ast>,
     pub body: Option<Box<Ast>>,
 }
 
@@ -70,16 +71,17 @@ impl FunctionNode {
         })
     }
 
-    pub fn parse_header_params(parser: &mut Parser) -> Result<Vec<VariableNode>, &'static str> {
+    pub fn parse_header_params(parser: &mut Parser) -> Result<Vec<Ast>, &'static str> {
         parser.consume_token(TokenType::LParen)?;
 
-        let mut parameters = Vec::<VariableNode>::new();
+        let mut parameters = Vec::<Ast>::new();
         loop {
             let next = parser.peek_token();
 
             if next.is_identifier() {
-                let param = VariableNode::parse_param(parser)?;
-                parameters.push(param);
+                parameters.push(Ast::VariableDef {
+                    node: VariableNode::parse_param(parser)?,
+                });
 
                 let next = parser.peek_token();
                 if next.lexem == TokenType::Comma {
@@ -110,6 +112,43 @@ impl FunctionNode {
 }
 
 impl IAst for FunctionNode {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.scope.push(&self.identifier);
+
+        let mut arguments = Vec::<types::Type>::new();
+        for p in self.parameters.iter_mut() {
+            if let Ast::VariableDef { node } = p {
+                arguments.push(node.var_type.clone());
+                p.analyze(analyzer)?;
+            }
+        }
+
+        analyzer.add_symbol(
+            &self.identifier,
+            analyzer.create_symbol(SymbolData::FunctionDef {
+                args: arguments.clone(),
+                return_type: self.return_type.clone(),
+                is_declaration: self.body.is_some(),
+            }),
+        );
+
+        if let Some(body) = &mut self.body {
+            body.analyze(analyzer)?;
+        }
+
+        analyzer.scope.pop();
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,

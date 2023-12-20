@@ -1,12 +1,16 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{types, Ast, IAst, Stream};
-use crate::error_listener::{UNEXPECTED_NODE_PARSED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
+use crate::error_listener::{
+    MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
+    UNEXPECTED_TOKEN_ERROR_STR,
+};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
 use std::collections::HashMap;
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct StructNode {
     pub identifier: Id,
     pub fields: HashMap<Id, types::Type>,
@@ -108,6 +112,37 @@ impl StructNode {
 }
 
 impl IAst for StructNode {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if analyzer
+            .check_identifier_existance(&self.identifier)
+            .is_ok()
+        {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.scope.push(&self.identifier);
+        for internal in self.internals.iter_mut() {
+            internal.analyze(analyzer)?;
+        }
+        analyzer.scope.pop();
+
+        let mut components = Vec::<types::Type>::new();
+        for field in self.fields.iter() {
+            components.push(field.1.clone());
+        }
+
+        analyzer.add_symbol(
+            &self.identifier,
+            analyzer.create_symbol(SymbolData::StructDef { components }),
+        );
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
@@ -121,7 +156,8 @@ impl IAst for StructNode {
         }
 
         for field in self.fields.iter() {
-            writeln!(stream,
+            writeln!(
+                stream,
                 "{}<field name=\"{}\">",
                 put_intent(intent + 1),
                 field.0
@@ -151,7 +187,7 @@ impl IAst for StructNode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum EnumField {
     StructLike(HashMap<Id, types::Type>),
     TupleLike(Vec<types::Type>),
@@ -195,6 +231,10 @@ impl EnumField {
 }
 
 impl IAst for EnumField {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        todo!("EnumField analyzer")
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             Self::StructLike(s) => {
@@ -218,7 +258,7 @@ impl IAst for EnumField {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct EnumNode {
     pub identifier: Id,
     pub fields: HashMap<Id, EnumField>,
@@ -320,6 +360,34 @@ impl EnumNode {
 }
 
 impl IAst for EnumNode {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.scope.push(&self.identifier);
+        for internal in self.internals.iter_mut() {
+            internal.analyze(analyzer)?;
+        }
+        analyzer.scope.pop();
+
+        let mut components = Vec::<EnumField>::new();
+        for field in self.fields.iter() {
+            components.push(field.1.clone());
+        }
+
+        analyzer.add_symbol(
+            &self.identifier,
+            analyzer.create_symbol(SymbolData::EnumDef { components }),
+        );
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,

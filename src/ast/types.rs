@@ -1,11 +1,13 @@
+use crate::analyzer::SymbolData;
 use crate::ast::{expressions::Expression, Ast, GetType, IAst, Stream};
+use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
 use std::fmt::Debug;
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Type {
     Ref {
         is_mut: bool,
@@ -184,7 +186,7 @@ impl Type {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Alias {
     pub identifier: Id,
     pub value: Type,
@@ -207,6 +209,10 @@ impl Alias {
 }
 
 impl IAst for Type {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        unreachable!("Type.analyze() shouln't have been invocked");
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             Self::Ref { is_mut, ref_to } => {
@@ -341,32 +347,40 @@ impl Debug for Type {
             }
             Self::Array { value_type, .. } => write!(f, "[{:?}]", value_type),
             Self::Custom(s) => write!(f, "{}", s),
-            Self::Bool => writeln!(f, "bool"),
-            Self::Byte => writeln!(f, "byte"),
-            Self::I8 => writeln!(f, "i8"),
-            Self::I16 => writeln!(f, "i16"),
-            Self::I32 => writeln!(f, "i32"),
-            Self::I64 => writeln!(f, "i64"),
-            Self::I128 => writeln!(f, "i128"),
-            Self::U8 => writeln!(f, "u8"),
-            Self::U16 => writeln!(f, "u16"),
-            Self::U32 => writeln!(f, "u32"),
-            Self::U64 => writeln!(f, "u64"),
-            Self::U128 => writeln!(f, "u128"),
-            Self::F32 => writeln!(f, "f32"),
-            Self::F64 => writeln!(f, "f64"),
-            Self::Str => writeln!(f, "str"),
+            Self::Bool => write!(f, "bool"),
+            Self::Byte => write!(f, "byte"),
+            Self::I8 => write!(f, "i8"),
+            Self::I16 => write!(f, "i16"),
+            Self::I32 => write!(f, "i32"),
+            Self::I64 => write!(f, "i64"),
+            Self::I128 => write!(f, "i128"),
+            Self::U8 => write!(f, "u8"),
+            Self::U16 => write!(f, "u16"),
+            Self::U32 => write!(f, "u32"),
+            Self::U64 => write!(f, "u64"),
+            Self::U128 => write!(f, "u128"),
+            Self::F32 => write!(f, "f32"),
+            Self::F64 => write!(f, "f64"),
+            Self::Str => write!(f, "str"),
         }
     }
 }
 
-impl PartialEq for Type {
-    fn eq(&self, other: &Self) -> bool {
-        !self.ne(other)
-    }
-}
-
 impl IAst for Alias {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
+            analyzer.error(&format!(
+                "Identifier \"{}\" defined multiple times",
+                &self.identifier
+            ));
+            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
+        }
+
+        analyzer.add_symbol(&self.identifier, analyzer.create_symbol(SymbolData::Type));
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
@@ -384,7 +398,7 @@ impl IAst for Alias {
 }
 
 impl GetType for Alias {
-    fn get_type(&self) -> Option<Type> {
-        Some(self.value.clone())
+    fn get_type(&self) -> Type {
+        self.value.clone()
     }
 }

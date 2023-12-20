@@ -4,7 +4,7 @@ use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Branch {
     Loop {
         body: Box<Ast>,
@@ -83,6 +83,30 @@ impl Branch {
 }
 
 impl IAst for Branch {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        match self {
+            Self::IfElse {
+                condition,
+                main_body,
+                else_body,
+            } => {
+                condition.analyze(analyzer)?;
+                main_body.analyze(analyzer)?;
+                if let Some(else_body) = else_body.as_mut() {
+                    else_body.analyze(analyzer)?;
+                }
+
+                Ok(())
+            }
+            Self::Loop { body, condition } => {
+                if let Some(cond) = condition {
+                    cond.analyze(analyzer)?;
+                }
+                body.analyze(analyzer)
+            }
+        }
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
             Self::Loop { body, condition } => {
@@ -139,7 +163,7 @@ impl IAst for Branch {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Break {
     pub expr: Option<Box<Ast>>,
 }
@@ -160,6 +184,14 @@ impl Break {
 }
 
 impl IAst for Break {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if let Some(expr) = &mut self.expr {
+            expr.analyze(analyzer)?
+        }
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.expr {
             Some(cond) => {
@@ -176,7 +208,7 @@ impl IAst for Break {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Continue {}
 
 impl Continue {
@@ -188,12 +220,16 @@ impl Continue {
 }
 
 impl IAst for Continue {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<continue/>", put_intent(intent))
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Return {
     pub expr: Option<Box<Ast>>,
 }
@@ -214,6 +250,14 @@ impl Return {
 }
 
 impl IAst for Return {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        if let Some(expr) = &mut self.expr {
+            expr.analyze(analyzer)?;
+        }
+
+        Ok(())
+    }
+
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match &self.expr {
             Some(cond) => {

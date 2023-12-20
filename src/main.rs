@@ -41,32 +41,36 @@ fn main() {
     let error_listener = error_listener::ErrorListener::new();
 
     let mut parser = parser::Parser::new(lexer, error_listener);
-
-    let ast = parser.parse();
-
-    let mut ast = match ast {
-        Err(errors) => {
-            errors.dump_errors();
+    let mut ast = match parser.parse() {
+        Ok(ast) => {
+            if dump_ast {
+                if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
+                    println!("{}", err)
+                }
+            }
+            ast
+        }
+        Err(error_listener) => {
+            error_listener.dump_errors();
             return;
         }
-
-        Ok(ast) => ast,
     };
 
-    if dump_ast {
-        if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
-            println!("{}", err)
+    let error_listener = parser.error_listener();
+    let mut analyzer = analyzer::Analyzer::new(error_listener);
+
+    let _symbol_table = match analyzer.analyze(&mut ast) {
+        Ok(symbol_table) => {
+            if dump_symtable {
+                if let Err(err) = analyzer::dump_symtable(output_file, &symbol_table) {
+                    println!("{}", err)
+                }
+            }
+            symbol_table
         }
-    }
-
-    let error_listener = error_listener::ErrorListener::new();
-    let mut symbol_table = analyzer::SymbolTable::new(error_listener);
-
-    symbol_table.analyze(&mut ast, analyzer::Scope::new());
-
-    if dump_symtable {
-        if let Err(err) = analyzer::dump_symtable(output_file, &symbol_table) {
-            println!("{}", err)
+        Err(error_listener) => {
+            error_listener.dump_errors();
+            return;
         }
-    }
+    };
 }
