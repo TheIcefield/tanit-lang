@@ -110,18 +110,18 @@ pub fn parse_local_internal(parser: &mut Parser) -> Option<Vec<Ast>> {
 
             TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
 
-            TokenType::KwIf => ast::branches::parse_if(parser)?,
+            TokenType::KwIf => ast::branches::Branch::parse_if(parser)?,
 
-            TokenType::KwLoop => ast::branches::parse_loop(parser)?,
+            TokenType::KwLoop => ast::branches::Branch::parse_loop(parser)?,
 
-            TokenType::KwWhile => ast::branches::parse_while(parser)?,
+            TokenType::KwWhile => ast::branches::Branch::parse_while(parser)?,
 
             // TokenType::KwFor => ast::branch_node::parse_for(parser)?,
-            TokenType::KwReturn => ast::branches::parse_return(parser)?,
+            TokenType::KwReturn => ast::branches::Return::parse(parser)?,
 
-            TokenType::KwBreak => ast::branches::parse_break(parser)?,
+            TokenType::KwBreak => ast::branches::Break::parse(parser)?,
 
-            TokenType::KwContinue => ast::branches::parse_continue(parser)?,
+            TokenType::KwContinue => ast::branches::Continue::parse(parser)?,
 
             TokenType::Identifier(_) => ast::expressions::parse_expression(parser)?,
 

@@ -1,2 +1,4 @@
 /target
 Cargo.lock
+*_ast.xml
+*_symbol_table.txt

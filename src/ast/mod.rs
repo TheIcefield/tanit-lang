@@ -45,9 +45,7 @@ pub enum Ast {
 
     Expression { node: Box<expressions::Expression> },
 
-    IfStmt { node: branches::Branch },
-
-    LoopStmt { node: branches::LoopNode },
+    BranchStmt { node: branches::Branch },
 
     BreakStmt { node: branches::Break },
 
@@ -70,8 +68,7 @@ impl Ast {
             Self::TypeDecl { node } => node.traverse(stream, intent),
             Self::AliasDef { node } => node.traverse(stream, intent),
             Self::Expression { node } => node.traverse(stream, intent),
-            Self::IfStmt { node } => node.traverse(stream, intent),
-            Self::LoopStmt { node } => node.traverse(stream, intent),
+            Self::BranchStmt { node } => node.traverse(stream, intent),
             Self::BreakStmt { node } => node.traverse(stream, intent),
             Self::ContinueStmt { node } => node.traverse(stream, intent),
             Self::ReturnStmt { node } => node.traverse(stream, intent),
