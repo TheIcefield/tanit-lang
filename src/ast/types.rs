@@ -1,12 +1,9 @@
-use crate::ast::{Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, Ast, GetType, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
 use std::fmt::Debug;
 use std::io::Write;
-
-use super::expressions::parse_expression;
-use super::GetType;
 
 #[derive(Clone)]
 pub enum Type {
@@ -48,7 +45,7 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn parse(parser: &mut Parser) -> Option<Type> {
+    pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
         let next = parser.peek_token();
 
         if parser.peek_token().lexem == TokenType::Ampersand {
@@ -60,7 +57,7 @@ impl Type {
                 parser.get_token();
             }
 
-            return Some(Type::Ref {
+            return Ok(Type::Ref {
                 is_mut,
                 ref_to: Box::new(Self::parse(parser)?),
             });
@@ -75,7 +72,7 @@ impl Type {
                 parser.get_token();
             }
 
-            return Some(Type::Ptr {
+            return Ok(Type::Ptr {
                 is_mut,
                 ptr_to: Box::new(Self::parse(parser)?),
             });
@@ -92,37 +89,37 @@ impl Type {
         let identifier = parser.consume_identifier()?;
 
         match &identifier[..] {
-            "bool" => return Some(Type::Bool),
-            "byte" => return Some(Type::Byte),
-            "i8" => return Some(Type::I8),
-            "i16" => return Some(Type::I16),
-            "i32" => return Some(Type::I32),
-            "i64" => return Some(Type::I64),
-            "i128" => return Some(Type::I128),
-            "u8" => return Some(Type::U8),
-            "u16" => return Some(Type::U16),
-            "u32" => return Some(Type::U32),
-            "u64" => return Some(Type::U64),
-            "u128" => return Some(Type::U128),
-            "f32" => return Some(Type::F32),
-            "f64" => return Some(Type::F64),
-            "str" => return Some(Type::Str),
+            "bool" => return Ok(Type::Bool),
+            "byte" => return Ok(Type::Byte),
+            "i8" => return Ok(Type::I8),
+            "i16" => return Ok(Type::I16),
+            "i32" => return Ok(Type::I32),
+            "i64" => return Ok(Type::I64),
+            "i128" => return Ok(Type::I128),
+            "u8" => return Ok(Type::U8),
+            "u16" => return Ok(Type::U16),
+            "u32" => return Ok(Type::U32),
+            "u64" => return Ok(Type::U64),
+            "u128" => return Ok(Type::U128),
+            "f32" => return Ok(Type::F32),
+            "f64" => return Ok(Type::F64),
+            "str" => return Ok(Type::Str),
             _ => {}
         }
 
         if parser.peek_singular().lexem == TokenType::Lt {
             let arguments = Self::parse_template_args(parser)?;
 
-            return Some(Type::Template {
+            return Ok(Type::Template {
                 identifier,
                 arguments,
             });
         }
 
-        Some(Type::Custom(identifier))
+        Ok(Type::Custom(identifier))
     }
 
-    pub fn parse_tuple_def(parser: &mut Parser) -> Option<Type> {
+    pub fn parse_tuple_def(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::LParen)?;
 
         let mut children = Vec::<Type>::new();
@@ -142,12 +139,12 @@ impl Type {
 
         parser.consume_token(TokenType::RParen)?;
 
-        Some(Type::Tuple {
+        Ok(Type::Tuple {
             components: children,
         })
     }
 
-    pub fn parse_array_def(parser: &mut Parser) -> Option<Type> {
+    pub fn parse_array_def(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::Lsb)?;
 
         let mut size: Option<Box<Ast>> = None;
@@ -157,15 +154,15 @@ impl Type {
         if parser.peek_token().lexem == TokenType::Colon {
             parser.get_token();
 
-            size = Some(Box::new(parse_expression(parser)?));
+            size = Some(Box::new(Expression::parse(parser)?));
         }
 
         parser.consume_token(TokenType::Rsb)?;
 
-        Some(Type::Array { size, value_type })
+        Ok(Type::Array { size, value_type })
     }
 
-    pub fn parse_template_args(parser: &mut Parser) -> Option<Vec<Type>> {
+    pub fn parse_template_args(parser: &mut Parser) -> Result<Vec<Self>, &'static str> {
         parser.consume_token(TokenType::Lt)?;
 
         let mut children = Vec::<Type>::new();
@@ -183,7 +180,7 @@ impl Type {
 
         parser.get_singular();
 
-        Some(children)
+        Ok(children)
     }
 }
 
@@ -194,7 +191,7 @@ pub struct Alias {
 }
 
 impl Alias {
-    pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwAlias)?;
 
         let identifier = parser.consume_identifier()?;
@@ -203,7 +200,7 @@ impl Alias {
 
         let value = Type::parse(parser)?;
 
-        Some(Ast::AliasDef {
+        Ok(Ast::AliasDef {
             node: Alias { identifier, value },
         })
     }

@@ -20,7 +20,7 @@ fn module_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    let res = tanit::ast::modules::parse(&mut parser).unwrap();
+    let res = tanit::ast::modules::ModuleNode::parse_def(&mut parser).unwrap();
 
     let res = if let ast::Ast::ModuleDef { node } = &res {
         assert_eq!(node.identifier, "M1");
@@ -29,7 +29,7 @@ fn module_test() {
         panic!("res should be \'ModuleDef\'");
     };
 
-    let res = if let ast::Ast::GScope { node } = res.as_ref() {
+    let res = if let ast::Ast::Scope { node } = res.as_ref() {
         &node.statements[0]
     } else {
         panic!("res should be \'global scope\'");
@@ -148,12 +148,11 @@ fn variables_test() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
 
-    let res = tanit::ast::functions::parse_func_def(&mut parser).unwrap();
+    let res = tanit::ast::functions::FunctionNode::parse_def(&mut parser).unwrap();
 
     let res = if let ast::Ast::FuncDef { node } = &res {
         assert_eq!(node.identifier, String::from("main"));
         assert_eq!(node.parameters.is_empty(), true);
-        assert_eq!(node.is_static, false);
 
         if let Type::Tuple { components } = &node.return_type {
             assert!(components.is_empty());
@@ -166,7 +165,7 @@ fn variables_test() {
         panic!("res has to be \'FuncDef\'");
     };
 
-    let res = if let tanit::ast::Ast::LScope { node } = res.unwrap().as_ref() {
+    let res = if let tanit::ast::Ast::Scope { node } = res.unwrap().as_ref() {
         &node.statements
     } else {
         panic!("res has to be \'LScope\'");
@@ -300,7 +299,7 @@ fn functions_test() {
     let mut parser = parser::Parser::new(lexer, error_listener);
 
     {
-        let func = ast::functions::parse_func_def(&mut parser).unwrap();
+        let func = ast::functions::FunctionNode::parse_def(&mut parser).unwrap();
 
         let scope = if let ast::Ast::FuncDef { node } = &func {
             node.body.as_ref()
@@ -308,7 +307,7 @@ fn functions_test() {
             panic!("node should be \'FuncDef\'");
         };
 
-        let node = if let ast::Ast::LScope { node } = scope.unwrap().as_ref() {
+        let node = if let ast::Ast::Scope { node } = scope.unwrap().as_ref() {
             assert_eq!(node.statements.len(), 1);
             &node.statements[0]
         } else {
@@ -319,7 +318,7 @@ fn functions_test() {
     }
 
     {
-        let func = ast::functions::parse_func_def(&mut parser).unwrap();
+        let func = ast::functions::FunctionNode::parse_def(&mut parser).unwrap();
 
         let scope = if let ast::Ast::FuncDef { node } = &func {
             node.body.as_ref()
@@ -327,7 +326,7 @@ fn functions_test() {
             panic!("node should be \'FuncDef\'");
         };
 
-        let node = if let ast::Ast::LScope { node } = scope.unwrap().as_ref() {
+        let node = if let ast::Ast::Scope { node } = scope.unwrap().as_ref() {
             assert_eq!(node.statements.len(), 1);
             &node.statements[0]
         } else {
@@ -369,10 +368,9 @@ fn types_test() {
     let mut parser = parser::Parser::new(lexer, error_listener);
 
     let res = if let ast::Ast::FuncDef { node } =
-        tanit::ast::functions::parse_func_def(&mut parser).unwrap()
+        tanit::ast::functions::FunctionNode::parse_def(&mut parser).unwrap()
     {
         assert_eq!(node.identifier, String::from("main"));
-        assert!(!node.is_static);
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple { components } = &node.return_type {
@@ -386,7 +384,7 @@ fn types_test() {
         panic!("res has to be \'function definition\'");
     };
 
-    let statements = if let ast::Ast::LScope { node } = res.as_ref() {
+    let statements = if let ast::Ast::Scope { node } = res.as_ref() {
         &node.statements
     } else {
         panic!("node has to be \'local scope\'");

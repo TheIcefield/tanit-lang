@@ -1,8 +1,6 @@
 use crate::ast::{scopes, Ast};
-use crate::error_listener::ErrorListener;
+use crate::error_listener::{ErrorListener, PARSING_FAILED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::{Lexer, Location, Token, TokenType};
-
-type ParseResult = Result<Ast, ErrorListener>;
 
 pub type Id = String;
 
@@ -19,10 +17,21 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> ParseResult {
-        let ast = parse_program(self);
+    pub fn parse(&mut self) -> Result<Ast, ErrorListener> {
+        let ast = {
+            if let Ok(statements) = scopes::Scope::parse_global_internal(self) {
+                Ok(Ast::Scope {
+                    node: scopes::Scope {
+                        statements,
+                        is_global: true,
+                    },
+                })
+            } else {
+                Err(PARSING_FAILED_ERROR_STR)
+            }
+        };
 
-        if ast.is_none() || !self.error_listener.is_empty() {
+        if ast.is_err() || !self.error_listener.is_empty() {
             return Err(std::mem::take(&mut self.error_listener));
         }
 
@@ -57,17 +66,17 @@ impl Parser {
         self.lexer.peek_singular()
     }
 
-    pub fn consume_new_line(&mut self) -> Option<Token> {
+    pub fn consume_new_line(&mut self) -> Result<Token, &'static str> {
         self.consume_singular(TokenType::EndOfLine)
     }
 
-    pub fn consume_singular(&mut self, token_type: TokenType) -> Option<Token> {
+    pub fn consume_singular(&mut self, token_type: TokenType) -> Result<Token, &'static str> {
         let tkn = self.peek_singular();
 
         if tkn.lexem == token_type {
             let tkn = self.get_singular();
 
-            return Some(tkn);
+            return Ok(tkn);
         }
 
         self.error_listener.syntax_error(
@@ -78,15 +87,15 @@ impl Parser {
             tkn.location,
         );
 
-        None
+        Err(UNEXPECTED_TOKEN_ERROR_STR)
     }
 
-    pub fn consume_token(&mut self, token_type: TokenType) -> Option<Token> {
+    pub fn consume_token(&mut self, token_type: TokenType) -> Result<Token, &'static str> {
         loop {
             let tkn = self.lexer.peek();
 
             if tkn.lexem == token_type {
-                return Some(self.lexer.get());
+                return Ok(self.lexer.get());
             } else if tkn.lexem == TokenType::EndOfLine {
                 self.lexer.get();
             } else {
@@ -99,7 +108,7 @@ impl Parser {
         if tkn.lexem == token_type {
             let tkn = self.lexer.get();
 
-            return Some(tkn);
+            return Ok(tkn);
         }
 
         self.error_listener.syntax_error(
@@ -110,10 +119,10 @@ impl Parser {
             tkn.location,
         );
 
-        None
+        Err(UNEXPECTED_TOKEN_ERROR_STR)
     }
 
-    pub fn consume_identifier(&mut self) -> Option<Id> {
+    pub fn consume_identifier(&mut self) -> Result<Id, &'static str> {
         loop {
             let tkn = self.lexer.peek();
 
@@ -129,7 +138,7 @@ impl Parser {
         match tkn.lexem {
             TokenType::Identifier(id) => {
                 self.get_token();
-                Some(id)
+                Ok(id)
             }
 
             _ => {
@@ -141,7 +150,7 @@ impl Parser {
                     tkn.location,
                 );
 
-                None
+                Err(UNEXPECTED_TOKEN_ERROR_STR)
             }
         }
     }
@@ -162,12 +171,4 @@ pub fn put_intent(intent: usize) -> String {
 pub fn dump_ast(output: String, ast: &Ast) -> std::io::Result<()> {
     let mut stream = std::fs::File::create(format!("{}_ast.xml", output)).unwrap();
     ast.traverse(&mut stream, 0)
-}
-
-fn parse_program(parser: &mut Parser) -> Option<Ast> {
-    Some(Ast::GScope {
-        node: scopes::Scope {
-            statements: scopes::parse_global_internal(parser)?,
-        },
-    })
 }

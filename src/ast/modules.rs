@@ -6,12 +6,38 @@ use crate::parser::{Id, Parser};
 use std::io::Write;
 
 #[derive(Clone)]
-pub struct Node {
+pub struct ModuleNode {
     pub identifier: Id,
     pub body: Box<Ast>,
 }
 
-impl IAst for Node {
+impl ModuleNode {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
+        let mut node = Self::parse_header(parser)?;
+
+        node.body = Box::new(scopes::Scope::parse_global(parser)?);
+
+        Ok(Ast::ModuleDef { node })
+    }
+
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
+        parser.consume_token(TokenType::KwModule)?;
+
+        let identifier = parser.consume_identifier()?;
+
+        Ok(Self {
+            identifier,
+            body: Box::new(Ast::Scope {
+                node: scopes::Scope {
+                    statements: Vec::new(),
+                    is_global: true,
+                },
+            }),
+        })
+    }
+}
+
+impl IAst for ModuleNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
@@ -26,31 +52,4 @@ impl IAst for Node {
 
         Ok(())
     }
-}
-
-pub fn parse(parser: &mut Parser) -> Option<Ast> {
-    let mut node = parse_header(parser)?;
-
-    node.body = Box::new(parse_body(parser)?);
-
-    Some(Ast::ModuleDef { node })
-}
-
-pub fn parse_header(parser: &mut Parser) -> Option<Node> {
-    parser.consume_token(TokenType::KwModule)?;
-
-    let identifier = parser.consume_identifier()?;
-
-    Some(Node {
-        identifier,
-        body: Box::new(Ast::GScope {
-            node: scopes::Scope {
-                statements: Vec::new(),
-            },
-        }),
-    })
-}
-
-pub fn parse_body(parser: &mut Parser) -> Option<Ast> {
-    scopes::parse_global_external(parser)
 }

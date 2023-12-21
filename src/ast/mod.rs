@@ -23,19 +23,17 @@ pub trait GetType {
 
 #[derive(Clone)]
 pub enum Ast {
-    GScope { node: scopes::Scope },
+    Scope { node: scopes::Scope },
 
-    LScope { node: scopes::Scope },
-
-    ModuleDef { node: modules::Node },
+    ModuleDef { node: modules::ModuleNode },
 
     StructDef { node: structs::StructNode },
 
     EnumDef { node: structs::EnumNode },
 
-    FuncDef { node: functions::Node },
+    FuncDef { node: functions::FunctionNode },
 
-    VariableDef { node: variables::Node },
+    VariableDef { node: variables::VariableNode },
 
     Value { node: values::Value },
 
@@ -57,8 +55,7 @@ pub enum Ast {
 impl Ast {
     pub fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         match self {
-            Self::GScope { node } => node.traverse(stream, intent),
-            Self::LScope { node } => node.traverse(stream, intent),
+            Self::Scope { node } => node.traverse(stream, intent),
             Self::ModuleDef { node } => node.traverse(stream, intent),
             Self::StructDef { node } => node.traverse(stream, intent),
             Self::EnumDef { node } => node.traverse(stream, intent),

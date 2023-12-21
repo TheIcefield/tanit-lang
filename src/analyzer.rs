@@ -139,7 +139,7 @@ impl SymbolTable {
 
     pub fn analyze(&mut self, ast: &mut Ast, scope: Scope) {
         match ast {
-            Ast::GScope { node } | Ast::LScope { node } => {
+            Ast::Scope { node } => {
                 let mut new_scope = scope.clone();
                 new_scope.push("@s".to_string());
                 for n in node.statements.iter_mut() {

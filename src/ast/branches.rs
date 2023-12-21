@@ -1,10 +1,8 @@
-use crate::ast::{expressions, scopes, Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, scopes, Ast, IAst, Stream};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
-
-use expressions::parse_expression as parse_condition;
 
 #[derive(Clone)]
 pub enum Branch {
@@ -20,12 +18,12 @@ pub enum Branch {
 }
 
 impl Branch {
-    pub fn parse_loop(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_loop(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwLoop)?;
 
-        let body = Box::new(scopes::parse_local_external(parser)?);
+        let body = Box::new(scopes::Scope::parse_local(parser)?);
 
-        Some(Ast::BranchStmt {
+        Ok(Ast::BranchStmt {
             node: Self::Loop {
                 body,
                 condition: None,
@@ -33,14 +31,14 @@ impl Branch {
         })
     }
 
-    pub fn parse_while(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_while(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwWhile)?;
 
-        let condition = parse_condition(parser)?;
+        let condition = Expression::parse(parser)?;
 
-        let body = Box::new(scopes::parse_local_external(parser)?);
+        let body = Box::new(scopes::Scope::parse_local(parser)?);
 
-        Some(Ast::BranchStmt {
+        Ok(Ast::BranchStmt {
             node: Self::Loop {
                 body,
                 condition: Some(Box::new(condition)),
@@ -48,12 +46,12 @@ impl Branch {
         })
     }
 
-    pub fn parse_if(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_if(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwIf)?;
 
-        let condition = Box::new(parse_condition(parser)?);
+        let condition = Box::new(Expression::parse(parser)?);
 
-        let main_body = Box::new(scopes::parse_local_external(parser)?);
+        let main_body = Box::new(scopes::Scope::parse_local(parser)?);
 
         let else_body = if parser.peek_token().lexem == TokenType::KwElse {
             parser.get_token();
@@ -61,7 +59,7 @@ impl Branch {
             let next = parser.peek_token();
             match next.lexem {
                 TokenType::KwIf => Some(Box::new(Self::parse_if(parser)?)),
-                TokenType::Lcb => Some(Box::new(scopes::parse_local_external(parser)?)),
+                TokenType::Lcb => Some(Box::new(scopes::Scope::parse_local(parser)?)),
                 _ => {
                     parser.error(
                         &format!("Unexpected token \"{}\" in branch expression", next),
@@ -74,7 +72,7 @@ impl Branch {
             None
         };
 
-        Some(Ast::BranchStmt {
+        Ok(Ast::BranchStmt {
             node: Self::IfElse {
                 condition,
                 main_body,
@@ -147,17 +145,17 @@ pub struct Break {
 }
 
 impl Break {
-    pub fn parse(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwBreak)?;
 
         let mut node = Break { expr: None };
 
         match parser.peek_token().lexem {
             TokenType::EndOfLine => {}
-            _ => node.expr = Some(Box::new(expressions::parse_expression(parser)?)),
+            _ => node.expr = Some(Box::new(Expression::parse(parser)?)),
         }
 
-        Some(Ast::BreakStmt { node })
+        Ok(Ast::BreakStmt { node })
     }
 }
 
@@ -179,39 +177,19 @@ impl IAst for Break {
 }
 
 #[derive(Clone)]
-pub struct Continue {
-    pub expr: Option<Box<Ast>>,
-}
+pub struct Continue {}
 
 impl Continue {
-    pub fn parse(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwContinue)?;
 
-        let mut node = Continue { expr: None };
-
-        match parser.peek_token().lexem {
-            TokenType::EndOfLine => {}
-            _ => node.expr = Some(Box::new(expressions::parse_expression(parser)?)),
-        }
-
-        Some(Ast::ContinueStmt { node })
+        Ok(Ast::ContinueStmt { node: Self {} })
     }
 }
 
 impl IAst for Continue {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        match &self.expr {
-            Some(cond) => {
-                writeln!(stream, "{}<continue>", put_intent(intent))?;
-                cond.traverse(stream, intent + 1)?;
-                writeln!(stream, "{}</continue>", put_intent(intent))?;
-            }
-            _ => {
-                writeln!(stream, "{}<continue/>", put_intent(intent))?;
-            }
-        }
-
-        Ok(())
+        writeln!(stream, "{}<continue/>", put_intent(intent))
     }
 }
 
@@ -221,17 +199,17 @@ pub struct Return {
 }
 
 impl Return {
-    pub fn parse(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwReturn)?;
 
         let mut node = Return { expr: None };
 
         match parser.peek_token().lexem {
             TokenType::EndOfLine => {}
-            _ => node.expr = Some(Box::new(expressions::parse_expression(parser)?)),
+            _ => node.expr = Some(Box::new(Expression::parse(parser)?)),
         }
 
-        Some(Ast::ReturnStmt { node })
+        Ok(Ast::ReturnStmt { node })
     }
 }
 

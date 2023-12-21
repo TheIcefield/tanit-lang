@@ -2,6 +2,12 @@ use crate::lexer::Location;
 
 pub type Errors = Vec<String>;
 
+pub static UNEXPECTED_TOKEN_ERROR_STR: &str = "unexpected token";
+pub static UNEXPECTED_END_OF_LINE_ERROR_STR: &str = "end of line wasn\'t expected";
+pub static UNEXPECTED_NODE_PARSED_ERROR_STR: &str = "parsed unexpected node";
+pub static VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR: &str = "variable defined without type";
+pub static PARSING_FAILED_ERROR_STR: &str = "some error occured during parsing";
+
 #[derive(Default)]
 pub struct ErrorListener {
     errors: Errors,

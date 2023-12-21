@@ -1,4 +1,5 @@
 use crate::ast::{types, Ast, IAst, Stream};
+use crate::error_listener::{UNEXPECTED_NODE_PARSED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
 
@@ -13,30 +14,30 @@ pub struct StructNode {
 }
 
 impl StructNode {
-    pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         let identifier = Self::parse_header(parser)?.identifier;
 
         if let Ast::StructDef { mut node } = Self::parse_body_external(parser)? {
             node.identifier = identifier;
-            return Some(Ast::StructDef { node });
+            return Ok(Ast::StructDef { node });
         }
 
-        None
+        Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Option<StructNode> {
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwStruct)?;
 
         let identifier = parser.consume_identifier()?;
 
-        Some(StructNode {
+        Ok(StructNode {
             identifier,
             fields: HashMap::new(),
             internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
@@ -46,7 +47,7 @@ impl StructNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
         let mut fields = HashMap::<Id, types::Type>::new();
         let mut internals = Vec::<Ast>::new();
 
@@ -91,12 +92,12 @@ impl StructNode {
                         next.get_location(),
                     );
 
-                    return None;
+                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
                 }
             }
         }
 
-        Some(Ast::StructDef {
+        Ok(Ast::StructDef {
             node: Self {
                 identifier: String::new(),
                 fields,
@@ -146,15 +147,15 @@ pub enum EnumField {
 }
 
 impl EnumField {
-    pub fn parse(parser: &mut Parser) -> Option<EnumField> {
+    pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::EndOfLine => Some(EnumField::Common),
+            TokenType::EndOfLine => Ok(EnumField::Common),
             TokenType::LParen => {
                 if let types::Type::Tuple { components } = types::Type::parse_tuple_def(parser)? {
-                    Some(Self::TupleLike(components))
+                    Ok(Self::TupleLike(components))
                 } else {
-                    None
+                    Err(UNEXPECTED_TOKEN_ERROR_STR)
                 }
             }
             TokenType::Lcb => {
@@ -163,16 +164,16 @@ impl EnumField {
                         parser.error("Internal structs are not allowed here", next.get_location());
                     }
 
-                    return Some(EnumField::StructLike(node.fields));
+                    return Ok(EnumField::StructLike(node.fields));
                 }
-                None
+                Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
             }
             _ => {
                 parser.error(
                     &format!("Unexpected token during parsing enum: {}", next),
                     next.get_location(),
                 );
-                None
+                Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
             }
         }
     }
@@ -210,30 +211,30 @@ pub struct EnumNode {
 }
 
 impl EnumNode {
-    pub fn parse_def(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         let identifier = Self::parse_header(parser)?.identifier;
 
         if let Ast::EnumDef { mut node } = Self::parse_body_external(parser)? {
             node.identifier = identifier;
-            return Some(Ast::EnumDef { node });
+            return Ok(Ast::EnumDef { node });
         }
 
-        None
+        Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Option<EnumNode> {
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwEnum)?;
 
         let identifier = parser.consume_identifier()?;
 
-        Some(EnumNode {
+        Ok(EnumNode {
             identifier,
             fields: HashMap::new(),
             internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
@@ -243,7 +244,7 @@ impl EnumNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
         let mut fields = HashMap::<Id, EnumField>::new();
         let mut internals = Vec::<Ast>::new();
 
@@ -288,12 +289,12 @@ impl EnumNode {
                         next.get_location(),
                     );
 
-                    return None;
+                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
                 }
             }
         }
 
-        Some(Ast::EnumDef {
+        Ok(Ast::EnumDef {
             node: Self {
                 identifier: String::new(),
                 fields,

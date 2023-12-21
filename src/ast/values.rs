@@ -1,4 +1,5 @@
-use crate::ast::{expressions, types, Ast, GetType, IAst, Stream};
+use crate::ast::{expressions::Expression, types, Ast, GetType, IAst, Stream};
+use crate::error_listener::UNEXPECTED_TOKEN_ERROR_STR;
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
@@ -33,7 +34,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn parse_call(parser: &mut Parser) -> Option<Vec<CallParam>> {
+    pub fn parse_call(parser: &mut Parser) -> Result<Vec<CallParam>, &'static str> {
         parser.consume_token(TokenType::LParen)?;
 
         let mut args = Vec::<CallParam>::new();
@@ -46,7 +47,7 @@ impl Value {
                 break;
             }
 
-            let expr = expressions::parse_expression(parser)?;
+            let expr = Expression::parse(parser)?;
 
             let param_id = if let Ast::Value {
                 node: Self::Identifier(id),
@@ -63,7 +64,7 @@ impl Value {
             };
 
             let param = if let Some(id) = param_id {
-                CallParam::Notified(id, Box::new(expressions::parse_expression(parser)?))
+                CallParam::Notified(id, Box::new(Expression::parse(parser)?))
             } else {
                 CallParam::Positional(i, Box::new(expr))
             };
@@ -82,16 +83,16 @@ impl Value {
                 break;
             } else {
                 parser.error("Unexpected token when parsing call", next.get_location());
-                return None;
+                return Err(UNEXPECTED_TOKEN_ERROR_STR);
             }
         }
 
         parser.consume_token(TokenType::RParen)?;
 
-        Some(args)
+        Ok(args)
     }
 
-    pub fn parse_array(parser: &mut Parser) -> Option<Ast> {
+    pub fn parse_array(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::Lsb)?;
 
         let mut components = Vec::<Ast>::new();
@@ -102,7 +103,7 @@ impl Value {
             if next.lexem == TokenType::Rsb {
                 break;
             }
-            components.push(expressions::parse_expression(parser)?);
+            components.push(Expression::parse(parser)?);
 
             let next = parser.peek_token();
             if next.lexem == TokenType::Comma {
@@ -114,18 +115,18 @@ impl Value {
                 break;
             } else {
                 parser.error("Unexpected token when parsing call", next.get_location());
-                return None;
+                return Err(UNEXPECTED_TOKEN_ERROR_STR);
             }
         }
 
         parser.consume_token(TokenType::Rsb)?;
 
-        Some(Ast::Value {
+        Ok(Ast::Value {
             node: Value::Array { components },
         })
     }
 
-    pub fn parse_struct(parser: &mut Parser) -> Option<Vec<(String, Ast)>> {
+    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(String, Ast)>, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
         let mut components = Vec::<(String, Ast)>::new();
@@ -141,7 +142,7 @@ impl Value {
 
             parser.consume_token(TokenType::Colon)?;
 
-            components.push((identifier, expressions::parse_expression(parser)?));
+            components.push((identifier, Expression::parse(parser)?));
 
             let next = parser.peek_token();
             if next.lexem == TokenType::Comma {
@@ -156,13 +157,13 @@ impl Value {
                     "Unexpected token when parsing struct value",
                     next.get_location(),
                 );
-                return None;
+                return Err(UNEXPECTED_TOKEN_ERROR_STR);
             }
         }
 
         parser.consume_token(TokenType::Rcb)?;
 
-        Some(components)
+        Ok(components)
     }
 }
 
