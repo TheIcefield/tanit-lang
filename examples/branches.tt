@@ -1,15 +1,20 @@
+# define func
 func loop_func() {
-    loop {
+    loop { # loop statement
+        # increase counter
         a += 1
+        # if counter is greater than 10
+        # break from the loop
         if a >= 10 {
             break
         }
     }
-}
+} # end of loop_func
 
 func while_func() {
     while a < 10 {
-        a += 1
+        # simple loop body
+        a += 1 # increase counter
     }
 }
 

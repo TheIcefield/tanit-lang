@@ -370,6 +370,12 @@ impl Lexer {
         }
     }
 
+    fn skip_comment(&mut self) {
+        if self.peek_char() == '#' {
+            while self.get_char() != '\n' {}
+        }
+    }
+
     fn get_next(&mut self, singular: bool) -> Token {
         if self.next_token.is_some() {
             let token = self.next_token.clone().unwrap();
@@ -377,7 +383,16 @@ impl Lexer {
             return token;
         }
 
-        self.skip_spaces();
+        loop {
+            self.skip_spaces();
+            self.skip_comment();
+
+            let ch = self.peek_char();
+
+            if (ch != '#' && !ch.is_ascii_whitespace()) || ch == '\n' {
+                break;
+            }
+        }
 
         if self.is_eof {
             return Token::new(TokenType::EndOfFile, self.location.clone());
