@@ -151,7 +151,8 @@ impl Scope {
 
 impl IAst for Scope {
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
-        analyzer.scope.push("@s");
+        let cnt = analyzer.counter();
+        analyzer.scope.push(&format!("@s.{}", cnt));
         for n in self.statements.iter_mut() {
             n.analyze(analyzer)?;
         }

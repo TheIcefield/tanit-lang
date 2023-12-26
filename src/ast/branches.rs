@@ -1,4 +1,8 @@
 use crate::ast::{expressions::Expression, scopes, Ast, IAst, Stream};
+use crate::error_listener::{
+    UNEXPECTED_BREAK_STMT_ERROR_STR, UNEXPECTED_CONTINUE_STMT_ERROR_STR,
+    UNEXPECTED_RETURN_STMT_ERROR_STR,
+};
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
@@ -99,10 +103,22 @@ impl IAst for Branch {
                 Ok(())
             }
             Self::Loop { body, condition } => {
+                let cnt = analyzer.counter();
+                analyzer.scope.push(&format!("@l.{}", cnt));
+
                 if let Some(cond) = condition {
                     cond.analyze(analyzer)?;
                 }
-                body.analyze(analyzer)
+
+                if let Ast::Scope { node } = body.as_mut() {
+                    for stmt in node.statements.iter_mut() {
+                        stmt.analyze(analyzer)?;
+                    }
+                }
+
+                analyzer.scope.pop();
+
+                Ok(())
             }
         }
     }
@@ -185,8 +201,21 @@ impl Break {
 
 impl IAst for Break {
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        let mut in_loop = false;
+        for s in analyzer.scope.iter().rev() {
+            if s.starts_with("@l.") {
+                in_loop = true;
+                break;
+            }
+        }
+
         if let Some(expr) = &mut self.expr {
             expr.analyze(analyzer)?
+        }
+
+        if !in_loop {
+            analyzer.error("Unexpected break statement");
+            return Err(UNEXPECTED_BREAK_STMT_ERROR_STR);
         }
 
         Ok(())
@@ -220,7 +249,20 @@ impl Continue {
 }
 
 impl IAst for Continue {
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        let mut in_loop = false;
+        for s in analyzer.scope.iter().rev() {
+            if s.starts_with("@l.") {
+                in_loop = true;
+                break;
+            }
+        }
+
+        if !in_loop {
+            analyzer.error("Unexpected continue statement");
+            return Err(UNEXPECTED_CONTINUE_STMT_ERROR_STR);
+        }
+
         Ok(())
     }
 
@@ -251,8 +293,21 @@ impl Return {
 
 impl IAst for Return {
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        let mut in_func = false;
+        for s in analyzer.scope.iter().rev() {
+            if s.starts_with("@f.") {
+                in_func = true;
+                break;
+            }
+        }
+
         if let Some(expr) = &mut self.expr {
             expr.analyze(analyzer)?;
+        }
+
+        if !in_func {
+            analyzer.error("Unexpected return statement");
+            return Err(UNEXPECTED_RETURN_STMT_ERROR_STR);
         }
 
         Ok(())

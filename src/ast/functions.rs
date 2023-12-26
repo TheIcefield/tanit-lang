@@ -121,7 +121,7 @@ impl IAst for FunctionNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&self.identifier);
+        analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
         let mut arguments = Vec::<types::Type>::new();
         for p in self.parameters.iter_mut() {
@@ -141,7 +141,11 @@ impl IAst for FunctionNode {
         );
 
         if let Some(body) = &mut self.body {
-            body.analyze(analyzer)?;
+            if let Ast::Scope { node } = body.as_mut() {
+                for stmt in node.statements.iter_mut() {
+                    stmt.analyze(analyzer)?;
+                }
+            }
         }
 
         analyzer.scope.pop();

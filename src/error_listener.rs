@@ -15,6 +15,9 @@ pub static WRONG_CALL_ARGUMENTS_ERROR_STR: &str = "wrong call arguments";
 pub static MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR: &str =
     "identifier defined multiple times in current scope";
 pub static MISMATCHED_TYPES_ERROR_STR: &str = "mismatched types";
+pub static UNEXPECTED_BREAK_STMT_ERROR_STR: &str = "unexpected break statement";
+pub static UNEXPECTED_CONTINUE_STMT_ERROR_STR: &str = "unexpected continue statement";
+pub static UNEXPECTED_RETURN_STMT_ERROR_STR: &str = "unexpected return statement";
 
 #[derive(Default)]
 pub struct ErrorListener {

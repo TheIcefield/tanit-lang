@@ -25,6 +25,14 @@ impl Scope {
     pub fn pop(&mut self) {
         self.0.pop();
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, String> {
+        self.0.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, String> {
+        self.0.iter_mut()
+    }
 }
 
 impl Default for Scope {
@@ -203,6 +211,7 @@ pub fn dump_symtable(output: String, symbol_table: &SymbolTable) -> std::io::Res
 pub struct Analyzer {
     table: SymbolTable,
     pub scope: Scope,
+    counter: usize,
     error_listener: ErrorListener,
 }
 
@@ -211,6 +220,7 @@ impl Analyzer {
         Self {
             table: SymbolTable::new(),
             scope: Scope::new(),
+            counter: 0,
             error_listener,
         }
     }
@@ -229,6 +239,12 @@ impl Analyzer {
         }
 
         Ok(table.unwrap())
+    }
+
+    pub fn counter(&mut self) -> usize {
+        let old = self.counter;
+        self.counter += 1;
+        old
     }
 
     pub fn add_symbol(&mut self, id: &str, symbol: Symbol) {
