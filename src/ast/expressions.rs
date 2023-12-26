@@ -1,5 +1,5 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{types, values, Ast, GetType, IAst, Stream};
+use crate::ast::{types, values, Ast, IAst, Stream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
@@ -480,6 +480,50 @@ impl Expression {
 }
 
 impl IAst for Expression {
+    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+        match self {
+            Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => match operation {
+                TokenType::Neq
+                | TokenType::Eq
+                | TokenType::Lt
+                | TokenType::Lte
+                | TokenType::Gt
+                | TokenType::Gte => types::Type::Bool,
+
+                _ => {
+                    let rhs_type = rhs.get_type(analyzer);
+
+                    let mut lhs_type = if let Ast::VariableDef { node } = lhs.as_ref() {
+                        node.var_type.clone()
+                    } else {
+                        lhs.get_type(analyzer)
+                    };
+
+                    if let types::Type::Custom(t) = &mut lhs_type {
+                        if t == "@auto" {
+                            lhs_type = rhs_type.clone();
+                        }
+                    }
+
+                    if lhs_type == rhs_type {
+                        return lhs_type;
+                    }
+
+                    analyzer.error("mismatched types");
+
+                    types::Type::Tuple {
+                        components: Vec::new(),
+                    }
+                }
+            },
+            Self::Unary { node, .. } => node.get_type(analyzer),
+        }
+    }
+
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
         match self {
             Self::Binary {
@@ -487,8 +531,8 @@ impl IAst for Expression {
                 lhs,
                 rhs,
             } => {
-                let mut lhs_type = lhs.get_type();
-                let rhs_type = rhs.get_type();
+                let mut lhs_type = lhs.get_type(analyzer);
+                let rhs_type = rhs.get_type(analyzer);
 
                 if let Ast::VariableDef { node } = lhs.as_mut() {
                     if *operation == TokenType::Assign
@@ -591,38 +635,5 @@ impl IAst for Expression {
         }
 
         Ok(())
-    }
-}
-
-impl GetType for Expression {
-    fn get_type(&self) -> types::Type {
-        match self {
-            Self::Binary {
-                operation,
-                lhs,
-                rhs,
-            } => match operation {
-                TokenType::Neq
-                | TokenType::Eq
-                | TokenType::Lt
-                | TokenType::Lte
-                | TokenType::Gt
-                | TokenType::Gte => types::Type::Bool,
-
-                _ => {
-                    let lhs_type = lhs.get_type();
-                    let rhs_type = rhs.get_type();
-
-                    if lhs_type == rhs_type {
-                        return lhs_type;
-                    }
-
-                    types::Type::Tuple {
-                        components: Vec::new(),
-                    }
-                }
-            },
-            Self::Unary { node, .. } => node.get_type(),
-        }
     }
 }

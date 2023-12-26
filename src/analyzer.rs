@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::ast::{structs, structs::EnumField, types, values, Ast, GetType};
+use crate::ast::{structs, structs::EnumField, types, values, Ast, IAst};
 use crate::error_listener::{
     ErrorListener, ANALYZING_FAILED_ERROR_STR, FUNCTION_NOT_FOUND_ERROR_STR,
     IDENTIFIER_NOT_FOUND_ERROR_STR, MISMATCHED_TYPES_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
@@ -11,7 +11,7 @@ use crate::error_listener::{
 use std::io::Write;
 
 #[derive(Clone)]
-pub struct Scope(Vec<String>);
+pub struct Scope(pub Vec<String>);
 
 impl Scope {
     pub fn new() -> Self {
@@ -171,6 +171,10 @@ impl SymbolTable {
         self.table.get(id)
     }
 
+    pub fn get_mut(&mut self, id: &str) -> Option<&mut Vec<Symbol>> {
+        self.table.get_mut(id)
+    }
+
     pub fn insert(&mut self, id: &str, symbol: Symbol) {
         if !self.table.contains_key(id) {
             self.table.insert(id.to_string(), Vec::new());
@@ -247,8 +251,20 @@ impl Analyzer {
         old
     }
 
+    pub fn get_table(&self) -> &SymbolTable {
+        &self.table
+    }
+
     pub fn add_symbol(&mut self, id: &str, symbol: Symbol) {
         self.table.insert(id, symbol);
+    }
+
+    pub fn get_symbols(&self, id: &str) -> Option<&Vec<Symbol>> {
+        self.table.get(id)
+    }
+
+    pub fn get_symbols_mut(&mut self, id: &str) -> Option<&mut Vec<Symbol>> {
+        self.table.get_mut(id)
     }
 
     pub fn create_symbol(&self, data: SymbolData) -> Symbol {
@@ -287,7 +303,7 @@ impl Analyzer {
                     if args.len() == arguments.len() {
                         for i in args.iter() {
                             for j in arguments.iter() {
-                                let j_type = j.get_type();
+                                let j_type = j.get_type(self);
                                 if j_type != *i {
                                     return Err(MISMATCHED_TYPES_ERROR_STR);
                                 }

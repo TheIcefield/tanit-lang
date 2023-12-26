@@ -1,5 +1,5 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, Ast, GetType, IAst, Stream};
+use crate::ast::{expressions::Expression, Ast, IAst, Stream};
 use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Id, Parser};
@@ -367,6 +367,10 @@ impl Debug for Type {
 }
 
 impl IAst for Alias {
+    fn get_type(&self, _analyzer: &mut crate::analyzer::Analyzer) -> self::Type {
+        self.value.clone()
+    }
+
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
         if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
             analyzer.error(&format!(
@@ -394,11 +398,5 @@ impl IAst for Alias {
         writeln!(stream, "{}</alias>", put_intent(intent))?;
 
         Ok(())
-    }
-}
-
-impl GetType for Alias {
-    fn get_type(&self) -> Type {
-        self.value.clone()
     }
 }

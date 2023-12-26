@@ -1,4 +1,5 @@
-use crate::ast::{expressions::Expression, types, Ast, GetType, IAst, Stream};
+use crate::analyzer::SymbolData;
+use crate::ast::{expressions::Expression, types, Ast, IAst, Stream};
 use crate::error_listener::{
     IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
@@ -13,6 +14,23 @@ use super::types::Type;
 pub enum CallParam {
     Notified(String, Box<Ast>),
     Positional(usize, Box<Ast>),
+}
+
+impl IAst for CallParam {
+    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+        match self {
+            Self::Notified(_, expr)
+            | Self::Positional(_, expr) => expr.get_type(analyzer)
+        }
+    }
+
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        Ok(())
+    }
+
+    fn traverse(&self, _stream: &mut Stream, _intent: usize) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -181,7 +199,7 @@ impl IAst for Value {
             Self::Text(_) => Ok(()),
 
             Self::Identifier(id) => {
-                if analyzer.check_identifier_existance(id).is_ok() {
+                if analyzer.check_identifier_existance(id).is_err() {
                     analyzer.error(&format!("Cannot find \"{}\" in this scope", id));
                     return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
                 }
@@ -199,6 +217,31 @@ impl IAst for Value {
             }
 
             _ => todo!("Analyzer all values"),
+        }
+    }
+
+    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+        match self {
+            Self::Text(_) => Type::Ref {
+                is_mut: false,
+                ref_to: Box::new(Type::Str),
+            },
+            Self::Decimal(_) => Type::F32,
+            Self::Integer(_) => Type::I32,
+            Self::Identifier(id) => {
+                if let Some(ss) = analyzer.get_symbols(id) {
+                    for s in ss.iter().rev() {
+                        if analyzer.scope.0.starts_with(&s.scope.0) {
+                            if let SymbolData::VariableDef { var_type, .. } = &s.data {
+                                return var_type.clone();
+                            }
+                        }
+                    }
+                }
+                analyzer.error(&format!("No variable found with name \"{}\"", id));
+                return types::Type::Tuple { components: Vec::new() };
+            }
+            _ => todo!("Implement other values get_type"),
         }
     }
 
@@ -324,24 +367,3 @@ impl IAst for Value {
     }
 }
 
-impl GetType for Value {
-    fn get_type(&self) -> types::Type {
-        match self {
-            Self::Text(_) => Type::Ref {
-                is_mut: false,
-                ref_to: Box::new(Type::Str),
-            },
-            Self::Decimal(_) => Type::F32,
-            Self::Integer(_) => Type::I32,
-            _ => todo!("Implement other values get_type"),
-        }
-    }
-}
-
-impl GetType for CallParam {
-    fn get_type(&self) -> types::Type {
-        match self {
-            Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(),
-        }
-    }
-}

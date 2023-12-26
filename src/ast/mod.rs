@@ -14,13 +14,13 @@ pub mod variables;
 type Stream = std::fs::File;
 
 pub trait IAst {
+    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
+    
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
-}
-
-pub trait GetType {
-    fn get_type(&self) -> types::Type;
+    fn get_type(&self, _analyzer: &mut Analyzer) -> types::Type {
+        types::Type::Tuple { components: Vec::new() }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -106,12 +106,12 @@ impl Ast {
         }
     }
 
-    pub fn get_type(&self) -> types::Type {
+    pub fn get_type(&self, analyzer: &mut Analyzer) -> types::Type {
         match self {
-            Self::Expression { node } => node.get_type(),
-            Self::AliasDef { node } => node.get_type(),
-            Self::Value { node } => node.get_type(),
-            Self::VariableDef { node } => node.get_type(),
+            Self::Expression { node } => node.get_type(analyzer),
+            Self::AliasDef { node } => node.get_type(analyzer),
+            Self::Value { node } => node.get_type(analyzer),
+            Self::VariableDef { node } => node.get_type(analyzer),
             _ => todo!("GetType"),
         }
     }

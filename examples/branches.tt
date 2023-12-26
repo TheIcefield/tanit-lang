@@ -1,5 +1,6 @@
 # define func
 func loop_func() {
+    let a = 0
     loop { # loop statement
         # increase counter
         a += 1
@@ -12,6 +13,7 @@ func loop_func() {
 } # end of loop_func
 
 func while_func() {
+    let a = 0
     while a < 10 {
         # simple loop body
         a += 1 # increase counter
@@ -19,6 +21,7 @@ func while_func() {
 }
 
 func if_func() {
+    let a = 0
     if a > 0 {
         a = 1
     } else if a < 0 {

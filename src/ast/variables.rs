@@ -10,8 +10,6 @@ use crate::parser::{Id, Parser};
 
 use std::io::Write;
 
-use super::GetType;
-
 #[derive(Clone, PartialEq)]
 pub struct VariableNode {
     pub identifier: Id,
@@ -146,6 +144,10 @@ impl VariableNode {
 }
 
 impl IAst for VariableNode {
+    fn get_type(&self, _analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+        self.var_type.clone()
+    }
+
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
         if analyzer
             .check_identifier_existance(&self.identifier)
@@ -184,11 +186,5 @@ impl IAst for VariableNode {
         writeln!(stream, "{}</variable>", put_intent(intent))?;
 
         Ok(())
-    }
-}
-
-impl GetType for VariableNode {
-    fn get_type(&self) -> types::Type {
-        self.var_type.clone()
     }
 }
