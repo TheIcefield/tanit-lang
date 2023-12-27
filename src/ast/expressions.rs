@@ -534,19 +534,21 @@ impl IAst for Expression {
                 let mut lhs_type = lhs.get_type(analyzer);
                 let rhs_type = rhs.get_type(analyzer);
 
-                if let Ast::VariableDef { node } = lhs.as_mut() {
-                    if *operation == TokenType::Assign
-                        || *operation == TokenType::SubAssign
-                        || *operation == TokenType::AddAssign
-                        || *operation == TokenType::DivAssign
-                        || *operation == TokenType::ModAssign
-                        || *operation == TokenType::MulAssign
-                        || *operation == TokenType::AndAssign
-                        || *operation == TokenType::OrAssign
-                        || *operation == TokenType::XorAssign
-                        || *operation == TokenType::LShiftAssign
-                        || *operation == TokenType::RShiftAssign
-                    {
+                rhs.analyze(analyzer)?;
+
+                if *operation == TokenType::Assign
+                    || *operation == TokenType::SubAssign
+                    || *operation == TokenType::AddAssign
+                    || *operation == TokenType::DivAssign
+                    || *operation == TokenType::ModAssign
+                    || *operation == TokenType::MulAssign
+                    || *operation == TokenType::AndAssign
+                    || *operation == TokenType::OrAssign
+                    || *operation == TokenType::XorAssign
+                    || *operation == TokenType::LShiftAssign
+                    || *operation == TokenType::RShiftAssign
+                {
+                    if let Ast::VariableDef { node } = lhs.as_mut() {
                         if analyzer
                             .check_identifier_existance(&node.identifier)
                             .is_ok()
@@ -575,14 +577,28 @@ impl IAst for Expression {
                             &node.identifier,
                             analyzer.create_symbol(SymbolData::VariableDef {
                                 var_type: node.var_type.clone(),
+                                is_mutable: node.is_mutable,
                                 is_initialization: true,
                             }),
                         );
+                    } else if let Ast::Value { node } = lhs.as_mut() {
+                        if let values::Value::Identifier(id) = node {
+                            if let Ok(s) = analyzer.check_identifier_existance(id) {
+                                if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
+                                    if !*is_mutable {
+                                        analyzer.error(&format!(
+                                            "Variable \"{}\" is immutable in current scope",
+                                            id
+                                        ));
+                                    }
+                                }
+                            }
+                        } else {
+                            analyzer.error("Cannot perform operation with this object");
+                        }
                     } else {
                         lhs.analyze(analyzer)?;
                     }
-
-                    rhs.analyze(analyzer)?;
                 } else {
                     lhs.analyze(analyzer)?;
                 }
@@ -594,7 +610,7 @@ impl IAst for Expression {
                     ));
                 }
 
-                rhs.analyze(analyzer)
+                Ok(())
             }
             Self::Unary { node, .. } => node.analyze(analyzer),
         }

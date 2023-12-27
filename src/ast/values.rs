@@ -19,8 +19,7 @@ pub enum CallParam {
 impl IAst for CallParam {
     fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
         match self {
-            Self::Notified(_, expr)
-            | Self::Positional(_, expr) => expr.get_type(analyzer)
+            Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(analyzer),
         }
     }
 
@@ -239,7 +238,9 @@ impl IAst for Value {
                     }
                 }
                 analyzer.error(&format!("No variable found with name \"{}\"", id));
-                return types::Type::Tuple { components: Vec::new() };
+                types::Type::Tuple {
+                    components: Vec::new(),
+                }
             }
             _ => todo!("Implement other values get_type"),
         }
@@ -366,4 +367,3 @@ impl IAst for Value {
         Ok(())
     }
 }
-

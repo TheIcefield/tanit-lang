@@ -164,6 +164,7 @@ impl IAst for VariableNode {
             &self.identifier,
             analyzer.create_symbol(SymbolData::VariableDef {
                 var_type: self.var_type.clone(),
+                is_mutable: self.is_mutable,
                 is_initialization: false,
             }),
         );

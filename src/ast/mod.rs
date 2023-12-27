@@ -15,11 +15,13 @@ type Stream = std::fs::File;
 
 pub trait IAst {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
-    
+
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
 
     fn get_type(&self, _analyzer: &mut Analyzer) -> types::Type {
-        types::Type::Tuple { components: Vec::new() }
+        types::Type::Tuple {
+            components: Vec::new(),
+        }
     }
 }
 

@@ -69,6 +69,7 @@ pub enum SymbolData {
     },
     VariableDef {
         var_type: types::Type,
+        is_mutable: bool,
         is_initialization: bool,
     },
     Type,
@@ -133,15 +134,17 @@ impl SymbolData {
 
             Self::VariableDef {
                 var_type,
+                is_mutable,
                 is_initialization,
             } => write!(
                 stream,
-                "Variable {}: {:?}",
+                "Variable {}: {} {:?}",
                 if *is_initialization {
                     "initialization"
                 } else {
                     "definition"
                 },
+                if *is_mutable { "mut" } else { "" },
                 var_type
             ),
 
