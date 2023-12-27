@@ -4,7 +4,7 @@ use crate::error_listener::{
     IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
 use crate::lexer::TokenType;
-use crate::parser::{put_intent, Parser};
+use crate::parser::{put_intent, Id, Parser};
 
 use std::io::Write;
 
@@ -12,7 +12,7 @@ use super::types::Type;
 
 #[derive(Clone, PartialEq)]
 pub enum CallParam {
-    Notified(String, Box<Ast>),
+    Notified(Id, Box<Ast>),
     Positional(usize, Box<Ast>),
 }
 
@@ -35,12 +35,12 @@ impl IAst for CallParam {
 #[derive(Clone, PartialEq)]
 pub enum Value {
     Call {
-        identifier: String,
+        identifier: Id,
         arguments: Vec<CallParam>,
     },
     Struct {
-        identifier: String,
-        components: Vec<(String, Ast)>,
+        identifier: Id,
+        components: Vec<(Id, Ast)>,
     },
     Tuple {
         components: Vec<Ast>,
@@ -48,7 +48,7 @@ pub enum Value {
     Array {
         components: Vec<Ast>,
     },
-    Identifier(String),
+    Identifier(Id),
     Text(String),
     Integer(usize),
     Decimal(f64),
@@ -147,10 +147,10 @@ impl Value {
         })
     }
 
-    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(String, Ast)>, &'static str> {
+    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Id, Ast)>, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
-        let mut components = Vec::<(String, Ast)>::new();
+        let mut components = Vec::<(Id, Ast)>::new();
 
         loop {
             let next = parser.peek_token();
@@ -252,17 +252,12 @@ impl IAst for Value {
                 identifier,
                 arguments,
             } => {
-                writeln!(
-                    stream,
-                    "{}<call name=\"{}\">",
-                    put_intent(intent),
-                    identifier
-                )?;
+                writeln!(stream, "{}<call {}>", put_intent(intent), identifier)?;
 
                 for arg in arguments.iter() {
                     match arg {
                         CallParam::Notified(id, expr) => {
-                            writeln!(stream, "{}<param name=\"{}\">", put_intent(intent + 1), id)?;
+                            writeln!(stream, "{}<param {}>", put_intent(intent + 1), id)?;
 
                             expr.traverse(stream, intent + 2)?;
                         }
@@ -288,28 +283,13 @@ impl IAst for Value {
                 components,
             } => {
                 if components.is_empty() {
-                    return writeln!(
-                        stream,
-                        "{}<struct name=\"{}\"/>",
-                        put_intent(intent),
-                        identifier
-                    );
+                    return writeln!(stream, "{}<struct {}/>", put_intent(intent), identifier);
                 }
 
-                writeln!(
-                    stream,
-                    "{}<struct name=\"{}\">",
-                    put_intent(intent),
-                    identifier
-                )?;
+                writeln!(stream, "{}<struct {}>", put_intent(intent), identifier)?;
 
                 for comp in components.iter() {
-                    writeln!(
-                        stream,
-                        "{}<field name=\"{}\">",
-                        put_intent(intent + 1),
-                        comp.0
-                    )?;
+                    writeln!(stream, "{}<field {}>", put_intent(intent + 1), comp.0)?;
 
                     comp.1.traverse(stream, intent + 2)?;
 
@@ -344,9 +324,7 @@ impl IAst for Value {
 
                 writeln!(stream, "{}</array>", put_intent(intent))?;
             }
-            Self::Identifier(id) => {
-                writeln!(stream, "{}<variable name=\"{}\"/>", put_intent(intent), id)?
-            }
+            Self::Identifier(id) => writeln!(stream, "{}<variable {}/>", put_intent(intent), id)?,
             Self::Text(text) => {
                 writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
             }

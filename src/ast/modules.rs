@@ -52,14 +52,14 @@ impl IAst for ModuleNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&self.identifier);
+        analyzer.scope.push(&self.identifier.get_string());
         self.body.analyze(analyzer)?;
         analyzer.scope.pop();
 
         analyzer.add_symbol(
             &self.identifier,
             analyzer.create_symbol(SymbolData::ModuleDef {
-                full_name: vec![self.identifier.clone()],
+                full_name: vec![self.identifier.get_string()],
             }),
         );
 
@@ -67,12 +67,7 @@ impl IAst for ModuleNode {
     }
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<module name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+        writeln!(stream, "{}<module {}>", put_intent(intent), self.identifier)?;
 
         self.body.traverse(stream, intent + 1)?;
 

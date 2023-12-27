@@ -75,11 +75,11 @@ impl StructNode {
                 }
 
                 TokenType::Identifier(id) => {
-                    parser.consume_identifier()?;
+                    let identifier = parser.consume_identifier()?;
 
-                    if fields.contains_key(id) {
+                    if fields.contains_key(&identifier) {
                         parser.error(
-                            "Struct has already field with the same identifier",
+                            &format!("Struct has already field with identifier {}", id),
                             next.get_location(),
                         );
                         continue;
@@ -87,7 +87,7 @@ impl StructNode {
 
                     parser.consume_token(TokenType::Colon)?;
 
-                    fields.insert(id.clone(), types::Type::parse(parser)?);
+                    fields.insert(identifier, types::Type::parse(parser)?);
                 }
 
                 _ => {
@@ -103,7 +103,7 @@ impl StructNode {
 
         Ok(Ast::StructDef {
             node: Self {
-                identifier: String::new(),
+                identifier: Id::new(),
                 fields,
                 internals,
             },
@@ -124,11 +124,12 @@ impl IAst for StructNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&self.identifier);
+        analyzer
+            .scope
+            .push(&format!("@s.{}", &self.identifier.get_string()));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }
-        analyzer.scope.pop();
 
         let mut components = Vec::<types::Type>::new();
         for field in self.fields.iter() {
@@ -140,13 +141,14 @@ impl IAst for StructNode {
             analyzer.create_symbol(SymbolData::StructDef { components }),
         );
 
+        analyzer.scope.pop();
         Ok(())
     }
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<struct-def name=\"{}\">",
+            "{}<struct-def {}>",
             put_intent(intent),
             self.identifier
         )?;
@@ -156,12 +158,7 @@ impl IAst for StructNode {
         }
 
         for field in self.fields.iter() {
-            writeln!(
-                stream,
-                "{}<field name=\"{}\">",
-                put_intent(intent + 1),
-                field.0
-            )?;
+            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
 
             field.1.traverse(stream, intent + 2)?;
 
@@ -169,12 +166,7 @@ impl IAst for StructNode {
         }
 
         for field in self.fields.iter() {
-            writeln!(
-                stream,
-                "{}<field name=\"{}\">",
-                put_intent(intent + 1),
-                field.0
-            )?;
+            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
 
             field.1.traverse(stream, intent + 2)?;
 
@@ -239,7 +231,7 @@ impl IAst for EnumField {
         match self {
             Self::StructLike(s) => {
                 for f in s.iter() {
-                    writeln!(stream, "{}<field name=\"{}\">", put_intent(intent), f.0)?;
+                    writeln!(stream, "{}<field {}>", put_intent(intent), f.0)?;
 
                     f.1.traverse(stream, intent + 1)?;
 
@@ -323,17 +315,17 @@ impl EnumNode {
                 }
 
                 TokenType::Identifier(id) => {
-                    parser.consume_identifier()?;
+                    let identifier = parser.consume_identifier()?;
 
-                    if fields.contains_key(id) {
+                    if fields.contains_key(&identifier) {
                         parser.error(
-                            "Enum has already field with the same identifier",
+                            &format!("Enum has already field with identifier \"{}\"", id),
                             next.get_location(),
                         );
                         continue;
                     }
 
-                    fields.insert(id.clone(), EnumField::parse(parser)?);
+                    fields.insert(identifier, EnumField::parse(parser)?);
 
                     parser.consume_new_line()?;
                 }
@@ -351,7 +343,7 @@ impl EnumNode {
 
         Ok(Ast::EnumDef {
             node: Self {
-                identifier: String::new(),
+                identifier: Id::new(),
                 fields,
                 internals,
             },
@@ -369,7 +361,9 @@ impl IAst for EnumNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&self.identifier);
+        analyzer
+            .scope
+            .push(&format!("@e.{}", &self.identifier.get_string()));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }
@@ -391,7 +385,7 @@ impl IAst for EnumNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<enum-def name=\"{}\">",
+            "{}<enum-def {}>",
             put_intent(intent),
             self.identifier
         )?;
@@ -402,21 +396,11 @@ impl IAst for EnumNode {
 
         for field in self.fields.iter() {
             if matches!(field.1, EnumField::Common) {
-                writeln!(
-                    stream,
-                    "{}<field name=\"{}\"/>",
-                    put_intent(intent + 1),
-                    field.0
-                )?;
+                writeln!(stream, "{}<field {}/>", put_intent(intent + 1), field.0)?;
                 continue;
             }
 
-            writeln!(
-                stream,
-                "{}<field name=\"{}\">",
-                put_intent(intent + 1),
-                field.0
-            )?;
+            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
 
             field.1.traverse(stream, intent + 2)?;
 

@@ -1,8 +1,11 @@
 use crate::ast::{scopes, Ast};
-use crate::error_listener::{ErrorListener, PARSING_FAILED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
-use crate::lexer::{Lexer, Location, Token, TokenType};
+use crate::error_listener::{
+    ErrorListener, CANNOT_CONVERT_TO_DECIMAL_ERROR_STR, CANNOT_CONVERT_TO_INTEGER_ERROR_STR,
+    PARSING_FAILED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
+};
+use crate::lexer::{self, Lexer, Location, Token, TokenType};
 
-pub type Id = String;
+pub type Id = lexer::TokenType;
 
 pub struct Parser {
     error_listener: ErrorListener,
@@ -140,9 +143,80 @@ impl Parser {
         let tkn = self.peek_token();
 
         match tkn.lexem {
-            TokenType::Identifier(id) => {
+            TokenType::Identifier(_) => Ok(self.get_token().lexem),
+
+            _ => {
+                self.error_listener.syntax_error(
+                    &format!(
+                        "Unexpected token: \"{}\", but was expected: \"identifier\"",
+                        tkn
+                    ),
+                    tkn.location,
+                );
+
+                Err(UNEXPECTED_TOKEN_ERROR_STR)
+            }
+        }
+    }
+
+    pub fn consume_integer(&mut self) -> Result<usize, &'static str> {
+        loop {
+            let tkn = self.lexer.peek();
+
+            if tkn.lexem == TokenType::EndOfLine {
+                self.lexer.get();
+            } else {
+                break;
+            }
+        }
+
+        let tkn = self.peek_token();
+
+        match tkn.lexem {
+            TokenType::Integer(val) => {
                 self.get_token();
-                Ok(id)
+                let val = val.parse::<usize>();
+                if val.is_err() {
+                    return Err(CANNOT_CONVERT_TO_INTEGER_ERROR_STR);
+                }
+                Ok(val.unwrap())
+            }
+
+            _ => {
+                self.error_listener.syntax_error(
+                    &format!(
+                        "Unexpected token: \"{}\", but was expected: \"identifier\"",
+                        tkn
+                    ),
+                    tkn.location,
+                );
+
+                Err(UNEXPECTED_TOKEN_ERROR_STR)
+            }
+        }
+    }
+
+    pub fn consume_decimal(&mut self) -> Result<f64, &'static str> {
+        loop {
+            let tkn = self.lexer.peek();
+
+            if tkn.lexem == TokenType::EndOfLine {
+                self.lexer.get();
+            } else {
+                break;
+            }
+        }
+
+        let tkn = self.peek_token();
+
+        match tkn.lexem {
+            TokenType::Decimal(val) => {
+                self.get_token();
+                let val = val.parse::<f64>();
+                if val.is_err() {
+                    return Err(CANNOT_CONVERT_TO_DECIMAL_ERROR_STR);
+                }
+                Ok(val.unwrap())
             }
 
             _ => {

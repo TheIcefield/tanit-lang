@@ -175,7 +175,7 @@ impl IAst for VariableNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<variable name=\"{}\" is_global=\"{}\" is_mutable=\"{}\">",
+            "{}<variable {} is_global=\"{}\" is_mutable=\"{}\">",
             put_intent(intent),
             self.identifier,
             self.is_global,

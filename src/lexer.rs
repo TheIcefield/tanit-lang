@@ -33,7 +33,7 @@ impl Default for Location {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     EndOfFile,
     EndOfLine,
@@ -102,10 +102,34 @@ pub enum TokenType {
     KwConst,
 
     Identifier(String),
-    Integer(usize),
-    Decimal(f64),
+    Integer(String),
+    Decimal(String),
 
     Unknown,
+}
+
+impl TokenType {
+    pub fn new() -> Self {
+        Self::Identifier(String::new())
+    }
+
+    pub fn from(v: &str) -> Self {
+        Self::Identifier(String::from(v))
+    }
+
+    pub fn get_string(&self) -> String {
+        match self {
+            Self::Identifier(val) | Self::Integer(val) | Self::Decimal(val) => String::from(val),
+
+            _ => String::new(),
+        }
+    }
+}
+
+impl Default for TokenType {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl std::fmt::Display for TokenType {
@@ -178,9 +202,9 @@ impl std::fmt::Display for TokenType {
             Self::KwMut => write!(f, "mut"),
             Self::KwConst => write!(f, "const"),
 
-            Self::Identifier(val) => write!(f, "identifier: \"{}\"", val),
-            Self::Integer(val) => write!(f, "integer: \"{}\"", val),
-            Self::Decimal(val) => write!(f, "float: \"{}\"", val),
+            Self::Identifier(val) => write!(f, "identifier=\"{}\"", val),
+            Self::Integer(val) => write!(f, "integer=\"{}\"", val),
+            Self::Decimal(val) => write!(f, "float=\"{}\"", val),
 
             Self::Unknown => write!(f, "unknown token"),
         }
@@ -670,26 +694,10 @@ impl Lexer {
         }
 
         if is_float {
-            let val = {
-                let val = text.parse::<f64>();
-                if val.is_err() {
-                    return Token::new(TokenType::Unknown, location);
-                }
-                val.unwrap()
-            };
-
-            return Token::new(TokenType::Decimal(val), location);
+            return Token::new(TokenType::Decimal(text), location);
         }
 
-        let val = {
-            let val = text.parse::<usize>();
-            if val.is_err() {
-                return Token::new(TokenType::Unknown, location);
-            }
-            val.unwrap()
-        };
-
-        Token::new(TokenType::Integer(val), location)
+        Token::new(TokenType::Integer(text), location)
     }
 
     fn get_string_token(&mut self) -> Token {

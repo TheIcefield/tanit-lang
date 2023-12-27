@@ -35,7 +35,10 @@ fn lexer_test() {
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::Integer(65usize), Location { row: 1, col: 19 })
+        Token::new(
+            TokenType::Integer("65".to_string()),
+            Location { row: 1, col: 19 }
+        )
     );
 
     assert_eq!(

@@ -121,7 +121,9 @@ impl IAst for FunctionNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&format!("@f.{}", &self.identifier));
+        analyzer
+            .scope
+            .push(&format!("@f.{}", &self.identifier.get_string()));
 
         let mut arguments = Vec::<types::Type>::new();
         for p in self.parameters.iter_mut() {
@@ -156,7 +158,7 @@ impl IAst for FunctionNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<function name=\"{}\">",
+            "{}<function {}>",
             put_intent(intent),
             self.identifier,
         )?;

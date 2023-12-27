@@ -2,6 +2,7 @@ use tanit::{
     analyzer::{Analyzer, SymbolData},
     ast::types::Type,
     error_listener::ErrorListener,
+    parser::Id,
 };
 
 #[test]
@@ -19,7 +20,7 @@ fn scope_test() {
     analyzer.scope.push("@s"); // @s
 
     analyzer.add_symbol(
-        "Main",
+        &Id::from("Main"),
         analyzer.create_symbol(SymbolData::ModuleDef {
             full_name: vec!["Main".to_string()],
         }),
@@ -27,7 +28,7 @@ fn scope_test() {
 
     analyzer.scope.push("Main"); // @s/Main
     analyzer.add_symbol(
-        "main",
+        &Id::from("main"),
         analyzer.create_symbol(SymbolData::FunctionDef {
             args: Vec::new(),
             return_type: Type::Tuple {
@@ -38,7 +39,7 @@ fn scope_test() {
     );
 
     analyzer.add_symbol(
-        "bar",
+        &Id::from("bar"),
         analyzer.create_symbol(SymbolData::FunctionDef {
             args: Vec::new(),
             return_type: Type::Tuple {
@@ -50,30 +51,43 @@ fn scope_test() {
 
     analyzer.scope.push("main"); // @s/Main/main
     analyzer.add_symbol(
-        "var",
+        &Id::from("var"),
         analyzer.create_symbol(SymbolData::VariableDef {
             var_type: Type::I32,
+            is_mutable: false,
             is_initialization: true,
         }),
     );
 
     // check if var defined in main
-    assert!(analyzer.check_identifier_existance("var").is_ok());
+    assert!(analyzer
+        .check_identifier_existance(&Id::from("var"),)
+        .is_ok());
 
     // check if main inside Main
     analyzer.scope.pop(); // @s/Main
-    assert!(analyzer.check_identifier_existance("main").is_ok());
+    assert!(analyzer
+        .check_identifier_existance(&Id::from("main"),)
+        .is_ok());
 
     // check if baz not defined in Main
-    assert!(!analyzer.check_identifier_existance("baz").is_ok());
+    assert!(!analyzer
+        .check_identifier_existance(&Id::from("baz"),)
+        .is_ok());
 
     // check if var unaccessible in Main
-    assert!(!analyzer.check_identifier_existance("var").is_ok());
+    assert!(!analyzer
+        .check_identifier_existance(&Id::from("var"))
+        .is_ok());
 
     // check if var unaccessible in bar
     analyzer.scope.push("bar");
-    assert!(!analyzer.check_identifier_existance("var").is_ok());
+    assert!(!analyzer
+        .check_identifier_existance(&Id::from("var"))
+        .is_ok());
 
     // check if bar accessible in bar
-    assert!(analyzer.check_identifier_existance("bar").is_ok());
+    assert!(analyzer
+        .check_identifier_existance(&Id::from("bar"))
+        .is_ok());
 }

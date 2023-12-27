@@ -329,7 +329,7 @@ impl Expression {
     fn parse_factor(parser: &mut Parser) -> Result<Ast, &'static str> {
         let next = parser.peek_token();
 
-        match next.lexem {
+        match &next.lexem {
             TokenType::Plus
             | TokenType::Minus
             | TokenType::Ampersand
@@ -343,22 +343,16 @@ impl Expression {
                     node: Box::new(Expression::Unary { operation, node }),
                 })
             }
-            TokenType::Integer(val) => {
-                parser.get_token();
-                Ok(Ast::Value {
-                    node: values::Value::Integer(val),
-                })
-            }
+            TokenType::Integer(_) => Ok(Ast::Value {
+                node: values::Value::Integer(parser.consume_integer()?),
+            }),
 
-            TokenType::Decimal(val) => {
-                parser.get_token();
-                Ok(Ast::Value {
-                    node: values::Value::Decimal(val),
-                })
-            }
+            TokenType::Decimal(_) => Ok(Ast::Value {
+                node: values::Value::Decimal(parser.consume_decimal()?),
+            }),
 
-            TokenType::Identifier(identifier) => {
-                parser.get_token();
+            TokenType::Identifier(_) => {
+                let identifier = parser.consume_identifier()?;
 
                 let next = parser.peek_token();
                 if next.lexem == TokenType::LParen {

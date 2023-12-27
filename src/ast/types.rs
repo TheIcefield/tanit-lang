@@ -30,7 +30,6 @@ pub enum Type {
     },
     Custom(String),
     Bool,
-    Byte,
     U8,
     U16,
     U32,
@@ -88,11 +87,10 @@ impl Type {
             return Self::parse_array_def(parser);
         }
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = parser.consume_identifier()?.get_string();
 
         match &identifier[..] {
             "bool" => return Ok(Type::Bool),
-            "byte" => return Ok(Type::Byte),
             "i8" => return Ok(Type::I8),
             "i16" => return Ok(Type::I16),
             "i32" => return Ok(Type::I32),
@@ -285,7 +283,6 @@ impl IAst for Type {
             }
 
             Self::Bool => writeln!(stream, "{}<type identifier=\"bool\"/>", put_intent(intent))?,
-            Self::Byte => writeln!(stream, "{}<type identifier=\"byte\"/>", put_intent(intent))?,
             Self::I8 => writeln!(stream, "{}<type identifier=\"i8\"/>", put_intent(intent))?,
             Self::I16 => writeln!(stream, "{}<type identifier=\"i16\"/>", put_intent(intent))?,
             Self::I32 => writeln!(stream, "{}<type identifier=\"i32\"/>", put_intent(intent))?,
@@ -348,7 +345,6 @@ impl Debug for Type {
             Self::Array { value_type, .. } => write!(f, "[{:?}]", value_type),
             Self::Custom(s) => write!(f, "{}", s),
             Self::Bool => write!(f, "bool"),
-            Self::Byte => write!(f, "byte"),
             Self::I8 => write!(f, "i8"),
             Self::I16 => write!(f, "i16"),
             Self::I32 => write!(f, "i32"),
@@ -386,12 +382,7 @@ impl IAst for Alias {
     }
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<alias name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+        writeln!(stream, "{}<alias {}>", put_intent(intent), self.identifier)?;
 
         self.value.traverse(stream, intent + 1)?;
 

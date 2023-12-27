@@ -5,8 +5,10 @@ use crate::ast::{structs, structs::EnumField, types, values, Ast, IAst};
 use crate::error_listener::{
     ErrorListener, ANALYZING_FAILED_ERROR_STR, FUNCTION_NOT_FOUND_ERROR_STR,
     IDENTIFIER_NOT_FOUND_ERROR_STR, MISMATCHED_TYPES_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
-    WRONG_CALL_ARGUMENTS_ERROR_STR,
+    UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
+use crate::lexer;
+use crate::parser::Id;
 
 use std::io::Write;
 
@@ -160,7 +162,7 @@ pub struct Symbol {
 }
 
 pub struct SymbolTable {
-    table: HashMap<String, Vec<Symbol>>,
+    table: HashMap<Id, Vec<Symbol>>,
 }
 
 impl SymbolTable {
@@ -170,17 +172,17 @@ impl SymbolTable {
         }
     }
 
-    pub fn get(&self, id: &str) -> Option<&Vec<Symbol>> {
+    pub fn get(&self, id: &Id) -> Option<&Vec<Symbol>> {
         self.table.get(id)
     }
 
-    pub fn get_mut(&mut self, id: &str) -> Option<&mut Vec<Symbol>> {
+    pub fn get_mut(&mut self, id: &Id) -> Option<&mut Vec<Symbol>> {
         self.table.get_mut(id)
     }
 
-    pub fn insert(&mut self, id: &str, symbol: Symbol) {
+    pub fn insert(&mut self, id: &Id, symbol: Symbol) {
         if !self.table.contains_key(id) {
-            self.table.insert(id.to_string(), Vec::new());
+            self.table.insert(id.clone(), Vec::new());
         }
 
         if let Some(ss) = self.table.get_mut(id) {
@@ -190,7 +192,7 @@ impl SymbolTable {
 
     pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
         for (identifier, ss) in self.table.iter() {
-            writeln!(stream, "Identifier: \"{}\":", identifier)?;
+            writeln!(stream, "Identifier: \"{}\":", &identifier.get_string())?;
 
             for s in ss.iter() {
                 write!(stream, "+--- ")?;
@@ -258,15 +260,15 @@ impl Analyzer {
         &self.table
     }
 
-    pub fn add_symbol(&mut self, id: &str, symbol: Symbol) {
+    pub fn add_symbol(&mut self, id: &Id, symbol: Symbol) {
         self.table.insert(id, symbol);
     }
 
-    pub fn get_symbols(&self, id: &str) -> Option<&Vec<Symbol>> {
+    pub fn get_symbols(&self, id: &Id) -> Option<&Vec<Symbol>> {
         self.table.get(id)
     }
 
-    pub fn get_symbols_mut(&mut self, id: &str) -> Option<&mut Vec<Symbol>> {
+    pub fn get_symbols_mut(&mut self, id: &Id) -> Option<&mut Vec<Symbol>> {
         self.table.get_mut(id)
     }
 
@@ -277,7 +279,14 @@ impl Analyzer {
         }
     }
 
-    pub fn check_identifier_existance(&self, id: &str) -> Result<Symbol, &'static str> {
+    pub fn check_identifier_existance(
+        &self,
+        id: &lexer::TokenType,
+    ) -> Result<Symbol, &'static str> {
+        if !matches!(id, lexer::TokenType::Identifier(_)) {
+            return Err(UNEXPECTED_TOKEN_ERROR_STR);
+        }
+
         if let Some(ss) = self.table.get(id) {
             for s in ss.iter() {
                 if self.scope.0.starts_with(&s.scope.0) {
