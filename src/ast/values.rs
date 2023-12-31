@@ -215,6 +215,58 @@ impl IAst for Value {
                 Ok(())
             }
 
+            Self::Struct {
+                identifier,
+                components: value_comps,
+            } => {
+                let ss = analyzer.check_identifier_existance(identifier);
+                if ss.is_err() {
+                    analyzer.error(&format!("Cannot find \"{}\" in this scope", identifier));
+                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                }
+
+                let ss = ss.unwrap();
+
+                if let SymbolData::StructDef {
+                    components: struct_comps,
+                } = &ss.data
+                {
+                    if value_comps.len() != struct_comps.len() {
+                        analyzer.error(&format!(
+                            "Struct \"{}\" consists of {} fields, but {} were supplied",
+                            identifier.get_string(),
+                            struct_comps.len(),
+                            value_comps.len()
+                        ));
+                        return Err("Struct definition and declarations is different");
+                    }
+
+                    for comp_id in 0..value_comps.len() {
+                        let value_comp = value_comps.get(comp_id).unwrap();
+                        let value_comp_type = value_comp.1.get_type(analyzer);
+                        let struct_comp_type = struct_comps.get(comp_id).unwrap();
+
+                        if value_comp_type != *struct_comp_type {
+                            analyzer.error(&format!(
+                                "Field named \"{}\" is {:?}, but initialized like {:?}",
+                                value_comp.0.get_string(),
+                                struct_comp_type,
+                                value_comp_type
+                            ));
+                            return Err("Mismatched types during struct initialization");
+                        }
+                    }
+                } else {
+                    analyzer.error(&format!(
+                        "Cannot find struct named \"{}\" in this scope",
+                        identifier
+                    ));
+                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                }
+
+                Ok(())
+            }
+
             _ => todo!("Analyzer all values"),
         }
     }
@@ -242,6 +294,7 @@ impl IAst for Value {
                     components: Vec::new(),
                 }
             }
+            Self::Struct { identifier, .. } => types::Type::Custom(identifier.to_string()),
             _ => todo!("Implement other values get_type"),
         }
     }

@@ -133,6 +133,8 @@ impl IAst for FunctionNode {
             }
         }
 
+        analyzer.scope.pop();
+
         analyzer.add_symbol(
             &self.identifier,
             analyzer.create_symbol(SymbolData::FunctionDef {
@@ -141,6 +143,10 @@ impl IAst for FunctionNode {
                 is_declaration: self.body.is_some(),
             }),
         );
+
+        analyzer
+            .scope
+            .push(&format!("@f.{}", &self.identifier.get_string()));
 
         if let Some(body) = &mut self.body {
             if let Ast::Scope { node } = body.as_mut() {

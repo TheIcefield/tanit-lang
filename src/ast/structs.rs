@@ -136,12 +136,13 @@ impl IAst for StructNode {
             components.push(field.1.clone());
         }
 
+        analyzer.scope.pop();
+
         analyzer.add_symbol(
             &self.identifier,
             analyzer.create_symbol(SymbolData::StructDef { components }),
         );
 
-        analyzer.scope.pop();
         Ok(())
     }
 
