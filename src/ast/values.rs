@@ -275,7 +275,34 @@ impl IAst for Value {
                 Ok(())
             }
 
-            _ => todo!("Analyzer all values"),
+            Self::Array { components } => {
+                if components.is_empty() {
+                    return Ok(());
+                }
+
+                let comp_type = components[0].get_type(analyzer);
+
+                for comp in components.iter().enumerate() {
+                    let current_comp_type = comp.1.get_type(analyzer);
+                    if comp_type != current_comp_type {
+                        analyzer.error(&format!(
+                            "Array type is declared like {:?}, but {}{} element has type {:?}",
+                            comp_type,
+                            comp.0 + 1,
+                            match comp.0 % 10 {
+                                0 => "st",
+                                1 => "nd",
+                                2 => "rd",
+                                _ => "th",
+                            },
+                            current_comp_type
+                        ));
+                        return Err("Array components have different types");
+                    }
+                }
+
+                Ok(())
+            }
         }
     }
 
@@ -308,7 +335,25 @@ impl IAst for Value {
                 for comp in components.iter() {
                     comp_vec.push(comp.get_type(analyzer));
                 }
-                types::Type::Tuple { components: comp_vec }
+                types::Type::Tuple {
+                    components: comp_vec,
+                }
+            }
+            Self::Array { components } => {
+                let len = components.len();
+                if len == 0 {
+                    return types::Type::Array {
+                        size: None,
+                        value_type: Box::new(types::Type::Custom("@auto".to_string())),
+                    };
+                }
+
+                types::Type::Array {
+                    size: Some(Box::new(Ast::Value {
+                        node: Value::Integer(len),
+                    })),
+                    value_type: Box::new(components[0].get_type(analyzer)),
+                }
             }
             _ => todo!("Implement other values get_type"),
         }
