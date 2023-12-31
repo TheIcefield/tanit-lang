@@ -355,7 +355,16 @@ impl IAst for Value {
                     value_type: Box::new(components[0].get_type(analyzer)),
                 }
             }
-            _ => todo!("Implement other values get_type"),
+            Self::Call { identifier, .. } => {
+                if let Ok(ss) = analyzer.check_identifier_existance(identifier) {
+                    if let SymbolData::FunctionDef { return_type, .. } = &ss.data {
+                        return return_type.clone();
+                    }
+                }
+                types::Type::Tuple {
+                    components: Vec::new(),
+                }
+            }
         }
     }
 
