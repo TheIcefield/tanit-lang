@@ -267,6 +267,14 @@ impl IAst for Value {
                 Ok(())
             }
 
+            Self::Tuple { components } => {
+                for comp in components.iter_mut() {
+                    comp.analyze(analyzer)?;
+                }
+
+                Ok(())
+            }
+
             _ => todo!("Analyzer all values"),
         }
     }
@@ -295,6 +303,13 @@ impl IAst for Value {
                 }
             }
             Self::Struct { identifier, .. } => types::Type::Custom(identifier.to_string()),
+            Self::Tuple { components } => {
+                let mut comp_vec = Vec::<Type>::new();
+                for comp in components.iter() {
+                    comp_vec.push(comp.get_type(analyzer));
+                }
+                types::Type::Tuple { components: comp_vec }
+            }
             _ => todo!("Implement other values get_type"),
         }
     }

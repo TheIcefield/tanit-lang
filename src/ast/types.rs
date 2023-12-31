@@ -334,10 +334,10 @@ impl Debug for Type {
                 write!(f, ">")
             }
             Self::Tuple { components } => {
-                write!(f, "(")?;
+                write!(f, "( ")?;
 
                 for i in components.iter() {
-                    write!(f, "{:?}", i)?;
+                    write!(f, "{:?} ", i)?;
                 }
 
                 write!(f, ")")
