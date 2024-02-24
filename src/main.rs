@@ -59,18 +59,13 @@ fn main() {
     let error_listener = parser.error_listener();
     let mut analyzer = analyzer::Analyzer::new(error_listener);
 
-    let _symbol_table = match analyzer.analyze(&mut ast) {
-        Ok(symbol_table) => {
-            if dump_symtable {
-                if let Err(err) = analyzer::dump_symtable(output_file, &symbol_table) {
-                    println!("{}", err)
-                }
-            }
-            symbol_table
-        }
-        Err(error_listener) => {
-            error_listener.dump_errors();
-            return;
-        }
-    };
+    let (symtable, errors) = analyzer.analyze(&mut ast);
+
+    if !errors.is_empty() {
+        errors.dump_errors();
+    }
+
+    if dump_symtable {
+        let _ = analyzer::dump_symtable(output_file, &symtable);
+    }
 }

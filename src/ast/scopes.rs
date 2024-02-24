@@ -13,6 +13,13 @@ pub struct Scope {
 }
 
 impl Scope {
+    pub fn new() -> Self {
+        Self {
+            statements: Vec::new(),
+            is_global: false,
+        }
+    }
+
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
@@ -54,10 +61,30 @@ impl Scope {
 
                 TokenType::KwStatic => ast::variables::VariableNode::parse_def(parser)?,
 
-                // TokenType::KwExtern => ast::externs::parse(parser)?,
+                TokenType::KwDef => {
+                    parser.consume_token(TokenType::KwDef)?;
+
+                    let next = parser.peek_token();
+
+                    match next.lexem {
+                        TokenType::KwModule => ast::modules::ModuleNode::parse_ext_module(parser)?,
+
+                        _ => {
+                            parser.error(
+                                &format!("Unexpected token \"{}\" during parsing define", next),
+                                next.get_location(),
+                            );
+                            continue;
+                        }
+                    }
+                }
+
                 TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
 
                 _ => {
+                    parser.skip_until(TokenType::EndOfLine);
+                    parser.get_token();
+
                     parser.error(
                         &format!("Unexpected token \"{}\"", next),
                         next.get_location(),
@@ -132,6 +159,9 @@ impl Scope {
                 }
 
                 _ => {
+                    parser.skip_until(TokenType::EndOfLine);
+                    parser.get_token();
+
                     parser.error(
                         &format!("Unexpected token \"{}\"", next),
                         next.get_location(),
@@ -154,7 +184,7 @@ impl IAst for Scope {
         let cnt = analyzer.counter();
         analyzer.scope.push(&format!("@s.{}", cnt));
         for n in self.statements.iter_mut() {
-            n.analyze(analyzer)?;
+            let _ = n.analyze(analyzer);
         }
         analyzer.scope.pop();
         Ok(())
@@ -166,5 +196,11 @@ impl IAst for Scope {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Scope {
+    fn default() -> Self {
+        Self::new()
     }
 }

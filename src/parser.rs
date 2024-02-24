@@ -20,6 +20,14 @@ impl Parser {
         }
     }
 
+    pub fn get_path(&self) -> Result<String, &'static str> {
+        self.lexer.get_path()
+    }
+
+    pub fn is_token_verbose(&self) -> bool {
+        self.lexer.is_token_verbose()
+    }
+
     pub fn parse(&mut self) -> Result<Ast, ErrorListener> {
         let ast = {
             if let Ok(statements) = scopes::Scope::parse_global_internal(self) {
@@ -43,6 +51,10 @@ impl Parser {
 
     pub fn error_listener(&mut self) -> ErrorListener {
         std::mem::take(&mut self.error_listener)
+    }
+
+    pub fn get_location(&self) -> lexer::Location {
+        self.lexer.get_location()
     }
 
     pub fn get_token(&mut self) -> Token {
@@ -233,8 +245,24 @@ impl Parser {
         }
     }
 
+    pub fn skip_until(&mut self, until: TokenType) {
+        loop {
+            let token = self.peek_token().lexem;
+
+            if until == token || TokenType::EndOfFile == token {
+                return;
+            }
+
+            self.get_token();
+        }
+    }
+
     pub fn error(&mut self, message: &str, location: Location) {
         self.error_listener.syntax_error(message, location);
+    }
+
+    pub fn push_error(&mut self, error: String) {
+        self.error_listener.push_error(error)
     }
 }
 

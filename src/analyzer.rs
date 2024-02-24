@@ -161,6 +161,7 @@ pub struct Symbol {
     pub data: SymbolData,
 }
 
+#[derive(Clone)]
 pub struct SymbolTable {
     table: HashMap<Id, Vec<Symbol>>,
 }
@@ -234,7 +235,7 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze(&mut self, ast: &mut Ast) -> Result<SymbolTable, ErrorListener> {
+    pub fn analyze(&mut self, ast: &mut Ast) -> (SymbolTable, ErrorListener) {
         let table = {
             if ast.analyze(self).is_ok() {
                 Ok(std::mem::take(&mut self.table))
@@ -243,11 +244,11 @@ impl Analyzer {
             }
         };
 
-        if table.is_err() || !self.error_listener.is_empty() {
-            return Err(std::mem::take(&mut self.error_listener));
+        if let Ok(table) = table {
+            return (table, self.error_listener.clone());
         }
 
-        Ok(table.unwrap())
+        (SymbolTable::new(), self.error_listener.clone())
     }
 
     pub fn counter(&mut self) -> usize {

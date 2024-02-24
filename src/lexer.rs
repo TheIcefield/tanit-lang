@@ -91,6 +91,7 @@ pub enum TokenType {
     KwContinue,
     KwBreak,
     KwReturn,
+    KwDef,
     KwModule,
     KwStruct,
     KwEnum,
@@ -122,6 +123,14 @@ impl TokenType {
             Self::Identifier(val) | Self::Integer(val) | Self::Decimal(val) => String::from(val),
 
             _ => String::new(),
+        }
+    }
+
+    pub fn get_str(&self) -> Option<&str> {
+        match self {
+            Self::Identifier(val) | Self::Integer(val) | Self::Decimal(val) => Some(val),
+
+            _ => None,
         }
     }
 }
@@ -195,6 +204,7 @@ impl std::fmt::Display for TokenType {
             Self::KwStruct => write!(f, "struct"),
             Self::KwEnum => write!(f, "enum"),
             Self::KwAlias => write!(f, "alias"),
+            Self::KwDef => write!(f, "def"),
             Self::KwModule => write!(f, "module"),
             Self::KwUse => write!(f, "use"),
             Self::KwExtern => write!(f, "extern"),
@@ -246,6 +256,7 @@ impl std::fmt::Display for Token {
 }
 
 pub struct Lexer {
+    path: String,
     location: Location,
     next_token: Option<Token>,
     next_char: Option<char>,
@@ -263,6 +274,7 @@ impl Lexer {
         }
 
         Ok(Self {
+            path: path.to_string(),
             location: Location::new(),
             next_token: None,
             next_char: None,
@@ -274,6 +286,7 @@ impl Lexer {
 
     pub fn from_string(src: &'static str, verbose: bool) -> Result<Self, &'static str> {
         Ok(Self {
+            path: String::new(),
             location: Location::new(),
             next_token: None,
             next_char: None,
@@ -348,6 +361,18 @@ impl Lexer {
 
     pub fn get_location(&self) -> Location {
         self.location.clone()
+    }
+
+    pub fn get_path(&self) -> Result<String, &'static str> {
+        if self.path.is_empty() {
+            return Err("Lexer input stream is not a file");
+        }
+
+        Ok(self.path.clone())
+    }
+
+    pub fn is_token_verbose(&self) -> bool {
+        self.verbose
     }
 }
 
@@ -711,6 +736,7 @@ impl Lexer {
         }
 
         match &text[..] {
+            "def" => Token::new(TokenType::KwDef, location),
             "module" => Token::new(TokenType::KwModule, location),
             "struct" => Token::new(TokenType::KwStruct, location),
             "enum" => Token::new(TokenType::KwEnum, location),

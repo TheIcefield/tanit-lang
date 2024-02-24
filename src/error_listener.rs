@@ -21,7 +21,7 @@ pub static UNEXPECTED_BREAK_STMT_ERROR_STR: &str = "unexpected break statement";
 pub static UNEXPECTED_CONTINUE_STMT_ERROR_STR: &str = "unexpected continue statement";
 pub static UNEXPECTED_RETURN_STMT_ERROR_STR: &str = "unexpected return statement";
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ErrorListener {
     errors: Errors,
 }
@@ -55,5 +55,9 @@ impl ErrorListener {
         for error in self.errors.iter() {
             println!("{}", error);
         }
+    }
+
+    pub fn push_error(&mut self, error: String) {
+        self.errors.push(error);
     }
 }
