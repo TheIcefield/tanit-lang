@@ -1,14 +1,16 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{scopes, types, variables::VariableNode, Ast, IAst, Stream};
+use crate::ast::{
+    identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst, Stream,
+};
 use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::TokenType;
-use crate::parser::{put_intent, Id, Parser};
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
 pub struct FunctionNode {
-    pub identifier: Id,
+    pub identifier: Identifier,
     pub return_type: types::Type,
     pub parameters: Vec<Ast>,
     pub body: Option<Box<Ast>>,
@@ -49,7 +51,7 @@ impl FunctionNode {
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwFunc)?;
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         let parameters = Self::parse_header_params(parser)?;
 
@@ -100,7 +102,10 @@ impl FunctionNode {
                 break;
             } else {
                 parser.error(
-                    &format!("Unexpected token \"{}\", allowed identifier or \')\'", next),
+                    &format!(
+                        "Unexpected token \'{}\', allowed \'identifier\' or \')\'",
+                        next
+                    ),
                     next.get_location(),
                 );
                 return Err(UNEXPECTED_TOKEN_ERROR_STR);
@@ -121,9 +126,7 @@ impl IAst for FunctionNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer
-            .scope
-            .push(&format!("@f.{}", &self.identifier.get_string()));
+        analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
         let mut arguments = Vec::<types::Type>::new();
         for p in self.parameters.iter_mut() {
@@ -144,9 +147,7 @@ impl IAst for FunctionNode {
             }),
         );
 
-        analyzer
-            .scope
-            .push(&format!("@f.{}", &self.identifier.get_string()));
+        analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
         if let Some(body) = &mut self.body {
             if let Ast::Scope { node } = body.as_mut() {
@@ -164,7 +165,7 @@ impl IAst for FunctionNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<function {}>",
+            "{}<function name=\"{}\">",
             put_intent(intent),
             self.identifier,
         )?;

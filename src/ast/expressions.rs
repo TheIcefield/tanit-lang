@@ -1,5 +1,5 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{types, values, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, types, values, Ast, IAst, Stream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
@@ -352,7 +352,7 @@ impl Expression {
             }),
 
             TokenType::Identifier(_) => {
-                let identifier = parser.consume_identifier()?;
+                let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                 let next = parser.peek_token();
                 if next.lexem == TokenType::LParen {
@@ -563,7 +563,7 @@ impl IAst for Expression {
 
                         if node.var_type != rhs_type {
                             analyzer.error(
-                                &format!("Variable \"{:?}\" defined with type \"{:?}\", but is assigned to \"{:?}\"",
+                                &format!("Variable \"{}\" defined with type \"{:?}\", but is assigned to \"{:?}\"",
                                     node.identifier, node.var_type, rhs_type));
                         }
 

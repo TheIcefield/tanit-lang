@@ -1,18 +1,18 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, types, Ast, IAst, Stream};
+use crate::ast::{
+    expressions::Expression, identifiers::Identifier, types, types::Type, Ast, IAst, Stream,
+};
 use crate::error_listener::{
     IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
 use crate::lexer::TokenType;
-use crate::parser::{put_intent, Id, Parser};
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
-use super::types::Type;
-
 #[derive(Clone, PartialEq)]
 pub enum CallParam {
-    Notified(Id, Box<Ast>),
+    Notified(Identifier, Box<Ast>),
     Positional(usize, Box<Ast>),
 }
 
@@ -35,12 +35,12 @@ impl IAst for CallParam {
 #[derive(Clone, PartialEq)]
 pub enum Value {
     Call {
-        identifier: Id,
+        identifier: Identifier,
         arguments: Vec<CallParam>,
     },
     Struct {
-        identifier: Id,
-        components: Vec<(Id, Ast)>,
+        identifier: Identifier,
+        components: Vec<(Identifier, Ast)>,
     },
     Tuple {
         components: Vec<Ast>,
@@ -48,7 +48,7 @@ pub enum Value {
     Array {
         components: Vec<Ast>,
     },
-    Identifier(Id),
+    Identifier(Identifier),
     Text(String),
     Integer(usize),
     Decimal(f64),
@@ -147,10 +147,10 @@ impl Value {
         })
     }
 
-    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Id, Ast)>, &'static str> {
+    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, &'static str> {
         parser.consume_token(TokenType::Lcb)?;
 
-        let mut components = Vec::<(Id, Ast)>::new();
+        let mut components = Vec::<(Identifier, Ast)>::new();
 
         loop {
             let next = parser.peek_token();
@@ -159,7 +159,7 @@ impl Value {
                 break;
             }
 
-            let identifier = parser.consume_identifier()?;
+            let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
             parser.consume_token(TokenType::Colon)?;
 
@@ -234,7 +234,7 @@ impl IAst for Value {
                     if value_comps.len() != struct_comps.len() {
                         analyzer.error(&format!(
                             "Struct \"{}\" consists of {} fields, but {} were supplied",
-                            identifier.get_string(),
+                            identifier,
                             struct_comps.len(),
                             value_comps.len()
                         ));
@@ -249,9 +249,7 @@ impl IAst for Value {
                         if value_comp_type != *struct_comp_type {
                             analyzer.error(&format!(
                                 "Field named \"{}\" is {:?}, but initialized like {:?}",
-                                value_comp.0.get_string(),
-                                struct_comp_type,
-                                value_comp_type
+                                value_comp.0, struct_comp_type, value_comp_type
                             ));
                             return Err("Mismatched types during struct initialization");
                         }

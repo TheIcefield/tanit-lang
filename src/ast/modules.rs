@@ -1,15 +1,15 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{scopes, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst, Stream};
 use crate::error_listener::{self, MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR};
 use crate::lexer::{Lexer, TokenType};
 use crate::parser::put_intent;
-use crate::parser::{Id, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
 pub struct ModuleNode {
-    pub identifier: Id,
+    pub identifier: Identifier,
     pub body: Box<Ast>,
 }
 
@@ -17,7 +17,7 @@ impl ModuleNode {
     pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         let mut node = Self::parse_header(parser)?;
 
-        node.body = Box::new(scopes::Scope::parse_global(parser)?);
+        node.body = Box::new(Scope::parse_global(parser)?);
 
         Ok(Ast::ModuleDef { node })
     }
@@ -25,12 +25,12 @@ impl ModuleNode {
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwModule)?;
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(Self {
             identifier,
             body: Box::new(Ast::Scope {
-                node: scopes::Scope {
+                node: Scope {
                     statements: Vec::new(),
                     is_global: true,
                 },
@@ -41,12 +41,20 @@ impl ModuleNode {
     pub fn parse_ext_module(parser: &mut Parser) -> Result<Ast, &'static str> {
         let mut node = Self::parse_header(parser)?;
 
-        node.body = Self::parse_ext_body(node.identifier.get_str().unwrap(), parser)?;
+        node.body = Self::parse_ext_body(&node.identifier, parser)?;
 
         Ok(Ast::ModuleDef { node })
     }
 
-    pub fn parse_ext_body(identifier: &str, parser: &mut Parser) -> Result<Box<Ast>, &'static str> {
+    pub fn parse_ext_body(
+        identifier: &Identifier,
+        parser: &mut Parser,
+    ) -> Result<Box<Ast>, &'static str> {
+        let identifier = match identifier {
+            Identifier::Common(id) => id.clone(),
+            Identifier::Complex(..) => return Err("Expected common identifier, actually complex"),
+        };
+
         let mut path = parser.get_path()?;
         let verbose = parser.is_token_verbose();
         let mut body: Option<Box<Ast>> = None;
@@ -62,13 +70,11 @@ impl ModuleNode {
             .collect::<String>();
 
         path.push('/');
-        path.push_str(identifier);
+        path.push_str(&identifier);
 
         {
             let mut path = path.clone();
             path.push_str(".tt");
-
-            // println!("Try parse {}", path);
 
             let lexer = Lexer::from_file(&path, verbose);
 
@@ -144,6 +150,17 @@ impl ModuleNode {
 
 impl IAst for ModuleNode {
     fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+        let identifier = match &self.identifier {
+            Identifier::Common(id) => id.clone(),
+            Identifier::Complex(..) => {
+                analyzer.error(&format!(
+                    "Expected common identifier, actually complex: {}",
+                    self.identifier
+                ));
+                return Err("Wrong identifier value");
+            }
+        };
+
         if analyzer
             .check_identifier_existance(&self.identifier)
             .is_ok()
@@ -155,14 +172,14 @@ impl IAst for ModuleNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer.scope.push(&self.identifier.get_string());
+        analyzer.scope.push(&identifier);
         self.body.analyze(analyzer)?;
         analyzer.scope.pop();
 
         analyzer.add_symbol(
             &self.identifier,
             analyzer.create_symbol(SymbolData::ModuleDef {
-                full_name: vec![self.identifier.get_string()],
+                full_name: vec![identifier],
             }),
         );
 
@@ -170,7 +187,12 @@ impl IAst for ModuleNode {
     }
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<module {}>", put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<module name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         self.body.traverse(stream, intent + 1)?;
 

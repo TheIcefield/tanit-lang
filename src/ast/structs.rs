@@ -1,19 +1,19 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{types, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, types::Type, Ast, IAst, Stream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
 use crate::lexer::TokenType;
-use crate::parser::{put_intent, Id, Parser};
+use crate::parser::{put_intent, Parser};
 
 use std::collections::HashMap;
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
 pub struct StructNode {
-    pub identifier: Id,
-    pub fields: HashMap<Id, types::Type>,
+    pub identifier: Identifier,
+    pub fields: HashMap<Identifier, Type>,
     pub internals: Vec<Ast>,
 }
 
@@ -32,7 +32,7 @@ impl StructNode {
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwStruct)?;
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(StructNode {
             identifier,
@@ -52,7 +52,7 @@ impl StructNode {
     }
 
     pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
-        let mut fields = HashMap::<Id, types::Type>::new();
+        let mut fields = HashMap::<Identifier, Type>::new();
         let mut internals = Vec::<Ast>::new();
 
         loop {
@@ -75,7 +75,7 @@ impl StructNode {
                 }
 
                 TokenType::Identifier(id) => {
-                    let identifier = parser.consume_identifier()?;
+                    let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
                         parser.error(
@@ -87,7 +87,7 @@ impl StructNode {
 
                     parser.consume_token(TokenType::Colon)?;
 
-                    fields.insert(identifier, types::Type::parse(parser)?);
+                    fields.insert(identifier, Type::parse(parser)?);
                 }
 
                 _ => {
@@ -103,7 +103,7 @@ impl StructNode {
 
         Ok(Ast::StructDef {
             node: Self {
-                identifier: Id::new(),
+                identifier: Identifier::new(),
                 fields,
                 internals,
             },
@@ -124,14 +124,12 @@ impl IAst for StructNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer
-            .scope
-            .push(&format!("@s.{}", &self.identifier.get_string()));
+        analyzer.scope.push(&format!("@s.{}", &self.identifier));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }
 
-        let mut components = Vec::<types::Type>::new();
+        let mut components = Vec::<Type>::new();
         for field in self.fields.iter() {
             components.push(field.1.clone());
         }
@@ -149,7 +147,7 @@ impl IAst for StructNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<struct-def {}>",
+            "{}<struct-def name=\"{}\">",
             put_intent(intent),
             self.identifier
         )?;
@@ -159,7 +157,12 @@ impl IAst for StructNode {
         }
 
         for field in self.fields.iter() {
-            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
+            writeln!(
+                stream,
+                "{}<field name=\"{}\">",
+                put_intent(intent + 1),
+                field.0
+            )?;
 
             field.1.traverse(stream, intent + 2)?;
 
@@ -182,8 +185,8 @@ impl IAst for StructNode {
 
 #[derive(Clone, PartialEq)]
 pub enum EnumField {
-    StructLike(HashMap<Id, types::Type>),
-    TupleLike(Vec<types::Type>),
+    StructLike(HashMap<Identifier, Type>),
+    TupleLike(Vec<Type>),
     Common,
 }
 
@@ -194,7 +197,7 @@ impl EnumField {
             TokenType::EndOfLine => Ok(EnumField::Common),
 
             TokenType::LParen => {
-                if let types::Type::Tuple { components } = types::Type::parse_tuple_def(parser)? {
+                if let Type::Tuple { components } = Type::parse_tuple_def(parser)? {
                     Ok(Self::TupleLike(components))
                 } else {
                     Err(UNEXPECTED_TOKEN_ERROR_STR)
@@ -232,7 +235,7 @@ impl IAst for EnumField {
         match self {
             Self::StructLike(s) => {
                 for f in s.iter() {
-                    writeln!(stream, "{}<field {}>", put_intent(intent), f.0)?;
+                    writeln!(stream, "{}<field name=\"{}\">", put_intent(intent), f.0)?;
 
                     f.1.traverse(stream, intent + 1)?;
 
@@ -253,8 +256,8 @@ impl IAst for EnumField {
 
 #[derive(Clone, PartialEq)]
 pub struct EnumNode {
-    pub identifier: Id,
-    pub fields: HashMap<Id, EnumField>,
+    pub identifier: Identifier,
+    pub fields: HashMap<Identifier, EnumField>,
     pub internals: Vec<Ast>,
 }
 
@@ -273,7 +276,7 @@ impl EnumNode {
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
         parser.consume_token(TokenType::KwEnum)?;
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(EnumNode {
             identifier,
@@ -293,7 +296,7 @@ impl EnumNode {
     }
 
     pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
-        let mut fields = HashMap::<Id, EnumField>::new();
+        let mut fields = HashMap::<Identifier, EnumField>::new();
         let mut internals = Vec::<Ast>::new();
 
         loop {
@@ -316,7 +319,7 @@ impl EnumNode {
                 }
 
                 TokenType::Identifier(id) => {
-                    let identifier = parser.consume_identifier()?;
+                    let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
                         parser.error(
@@ -344,7 +347,7 @@ impl EnumNode {
 
         Ok(Ast::EnumDef {
             node: Self {
-                identifier: Id::new(),
+                identifier: Identifier::new(),
                 fields,
                 internals,
             },
@@ -362,9 +365,7 @@ impl IAst for EnumNode {
             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
-        analyzer
-            .scope
-            .push(&format!("@e.{}", &self.identifier.get_string()));
+        analyzer.scope.push(&format!("@e.{}", &self.identifier));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }
@@ -386,7 +387,7 @@ impl IAst for EnumNode {
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(
             stream,
-            "{}<enum-def {}>",
+            "{}<enum-def name=\"{}\">",
             put_intent(intent),
             self.identifier
         )?;
@@ -397,11 +398,21 @@ impl IAst for EnumNode {
 
         for field in self.fields.iter() {
             if matches!(field.1, EnumField::Common) {
-                writeln!(stream, "{}<field {}/>", put_intent(intent + 1), field.0)?;
+                writeln!(
+                    stream,
+                    "{}<field name=\"{}\"/>",
+                    put_intent(intent + 1),
+                    field.0
+                )?;
                 continue;
             }
 
-            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
+            writeln!(
+                stream,
+                "{}<field name=\"{}\">",
+                put_intent(intent + 1),
+                field.0
+            )?;
 
             field.1.traverse(stream, intent + 2)?;
 

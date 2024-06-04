@@ -1,7 +1,8 @@
+use std::str::FromStr;
+
 use tanit::{
-    ast::{structs::EnumField, types::Type},
+    ast::{identifiers::Identifier, structs::EnumField, types::Type},
     lexer::TokenType,
-    parser::Id,
 };
 
 #[test]
@@ -24,7 +25,7 @@ fn module_test() {
     let res = tanit::ast::modules::ModuleNode::parse_def(&mut parser).unwrap();
 
     let res = if let ast::Ast::ModuleDef { node } = &res {
-        assert_eq!(&node.identifier.get_string(), "M1");
+        assert!(node.identifier == Identifier::from_str("M1").unwrap());
         &node.body
     } else {
         panic!("res should be \'ModuleDef\'");
@@ -37,7 +38,7 @@ fn module_test() {
     };
 
     if let ast::Ast::ModuleDef { node } = res {
-        assert_eq!(&node.identifier.get_string(), "M2");
+        assert!(node.identifier == Identifier::from_str("M2").unwrap());
     } else {
         panic!("res should be \'ModuleDef\'");
     };
@@ -63,12 +64,18 @@ fn struct_test() {
     let res = tanit::ast::structs::StructNode::parse_def(&mut parser).unwrap();
 
     if let ast::Ast::StructDef { node } = res {
-        assert_eq!(&node.identifier.get_string(), "S1");
+        assert!(node.identifier == Identifier::from_str("S1").unwrap());
 
-        let field_type = node.fields.get(&Id::from("f1")).unwrap();
+        let field_type = node
+            .fields
+            .get(&Identifier::from_str("f1").unwrap())
+            .unwrap();
         assert!(matches!(field_type, Type::I32));
 
-        let field_type = node.fields.get(&Id::from("f2")).unwrap();
+        let field_type = node
+            .fields
+            .get(&Identifier::from_str("f2").unwrap())
+            .unwrap();
 
         if let Type::Template {
             identifier,
@@ -108,14 +115,18 @@ fn enum_test() {
     let res = tanit::ast::structs::EnumNode::parse_def(&mut parser).unwrap();
 
     if let ast::Ast::EnumDef { node } = &res {
-        assert_eq!(&node.identifier.get_string(), "E1");
+        assert!(node.identifier == Identifier::from_str("E1").unwrap());
 
         assert!(matches!(
-            node.fields.get(&Id::from("f1")),
+            node.fields.get(&Identifier::from_str("f1").unwrap()),
             Some(&EnumField::Common)
         ));
 
-        if let EnumField::TupleLike(components) = node.fields.get(&Id::from("f2")).unwrap() {
+        if let EnumField::TupleLike(components) = node
+            .fields
+            .get(&Identifier::from_str("f2").unwrap())
+            .unwrap()
+        {
             assert_eq!(components.len(), 2);
             assert!(matches!(components[0], Type::I32));
             assert!(matches!(components[1], Type::I32));
@@ -123,11 +134,20 @@ fn enum_test() {
             panic!("wrong type");
         }
 
-        let field = node.fields.get(&Id::from("f3")).unwrap();
+        let field = node
+            .fields
+            .get(&Identifier::from_str("f3").unwrap())
+            .unwrap();
         if let EnumField::StructLike(components) = &field {
             assert_eq!(components.len(), 2);
-            assert!(matches!(components.get(&Id::from("f1")), Some(&Type::I32)));
-            assert!(matches!(components.get(&Id::from("f2")), Some(&Type::F32)));
+            assert!(matches!(
+                components.get(&Identifier::from_str("f1").unwrap()),
+                Some(&Type::I32)
+            ));
+            assert!(matches!(
+                components.get(&Identifier::from_str("f2").unwrap()),
+                Some(&Type::F32)
+            ));
         } else {
             panic!("wrong type");
         }
@@ -155,8 +175,8 @@ fn variables_test() {
     let res = tanit::ast::functions::FunctionNode::parse_def(&mut parser).unwrap();
 
     let res = if let ast::Ast::FuncDef { node } = &res {
-        assert_eq!(&node.identifier.get_string(), "main");
-        assert_eq!(node.parameters.is_empty(), true);
+        assert!(node.identifier == Identifier::from_str("main").unwrap());
+        assert!(node.parameters.is_empty());
 
         if let Type::Tuple { components } = &node.return_type {
             assert!(components.is_empty());
@@ -176,7 +196,7 @@ fn variables_test() {
     };
 
     if let ast::Ast::VariableDef { node } = &res[0] {
-        assert_eq!(&node.identifier.get_string(), "PI");
+        assert!(node.identifier == Identifier::from_str("PI").unwrap());
         assert!(!node.is_mutable);
         assert!(!node.is_global);
         assert!(matches!(node.var_type, Type::F32));
@@ -215,7 +235,7 @@ fn variables_test() {
             if let ast::Ast::Value { node } = lhs.as_ref() {
                 match node {
                     ast::values::Value::Identifier(id) => {
-                        assert_eq!(&id.get_string(), "radian");
+                        assert!(*id == Identifier::from_str("radian").unwrap());
                     }
                     _ => panic!("lhs has to be identifier"),
                 }
@@ -263,7 +283,7 @@ fn variables_test() {
                     if let tanit::ast::Ast::Value { node } = lhs.as_ref() {
                         match node {
                             tanit::ast::values::Value::Identifier(id) => {
-                                assert_eq!(&id.get_string(), "PI");
+                                assert!(*id == Identifier::from_str("PI").unwrap());
                             }
                             _ => panic!("lhs has to be \'PI\'"),
                         }
@@ -374,7 +394,7 @@ fn types_test() {
     let res = if let ast::Ast::FuncDef { node } =
         tanit::ast::functions::FunctionNode::parse_def(&mut parser).unwrap()
     {
-        assert_eq!(&node.identifier.get_string(), "main");
+        assert!(node.identifier == Identifier::from_str("main").unwrap());
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple { components } = &node.return_type {
@@ -395,7 +415,7 @@ fn types_test() {
     };
 
     if let ast::Ast::AliasDef { node } = &statements[0] {
-        assert_eq!(&node.identifier.get_string(), "Items");
+        assert!(node.identifier == Identifier::from_str("Items").unwrap());
 
         if let Type::Template {
             identifier,

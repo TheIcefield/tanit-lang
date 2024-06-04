@@ -3,6 +3,7 @@ use crate::analyzer::Analyzer;
 pub mod branches;
 pub mod expressions;
 pub mod functions;
+pub mod identifiers;
 pub mod modules;
 pub mod scopes;
 pub mod structs;

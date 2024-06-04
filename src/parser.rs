@@ -5,8 +5,6 @@ use crate::error_listener::{
 };
 use crate::lexer::{self, Lexer, Location, Token, TokenType};
 
-pub type Id = lexer::TokenType;
-
 pub struct Parser {
     error_listener: ErrorListener,
     lexer: Lexer,
@@ -141,7 +139,7 @@ impl Parser {
         Err(UNEXPECTED_TOKEN_ERROR_STR)
     }
 
-    pub fn consume_identifier(&mut self) -> Result<Id, &'static str> {
+    pub fn consume_identifier(&mut self) -> Result<TokenType, &'static str> {
         loop {
             let tkn = self.lexer.peek();
 

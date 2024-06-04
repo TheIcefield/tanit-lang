@@ -212,9 +212,9 @@ impl std::fmt::Display for TokenType {
             Self::KwMut => write!(f, "mut"),
             Self::KwConst => write!(f, "const"),
 
-            Self::Identifier(val) => write!(f, "identifier=\"{}\"", val),
-            Self::Integer(val) => write!(f, "integer=\"{}\"", val),
-            Self::Decimal(val) => write!(f, "float=\"{}\"", val),
+            Self::Identifier(val) => write!(f, "{}", val),
+            Self::Integer(val) => write!(f, "{}", val),
+            Self::Decimal(val) => write!(f, "{}", val),
 
             Self::Unknown => write!(f, "unknown token"),
         }

@@ -1,8 +1,8 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst, Stream};
 use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::TokenType;
-use crate::parser::{put_intent, Id, Parser};
+use crate::parser::{put_intent, Parser};
 
 use std::fmt::Debug;
 use std::io::Write;
@@ -186,7 +186,7 @@ impl Type {
 
 #[derive(Clone, PartialEq)]
 pub struct Alias {
-    pub identifier: Id,
+    pub identifier: Identifier,
     pub value: Type,
 }
 
@@ -194,7 +194,7 @@ impl Alias {
     pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         parser.consume_token(TokenType::KwAlias)?;
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         parser.consume_token(TokenType::Assign)?;
 
@@ -261,7 +261,7 @@ impl IAst for Type {
             } => {
                 writeln!(
                     stream,
-                    "{}<type identifier=\"{}\">",
+                    "{}<type name=\"{}\">",
                     put_intent(intent),
                     identifier
                 )?;
@@ -274,28 +274,23 @@ impl IAst for Type {
             }
 
             Self::Custom(id) => {
-                writeln!(
-                    stream,
-                    "{}<type identifier=\"{}\"/>",
-                    put_intent(intent),
-                    id
-                )?;
+                writeln!(stream, "{}<type name=\"{}\"/>", put_intent(intent), id)?;
             }
 
-            Self::Bool => writeln!(stream, "{}<type identifier=\"bool\"/>", put_intent(intent))?,
-            Self::I8 => writeln!(stream, "{}<type identifier=\"i8\"/>", put_intent(intent))?,
-            Self::I16 => writeln!(stream, "{}<type identifier=\"i16\"/>", put_intent(intent))?,
-            Self::I32 => writeln!(stream, "{}<type identifier=\"i32\"/>", put_intent(intent))?,
-            Self::I64 => writeln!(stream, "{}<type identifier=\"i64\"/>", put_intent(intent))?,
-            Self::I128 => writeln!(stream, "{}<type identifier=\"i128\"/>", put_intent(intent))?,
-            Self::U8 => writeln!(stream, "{}<type identifier=\"u8\"/>", put_intent(intent))?,
-            Self::U16 => writeln!(stream, "{}<type identifier=\"u16\"/>", put_intent(intent))?,
-            Self::U32 => writeln!(stream, "{}<type identifier=\"u32\"/>", put_intent(intent))?,
-            Self::U64 => writeln!(stream, "{}<type identifier=\"u64\"/>", put_intent(intent))?,
-            Self::U128 => writeln!(stream, "{}<type identifier=\"u128\"/>", put_intent(intent))?,
-            Self::F32 => writeln!(stream, "{}<type identifier=\"f32\"/>", put_intent(intent))?,
-            Self::F64 => writeln!(stream, "{}<type identifier=\"f64\"/>", put_intent(intent))?,
-            Self::Str => writeln!(stream, "{}<type identifier=\"str\"/>", put_intent(intent))?,
+            Self::Bool => writeln!(stream, "{}<type name=\"bool\"/>", put_intent(intent))?,
+            Self::I8 => writeln!(stream, "{}<type name=\"i8\"/>", put_intent(intent))?,
+            Self::I16 => writeln!(stream, "{}<type name=\"i16\"/>", put_intent(intent))?,
+            Self::I32 => writeln!(stream, "{}<type name=\"i32\"/>", put_intent(intent))?,
+            Self::I64 => writeln!(stream, "{}<type name=\"i64\"/>", put_intent(intent))?,
+            Self::I128 => writeln!(stream, "{}<type name=\"i128\"/>", put_intent(intent))?,
+            Self::U8 => writeln!(stream, "{}<type name=\"u8\"/>", put_intent(intent))?,
+            Self::U16 => writeln!(stream, "{}<type name=\"u16\"/>", put_intent(intent))?,
+            Self::U32 => writeln!(stream, "{}<type name=\"u32\"/>", put_intent(intent))?,
+            Self::U64 => writeln!(stream, "{}<type name=\"u64\"/>", put_intent(intent))?,
+            Self::U128 => writeln!(stream, "{}<type name=\"u128\"/>", put_intent(intent))?,
+            Self::F32 => writeln!(stream, "{}<type name=\"f32\"/>", put_intent(intent))?,
+            Self::F64 => writeln!(stream, "{}<type name=\"f64\"/>", put_intent(intent))?,
+            Self::Str => writeln!(stream, "{}<type name=\"str\"/>", put_intent(intent))?,
         }
 
         Ok(())
@@ -382,7 +377,12 @@ impl IAst for Alias {
     }
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<alias {}>", put_intent(intent), self.identifier)?;
+        writeln!(
+            stream,
+            "{}<alias name=\"{}\">",
+            put_intent(intent),
+            self.identifier
+        )?;
 
         self.value.traverse(stream, intent + 1)?;
 

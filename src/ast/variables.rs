@@ -5,14 +5,15 @@ use crate::error_listener::{
     VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR,
 };
 use crate::lexer::TokenType;
-use crate::parser::put_intent;
-use crate::parser::{Id, Parser};
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
+use super::identifiers::Identifier;
+
 #[derive(Clone, PartialEq)]
 pub struct VariableNode {
-    pub identifier: Id,
+    pub identifier: Identifier,
     pub var_type: types::Type,
     pub is_global: bool,
     pub is_mutable: bool,
@@ -57,7 +58,7 @@ impl VariableNode {
             _ => false,
         };
 
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         let next = parser.peek_token();
 
@@ -128,7 +129,7 @@ impl VariableNode {
 
     /* parse function param */
     pub fn parse_param(parser: &mut Parser) -> Result<Self, &'static str> {
-        let identifier = parser.consume_identifier()?;
+        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         parser.consume_token(TokenType::Colon)?;
 
