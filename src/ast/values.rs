@@ -248,7 +248,7 @@ impl IAst for Value {
 
                         if value_comp_type != *struct_comp_type {
                             analyzer.error(&format!(
-                                "Field named \"{}\" is {:?}, but initialized like {:?}",
+                                "Field named \"{}\" is {}, but initialized like {}",
                                 value_comp.0, struct_comp_type, value_comp_type
                             ));
                             return Err("Mismatched types during struct initialization");
@@ -284,7 +284,7 @@ impl IAst for Value {
                     let current_comp_type = comp.1.get_type(analyzer);
                     if comp_type != current_comp_type {
                         analyzer.error(&format!(
-                            "Array type is declared like {:?}, but {}{} element has type {:?}",
+                            "Array type is declared like {}, but {}{} element has type {}",
                             comp_type,
                             comp.0 + 1,
                             match comp.0 % 10 {

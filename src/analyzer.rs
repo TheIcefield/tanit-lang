@@ -96,10 +96,10 @@ impl SymbolData {
                 )?;
 
                 for arg in args.iter() {
-                    write!(stream, "{:?} ", arg)?;
+                    write!(stream, "{} ", arg)?;
                 }
 
-                write!(stream, ") -> {:?}", return_type)
+                write!(stream, ") -> {}", return_type)
             }
 
             Self::StructDef { components } => {
@@ -115,14 +115,14 @@ impl SymbolData {
                         EnumField::TupleLike(t) => {
                             write!(stream, "( ")?;
                             for tc in t.iter() {
-                                write!(stream, "{:?} ", *tc)?;
+                                write!(stream, "{} ", *tc)?;
                             }
                             write!(stream, ")")?;
                         }
                         EnumField::StructLike(s) => {
                             write!(stream, "{{ ")?;
                             for sc in s.iter() {
-                                write!(stream, "{:?} ", *sc.1)?;
+                                write!(stream, "{} ", *sc.1)?;
                             }
                             write!(stream, "}}")?;
                         }
@@ -138,7 +138,7 @@ impl SymbolData {
                 is_initialization,
             } => write!(
                 stream,
-                "Variable {}: {} {:?}",
+                "Variable {}: {} {}",
                 if *is_initialization {
                     "initialization"
                 } else {

@@ -1,5 +1,8 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{identifiers::Identifier, types, values, Ast, IAst, Stream};
+use crate::ast::{
+    functions::FunctionNode, identifiers::Identifier, types, values, variables::VariableNode, Ast,
+    IAst, Stream,
+};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
@@ -9,6 +12,7 @@ use crate::parser::put_intent;
 use crate::parser::Parser;
 
 use std::io::Write;
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq)]
 pub enum Expression {
@@ -28,6 +32,68 @@ impl Expression {
         Self::parse_assign(parser)
     }
 
+    pub fn convert_ast_node(
+        expr_node: &mut Ast,
+        analyzer: &mut crate::analyzer::Analyzer,
+    ) -> Result<(), &'static str> {
+        if let Ast::Expression { node } = expr_node {
+            if let Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = node.as_ref()
+            {
+                let lhs_type = lhs.get_type(analyzer);
+                let rhs_type = rhs.get_type(analyzer);
+
+                let func_id = Identifier::Common(format!(
+                    "__tanit_compiler__{}_{}_{}",
+                    match operation {
+                        TokenType::Plus => "add",
+                        TokenType::Minus => "sub",
+                        TokenType::Star => "mul",
+                        TokenType::Slash => "div",
+                        TokenType::Percent => "mod",
+                        _ => return Err("Unexpected operation"),
+                    },
+                    lhs_type.clone(),
+                    rhs_type.clone()
+                ));
+
+                *expr_node = Ast::FuncDef {
+                    node: FunctionNode {
+                        identifier: func_id,
+                        return_type: lhs_type.clone(),
+                        parameters: vec![
+                            Ast::VariableDef {
+                                node: VariableNode {
+                                    identifier: Identifier::from_str("_A")?,
+                                    var_type: lhs_type.clone(),
+                                    is_global: false,
+                                    is_mutable: false,
+                                },
+                            },
+                            Ast::VariableDef {
+                                node: VariableNode {
+                                    identifier: Identifier::from_str("_B")?,
+                                    var_type: rhs_type,
+                                    is_global: false,
+                                    is_mutable: false,
+                                },
+                            },
+                        ],
+                        body: None,
+                    },
+                };
+            }
+            Ok(())
+        } else {
+            Err("Expected \"Expression\"")
+        }
+    }
+}
+
+impl Expression {
     fn parse_assign(parser: &mut Parser) -> Result<Ast, &'static str> {
         let lhs = Self::parse_logical_or(parser)?;
 

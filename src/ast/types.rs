@@ -4,7 +4,6 @@ use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
-use std::fmt::Debug;
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
@@ -297,7 +296,7 @@ impl IAst for Type {
     }
 }
 
-impl Debug for Type {
+impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ref { is_mut, ref_to } => {
@@ -307,7 +306,7 @@ impl Debug for Type {
                     write!(f, "mut")?;
                 }
 
-                write!(f, "{:?}", ref_to)
+                write!(f, "{}", ref_to)
             }
             Self::Ptr { is_mut, ptr_to } => {
                 write!(f, "*")?;
@@ -316,7 +315,7 @@ impl Debug for Type {
                     write!(f, "mut")?;
                 }
 
-                write!(f, "{:?}", ptr_to)
+                write!(f, "{}", ptr_to)
             }
             Self::Template {
                 identifier,
@@ -324,7 +323,7 @@ impl Debug for Type {
             } => {
                 write!(f, "{}<", identifier)?;
                 for i in arguments.iter() {
-                    write!(f, "{:?}", i)?;
+                    write!(f, "{}", i)?;
                 }
                 write!(f, ">")
             }
@@ -332,12 +331,12 @@ impl Debug for Type {
                 write!(f, "( ")?;
 
                 for i in components.iter() {
-                    write!(f, "{:?} ", i)?;
+                    write!(f, "{} ", i)?;
                 }
 
                 write!(f, ")")
             }
-            Self::Array { value_type, .. } => write!(f, "[{:?}]", value_type),
+            Self::Array { value_type, .. } => write!(f, "[{}]", value_type),
             Self::Custom(s) => write!(f, "{}", s),
             Self::Bool => write!(f, "bool"),
             Self::I8 => write!(f, "i8"),
@@ -354,6 +353,12 @@ impl Debug for Type {
             Self::F64 => write!(f, "f64"),
             Self::Str => write!(f, "str"),
         }
+    }
+}
+
+impl std::fmt::Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self, f)
     }
 }
 

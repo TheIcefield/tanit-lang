@@ -42,14 +42,7 @@ fn main() {
 
     let mut parser = parser::Parser::new(lexer, error_listener);
     let mut ast = match parser.parse() {
-        Ok(ast) => {
-            if dump_ast {
-                if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
-                    println!("{}", err)
-                }
-            }
-            ast
-        }
+        Ok(ast) => ast,
         Err(error_listener) => {
             error_listener.dump_errors();
             return;
@@ -60,6 +53,12 @@ fn main() {
     let mut analyzer = analyzer::Analyzer::new(error_listener);
 
     let (symtable, errors) = analyzer.analyze(&mut ast);
+
+    if dump_ast {
+        if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
+            println!("{}", err);
+        }
+    }
 
     if !errors.is_empty() {
         errors.dump_errors();
