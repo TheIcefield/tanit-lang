@@ -43,47 +43,67 @@ impl Expression {
                 rhs,
             } = node.as_ref()
             {
+                let is_conversion = *operation == TokenType::KwAs;
+
                 let lhs_type = lhs.get_type(analyzer);
-                let rhs_type = rhs.get_type(analyzer);
 
-                let func_id = Identifier::Common(format!(
-                    "__tanit_compiler__{}_{}_{}",
-                    match operation {
-                        TokenType::Plus => "add",
-                        TokenType::Minus => "sub",
-                        TokenType::Star => "mul",
-                        TokenType::Slash => "div",
-                        TokenType::Percent => "mod",
-                        _ => return Err("Unexpected operation"),
-                    },
-                    lhs_type.clone(),
-                    rhs_type.clone()
-                ));
+                if !is_conversion {
+                    let rhs_type = rhs.get_type(analyzer);
+                    let func_id = Identifier::Common(format!(
+                        "__tanit_compiler__{}_{}_{}",
+                        match operation {
+                            TokenType::Plus => "add",
+                            TokenType::Minus => "sub",
+                            TokenType::Star => "mul",
+                            TokenType::Slash => "div",
+                            TokenType::Percent => "mod",
+                            _ => return Err("Unexpected operation"),
+                        },
+                        lhs_type.clone(),
+                        rhs_type.clone()
+                    ));
 
-                *expr_node = Ast::FuncDef {
-                    node: FunctionNode {
-                        identifier: func_id,
-                        return_type: lhs_type.clone(),
-                        parameters: vec![
-                            Ast::VariableDef {
-                                node: VariableNode {
-                                    identifier: Identifier::from_str("_A")?,
-                                    var_type: lhs_type.clone(),
-                                    is_global: false,
-                                    is_mutable: false,
+                    *expr_node = Ast::FuncDef {
+                        node: FunctionNode {
+                            identifier: func_id,
+                            return_type: lhs_type.clone(),
+                            parameters: vec![
+                                Ast::VariableDef {
+                                    node: VariableNode {
+                                        identifier: Identifier::from_str("_A")?,
+                                        var_type: lhs_type.clone(),
+                                        is_global: false,
+                                        is_mutable: false,
+                                    },
                                 },
-                            },
-                            Ast::VariableDef {
-                                node: VariableNode {
-                                    identifier: Identifier::from_str("_B")?,
-                                    var_type: rhs_type,
-                                    is_global: false,
-                                    is_mutable: false,
+                                Ast::VariableDef {
+                                    node: VariableNode {
+                                        identifier: Identifier::from_str("_B")?,
+                                        var_type: rhs_type,
+                                        is_global: false,
+                                        is_mutable: false,
+                                    },
                                 },
-                            },
-                        ],
-                        body: None,
-                    },
+                            ],
+                            body: None,
+                        },
+                    }
+                } else {
+                    let rhs_type = if let Ast::Value {
+                        node: values::Value::Identifier(id),
+                    } = rhs.as_ref()
+                    {
+                        types::Type::from_id(id)
+                    } else {
+                        types::Type::new()
+                    };
+                    *expr_node = Ast::Expression {
+                        node: Box::new(Expression::Binary {
+                            operation: TokenType::KwAs,
+                            lhs: lhs.clone(),
+                            rhs: Box::new(Ast::TypeDecl { node: rhs_type }),
+                        }),
+                    };
                 };
             }
             Ok(())
@@ -554,7 +574,25 @@ impl IAst for Expression {
                 | TokenType::Gte => types::Type::Bool,
 
                 _ => {
-                    let rhs_type = rhs.get_type(analyzer);
+                    let is_conversion = *operation == TokenType::KwAs;
+
+                    let rhs_type = if is_conversion {
+                        if let Ast::Value {
+                            node: values::Value::Identifier(id),
+                        } = rhs.as_ref()
+                        {
+                            types::Type::from_id(id)
+                        } else {
+                            analyzer.error("rhs expected to be a type");
+                            types::Type::new()
+                        }
+                    } else {
+                        return rhs.get_type(analyzer);
+                    };
+
+                    if is_conversion {
+                        return rhs_type;
+                    }
 
                     let mut lhs_type = if let Ast::VariableDef { node } = lhs.as_ref() {
                         node.var_type.clone()
@@ -572,11 +610,12 @@ impl IAst for Expression {
                         return lhs_type;
                     }
 
-                    analyzer.error("mismatched types");
+                    analyzer.error(&format!(
+                        "Mismatched types {:?} and {:?}",
+                        lhs_type, rhs_type
+                    ));
 
-                    types::Type::Tuple {
-                        components: Vec::new(),
-                    }
+                    types::Type::new()
                 }
             },
             Self::Unary { node, .. } => node.get_type(analyzer),
@@ -590,10 +629,21 @@ impl IAst for Expression {
                 lhs,
                 rhs,
             } => {
-                let mut lhs_type = lhs.get_type(analyzer);
-                let rhs_type = rhs.get_type(analyzer);
+                let is_conversion = *operation == TokenType::KwAs;
 
-                rhs.analyze(analyzer)?;
+                let mut lhs_type: types::Type = lhs.get_type(analyzer);
+
+                let rhs_type = if is_conversion {
+                    if let Ast::TypeDecl { node } = rhs.as_ref() {
+                        node.clone()
+                    } else {
+                        return Err("rhs must be a type");
+                    }
+                } else {
+                    let t = rhs.get_type(analyzer);
+                    rhs.analyze(analyzer)?;
+                    t
+                };
 
                 if *operation == TokenType::Assign
                     || *operation == TokenType::SubAssign
@@ -641,19 +691,28 @@ impl IAst for Expression {
                             }),
                         );
                     } else if let Ast::Value { node } = lhs.as_mut() {
-                        if let values::Value::Identifier(id) = node {
-                            if let Ok(s) = analyzer.check_identifier_existance(id) {
-                                if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
-                                    if !*is_mutable {
-                                        analyzer.error(&format!(
-                                            "Variable \"{}\" is immutable in current scope",
-                                            id
-                                        ));
+                        match node {
+                            values::Value::Identifier(id) => {
+                                if let Ok(s) = analyzer.check_identifier_existance(id) {
+                                    if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
+                                        if !*is_mutable {
+                                            analyzer.error(&format!(
+                                                "Variable \"{}\" is immutable in current scope",
+                                                id
+                                            ));
+                                        }
                                     }
                                 }
                             }
-                        } else {
-                            analyzer.error("Cannot perform operation with this object");
+                            values::Value::Integer(..) | values::Value::Decimal(..) => {}
+                            values::Value::Text(..) => {
+                                analyzer.error("Cannot perform operation with text in this context")
+                            }
+                            values::Value::Array { .. } => analyzer
+                                .error("Cannot perform operation with array in this context"),
+                            values::Value::Tuple { .. } => analyzer
+                                .error("Cannot perform operation with tuple in this context"),
+                            _ => analyzer.error("Cannot perform operation with this object"),
                         }
                     } else {
                         lhs.analyze(analyzer)?;
@@ -663,10 +722,17 @@ impl IAst for Expression {
                 }
 
                 if lhs_type != rhs_type {
-                    analyzer.error(&format!(
-                        "Cannot perform operation with objects with different types: {:?} and {:?}",
-                        lhs_type, rhs_type
-                    ));
+                    if is_conversion {
+                        if !lhs_type.is_common() || !rhs_type.is_common() {
+                            analyzer
+                                .error(&format!("Cannot cast {:?} to {:?}", lhs_type, rhs_type));
+                        }
+                    } else {
+                        analyzer.error(&format!(
+                            "Cannot perform operation with objects with different types: {:?} and {:?}",
+                            lhs_type, rhs_type
+                        ));
+                    }
                 }
 
                 Ok(())

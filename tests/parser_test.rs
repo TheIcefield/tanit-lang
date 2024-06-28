@@ -440,31 +440,50 @@ fn types_test() {
 #[test]
 fn conversion_test() {
     use tanit::{
+        ast::{expressions::Expression, identifiers::Identifier, values::Value, Ast},
         error_listener::ErrorListener,
         lexer::{Lexer, TokenType},
         parser::Parser,
-        ast::{Ast, values::Value, identifiers::Identifier, expressions::Expression}
     };
 
     static SRC_TEXT: &str = "45 as f32";
 
     let mut parser = Parser::new(
         Lexer::from_text(SRC_TEXT, false).unwrap(),
-        ErrorListener::new());
+        ErrorListener::new(),
+    );
 
     if let Ast::Expression { node } = Expression::parse(&mut parser).unwrap() {
-        if let Expression::Binary { operation, lhs, rhs } = node.as_ref() {
+        if let Expression::Binary {
+            operation,
+            lhs,
+            rhs,
+        } = node.as_ref()
+        {
             assert_eq!(*operation, TokenType::KwAs);
 
-            assert!(matches!(lhs.as_ref(), Ast::Value { node: Value::Integer(45) }));
+            assert!(matches!(
+                lhs.as_ref(),
+                Ast::Value {
+                    node: Value::Integer(45)
+                }
+            ));
 
-            if let Ast::Value { node: Value::Identifier(id) } = rhs.as_ref() {
+            if let Ast::Value {
+                node: Value::Identifier(id),
+            } = rhs.as_ref()
+            {
                 match id {
                     Identifier::Common(id) => assert_eq!(id, "f32"),
-                    _ => panic!("expected Identifier::Common")
+                    _ => panic!("expected Identifier::Common"),
                 }
-            } else { panic!("Identifier"); }
-
-        } else { panic!("Expected binary expression"); }
-    } else { panic!("Expected expression"); };
+            } else {
+                panic!("Identifier");
+            }
+        } else {
+            panic!("Expected binary expression");
+        }
+    } else {
+        panic!("Expected expression");
+    };
 }

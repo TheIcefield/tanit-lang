@@ -5,6 +5,7 @@ use crate::lexer::TokenType;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
+use std::str::FromStr;
 
 #[derive(Clone, PartialEq)]
 pub enum Type {
@@ -45,6 +46,38 @@ pub enum Type {
 }
 
 impl Type {
+    pub fn new() -> Self {
+        Self::Tuple {
+            components: Vec::new(),
+        }
+    }
+
+    pub fn from_id(id: &Identifier) -> Self {
+        match id {
+            Identifier::Common(id) => Self::from_str(id).unwrap(),
+            Identifier::Complex(..) => unimplemented!("creation type by complex id"),
+        }
+    }
+
+    pub fn is_common(&self) -> bool {
+        matches!(
+            self,
+            Self::Bool
+                | Self::F32
+                | Self::F64
+                | Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::I128
+                | Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::U128
+        )
+    }
+
     pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
         let next = parser.peek_token();
 
@@ -180,6 +213,29 @@ impl Type {
         parser.get_singular();
 
         Ok(children)
+    }
+}
+
+impl std::str::FromStr for Type {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "bool" => Ok(Type::Bool),
+            "i8" => Ok(Type::I8),
+            "i16" => Ok(Type::I16),
+            "i32" => Ok(Type::I32),
+            "i64" => Ok(Type::I64),
+            "i128" => Ok(Type::I128),
+            "u8" => Ok(Type::U8),
+            "u16" => Ok(Type::U16),
+            "u32" => Ok(Type::U32),
+            "u64" => Ok(Type::U64),
+            "u128" => Ok(Type::U128),
+            "f32" => Ok(Type::F32),
+            "f64" => Ok(Type::F64),
+            "str" => Ok(Type::Str),
+            _ => Ok(Type::Custom(s.to_string())),
+        }
     }
 }
 
@@ -359,6 +415,12 @@ impl std::fmt::Display for Type {
 impl std::fmt::Debug for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self, f)
+    }
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

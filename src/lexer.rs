@@ -140,7 +140,7 @@ impl TokenType {
             Self::Integer(val) => match val.parse() {
                 Ok(val) => Some(val),
                 Err(_) => None,
-            }
+            },
             _ => None,
         }
     }
@@ -150,7 +150,7 @@ impl TokenType {
             Self::Decimal(val) => match val.parse() {
                 Ok(val) => Some(val),
                 Err(_) => None,
-            }
+            },
             _ => None,
         }
     }
