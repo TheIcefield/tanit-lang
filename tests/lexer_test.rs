@@ -4,7 +4,7 @@ fn lexer_test() {
 
     static SRC: &str = "hello func let + 65 -= <<\n struct alpha";
 
-    let lexer = Lexer::from_string(SRC, true);
+    let lexer = Lexer::from_text(SRC, true);
 
     assert_eq!(lexer.is_ok(), true);
 

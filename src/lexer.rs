@@ -101,6 +101,7 @@ pub enum TokenType {
     KwStatic,
     KwMut,
     KwConst,
+    KwAs,
 
     Identifier(String),
     Integer(String),
@@ -130,6 +131,26 @@ impl TokenType {
         match self {
             Self::Identifier(val) | Self::Integer(val) | Self::Decimal(val) => Some(val),
 
+            _ => None,
+        }
+    }
+
+    pub fn get_int(&self) -> Option<usize> {
+        match self {
+            Self::Integer(val) => match val.parse() {
+                Ok(val) => Some(val),
+                Err(_) => None,
+            }
+            _ => None,
+        }
+    }
+
+    pub fn get_dec(&self) -> Option<f64> {
+        match self {
+            Self::Decimal(val) => match val.parse() {
+                Ok(val) => Some(val),
+                Err(_) => None,
+            }
             _ => None,
         }
     }
@@ -211,6 +232,7 @@ impl std::fmt::Display for TokenType {
             Self::KwStatic => write!(f, "static"),
             Self::KwMut => write!(f, "mut"),
             Self::KwConst => write!(f, "const"),
+            Self::KwAs => write!(f, "as"),
 
             Self::Identifier(val) => write!(f, "{}", val),
             Self::Integer(val) => write!(f, "{}", val),
@@ -284,7 +306,7 @@ impl Lexer {
         })
     }
 
-    pub fn from_string(src: &'static str, verbose: bool) -> Result<Self, &'static str> {
+    pub fn from_text(src: &'static str, verbose: bool) -> Result<Self, &'static str> {
         Ok(Self {
             path: String::new(),
             location: Location::new(),
@@ -757,6 +779,7 @@ impl Lexer {
             "extern" => Token::new(TokenType::KwExtern, location),
             "static" => Token::new(TokenType::KwStatic, location),
             "use" => Token::new(TokenType::KwUse, location),
+            "as" => Token::new(TokenType::KwAs, location),
             _ => Token::new(TokenType::Identifier(text), location),
         }
     }

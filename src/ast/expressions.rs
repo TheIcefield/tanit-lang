@@ -345,7 +345,7 @@ impl Expression {
     }
 
     fn parse_mul_or_div(parser: &mut Parser) -> Result<Ast, &'static str> {
-        let lhs = Self::parse_dot(parser)?;
+        let lhs = Self::parse_dot_or_as(parser)?;
 
         let next = parser.peek_token();
         match next.lexem {
@@ -368,12 +368,12 @@ impl Expression {
         }
     }
 
-    fn parse_dot(parser: &mut Parser) -> Result<Ast, &'static str> {
+    fn parse_dot_or_as(parser: &mut Parser) -> Result<Ast, &'static str> {
         let lhs = Self::parse_factor(parser)?;
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Dot => {
+            TokenType::Dot | TokenType::KwAs => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -387,7 +387,6 @@ impl Expression {
                     }),
                 })
             }
-
             _ => Ok(lhs),
         }
     }
