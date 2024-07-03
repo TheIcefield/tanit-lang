@@ -776,4 +776,26 @@ impl IAst for Expression {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        println!("Warning(Expression): only basic codegen");
+
+        match self {
+            Expression::Unary { operation, node } => {
+                writeln!(stream, "{}", operation)?;
+                node.codegen(stream)?;
+            }
+            Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => {
+                lhs.codegen(stream)?;
+                writeln!(stream, "{}", operation)?;
+                rhs.codegen(stream)?;
+            }
+        }
+
+        Ok(())
+    }
 }

@@ -200,4 +200,22 @@ impl IAst for ModuleNode {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        if let Identifier::Common(id) = &self.identifier {
+            let mut new_stream = Stream::open(id).unwrap();
+
+            writeln!(new_stream, "#ifndef _{}\n#define _{}\n", id, id)?;
+
+            self.body.codegen(&mut new_stream)?;
+
+            writeln!(new_stream, "#endif")?;
+
+            writeln!(stream, "#include \"{}\"", id)?;
+
+            return Ok(());
+        }
+
+        unimplemented!()
+    }
 }

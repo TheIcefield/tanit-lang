@@ -214,6 +214,25 @@ impl Type {
 
         Ok(children)
     }
+
+    fn get_c_type(&self) -> String {
+        match self {
+            Self::Bool | Self::U8 => "unsigned char",
+            Self::U16 => "unsigned short",
+            Self::U32 => "unsigned int",
+            Self::U64 => "unsigned long",
+            Self::U128 => "unsigned long long",
+            Self::I8 => "unsigned int",
+            Self::I16 => "signed short",
+            Self::I32 => "signed int",
+            Self::I64 => "signed long",
+            Self::I128 => "signed long long",
+            Self::F32 => "float",
+            Self::F64 => "double",
+            _ => unimplemented!(),
+        }
+        .to_string()
+    }
 }
 
 impl std::str::FromStr for Type {
@@ -350,6 +369,10 @@ impl IAst for Type {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        write!(stream, " {} ", self.get_c_type())
+    }
 }
 
 impl std::fmt::Display for Type {
@@ -456,5 +479,13 @@ impl IAst for Alias {
         writeln!(stream, "{}</alias>", put_intent(intent))?;
 
         Ok(())
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        write!(stream, "typedef {} ", self.value.get_c_type())?;
+
+        self.identifier.codegen(stream)?;
+
+        writeln!(stream, ";\n")
     }
 }

@@ -1,4 +1,12 @@
-use tanit::{analyzer, error_listener, lexer, parser};
+use tanit::{analyzer, ast::Ast, error_listener, lexer, parser};
+
+use std::io::Write;
+
+fn codegen(ast: &Ast, output: &str) {
+    let mut stream = std::fs::File::create(format!("{}_generated.c", output)).unwrap();
+    let _ = writeln!(stream, "#include <stdio.h>");
+    let _ = ast.codegen(&mut stream);
+}
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -55,7 +63,7 @@ fn main() {
     let (symtable, errors) = analyzer.analyze(&mut ast);
 
     if dump_ast {
-        if let Err(err) = parser::dump_ast(output_file.clone(), &ast) {
+        if let Err(err) = parser::dump_ast(&output_file, &ast) {
             println!("{}", err);
         }
     }
@@ -65,6 +73,10 @@ fn main() {
     }
 
     if dump_symtable {
-        let _ = analyzer::dump_symtable(output_file, &symtable);
+        if let Err(err) = analyzer::dump_symtable(&output_file, &symtable) {
+            println!("{}", err);
+        }
     }
+
+    codegen(&ast, &output_file);
 }

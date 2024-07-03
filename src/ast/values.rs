@@ -30,6 +30,10 @@ impl IAst for CallParam {
     fn traverse(&self, _stream: &mut Stream, _intent: usize) -> std::io::Result<()> {
         Ok(())
     }
+
+    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
+        unimplemented!()
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -460,6 +464,17 @@ impl IAst for Value {
                 put_intent(intent),
                 val
             )?,
+        }
+
+        Ok(())
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        match self {
+            Self::Integer(val) => write!(stream, "{}", *val)?,
+            Self::Decimal(val) => write!(stream, "{}", *val)?,
+            Self::Identifier(val) => val.codegen(stream)?,
+            _ => unimplemented!(),
         }
 
         Ok(())

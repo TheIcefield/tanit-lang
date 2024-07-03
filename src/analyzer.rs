@@ -211,7 +211,7 @@ impl Default for SymbolTable {
     }
 }
 
-pub fn dump_symtable(output: String, symbol_table: &SymbolTable) -> std::io::Result<()> {
+pub fn dump_symtable(output: &str, symbol_table: &SymbolTable) -> std::io::Result<()> {
     let mut stream = std::fs::File::create(format!("{}_symbol_table.txt", output)).unwrap();
     symbol_table.traverse(&mut stream)
 }

@@ -190,4 +190,29 @@ impl IAst for FunctionNode {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        println!("Warning(FunctionNode): only basic implementation");
+
+        self.return_type.codegen(stream)?;
+        self.identifier.codegen(stream)?;
+
+        // generate parameters
+        write!(stream, "(")?;
+        if self.parameters.len() > 0 {
+            self.parameters[0].codegen(stream)?;
+        }
+
+        for param in self.parameters.iter().skip(1) {
+            write!(stream, ", ")?;
+            param.codegen(stream)?;
+        }
+        write!(stream, ")")?;
+
+        if let Some(body) = &self.body {
+            body.codegen(stream)?;
+        }
+
+        Ok(())
+    }
 }

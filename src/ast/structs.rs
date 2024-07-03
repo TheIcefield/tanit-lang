@@ -181,6 +181,21 @@ impl IAst for StructNode {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        write!(stream, "struct ")?;
+
+        self.identifier.codegen(stream)?;
+
+        writeln!(stream, "{{")?;
+        for (field_id, field_type) in self.fields.iter() {
+            field_type.codegen(stream)?;
+            field_id.codegen(stream)?;
+        }
+        writeln!(stream, "}}")?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -261,6 +276,10 @@ impl IAst for EnumField {
         }
 
         Ok(())
+    }
+
+    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
+        unimplemented!()
     }
 }
 
@@ -446,6 +465,21 @@ impl IAst for EnumNode {
         }
 
         writeln!(stream, "{}</enum-def>", put_intent(intent))?;
+
+        Ok(())
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        write!(stream, "enum ")?;
+
+        self.identifier.codegen(stream)?;
+
+        writeln!(stream, "{{")?;
+        for (field_id, _) in self.fields.iter() {
+            field_id.codegen(stream)?;
+            writeln!(stream, ",")?;
+        }
+        writeln!(stream, "}}")?;
 
         Ok(())
     }

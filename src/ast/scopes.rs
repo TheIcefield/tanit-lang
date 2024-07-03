@@ -6,6 +6,8 @@ use crate::{
     ast::{Ast, IAst, Stream},
 };
 
+use std::io::Write;
+
 #[derive(Clone, PartialEq)]
 pub struct Scope {
     pub statements: Vec<Ast>,
@@ -199,6 +201,25 @@ impl IAst for Scope {
             stmt.traverse(stream, intent)?;
         }
 
+        Ok(())
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        if !self.is_global {
+            write!(stream, "\n{{\n")?;
+        }
+
+        for stmt in self.statements.iter() {
+            stmt.codegen(stream)?;
+
+            if !self.is_global {
+                writeln!(stream, ";")?;
+            }
+        }
+
+        if !self.is_global {
+            write!(stream, "\n}}\n")?;
+        }
         Ok(())
     }
 }

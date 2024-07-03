@@ -189,4 +189,14 @@ impl IAst for VariableNode {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        self.var_type.codegen(stream)?;
+
+        write!(stream, " {} ", if self.is_mutable { "" } else { "const" })?;
+
+        self.identifier.codegen(stream)?;
+
+        Ok(())
+    }
 }

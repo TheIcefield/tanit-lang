@@ -145,4 +145,17 @@ impl IAst for Identifier {
     fn traverse(&self, stream: &mut Stream, _intent: usize) -> std::io::Result<()> {
         write!(stream, "{}", self)
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        match self {
+            Self::Common(s) => write!(stream, " {} ", s),
+            Self::Complex(ss) => {
+                write!(stream, "{}", ss[0])?;
+                for comp in ss.iter() {
+                    write!(stream, "__{}", comp)?;
+                }
+                Ok(())
+            }
+        }
+    }
 }

@@ -177,6 +177,10 @@ impl IAst for Branch {
 
         Ok(())
     }
+
+    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
+        unimplemented!();
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -241,6 +245,11 @@ impl IAst for Break {
 
         Ok(())
     }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        println!("Warning: only basic codegen");
+        writeln!(stream, "break")
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -274,6 +283,11 @@ impl IAst for Continue {
 
     fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
         writeln!(stream, "{}<continue/>", put_intent(intent))
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        println!("Warning(Continue): only basic codegen");
+        writeln!(stream, "continue")
     }
 }
 
@@ -335,6 +349,16 @@ impl IAst for Return {
             _ => {
                 writeln!(stream, "{}<return/>", put_intent(intent))?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        write!(stream, "return ")?;
+
+        if let Some(expr) = &self.expr {
+            expr.codegen(stream)?;
         }
 
         Ok(())

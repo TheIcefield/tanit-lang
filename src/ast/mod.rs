@@ -19,6 +19,8 @@ pub trait IAst {
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
 
+    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()>;
+
     fn get_type(&self, _analyzer: &mut Analyzer) -> types::Type {
         types::Type::Tuple {
             components: Vec::new(),
@@ -107,6 +109,25 @@ impl Ast {
             Ast::BreakStmt { node } => node.analyze(analyzer),
 
             Ast::TypeDecl { node } => node.analyze(analyzer),
+        }
+    }
+
+    pub fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+        match self {
+            Self::Scope { node } => node.codegen(stream),
+            Self::ModuleDef { node } => node.codegen(stream),
+            Self::StructDef { node } => node.codegen(stream),
+            Self::EnumDef { node } => node.codegen(stream),
+            Self::FuncDef { node } => node.codegen(stream),
+            Self::VariableDef { node } => node.codegen(stream),
+            Self::Value { node } => node.codegen(stream),
+            Self::TypeDecl { node } => node.codegen(stream),
+            Self::AliasDef { node } => node.codegen(stream),
+            Self::Expression { node } => node.codegen(stream),
+            Self::BranchStmt { node } => node.codegen(stream),
+            Self::BreakStmt { node } => node.codegen(stream),
+            Self::ContinueStmt { node } => node.codegen(stream),
+            Self::ReturnStmt { node } => node.codegen(stream),
         }
     }
 
