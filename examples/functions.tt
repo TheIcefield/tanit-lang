@@ -1,14 +1,26 @@
-func f(a: i32, b: i32) -> f32
+func f(a: i32, b: i32)
+
+->
+
+f32
+
 {
+
     return a + b
+
 }
 
-func main()
-{
+func
+main() {
    let res = f(a: 1, 2, c: 1 + 2)
 }
 
-func bar()
+func
+
+bar
+
+()
+
 {
     let PI = 3.14
 }

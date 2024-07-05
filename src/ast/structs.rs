@@ -4,7 +4,7 @@ use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::collections::HashMap;
@@ -30,7 +30,7 @@ impl StructNode {
     }
 
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::KwStruct)?;
+        parser.consume_token(Lexem::KwStruct)?;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
@@ -42,11 +42,11 @@ impl StructNode {
     }
 
     pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::Lcb)?;
+        parser.consume_token(Lexem::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
 
-        parser.consume_token(TokenType::Rcb)?;
+        parser.consume_token(Lexem::Rcb)?;
 
         fields
     }
@@ -59,22 +59,22 @@ impl StructNode {
             let next = parser.peek_token();
 
             match &next.lexem {
-                TokenType::Rcb => break,
+                Lexem::Rcb => break,
 
-                TokenType::EndOfLine => {
+                Lexem::EndOfLine => {
                     parser.get_token();
                     continue;
                 }
 
-                TokenType::KwStruct => {
+                Lexem::KwStruct => {
                     internals.push(StructNode::parse_def(parser)?);
                 }
 
-                TokenType::KwEnum => {
+                Lexem::KwEnum => {
                     internals.push(EnumNode::parse_def(parser)?);
                 }
 
-                TokenType::Identifier(id) => {
+                Lexem::Identifier(id) => {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
@@ -85,7 +85,7 @@ impl StructNode {
                         continue;
                     }
 
-                    parser.consume_token(TokenType::Colon)?;
+                    parser.consume_token(Lexem::Colon)?;
 
                     fields.insert(identifier, Type::parse(parser)?);
                 }
@@ -192,11 +192,21 @@ pub enum EnumField {
 
 impl EnumField {
     pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
+        let old_opt = parser.does_ignore_nl();
+
+        parser.set_ignore_nl_option(false);
+        let res = Self::parse_internal(parser);
+        parser.set_ignore_nl_option(old_opt);
+
+        res
+    }
+
+    fn parse_internal(parser: &mut Parser) -> Result<Self, &'static str> {
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::EndOfLine => Ok(EnumField::Common),
+            Lexem::EndOfLine => Ok(EnumField::Common),
 
-            TokenType::LParen => {
+            Lexem::LParen => {
                 if let Type::Tuple { components } = Type::parse_tuple_def(parser)? {
                     Ok(Self::TupleLike(components))
                 } else {
@@ -204,7 +214,7 @@ impl EnumField {
                 }
             }
 
-            TokenType::Lcb => {
+            Lexem::Lcb => {
                 if let Ast::StructDef { node } = StructNode::parse_body_external(parser)? {
                     if !node.internals.is_empty() {
                         parser.error("Internal structs are not allowed here", next.get_location());
@@ -274,7 +284,7 @@ impl EnumNode {
     }
 
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::KwEnum)?;
+        parser.consume_token(Lexem::KwEnum)?;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
@@ -286,11 +296,14 @@ impl EnumNode {
     }
 
     pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::Lcb)?;
+        parser.consume_token(Lexem::Lcb)?;
+        let old_opt = parser.does_ignore_nl();
 
+        parser.set_ignore_nl_option(false);
         let fields = Self::parse_body_internal(parser);
+        parser.set_ignore_nl_option(old_opt);
 
-        parser.consume_token(TokenType::Rcb)?;
+        parser.consume_token(Lexem::Rcb)?;
 
         fields
     }
@@ -303,22 +316,18 @@ impl EnumNode {
             let next = parser.peek_token();
 
             match &next.lexem {
-                TokenType::Rcb => break,
+                Lexem::Rcb => break,
 
-                TokenType::EndOfLine => {
+                Lexem::EndOfLine => {
                     parser.get_token();
                     continue;
                 }
 
-                TokenType::KwStruct => {
-                    internals.push(StructNode::parse_def(parser)?);
-                }
+                Lexem::KwStruct => internals.push(StructNode::parse_def(parser)?),
 
-                TokenType::KwEnum => {
-                    internals.push(EnumNode::parse_def(parser)?);
-                }
+                Lexem::KwEnum => internals.push(EnumNode::parse_def(parser)?),
 
-                TokenType::Identifier(id) => {
+                Lexem::Identifier(id) => {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
@@ -334,9 +343,26 @@ impl EnumNode {
                     parser.consume_new_line()?;
                 }
 
+                Lexem::Lcb => {
+                    parser.error(
+                        &format!(
+                            "{}\nHelp: {}{}",
+                            "Unexpected token: \"{\" during parsing enum fields.",
+                            "If you tried to declare struct-like field, place \"{\" ",
+                            "in the same line with name of the field."
+                        ),
+                        next.get_location(),
+                    );
+
+                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                }
+
                 _ => {
                     parser.error(
-                        "Unexpected token when parsing enum fields",
+                        &format!(
+                            "Unexpected token: \"{}\" during parsing enum fields",
+                            next.lexem
+                        ),
                         next.get_location(),
                     );
 

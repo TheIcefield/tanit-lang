@@ -1,13 +1,19 @@
 struct S1
 {
+
     f1: i32
+
     f2: Vec<i32>
+
 }
 
 enum E1
 {
+
     f1
+
     f2(i32, i32)
+
     f3 {
         f1: i32
         f2: f32

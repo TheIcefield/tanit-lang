@@ -7,7 +7,7 @@ use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::put_intent;
 use crate::parser::Parser;
 
@@ -17,11 +17,11 @@ use std::str::FromStr;
 #[derive(Clone, PartialEq)]
 pub enum Expression {
     Unary {
-        operation: TokenType,
+        operation: Lexem,
         node: Box<Ast>,
     },
     Binary {
-        operation: TokenType,
+        operation: Lexem,
         lhs: Box<Ast>,
         rhs: Box<Ast>,
     },
@@ -29,7 +29,155 @@ pub enum Expression {
 
 impl Expression {
     pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        Self::parse_assign(parser)
+        let old_opt = parser.does_ignore_nl();
+
+        parser.set_ignore_nl_option(false);
+        let res = Self::parse_assign(parser);
+        parser.set_ignore_nl_option(old_opt);
+
+        res
+    }
+
+    pub fn parse_factor(parser: &mut Parser) -> Result<Ast, &'static str> {
+        let next = parser.peek_token();
+
+        match &next.lexem {
+            Lexem::Plus | Lexem::Minus | Lexem::Ampersand | Lexem::Star | Lexem::Not => {
+                parser.get_token();
+                let operation = next.lexem;
+                let node = Box::new(Self::parse(parser)?);
+
+                Ok(Ast::Expression {
+                    node: Box::new(Expression::Unary { operation, node }),
+                })
+            }
+            Lexem::Integer(_) => Ok(Ast::Value {
+                node: values::Value::Integer(parser.consume_integer()?),
+            }),
+
+            Lexem::Decimal(_) => Ok(Ast::Value {
+                node: values::Value::Decimal(parser.consume_decimal()?),
+            }),
+
+            Lexem::Identifier(_) => {
+                let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+
+                let next = parser.peek_token();
+                if next.lexem == Lexem::LParen {
+                    // if call
+                    let arguments = values::Value::parse_call(parser)?;
+
+                    return Ok(Ast::Value {
+                        node: values::Value::Call {
+                            identifier,
+                            arguments,
+                        },
+                    });
+                } else if next.lexem == Lexem::Dcolon {
+                    // if ::
+                    parser.get_token();
+
+                    let operation = next.lexem;
+
+                    let lhs = Box::new(Ast::Value {
+                        node: values::Value::Identifier(identifier),
+                    });
+
+                    let rhs = Box::new(Self::parse_factor(parser)?);
+
+                    return Ok(Ast::Expression {
+                        node: Box::new(Expression::Binary {
+                            operation,
+                            lhs,
+                            rhs,
+                        }),
+                    });
+                } else if next.lexem == Lexem::Lcb {
+                    // if struct
+                    let components = values::Value::parse_struct(parser)?;
+
+                    return Ok(Ast::Value {
+                        node: values::Value::Struct {
+                            identifier,
+                            components,
+                        },
+                    });
+                }
+
+                Ok(Ast::Value {
+                    node: values::Value::Identifier(identifier),
+                })
+            }
+
+            Lexem::LParen => {
+                parser.consume_token(Lexem::LParen)?;
+
+                /* If parsed `()` then we return empty tuple */
+                if parser.peek_token().lexem == Lexem::RParen {
+                    parser.consume_token(Lexem::RParen)?;
+                    return Ok(Ast::Value {
+                        node: values::Value::Tuple {
+                            components: Vec::new(),
+                        },
+                    });
+                }
+
+                let mut components = Vec::<Ast>::new();
+
+                let expr = Self::parse(parser)?;
+
+                let is_tuple = match &expr {
+                    Ast::Expression { .. } => false,
+                    Ast::Value { .. } => true,
+                    _ => {
+                        parser.error("Unexpected node parsed", next.get_location());
+                        return Err(UNEXPECTED_NODE_PARSED_ERROR_STR);
+                    }
+                };
+
+                /* If parsed one expression, we return expression */
+                if !is_tuple {
+                    parser.consume_token(Lexem::RParen)?;
+                    return Ok(expr);
+                }
+
+                /* else try parse tuple */
+                components.push(expr);
+
+                loop {
+                    let next = parser.peek_token();
+
+                    if next.lexem == Lexem::RParen {
+                        parser.consume_token(Lexem::RParen)?;
+                        break;
+                    } else if next.lexem == Lexem::Comma {
+                        parser.consume_token(Lexem::Comma)?;
+                        components.push(Self::parse(parser)?);
+                    } else {
+                        parser.error(
+                            &format!("Unexpected token \"{}\" within tuple", next),
+                            next.get_location(),
+                        );
+                        return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                    }
+                }
+
+                Ok(Ast::Value {
+                    node: values::Value::Tuple { components },
+                })
+            }
+
+            Lexem::Lsb => values::Value::parse_array(parser),
+
+            _ => {
+                parser.error(
+                    &format!("Unexpected token \"{}\" within expression", next),
+                    next.get_location(),
+                );
+
+                Err(UNEXPECTED_TOKEN_ERROR_STR)
+            }
+        }
     }
 
     pub fn convert_ast_node(
@@ -43,7 +191,7 @@ impl Expression {
                 rhs,
             } = node.as_ref()
             {
-                let is_conversion = *operation == TokenType::KwAs;
+                let is_conversion = *operation == Lexem::KwAs;
 
                 let lhs_type = lhs.get_type(analyzer);
 
@@ -52,11 +200,11 @@ impl Expression {
                     let func_id = Identifier::Common(format!(
                         "__tanit_compiler__{}_{}_{}",
                         match operation {
-                            TokenType::Plus => "add",
-                            TokenType::Minus => "sub",
-                            TokenType::Star => "mul",
-                            TokenType::Slash => "div",
-                            TokenType::Percent => "mod",
+                            Lexem::Plus => "add",
+                            Lexem::Minus => "sub",
+                            Lexem::Star => "mul",
+                            Lexem::Slash => "div",
+                            Lexem::Percent => "mod",
                             _ => return Err("Unexpected operation"),
                         },
                         lhs_type.clone(),
@@ -99,7 +247,7 @@ impl Expression {
                     };
                     *expr_node = Ast::Expression {
                         node: Box::new(Expression::Binary {
-                            operation: TokenType::KwAs,
+                            operation: Lexem::KwAs,
                             lhs: lhs.clone(),
                             rhs: Box::new(Ast::TypeDecl { node: rhs_type }),
                         }),
@@ -119,17 +267,17 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Assign
-            | TokenType::AddAssign
-            | TokenType::SubAssign
-            | TokenType::MulAssign
-            | TokenType::DivAssign
-            | TokenType::ModAssign
-            | TokenType::OrAssign
-            | TokenType::AndAssign
-            | TokenType::XorAssign
-            | TokenType::LShiftAssign
-            | TokenType::RShiftAssign => {
+            Lexem::Assign
+            | Lexem::AddAssign
+            | Lexem::SubAssign
+            | Lexem::MulAssign
+            | Lexem::DivAssign
+            | Lexem::ModAssign
+            | Lexem::OrAssign
+            | Lexem::AndAssign
+            | Lexem::XorAssign
+            | Lexem::LShiftAssign
+            | Lexem::RShiftAssign => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -153,9 +301,9 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Or => {
+            Lexem::Or => {
                 parser.get_token();
-                let operation = TokenType::Or;
+                let operation = Lexem::Or;
 
                 let rhs = Box::new(Self::parse(parser)?);
 
@@ -177,9 +325,9 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::And => {
+            Lexem::And => {
                 parser.get_token();
-                let operation = TokenType::And;
+                let operation = Lexem::And;
 
                 let rhs = Box::new(Self::parse(parser)?);
 
@@ -201,9 +349,9 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Stick => {
+            Lexem::Stick => {
                 parser.get_token();
-                let operation = TokenType::Stick;
+                let operation = Lexem::Stick;
 
                 let rhs = Box::new(Self::parse(parser)?);
 
@@ -225,9 +373,9 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Xor => {
+            Lexem::Xor => {
                 parser.get_token();
-                let operation = TokenType::Xor;
+                let operation = Lexem::Xor;
 
                 let rhs = Box::new(Self::parse(parser)?);
 
@@ -249,9 +397,9 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Ampersand => {
+            Lexem::Ampersand => {
                 parser.get_token();
-                let operation = TokenType::Ampersand;
+                let operation = Lexem::Ampersand;
 
                 let rhs = Box::new(Self::parse(parser)?);
 
@@ -273,7 +421,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Eq | TokenType::Neq => {
+            Lexem::Eq | Lexem::Neq => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -297,7 +445,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Lt | TokenType::Lte | TokenType::Gt | TokenType::Gte => {
+            Lexem::Lt | Lexem::Lte | Lexem::Gt | Lexem::Gte => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -321,7 +469,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::LShift | TokenType::RShift => {
+            Lexem::LShift | Lexem::RShift => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -345,7 +493,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Plus | TokenType::Minus => {
+            Lexem::Plus | Lexem::Minus => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -369,7 +517,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Star | TokenType::Slash | TokenType::Percent => {
+            Lexem::Star | Lexem::Slash | Lexem::Percent => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -393,7 +541,7 @@ impl Expression {
 
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Dot | TokenType::KwAs => {
+            Lexem::Dot | Lexem::KwAs => {
                 parser.get_token();
                 let operation = next.lexem;
 
@@ -410,152 +558,6 @@ impl Expression {
             _ => Ok(lhs),
         }
     }
-
-    fn parse_factor(parser: &mut Parser) -> Result<Ast, &'static str> {
-        let next = parser.peek_token();
-
-        match &next.lexem {
-            TokenType::Plus
-            | TokenType::Minus
-            | TokenType::Ampersand
-            | TokenType::Star
-            | TokenType::Not => {
-                parser.get_token();
-                let operation = next.lexem;
-                let node = Box::new(Self::parse(parser)?);
-
-                Ok(Ast::Expression {
-                    node: Box::new(Expression::Unary { operation, node }),
-                })
-            }
-            TokenType::Integer(_) => Ok(Ast::Value {
-                node: values::Value::Integer(parser.consume_integer()?),
-            }),
-
-            TokenType::Decimal(_) => Ok(Ast::Value {
-                node: values::Value::Decimal(parser.consume_decimal()?),
-            }),
-
-            TokenType::Identifier(_) => {
-                let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-                let next = parser.peek_token();
-                if next.lexem == TokenType::LParen {
-                    // if call
-                    let arguments = values::Value::parse_call(parser)?;
-
-                    return Ok(Ast::Value {
-                        node: values::Value::Call {
-                            identifier,
-                            arguments,
-                        },
-                    });
-                } else if next.lexem == TokenType::Dcolon {
-                    // if ::
-                    parser.get_token();
-
-                    let operation = next.lexem;
-
-                    let lhs = Box::new(Ast::Value {
-                        node: values::Value::Identifier(identifier),
-                    });
-
-                    let rhs = Box::new(Self::parse_factor(parser)?);
-
-                    return Ok(Ast::Expression {
-                        node: Box::new(Expression::Binary {
-                            operation,
-                            lhs,
-                            rhs,
-                        }),
-                    });
-                } else if next.lexem == TokenType::Lcb {
-                    // if struct
-                    let components = values::Value::parse_struct(parser)?;
-
-                    return Ok(Ast::Value {
-                        node: values::Value::Struct {
-                            identifier,
-                            components,
-                        },
-                    });
-                }
-
-                Ok(Ast::Value {
-                    node: values::Value::Identifier(identifier),
-                })
-            }
-
-            TokenType::LParen => {
-                parser.consume_token(TokenType::LParen)?;
-
-                /* If parsed `()` then we return empty tuple */
-                if parser.peek_token().lexem == TokenType::RParen {
-                    parser.consume_token(TokenType::RParen)?;
-                    return Ok(Ast::Value {
-                        node: values::Value::Tuple {
-                            components: Vec::new(),
-                        },
-                    });
-                }
-
-                let mut components = Vec::<Ast>::new();
-
-                let expr = Self::parse(parser)?;
-
-                let is_tuple = match &expr {
-                    Ast::Expression { .. } => false,
-                    Ast::Value { .. } => true,
-                    _ => {
-                        parser.error("Unexpected node parsed", next.get_location());
-                        return Err(UNEXPECTED_NODE_PARSED_ERROR_STR);
-                    }
-                };
-
-                /* If parsed one expression, we return expression */
-                if !is_tuple {
-                    parser.consume_token(TokenType::RParen)?;
-                    return Ok(expr);
-                }
-
-                /* else try parse tuple */
-                components.push(expr);
-
-                loop {
-                    let next = parser.peek_token();
-
-                    if next.lexem == TokenType::RParen {
-                        parser.consume_token(TokenType::RParen)?;
-                        break;
-                    } else if next.lexem == TokenType::Comma {
-                        parser.consume_token(TokenType::Comma)?;
-                        components.push(Self::parse(parser)?);
-                    } else {
-                        parser.error(
-                            &format!("Unexpected token \"{}\" within tuple", next),
-                            next.get_location(),
-                        );
-                        return Err(UNEXPECTED_TOKEN_ERROR_STR);
-                    }
-                }
-
-                Ok(Ast::Value {
-                    node: values::Value::Tuple { components },
-                })
-            }
-
-            TokenType::Lsb => values::Value::parse_array(parser),
-
-            _ => {
-                parser.error(
-                    &format!("Unexpected token \"{}\" within expression", next),
-                    next.get_location(),
-                );
-
-                Err(UNEXPECTED_TOKEN_ERROR_STR)
-            }
-        }
-    }
 }
 
 impl IAst for Expression {
@@ -566,15 +568,12 @@ impl IAst for Expression {
                 lhs,
                 rhs,
             } => match operation {
-                TokenType::Neq
-                | TokenType::Eq
-                | TokenType::Lt
-                | TokenType::Lte
-                | TokenType::Gt
-                | TokenType::Gte => types::Type::Bool,
+                Lexem::Neq | Lexem::Eq | Lexem::Lt | Lexem::Lte | Lexem::Gt | Lexem::Gte => {
+                    types::Type::Bool
+                }
 
                 _ => {
-                    let is_conversion = *operation == TokenType::KwAs;
+                    let is_conversion = *operation == Lexem::KwAs;
 
                     let rhs_type = if is_conversion {
                         if let Ast::Value {
@@ -629,7 +628,7 @@ impl IAst for Expression {
                 lhs,
                 rhs,
             } => {
-                let is_conversion = *operation == TokenType::KwAs;
+                let is_conversion = *operation == Lexem::KwAs;
 
                 let mut lhs_type: types::Type = lhs.get_type(analyzer);
 
@@ -645,17 +644,17 @@ impl IAst for Expression {
                     t
                 };
 
-                if *operation == TokenType::Assign
-                    || *operation == TokenType::SubAssign
-                    || *operation == TokenType::AddAssign
-                    || *operation == TokenType::DivAssign
-                    || *operation == TokenType::ModAssign
-                    || *operation == TokenType::MulAssign
-                    || *operation == TokenType::AndAssign
-                    || *operation == TokenType::OrAssign
-                    || *operation == TokenType::XorAssign
-                    || *operation == TokenType::LShiftAssign
-                    || *operation == TokenType::RShiftAssign
+                if *operation == Lexem::Assign
+                    || *operation == Lexem::SubAssign
+                    || *operation == Lexem::AddAssign
+                    || *operation == Lexem::DivAssign
+                    || *operation == Lexem::ModAssign
+                    || *operation == Lexem::MulAssign
+                    || *operation == Lexem::AndAssign
+                    || *operation == Lexem::OrAssign
+                    || *operation == Lexem::XorAssign
+                    || *operation == Lexem::LShiftAssign
+                    || *operation == Lexem::RShiftAssign
                 {
                     if let Ast::VariableDef { node } = lhs.as_mut() {
                         if analyzer

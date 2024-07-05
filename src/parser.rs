@@ -3,7 +3,7 @@ use crate::error_listener::{
     ErrorListener, CANNOT_CONVERT_TO_DECIMAL_ERROR_STR, CANNOT_CONVERT_TO_INTEGER_ERROR_STR,
     PARSING_FAILED_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
 };
-use crate::lexer::{self, Lexer, Location, Token, TokenType};
+use crate::lexer::{self, Lexem, Lexer, Location, Token};
 
 pub struct Parser {
     error_listener: ErrorListener,
@@ -23,7 +23,15 @@ impl Parser {
     }
 
     pub fn is_token_verbose(&self) -> bool {
-        self.lexer.is_token_verbose()
+        self.lexer.verbose
+    }
+
+    pub fn does_ignore_nl(&self) -> bool {
+        self.lexer.ignores_nl
+    }
+
+    pub fn set_ignore_nl_option(&mut self, opt: bool) {
+        self.lexer.ignores_nl = opt;
     }
 
     pub fn parse(&mut self) -> Result<Ast, ErrorListener> {
@@ -58,7 +66,7 @@ impl Parser {
     pub fn get_token(&mut self) -> Token {
         let next = self.lexer.peek();
 
-        if next.lexem == TokenType::EndOfFile {
+        if next.lexem == Lexem::EndOfFile {
             return next;
         }
 
@@ -68,7 +76,7 @@ impl Parser {
     pub fn get_singular(&mut self) -> Token {
         let next = self.lexer.peek_singular();
 
-        if next.lexem == TokenType::EndOfFile {
+        if next.lexem == Lexem::EndOfFile {
             return next;
         }
 
@@ -84,10 +92,14 @@ impl Parser {
     }
 
     pub fn consume_new_line(&mut self) -> Result<Token, &'static str> {
-        self.consume_singular(TokenType::EndOfLine)
+        let old_opt = self.lexer.ignores_nl;
+        self.lexer.ignores_nl = false;
+        let nl = self.consume_singular(Lexem::EndOfLine);
+        self.lexer.ignores_nl = old_opt;
+        nl
     }
 
-    pub fn consume_singular(&mut self, token_type: TokenType) -> Result<Token, &'static str> {
+    pub fn consume_singular(&mut self, token_type: Lexem) -> Result<Token, &'static str> {
         let tkn = self.peek_singular();
 
         if tkn.lexem == token_type {
@@ -99,7 +111,7 @@ impl Parser {
         self.error_listener.syntax_error(
             &format!(
                 "Unexpected token: \"{}\", but was expected: \"{}\"",
-                tkn, token_type
+                tkn.lexem, token_type
             ),
             tkn.location,
         );
@@ -107,19 +119,7 @@ impl Parser {
         Err(UNEXPECTED_TOKEN_ERROR_STR)
     }
 
-    pub fn consume_token(&mut self, token_type: TokenType) -> Result<Token, &'static str> {
-        loop {
-            let tkn = self.lexer.peek();
-
-            if tkn.lexem == token_type {
-                return Ok(self.lexer.get());
-            } else if tkn.lexem == TokenType::EndOfLine {
-                self.lexer.get();
-            } else {
-                break;
-            }
-        }
-
+    pub fn consume_token(&mut self, token_type: Lexem) -> Result<Token, &'static str> {
         let tkn = self.lexer.peek();
 
         if tkn.lexem == token_type {
@@ -131,7 +131,7 @@ impl Parser {
         self.error_listener.syntax_error(
             &format!(
                 "Unexpected token: \"{}\", but was expected: \"{}\"",
-                tkn, token_type
+                tkn.lexem, token_type
             ),
             tkn.location,
         );
@@ -139,27 +139,17 @@ impl Parser {
         Err(UNEXPECTED_TOKEN_ERROR_STR)
     }
 
-    pub fn consume_identifier(&mut self) -> Result<TokenType, &'static str> {
-        loop {
-            let tkn = self.lexer.peek();
-
-            if tkn.lexem == TokenType::EndOfLine {
-                self.lexer.get();
-            } else {
-                break;
-            }
-        }
-
+    pub fn consume_identifier(&mut self) -> Result<Lexem, &'static str> {
         let tkn = self.peek_token();
 
         match tkn.lexem {
-            TokenType::Identifier(_) => Ok(self.get_token().lexem),
+            Lexem::Identifier(_) => Ok(self.get_token().lexem),
 
             _ => {
                 self.error_listener.syntax_error(
                     &format!(
                         "Unexpected token: \"{}\", but was expected: \"identifier\"",
-                        tkn
+                        tkn.lexem
                     ),
                     tkn.location,
                 );
@@ -170,20 +160,10 @@ impl Parser {
     }
 
     pub fn consume_integer(&mut self) -> Result<usize, &'static str> {
-        loop {
-            let tkn = self.lexer.peek();
-
-            if tkn.lexem == TokenType::EndOfLine {
-                self.lexer.get();
-            } else {
-                break;
-            }
-        }
-
         let tkn = self.peek_token();
 
         match tkn.lexem {
-            TokenType::Integer(val) => {
+            Lexem::Integer(val) => {
                 self.get_token();
                 let val = val.parse::<usize>();
                 if val.is_err() {
@@ -196,7 +176,7 @@ impl Parser {
                 self.error_listener.syntax_error(
                     &format!(
                         "Unexpected token: \"{}\", but was expected: \"identifier\"",
-                        tkn
+                        tkn.lexem
                     ),
                     tkn.location,
                 );
@@ -207,20 +187,10 @@ impl Parser {
     }
 
     pub fn consume_decimal(&mut self) -> Result<f64, &'static str> {
-        loop {
-            let tkn = self.lexer.peek();
-
-            if tkn.lexem == TokenType::EndOfLine {
-                self.lexer.get();
-            } else {
-                break;
-            }
-        }
-
         let tkn = self.peek_token();
 
         match tkn.lexem {
-            TokenType::Decimal(val) => {
+            Lexem::Decimal(val) => {
                 self.get_token();
                 let val = val.parse::<f64>();
                 if val.is_err() {
@@ -233,7 +203,7 @@ impl Parser {
                 self.error_listener.syntax_error(
                     &format!(
                         "Unexpected token: \"{}\", but was expected: \"identifier\"",
-                        tkn
+                        tkn.lexem
                     ),
                     tkn.location,
                 );
@@ -243,11 +213,18 @@ impl Parser {
         }
     }
 
-    pub fn skip_until(&mut self, until: TokenType) {
+    pub fn skip_until(&mut self, until: Lexem) {
+        let old_opt = self.lexer.ignores_nl;
+
+        if Lexem::EndOfLine == until {
+            self.lexer.ignores_nl = false;
+        }
+
         loop {
             let token = self.peek_token().lexem;
 
-            if until == token || TokenType::EndOfFile == token {
+            if until == token || Lexem::EndOfFile == token {
+                self.lexer.ignores_nl = old_opt;
                 return;
             }
 

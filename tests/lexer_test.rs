@@ -1,70 +1,127 @@
+use tanit::lexer::{Lexem, Lexer, Location, Token};
+
+static SRC_TEXT: &str = "hello func let + 65 -= <<\n struct alpha";
+
 #[test]
 fn lexer_test() {
-    use tanit::lexer::{Lexer, Location, Token, TokenType};
-
-    static SRC: &str = "hello func let + 65 -= <<\n struct alpha";
-
-    let lexer = Lexer::from_text(SRC, true);
-
-    assert_eq!(lexer.is_ok(), true);
-
-    let mut lexer = lexer.unwrap();
+    let mut lexer = Lexer::from_text(SRC_TEXT, true).unwrap();
 
     assert_eq!(
         lexer.get(),
         Token::new(
-            TokenType::Identifier("hello".to_string()),
+            Lexem::Identifier("hello".to_string()),
             Location { row: 1, col: 2 }
         )
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::KwFunc, Location { row: 1, col: 8 })
+        Token::new(Lexem::KwFunc, Location { row: 1, col: 8 })
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::KwLet, Location { row: 1, col: 13 })
+        Token::new(Lexem::KwLet, Location { row: 1, col: 13 })
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::Plus, Location { row: 1, col: 18 })
+        Token::new(Lexem::Plus, Location { row: 1, col: 18 })
     );
 
     assert_eq!(
         lexer.get(),
         Token::new(
-            TokenType::Integer("65".to_string()),
+            Lexem::Integer("65".to_string()),
             Location { row: 1, col: 19 }
         )
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::SubAssign, Location { row: 1, col: 23 })
+        Token::new(Lexem::SubAssign, Location { row: 1, col: 23 })
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::LShift, Location { row: 1, col: 27 })
+        Token::new(Lexem::LShift, Location { row: 1, col: 27 })
     );
 
     assert_eq!(
         lexer.get(),
-        Token::new(TokenType::EndOfLine, Location { row: 2, col: 1 })
-    );
-
-    assert_eq!(
-        lexer.get(),
-        Token::new(TokenType::KwStruct, Location { row: 2, col: 3 })
+        Token::new(Lexem::KwStruct, Location { row: 2, col: 3 })
     );
 
     assert_eq!(
         lexer.get(),
         Token::new(
-            TokenType::Identifier("alpha".to_string()),
+            Lexem::Identifier("alpha".to_string()),
+            Location { row: 2, col: 10 }
+        )
+    );
+}
+
+#[test]
+fn lexer_without_ignore_test() {
+    let mut lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
+
+    lexer.ignores_nl = false;
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(
+            Lexem::Identifier("hello".to_string()),
+            Location { row: 1, col: 2 }
+        )
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwFunc, Location { row: 1, col: 8 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwLet, Location { row: 1, col: 13 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::Plus, Location { row: 1, col: 18 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(
+            Lexem::Integer("65".to_string()),
+            Location { row: 1, col: 19 }
+        )
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::SubAssign, Location { row: 1, col: 23 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::LShift, Location { row: 1, col: 27 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::EndOfLine, Location { row: 2, col: 1 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwStruct, Location { row: 2, col: 3 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(
+            Lexem::Identifier("alpha".to_string()),
             Location { row: 2, col: 10 }
         )
     );

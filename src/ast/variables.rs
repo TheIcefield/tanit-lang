@@ -4,7 +4,7 @@ use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
     VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR,
 };
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -24,12 +24,12 @@ impl VariableNode {
         let next = parser.peek_token();
 
         let is_global = match next.lexem {
-            TokenType::KwLet => {
+            Lexem::KwLet => {
                 parser.get_token();
                 false
             }
 
-            TokenType::KwStatic => {
+            Lexem::KwStatic => {
                 parser.get_token();
                 true
             }
@@ -45,12 +45,12 @@ impl VariableNode {
 
         let next = parser.peek_token();
         let is_mutable = match next.lexem {
-            TokenType::KwMut => {
+            Lexem::KwMut => {
                 parser.get_token();
                 true
             }
 
-            TokenType::KwConst => {
+            Lexem::KwConst => {
                 parser.get_token();
                 false
             }
@@ -65,15 +65,15 @@ impl VariableNode {
         let mut var_type: Option<types::Type> = None;
         let mut rvalue: Option<Ast> = None;
 
-        if TokenType::Colon == next.lexem {
-            parser.consume_token(TokenType::Colon)?;
+        if Lexem::Colon == next.lexem {
+            parser.consume_token(Lexem::Colon)?;
 
             var_type = Some(types::Type::parse(parser)?);
         }
 
         let next = parser.peek_token();
 
-        if TokenType::Assign == next.lexem {
+        if Lexem::Assign == next.lexem {
             parser.get_token();
 
             rvalue = Some(Expression::parse(parser)?);
@@ -117,7 +117,7 @@ impl VariableNode {
         if let Some(rhs) = rvalue {
             return Ok(Ast::Expression {
                 node: Box::new(Expression::Binary {
-                    operation: TokenType::Assign,
+                    operation: Lexem::Assign,
                     lhs: Box::new(var_node),
                     rhs: Box::new(rhs),
                 }),
@@ -131,7 +131,7 @@ impl VariableNode {
     pub fn parse_param(parser: &mut Parser) -> Result<Self, &'static str> {
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-        parser.consume_token(TokenType::Colon)?;
+        parser.consume_token(Lexem::Colon)?;
 
         let var_type = types::Type::parse(parser)?;
 

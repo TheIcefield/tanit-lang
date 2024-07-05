@@ -1,7 +1,7 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst, Stream};
 use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -81,11 +81,11 @@ impl Type {
     pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
         let next = parser.peek_token();
 
-        if parser.peek_token().lexem == TokenType::Ampersand {
+        if parser.peek_token().lexem == Lexem::Ampersand {
             let mut is_mut = false;
             parser.get_token();
 
-            if matches!(parser.peek_token().lexem, TokenType::KwMut) {
+            if matches!(parser.peek_token().lexem, Lexem::KwMut) {
                 is_mut = true;
                 parser.get_token();
             }
@@ -96,11 +96,11 @@ impl Type {
             });
         }
 
-        if next.lexem == TokenType::Star {
+        if next.lexem == Lexem::Star {
             let mut is_mut = false;
             parser.get_token();
 
-            if matches!(parser.peek_token().lexem, TokenType::KwMut) {
+            if matches!(parser.peek_token().lexem, Lexem::KwMut) {
                 is_mut = true;
                 parser.get_token();
             }
@@ -111,11 +111,11 @@ impl Type {
             });
         }
 
-        if next.lexem == TokenType::LParen {
+        if next.lexem == Lexem::LParen {
             return Self::parse_tuple_def(parser);
         }
 
-        if next.lexem == TokenType::Lsb {
+        if next.lexem == Lexem::Lsb {
             return Self::parse_array_def(parser);
         }
 
@@ -139,7 +139,7 @@ impl Type {
             _ => {}
         }
 
-        if parser.peek_singular().lexem == TokenType::Lt {
+        if parser.peek_singular().lexem == Lexem::Lt {
             let arguments = Self::parse_template_args(parser)?;
 
             return Ok(Type::Template {
@@ -152,24 +152,24 @@ impl Type {
     }
 
     pub fn parse_tuple_def(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::LParen)?;
+        parser.consume_token(Lexem::LParen)?;
 
         let mut children = Vec::<Type>::new();
         loop {
-            if parser.peek_token().lexem == TokenType::RParen {
+            if parser.peek_token().lexem == Lexem::RParen {
                 break;
             }
 
             let child = Self::parse(parser)?;
             children.push(child);
 
-            if parser.peek_token().lexem == TokenType::Comma {
+            if parser.peek_token().lexem == Lexem::Comma {
                 parser.get_token();
                 continue;
             }
         }
 
-        parser.consume_token(TokenType::RParen)?;
+        parser.consume_token(Lexem::RParen)?;
 
         Ok(Type::Tuple {
             components: children,
@@ -177,25 +177,25 @@ impl Type {
     }
 
     pub fn parse_array_def(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::Lsb)?;
+        parser.consume_token(Lexem::Lsb)?;
 
         let mut size: Option<Box<Ast>> = None;
 
         let value_type = Box::new(Self::parse(parser)?);
 
-        if parser.peek_token().lexem == TokenType::Colon {
+        if parser.peek_token().lexem == Lexem::Colon {
             parser.get_token();
 
             size = Some(Box::new(Expression::parse(parser)?));
         }
 
-        parser.consume_token(TokenType::Rsb)?;
+        parser.consume_token(Lexem::Rsb)?;
 
         Ok(Type::Array { size, value_type })
     }
 
     pub fn parse_template_args(parser: &mut Parser) -> Result<Vec<Self>, &'static str> {
-        parser.consume_token(TokenType::Lt)?;
+        parser.consume_token(Lexem::Lt)?;
 
         let mut children = Vec::<Type>::new();
         loop {
@@ -203,10 +203,10 @@ impl Type {
             children.push(child);
 
             let next = parser.peek_singular();
-            if next.lexem == TokenType::Gt {
+            if next.lexem == Lexem::Gt {
                 break;
             } else {
-                parser.consume_token(TokenType::Comma)?;
+                parser.consume_token(Lexem::Comma)?;
             }
         }
 
@@ -247,11 +247,11 @@ pub struct Alias {
 
 impl Alias {
     pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwAlias)?;
+        parser.consume_token(Lexem::KwAlias)?;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-        parser.consume_token(TokenType::Assign)?;
+        parser.consume_token(Lexem::Assign)?;
 
         let value = Type::parse(parser)?;
 

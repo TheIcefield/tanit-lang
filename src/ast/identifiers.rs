@@ -1,5 +1,5 @@
 use crate::ast::{expressions::Expression, values::Value, Ast, IAst, Stream};
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 
 use std::io::Write;
 use std::str::FromStr;
@@ -23,8 +23,8 @@ impl Identifier {
         Self::Common(String::new())
     }
 
-    pub fn from_token(tkn: &TokenType) -> Result<Self, &'static str> {
-        if let TokenType::Identifier(id) = tkn {
+    pub fn from_token(tkn: &Lexem) -> Result<Self, &'static str> {
+        if let Lexem::Identifier(id) = tkn {
             return Self::from_str(id);
         }
 
@@ -45,7 +45,7 @@ impl Identifier {
             rhs,
         } = expr
         {
-            if TokenType::Dcolon != *operation {
+            if Lexem::Dcolon != *operation {
                 return Err("Expected expression chained by \"::\"");
             }
 

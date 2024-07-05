@@ -5,7 +5,7 @@ use crate::ast::{
 use crate::error_listener::{
     IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -56,7 +56,7 @@ pub enum Value {
 
 impl Value {
     pub fn parse_call(parser: &mut Parser) -> Result<Vec<CallParam>, &'static str> {
-        parser.consume_token(TokenType::LParen)?;
+        parser.consume_token(Lexem::LParen)?;
 
         let mut args = Vec::<CallParam>::new();
 
@@ -64,7 +64,7 @@ impl Value {
         loop {
             let next = parser.peek_token();
 
-            if next.lexem == TokenType::RParen {
+            if next.lexem == Lexem::RParen {
                 break;
             }
 
@@ -74,8 +74,8 @@ impl Value {
                 node: Self::Identifier(id),
             } = &expr
             {
-                if parser.peek_token().lexem == TokenType::Colon {
-                    parser.consume_token(TokenType::Colon)?;
+                if parser.peek_token().lexem == Lexem::Colon {
+                    parser.consume_token(Lexem::Colon)?;
                     Some(id.clone())
                 } else {
                     None
@@ -95,11 +95,11 @@ impl Value {
             i += 1;
 
             let next = parser.peek_token();
-            if next.lexem == TokenType::Comma {
+            if next.lexem == Lexem::Comma {
                 // continue parsing if ','
                 parser.get_token();
                 continue;
-            } else if next.lexem == TokenType::RParen {
+            } else if next.lexem == Lexem::RParen {
                 // end parsing if ')'
                 break;
             } else {
@@ -108,30 +108,30 @@ impl Value {
             }
         }
 
-        parser.consume_token(TokenType::RParen)?;
+        parser.consume_token(Lexem::RParen)?;
 
         Ok(args)
     }
 
     pub fn parse_array(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::Lsb)?;
+        parser.consume_token(Lexem::Lsb)?;
 
         let mut components = Vec::<Ast>::new();
 
         loop {
             let next = parser.peek_token();
 
-            if next.lexem == TokenType::Rsb {
+            if next.lexem == Lexem::Rsb {
                 break;
             }
             components.push(Expression::parse(parser)?);
 
             let next = parser.peek_token();
-            if next.lexem == TokenType::Comma {
+            if next.lexem == Lexem::Comma {
                 // continue parsing if ','
                 parser.get_token();
                 continue;
-            } else if next.lexem == TokenType::Rsb {
+            } else if next.lexem == Lexem::Rsb {
                 // end parsing if ']'
                 break;
             } else {
@@ -140,7 +140,7 @@ impl Value {
             }
         }
 
-        parser.consume_token(TokenType::Rsb)?;
+        parser.consume_token(Lexem::Rsb)?;
 
         Ok(Ast::Value {
             node: Value::Array { components },
@@ -148,29 +148,29 @@ impl Value {
     }
 
     pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, &'static str> {
-        parser.consume_token(TokenType::Lcb)?;
+        parser.consume_token(Lexem::Lcb)?;
 
         let mut components = Vec::<(Identifier, Ast)>::new();
 
         loop {
             let next = parser.peek_token();
 
-            if next.lexem == TokenType::Rcb {
+            if next.lexem == Lexem::Rcb {
                 break;
             }
 
             let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-            parser.consume_token(TokenType::Colon)?;
+            parser.consume_token(Lexem::Colon)?;
 
             components.push((identifier, Expression::parse(parser)?));
 
             let next = parser.peek_token();
-            if next.lexem == TokenType::Comma {
+            if next.lexem == Lexem::Comma {
                 // continue parsing if ','
                 parser.get_token();
                 continue;
-            } else if next.lexem == TokenType::Rcb {
+            } else if next.lexem == Lexem::Rcb {
                 // end parsing if '}'
                 break;
             } else {
@@ -182,7 +182,7 @@ impl Value {
             }
         }
 
-        parser.consume_token(TokenType::Rcb)?;
+        parser.consume_token(Lexem::Rcb)?;
 
         Ok(components)
     }

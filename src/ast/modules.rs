@@ -1,7 +1,7 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst, Stream};
 use crate::error_listener::{self, MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR};
-use crate::lexer::{Lexer, TokenType};
+use crate::lexer::{Lexem, Lexer};
 use crate::parser::put_intent;
 use crate::parser::Parser;
 
@@ -23,7 +23,7 @@ impl ModuleNode {
     }
 
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::KwModule)?;
+        parser.consume_token(Lexem::KwModule)?;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
@@ -52,7 +52,7 @@ impl ModuleNode {
     ) -> Result<Box<Ast>, &'static str> {
         let identifier = match identifier {
             Identifier::Common(id) => id.clone(),
-            Identifier::Complex(..) => return Err("Expected common identifier, actually complex"),
+            Identifier::Complex(..) => unimplemented!(),
         };
 
         let mut path = parser.get_path()?;
@@ -88,7 +88,7 @@ impl ModuleNode {
                         }
                         parser.error(
                             &format!(
-                                "Error occured while during parsing module \"{}\" body",
+                                "Error occured during parsing module \"{}\" body",
                                 identifier
                             ),
                             parser.get_location(),
@@ -121,7 +121,7 @@ impl ModuleNode {
                         }
                         parser.error(
                             &format!(
-                                "Error occured while during parsing module \"{}\" body",
+                                "Error occured during parsing module \"{}\" body",
                                 identifier
                             ),
                             parser.get_location(),

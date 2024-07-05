@@ -34,7 +34,7 @@ impl Default for Location {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TokenType {
+pub enum Lexem {
     EndOfFile,
     EndOfLine,
 
@@ -110,7 +110,7 @@ pub enum TokenType {
     Unknown,
 }
 
-impl TokenType {
+impl Lexem {
     pub fn new() -> Self {
         Self::Identifier(String::new())
     }
@@ -156,13 +156,13 @@ impl TokenType {
     }
 }
 
-impl Default for TokenType {
+impl Default for Lexem {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl std::fmt::Display for TokenType {
+impl std::fmt::Display for Lexem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EndOfFile => write!(f, "EOF"),
@@ -245,12 +245,12 @@ impl std::fmt::Display for TokenType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    pub lexem: TokenType,
+    pub lexem: Lexem,
     pub location: Location,
 }
 
 impl Token {
-    pub fn new(lexem: TokenType, location: Location) -> Self {
+    pub fn new(lexem: Lexem, location: Location) -> Self {
         Self { lexem, location }
     }
 
@@ -259,15 +259,15 @@ impl Token {
     }
 
     pub fn is_identifier(&self) -> bool {
-        matches!(self.lexem, TokenType::Identifier(_))
+        matches!(self.lexem, Lexem::Identifier(_))
     }
 
     pub fn is_integer(&self) -> bool {
-        matches!(self.lexem, TokenType::Integer(_))
+        matches!(self.lexem, Lexem::Integer(_))
     }
 
     pub fn is_decimal(&self) -> bool {
-        matches!(self.lexem, TokenType::Decimal(_))
+        matches!(self.lexem, Lexem::Decimal(_))
     }
 }
 
@@ -283,7 +283,8 @@ pub struct Lexer {
     next_token: Option<Token>,
     next_char: Option<char>,
     input: Box<dyn std::io::Read>,
-    verbose: bool,
+    pub ignores_nl: bool,
+    pub verbose: bool,
     is_eof: bool,
 }
 
@@ -301,6 +302,7 @@ impl Lexer {
             next_token: None,
             next_char: None,
             input: Box::new(file.unwrap()),
+            ignores_nl: true,
             verbose,
             is_eof: false,
         })
@@ -313,6 +315,7 @@ impl Lexer {
             next_token: None,
             next_char: None,
             input: Box::new(src.as_bytes()),
+            ignores_nl: true,
             verbose,
             is_eof: false,
         })
@@ -327,7 +330,7 @@ impl Lexer {
         while !self.is_eof {
             let tkn = self.get();
 
-            if tkn.lexem == TokenType::Unknown {
+            if tkn.lexem == Lexem::Unknown {
                 break;
             }
 
@@ -392,10 +395,6 @@ impl Lexer {
 
         Ok(self.path.clone())
     }
-
-    pub fn is_token_verbose(&self) -> bool {
-        self.verbose
-    }
 }
 
 /* Private methods */
@@ -434,7 +433,11 @@ impl Lexer {
     fn skip_spaces(&mut self) {
         while self.peek_char().is_ascii_whitespace() {
             if self.peek_char() == '\n' {
-                return;
+                self.location.new_line();
+
+                if !self.ignores_nl {
+                    return;
+                }
             }
 
             self.get_char();
@@ -443,7 +446,14 @@ impl Lexer {
 
     fn skip_comment(&mut self) {
         if self.peek_char() == '#' {
+            let old_opt = self.ignores_nl;
+            self.ignores_nl = false;
+
             while self.get_char() != '\n' {}
+
+            self.location.new_line();
+
+            self.ignores_nl = old_opt;
         }
     }
 
@@ -466,46 +476,45 @@ impl Lexer {
         }
 
         if self.is_eof {
-            return Token::new(TokenType::EndOfFile, self.location.clone());
+            return Token::new(Lexem::EndOfFile, self.location.clone());
         }
 
         let next_char = self.peek_char();
 
         match next_char {
             '\n' => {
-                self.location.new_line();
                 self.get_char();
-                Token::new(TokenType::EndOfLine, self.location.clone())
+                Token::new(Lexem::EndOfLine, self.location.clone())
             }
 
             '(' => {
                 self.get_char();
-                Token::new(TokenType::LParen, self.location.clone())
+                Token::new(Lexem::LParen, self.location.clone())
             }
 
             ')' => {
                 self.get_char();
-                Token::new(TokenType::RParen, self.location.clone())
+                Token::new(Lexem::RParen, self.location.clone())
             }
 
             '[' => {
                 self.get_char();
-                Token::new(TokenType::Lsb, self.location.clone())
+                Token::new(Lexem::Lsb, self.location.clone())
             }
 
             ']' => {
                 self.get_char();
-                Token::new(TokenType::Rsb, self.location.clone())
+                Token::new(Lexem::Rsb, self.location.clone())
             }
 
             '{' => {
                 self.get_char();
-                Token::new(TokenType::Lcb, self.location.clone())
+                Token::new(Lexem::Lcb, self.location.clone())
             }
 
             '}' => {
                 self.get_char();
-                Token::new(TokenType::Rcb, self.location.clone())
+                Token::new(Lexem::Rcb, self.location.clone())
             }
 
             '>' => {
@@ -513,7 +522,7 @@ impl Lexer {
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-                    return Token::new(TokenType::Gte, self.location.clone());
+                    return Token::new(Lexem::Gte, self.location.clone());
                 }
 
                 if self.peek_char() == '>' && !singular {
@@ -521,13 +530,13 @@ impl Lexer {
 
                     if self.peek_char() == '=' {
                         self.get_char();
-                        return Token::new(TokenType::RShiftAssign, self.location.clone());
+                        return Token::new(Lexem::RShiftAssign, self.location.clone());
                     }
 
-                    return Token::new(TokenType::RShift, self.location.clone());
+                    return Token::new(Lexem::RShift, self.location.clone());
                 }
 
-                Token::new(TokenType::Gt, self.location.clone())
+                Token::new(Lexem::Gt, self.location.clone())
             }
 
             '<' => {
@@ -535,7 +544,7 @@ impl Lexer {
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-                    return Token::new(TokenType::Lte, self.location.clone());
+                    return Token::new(Lexem::Lte, self.location.clone());
                 }
 
                 if self.peek_char() == '<' && !singular {
@@ -543,13 +552,13 @@ impl Lexer {
 
                     if self.peek_char() == '=' {
                         self.get_char();
-                        return Token::new(TokenType::LShiftAssign, self.location.clone());
+                        return Token::new(Lexem::LShiftAssign, self.location.clone());
                     }
 
-                    return Token::new(TokenType::LShift, self.location.clone());
+                    return Token::new(Lexem::LShift, self.location.clone());
                 }
 
-                Token::new(TokenType::Lt, self.location.clone())
+                Token::new(Lexem::Lt, self.location.clone())
             }
 
             '+' => {
@@ -558,10 +567,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::AddAssign, self.location.clone());
+                    return Token::new(Lexem::AddAssign, self.location.clone());
                 }
 
-                Token::new(TokenType::Plus, self.location.clone())
+                Token::new(Lexem::Plus, self.location.clone())
             }
 
             '-' => {
@@ -570,16 +579,16 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::SubAssign, self.location.clone());
+                    return Token::new(Lexem::SubAssign, self.location.clone());
                 }
 
                 if self.peek_char() == '>' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::Arrow, self.location.clone());
+                    return Token::new(Lexem::Arrow, self.location.clone());
                 }
 
-                Token::new(TokenType::Minus, self.location.clone())
+                Token::new(Lexem::Minus, self.location.clone())
             }
 
             '/' => {
@@ -588,10 +597,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::DivAssign, self.location.clone());
+                    return Token::new(Lexem::DivAssign, self.location.clone());
                 }
 
-                Token::new(TokenType::Slash, self.location.clone())
+                Token::new(Lexem::Slash, self.location.clone())
             }
 
             '%' => {
@@ -600,10 +609,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::ModAssign, self.location.clone());
+                    return Token::new(Lexem::ModAssign, self.location.clone());
                 }
 
-                Token::new(TokenType::Percent, self.location.clone())
+                Token::new(Lexem::Percent, self.location.clone())
             }
 
             '*' => {
@@ -612,10 +621,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::MulAssign, self.location.clone());
+                    return Token::new(Lexem::MulAssign, self.location.clone());
                 }
 
-                Token::new(TokenType::Star, self.location.clone())
+                Token::new(Lexem::Star, self.location.clone())
             }
 
             '!' => {
@@ -626,10 +635,10 @@ impl Lexer {
                 if ch == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::Neq, self.location.clone());
+                    return Token::new(Lexem::Neq, self.location.clone());
                 }
 
-                Token::new(TokenType::Not, self.location.clone())
+                Token::new(Lexem::Not, self.location.clone())
             }
 
             '=' => {
@@ -637,10 +646,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::Eq, self.location.clone());
+                    return Token::new(Lexem::Eq, self.location.clone());
                 }
 
-                Token::new(TokenType::Assign, self.location.clone())
+                Token::new(Lexem::Assign, self.location.clone())
             }
 
             '&' => {
@@ -648,16 +657,16 @@ impl Lexer {
                 if self.peek_char() == '&' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::AndAssign, self.location.clone());
+                    return Token::new(Lexem::AndAssign, self.location.clone());
                 }
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::And, self.location.clone());
+                    return Token::new(Lexem::And, self.location.clone());
                 }
 
-                Token::new(TokenType::Ampersand, self.location.clone())
+                Token::new(Lexem::Ampersand, self.location.clone())
             }
 
             '^' => {
@@ -665,10 +674,10 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::XorAssign, self.get_location());
+                    return Token::new(Lexem::XorAssign, self.get_location());
                 }
 
-                Token::new(TokenType::Xor, self.get_location())
+                Token::new(Lexem::Xor, self.get_location())
             }
 
             '|' => {
@@ -676,16 +685,16 @@ impl Lexer {
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::OrAssign, self.get_location());
+                    return Token::new(Lexem::OrAssign, self.get_location());
                 }
 
                 if self.peek_char() == '|' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::Or, self.get_location());
+                    return Token::new(Lexem::Or, self.get_location());
                 }
 
-                Token::new(TokenType::Stick, self.get_location())
+                Token::new(Lexem::Stick, self.get_location())
             }
 
             ':' => {
@@ -693,20 +702,20 @@ impl Lexer {
                 if self.peek_char() == ':' && !singular {
                     self.get_char();
 
-                    return Token::new(TokenType::Dcolon, self.get_location());
+                    return Token::new(Lexem::Dcolon, self.get_location());
                 }
 
-                Token::new(TokenType::Colon, self.get_location())
+                Token::new(Lexem::Colon, self.get_location())
             }
 
             '.' => {
                 self.get_char();
-                Token::new(TokenType::Dot, self.get_location())
+                Token::new(Lexem::Dot, self.get_location())
             }
 
             ',' => {
                 self.get_char();
-                Token::new(TokenType::Comma, self.get_location())
+                Token::new(Lexem::Comma, self.get_location())
             }
 
             _ => {
@@ -718,7 +727,7 @@ impl Lexer {
                     return self.get_string_token();
                 }
 
-                Token::new(TokenType::Unknown, self.get_location())
+                Token::new(Lexem::Unknown, self.get_location())
             }
         }
     }
@@ -732,7 +741,7 @@ impl Lexer {
         while !self.is_eof && (self.peek_char().is_ascii_digit() || self.peek_char() == '.') {
             if self.peek_char() == '.' {
                 if is_float {
-                    return Token::new(TokenType::Unknown, location);
+                    return Token::new(Lexem::Unknown, location);
                 }
                 is_float = true;
             }
@@ -741,10 +750,10 @@ impl Lexer {
         }
 
         if is_float {
-            return Token::new(TokenType::Decimal(text), location);
+            return Token::new(Lexem::Decimal(text), location);
         }
 
-        Token::new(TokenType::Integer(text), location)
+        Token::new(Lexem::Integer(text), location)
     }
 
     fn get_string_token(&mut self) -> Token {
@@ -758,29 +767,29 @@ impl Lexer {
         }
 
         match &text[..] {
-            "def" => Token::new(TokenType::KwDef, location),
-            "module" => Token::new(TokenType::KwModule, location),
-            "struct" => Token::new(TokenType::KwStruct, location),
-            "enum" => Token::new(TokenType::KwEnum, location),
-            "let" => Token::new(TokenType::KwLet, location),
-            "mut" => Token::new(TokenType::KwMut, location),
-            "const" => Token::new(TokenType::KwConst, location),
-            "alias" => Token::new(TokenType::KwAlias, location),
-            "func" => Token::new(TokenType::KwFunc, location),
-            "if" => Token::new(TokenType::KwIf, location),
-            "else" => Token::new(TokenType::KwElse, location),
-            "loop" => Token::new(TokenType::KwLoop, location),
-            "do" => Token::new(TokenType::KwDo, location),
-            "while" => Token::new(TokenType::KwWhile, location),
-            "for" => Token::new(TokenType::KwFor, location),
-            "continue" => Token::new(TokenType::KwContinue, location),
-            "break" => Token::new(TokenType::KwBreak, location),
-            "return" => Token::new(TokenType::KwReturn, location),
-            "extern" => Token::new(TokenType::KwExtern, location),
-            "static" => Token::new(TokenType::KwStatic, location),
-            "use" => Token::new(TokenType::KwUse, location),
-            "as" => Token::new(TokenType::KwAs, location),
-            _ => Token::new(TokenType::Identifier(text), location),
+            "def" => Token::new(Lexem::KwDef, location),
+            "module" => Token::new(Lexem::KwModule, location),
+            "struct" => Token::new(Lexem::KwStruct, location),
+            "enum" => Token::new(Lexem::KwEnum, location),
+            "let" => Token::new(Lexem::KwLet, location),
+            "mut" => Token::new(Lexem::KwMut, location),
+            "const" => Token::new(Lexem::KwConst, location),
+            "alias" => Token::new(Lexem::KwAlias, location),
+            "func" => Token::new(Lexem::KwFunc, location),
+            "if" => Token::new(Lexem::KwIf, location),
+            "else" => Token::new(Lexem::KwElse, location),
+            "loop" => Token::new(Lexem::KwLoop, location),
+            "do" => Token::new(Lexem::KwDo, location),
+            "while" => Token::new(Lexem::KwWhile, location),
+            "for" => Token::new(Lexem::KwFor, location),
+            "continue" => Token::new(Lexem::KwContinue, location),
+            "break" => Token::new(Lexem::KwBreak, location),
+            "return" => Token::new(Lexem::KwReturn, location),
+            "extern" => Token::new(Lexem::KwExtern, location),
+            "static" => Token::new(Lexem::KwStatic, location),
+            "use" => Token::new(Lexem::KwUse, location),
+            "as" => Token::new(Lexem::KwAs, location),
+            _ => Token::new(Lexem::Identifier(text), location),
         }
     }
 }

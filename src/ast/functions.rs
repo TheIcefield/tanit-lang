@@ -3,7 +3,7 @@ use crate::ast::{
     identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst, Stream,
 };
 use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -20,19 +20,9 @@ impl FunctionNode {
     pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
         let mut node = Self::parse_header(parser)?;
 
-        loop {
-            let tkn = parser.peek_token();
-
-            if tkn.lexem == TokenType::EndOfLine {
-                parser.get_token();
-            } else {
-                break;
-            }
-        }
-
         let next = parser.peek_token();
         match next.lexem {
-            TokenType::Lcb => {
+            Lexem::Lcb => {
                 node.body = Some(Box::new(scopes::Scope::parse_local(parser)?));
             }
 
@@ -49,14 +39,14 @@ impl FunctionNode {
     }
 
     pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(TokenType::KwFunc)?;
+        parser.consume_token(Lexem::KwFunc)?;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         let parameters = Self::parse_header_params(parser)?;
 
         let next = parser.peek_token();
-        let return_type = if next.lexem == TokenType::Arrow {
+        let return_type = if next.lexem == Lexem::Arrow {
             parser.get_token();
             types::Type::parse(parser)?
         } else {
@@ -74,7 +64,7 @@ impl FunctionNode {
     }
 
     pub fn parse_header_params(parser: &mut Parser) -> Result<Vec<Ast>, &'static str> {
-        parser.consume_token(TokenType::LParen)?;
+        parser.consume_token(Lexem::LParen)?;
 
         let mut parameters = Vec::<Ast>::new();
         loop {
@@ -86,9 +76,9 @@ impl FunctionNode {
                 });
 
                 let next = parser.peek_token();
-                if next.lexem == TokenType::Comma {
+                if next.lexem == Lexem::Comma {
                     parser.get_token();
-                } else if next.lexem == TokenType::RParen {
+                } else if next.lexem == Lexem::RParen {
                     continue;
                 } else {
                     parser.error(
@@ -97,7 +87,7 @@ impl FunctionNode {
                     );
                     return Err(UNEXPECTED_TOKEN_ERROR_STR);
                 }
-            } else if next.lexem == TokenType::RParen {
+            } else if next.lexem == Lexem::RParen {
                 parser.get_token();
                 break;
             } else {

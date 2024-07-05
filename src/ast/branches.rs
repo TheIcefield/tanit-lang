@@ -3,7 +3,7 @@ use crate::error_listener::{
     UNEXPECTED_BREAK_STMT_ERROR_STR, UNEXPECTED_CONTINUE_STMT_ERROR_STR,
     UNEXPECTED_RETURN_STMT_ERROR_STR,
 };
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -23,7 +23,7 @@ pub enum Branch {
 
 impl Branch {
     pub fn parse_loop(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwLoop)?;
+        parser.consume_token(Lexem::KwLoop)?;
 
         let body = Box::new(scopes::Scope::parse_local(parser)?);
 
@@ -36,7 +36,7 @@ impl Branch {
     }
 
     pub fn parse_while(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwWhile)?;
+        parser.consume_token(Lexem::KwWhile)?;
 
         let condition = Expression::parse(parser)?;
 
@@ -51,19 +51,19 @@ impl Branch {
     }
 
     pub fn parse_if(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwIf)?;
+        parser.consume_token(Lexem::KwIf)?;
 
         let condition = Box::new(Expression::parse(parser)?);
 
         let main_body = Box::new(scopes::Scope::parse_local(parser)?);
 
-        let else_body = if parser.peek_token().lexem == TokenType::KwElse {
+        let else_body = if parser.peek_token().lexem == Lexem::KwElse {
             parser.get_token();
 
             let next = parser.peek_token();
             match next.lexem {
-                TokenType::KwIf => Some(Box::new(Self::parse_if(parser)?)),
-                TokenType::Lcb => Some(Box::new(scopes::Scope::parse_local(parser)?)),
+                Lexem::KwIf => Some(Box::new(Self::parse_if(parser)?)),
+                Lexem::Lcb => Some(Box::new(scopes::Scope::parse_local(parser)?)),
                 _ => {
                     parser.error(
                         &format!("Unexpected token \"{}\" in branch expression", next),
@@ -186,14 +186,20 @@ pub struct Break {
 
 impl Break {
     pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwBreak)?;
+        parser.consume_token(Lexem::KwBreak)?;
+
+        let old_opt = parser.does_ignore_nl();
+
+        parser.set_ignore_nl_option(false);
 
         let mut node = Break { expr: None };
 
         match parser.peek_token().lexem {
-            TokenType::EndOfLine => {}
+            Lexem::EndOfLine => {}
             _ => node.expr = Some(Box::new(Expression::parse(parser)?)),
         }
+
+        parser.set_ignore_nl_option(old_opt);
 
         Ok(Ast::BreakStmt { node })
     }
@@ -242,7 +248,7 @@ pub struct Continue {}
 
 impl Continue {
     pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwContinue)?;
+        parser.consume_token(Lexem::KwContinue)?;
 
         Ok(Ast::ContinueStmt { node: Self {} })
     }
@@ -278,14 +284,20 @@ pub struct Return {
 
 impl Return {
     pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::KwReturn)?;
+        parser.consume_token(Lexem::KwReturn)?;
 
         let mut node = Return { expr: None };
 
+        let old_opt = parser.does_ignore_nl();
+
+        parser.set_ignore_nl_option(false);
+
         match parser.peek_token().lexem {
-            TokenType::EndOfLine => {}
+            Lexem::EndOfLine => {}
             _ => node.expr = Some(Box::new(Expression::parse(parser)?)),
         }
+
+        parser.set_ignore_nl_option(old_opt);
 
         Ok(Ast::ReturnStmt { node })
     }

@@ -1,9 +1,9 @@
-use std::str::FromStr;
-
 use tanit::{
     ast::{identifiers::Identifier, structs::EnumField, types::Type},
-    lexer::TokenType,
+    lexer::Lexem,
 };
+
+use std::str::FromStr;
 
 #[test]
 fn module_test() {
@@ -161,12 +161,12 @@ fn variables_test() {
     use tanit::{ast, ast::expressions};
     use tanit::{error_listener, lexer, parser};
 
+    let radian_var_id = Identifier::from_str("radian").unwrap();
+    let i32_type_id = Identifier::from_str("i32").unwrap();
+
     static SRC_PATH: &str = "./examples/values.tt";
 
-    let lexer = lexer::Lexer::from_file(SRC_PATH, false);
-    assert_eq!(lexer.is_ok(), true);
-
-    let lexer = lexer.unwrap();
+    let lexer = lexer::Lexer::from_file(SRC_PATH, false).unwrap();
 
     let error_listener = error_listener::ErrorListener::new();
 
@@ -211,14 +211,29 @@ fn variables_test() {
             rhs,
         } = node.as_ref()
         {
-            assert_eq!(*operation, lexer::TokenType::Assign);
+            assert_eq!(*operation, lexer::Lexem::Assign);
             (lhs.as_ref(), rhs.as_ref())
         } else {
             panic!("Expected binary expression");
         };
 
-        assert!(matches!(lhs, ast::Ast::VariableDef { .. }));
-        assert!(matches!(rhs, ast::Ast::Expression { .. }));
+        if let ast::Ast::VariableDef { node } = lhs {
+            assert!(node.identifier == radian_var_id);
+            assert!(!node.is_global);
+            assert!(!node.is_mutable);
+        } else {
+            panic!("Expected variable definition")
+        }
+
+        if let ast::Ast::Expression { node } = rhs {
+            if let ast::expressions::Expression::Binary { operation, .. } = node.as_ref() {
+                assert_eq!(*operation, lexer::Lexem::Slash);
+            } else {
+                panic!("expected binary expression")
+            }
+        } else {
+            panic!("expected expression")
+        }
     } else {
         panic!("second statement has to be \'variable definition\'");
     }
@@ -230,14 +245,37 @@ fn variables_test() {
             rhs,
         } = node.as_ref()
         {
-            assert_eq!(*operation, lexer::TokenType::LShiftAssign);
+            assert_eq!(*operation, lexer::Lexem::Assign);
 
-            if let ast::Ast::Value { node } = lhs.as_ref() {
-                match node {
-                    ast::values::Value::Identifier(id) => {
-                        assert!(*id == Identifier::from_str("radian").unwrap());
+            if let ast::Ast::Expression { node } = lhs.as_ref() {
+                let (lhs, rhs) = if let ast::expressions::Expression::Binary {
+                    operation,
+                    lhs,
+                    rhs,
+                } = node.as_ref()
+                {
+                    assert_eq!(*operation, lexer::Lexem::KwAs);
+                    (lhs.as_ref(), rhs.as_ref())
+                } else {
+                    panic!("Binary expression expected")
+                };
+
+                if let ast::Ast::VariableDef { node } = lhs {
+                    assert!(node.identifier == Identifier::from_str("ceil").unwrap());
+                    assert!(!node.is_global);
+                    assert!(!node.is_mutable);
+                } else {
+                    panic!("Expected variable definition")
+                }
+
+                if let ast::Ast::Value { node } = rhs {
+                    if let ast::values::Value::Identifier(id) = node {
+                        assert!(*id == i32_type_id);
+                    } else {
+                        panic!("Expected identifier")
                     }
-                    _ => panic!("lhs has to be identifier"),
+                } else {
+                    panic!("Expected value")
                 }
             }
 
@@ -253,52 +291,24 @@ fn variables_test() {
                 rhs,
             } = expr
             {
-                assert_eq!(*operation, lexer::TokenType::Star);
+                assert_eq!(*operation, lexer::Lexem::KwAs);
 
                 if let ast::Ast::Value { node } = lhs.as_ref() {
-                    match node {
-                        ast::values::Value::Integer(val) => {
-                            assert_eq!(*val, 3);
-                        }
-                        _ => panic!("lhs has to be \'3\'"),
+                    if let ast::values::Value::Identifier(id) = node {
+                        assert!(*id == Identifier::from_str("radian").unwrap())
                     }
-                } else {
-                    panic!("lhs has to be \'Value\'");
-                }
-
-                let rhs = if let ast::Ast::Expression { node } = rhs.as_ref() {
-                    node.as_ref()
                 } else {
                     panic!("rhs has to be \'Expression\'");
                 };
 
-                if let expressions::Expression::Binary {
-                    operation,
-                    lhs,
-                    rhs,
-                } = rhs
-                {
-                    assert_eq!(*operation, tanit::lexer::TokenType::Slash);
-
-                    if let tanit::ast::Ast::Value { node } = lhs.as_ref() {
-                        match node {
-                            tanit::ast::values::Value::Identifier(id) => {
-                                assert!(*id == Identifier::from_str("PI").unwrap());
-                            }
-                            _ => panic!("lhs has to be \'PI\'"),
-                        }
-                    }
-
-                    if let tanit::ast::Ast::Value { node } = rhs.as_ref() {
-                        match node {
-                            tanit::ast::values::Value::Integer(val) => {
-                                assert_eq!(*val, 4);
-                            }
-                            _ => panic!("rhs has to be \'4\'"),
-                        }
+                if let ast::Ast::Value { node } = rhs.as_ref() {
+                    if let ast::values::Value::Identifier(id) = node {
+                        assert!(*id == Identifier::from_str("i32").unwrap());
+                    } else {
+                        panic!("rhs has to be \'i32\'")
                     }
                 } else {
-                    panic!("rhs has to be \'binary expression\'");
+                    panic!("rhs has to be \'Value\'");
                 }
             } else {
                 panic!("Expected binary expression");
@@ -316,7 +326,7 @@ fn functions_test() {
 
     static SRC_PATH: &str = "./examples/functions.tt";
 
-    let lexer = lexer::Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = lexer::Lexer::from_file(SRC_PATH, true).unwrap();
 
     let error_listener = error_listener::ErrorListener::new();
 
@@ -364,7 +374,7 @@ fn functions_test() {
                 rhs,
             } = node.as_ref()
             {
-                assert_eq!(*operation, TokenType::Assign);
+                assert_eq!(*operation, Lexem::Assign);
                 (lhs.as_ref(), rhs.as_ref())
             } else {
                 panic!("Expression expected to be binary");
@@ -442,7 +452,7 @@ fn conversion_test() {
     use tanit::{
         ast::{expressions::Expression, identifiers::Identifier, values::Value, Ast},
         error_listener::ErrorListener,
-        lexer::{Lexer, TokenType},
+        lexer::{Lexem, Lexer},
         parser::Parser,
     };
 
@@ -460,7 +470,7 @@ fn conversion_test() {
             rhs,
         } = node.as_ref()
         {
-            assert_eq!(*operation, TokenType::KwAs);
+            assert_eq!(*operation, Lexem::KwAs);
 
             assert!(matches!(
                 lhs.as_ref(),

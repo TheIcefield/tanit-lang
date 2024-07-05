@@ -1,5 +1,5 @@
 use crate::error_listener::UNEXPECTED_END_OF_LINE_ERROR_STR;
-use crate::lexer::TokenType;
+use crate::lexer::Lexem;
 use crate::parser::Parser;
 use crate::{
     ast,
@@ -21,11 +21,11 @@ impl Scope {
     }
 
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::Lcb)?;
+        parser.consume_token(Lexem::Lcb)?;
 
         let statements = Self::parse_global_internal(parser)?;
 
-        parser.consume_token(TokenType::Rcb)?;
+        parser.consume_token(Lexem::Rcb)?;
 
         Ok(Ast::Scope {
             node: Scope {
@@ -42,32 +42,32 @@ impl Scope {
             let next = parser.peek_token();
 
             let child = match next.lexem {
-                TokenType::Rcb | TokenType::EndOfFile => {
+                Lexem::Rcb | Lexem::EndOfFile => {
                     break;
                 }
 
-                TokenType::EndOfLine => {
+                Lexem::EndOfLine => {
                     parser.get_token();
                     continue;
                 }
 
-                TokenType::KwModule => ast::modules::ModuleNode::parse_def(parser)?,
+                Lexem::KwModule => ast::modules::ModuleNode::parse_def(parser)?,
 
-                TokenType::KwFunc => ast::functions::FunctionNode::parse_def(parser)?,
+                Lexem::KwFunc => ast::functions::FunctionNode::parse_def(parser)?,
 
-                TokenType::KwStruct => ast::structs::StructNode::parse_def(parser)?,
+                Lexem::KwStruct => ast::structs::StructNode::parse_def(parser)?,
 
-                TokenType::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
+                Lexem::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
 
-                TokenType::KwStatic => ast::variables::VariableNode::parse_def(parser)?,
+                Lexem::KwStatic => ast::variables::VariableNode::parse_def(parser)?,
 
-                TokenType::KwDef => {
-                    parser.consume_token(TokenType::KwDef)?;
+                Lexem::KwDef => {
+                    parser.consume_token(Lexem::KwDef)?;
 
                     let next = parser.peek_token();
 
                     match next.lexem {
-                        TokenType::KwModule => ast::modules::ModuleNode::parse_ext_module(parser)?,
+                        Lexem::KwModule => ast::modules::ModuleNode::parse_ext_module(parser)?,
 
                         _ => {
                             parser.error(
@@ -79,10 +79,10 @@ impl Scope {
                     }
                 }
 
-                TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
+                Lexem::KwAlias => ast::types::Alias::parse_def(parser)?,
 
                 _ => {
-                    parser.skip_until(TokenType::EndOfLine);
+                    parser.skip_until(Lexem::EndOfLine);
                     parser.get_token();
 
                     parser.error(
@@ -100,11 +100,15 @@ impl Scope {
     }
 
     pub fn parse_local(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(TokenType::Lcb)?;
+        parser.consume_token(Lexem::Lcb)?;
 
+        let old_opt = parser.does_ignore_nl();
+        parser.set_ignore_nl_option(false);
         let statements = Self::parse_local_internal(parser)?;
 
-        parser.consume_token(TokenType::Rcb)?;
+        parser.consume_token(Lexem::Rcb)?;
+
+        parser.set_ignore_nl_option(old_opt);
 
         Ok(Ast::Scope {
             node: Scope {
@@ -121,45 +125,45 @@ impl Scope {
             let next = parser.peek_token();
 
             let child = match next.lexem {
-                TokenType::Rcb => break,
+                Lexem::Rcb => break,
 
-                TokenType::EndOfLine => {
+                Lexem::EndOfLine => {
                     parser.get_token();
                     continue;
                 }
 
-                TokenType::KwLet => ast::variables::VariableNode::parse_def(parser)?,
+                Lexem::KwLet => ast::variables::VariableNode::parse_def(parser)?,
 
-                TokenType::KwStruct => ast::structs::StructNode::parse_def(parser)?,
+                Lexem::KwStruct => ast::structs::StructNode::parse_def(parser)?,
 
-                TokenType::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
+                Lexem::KwEnum => ast::structs::EnumNode::parse_def(parser)?,
 
-                TokenType::KwAlias => ast::types::Alias::parse_def(parser)?,
+                Lexem::KwAlias => ast::types::Alias::parse_def(parser)?,
 
-                TokenType::KwIf => ast::branches::Branch::parse_if(parser)?,
+                Lexem::KwIf => ast::branches::Branch::parse_if(parser)?,
 
-                TokenType::KwLoop => ast::branches::Branch::parse_loop(parser)?,
+                Lexem::KwLoop => ast::branches::Branch::parse_loop(parser)?,
 
-                TokenType::KwWhile => ast::branches::Branch::parse_while(parser)?,
+                Lexem::KwWhile => ast::branches::Branch::parse_while(parser)?,
 
-                // TokenType::KwFor => ast::branch_node::parse_for(parser)?,
-                TokenType::KwReturn => ast::branches::Return::parse(parser)?,
+                // Lexem::KwFor => ast::branch_node::parse_for(parser)?,
+                Lexem::KwReturn => ast::branches::Return::parse(parser)?,
 
-                TokenType::KwBreak => ast::branches::Break::parse(parser)?,
+                Lexem::KwBreak => ast::branches::Break::parse(parser)?,
 
-                TokenType::KwContinue => ast::branches::Continue::parse(parser)?,
+                Lexem::KwContinue => ast::branches::Continue::parse(parser)?,
 
-                TokenType::Identifier(_) => ast::expressions::Expression::parse(parser)?,
+                Lexem::Identifier(_) => ast::expressions::Expression::parse(parser)?,
 
-                TokenType::Lcb => Self::parse_local(parser)?,
+                Lexem::Lcb => Self::parse_local(parser)?,
 
-                TokenType::EndOfFile => {
+                Lexem::EndOfFile => {
                     parser.error("Unexpected end of file", next.get_location());
                     return Err(UNEXPECTED_END_OF_LINE_ERROR_STR);
                 }
 
                 _ => {
-                    parser.skip_until(TokenType::EndOfLine);
+                    parser.skip_until(Lexem::EndOfLine);
                     parser.get_token();
 
                     parser.error(
