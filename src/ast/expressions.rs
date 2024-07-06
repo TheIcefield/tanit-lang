@@ -8,7 +8,7 @@ use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
-use crate::lexer::Lexem;
+use crate::lexer::{self, Lexem};
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
@@ -787,14 +787,26 @@ impl IAst for Expression {
                 node.codegen(stream)?;
             }
             Expression::Binary {
-                operation,
+                operation: lexer::Lexem::Assign,
                 lhs,
                 rhs,
             } => {
                 lhs.codegen(stream)?;
-                write!(stream, " {} ", operation)?;
+                write!(stream, " = ")?;
                 rhs.codegen(stream)?;
             }
+            Expression::Binary {
+                operation: lexer::Lexem::KwAs,
+                lhs,
+                rhs,
+            } => {
+                write!(stream, "((")?;
+                rhs.codegen(stream)?;
+                write!(stream, ")")?;
+                lhs.codegen(stream)?;
+                write!(stream, ")")?;
+            }
+            _ => unreachable!(),
         }
 
         stream.mode = old_mode;

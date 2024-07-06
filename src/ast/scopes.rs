@@ -217,9 +217,12 @@ impl IAst for Scope {
                 Ast::Expression { .. }
                 | Ast::BreakStmt { .. }
                 | Ast::ContinueStmt { .. }
-                | Ast::ReturnStmt { .. } => writeln!(stream, ";")?,
+                | Ast::ReturnStmt { .. }
+                | Ast::VariableDef { .. } => write!(stream, ";")?,
                 _ => {}
             }
+
+            writeln!(stream)?;
         }
 
         if !self.is_global {
