@@ -278,6 +278,14 @@ impl Analyzer {
         }
     }
 
+    fn is_built_in_identifier(id: &Identifier) -> bool {
+        if let Identifier::Common(id) = id {
+            return id.starts_with("__tanit_compiler__");
+        }
+
+        false
+    }
+
     pub fn check_identifier_existance(&self, id: &Identifier) -> Result<Symbol, &'static str> {
         if let Some(ss) = self.table.get(id) {
             for s in ss.iter() {
@@ -300,6 +308,17 @@ impl Analyzer {
         } else {
             return Err(UNEXPECTED_NODE_PARSED_ERROR_STR);
         };
+
+        if Self::is_built_in_identifier(identifier) {
+            return Ok(Symbol {
+                scope: Scope(vec!["@s.0".to_string()]),
+                data: SymbolData::FunctionDef {
+                    args: vec![],
+                    return_type: types::Type::new(),
+                    is_declaration: false,
+                },
+            });
+        }
 
         if let Ok(ss) = self.check_identifier_existance(identifier) {
             match &ss.data {

@@ -32,8 +32,11 @@ impl IAst for CallParam {
         Ok(())
     }
 
-    fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {
-        unimplemented!()
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        match self {
+            Self::Positional(_, node) => node.codegen(stream),
+            Self::Notified(..) => unreachable!("Notified CallParam is not allowed in codegen"),
+        }
     }
 }
 
@@ -377,12 +380,17 @@ impl IAst for Value {
                 identifier,
                 arguments,
             } => {
-                writeln!(stream, "{}<call {}>", put_intent(intent), identifier)?;
+                writeln!(
+                    stream,
+                    "{}<call name=\"{}\">",
+                    put_intent(intent),
+                    identifier
+                )?;
 
                 for arg in arguments.iter() {
                     match arg {
                         CallParam::Notified(id, expr) => {
-                            writeln!(stream, "{}<param {}>", put_intent(intent + 1), id)?;
+                            writeln!(stream, "{}<param name=\"{}\">", put_intent(intent + 1), id)?;
 
                             expr.traverse(stream, intent + 2)?;
                         }
@@ -449,7 +457,9 @@ impl IAst for Value {
 
                 writeln!(stream, "{}</array>", put_intent(intent))?;
             }
-            Self::Identifier(id) => writeln!(stream, "{}<variable {}/>", put_intent(intent), id)?,
+            Self::Identifier(id) => {
+                writeln!(stream, "{}<variable name=\"{}\"/>", put_intent(intent), id)?
+            }
             Self::Text(text) => {
                 writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
             }
@@ -475,6 +485,26 @@ impl IAst for Value {
             Self::Integer(val) => write!(stream, "{}", *val)?,
             Self::Decimal(val) => write!(stream, "{}", *val)?,
             Self::Identifier(val) => val.codegen(stream)?,
+            Self::Call {
+                identifier,
+                arguments,
+            } => {
+                /* at this point, all arguments must be converted to positional */
+
+                identifier.codegen(stream)?;
+                write!(stream, "(")?;
+
+                if !arguments.is_empty() {
+                    arguments[0].codegen(stream)?;
+                }
+
+                for arg in arguments.iter().skip(1) {
+                    write!(stream, ", ")?;
+                    arg.codegen(stream)?;
+                }
+
+                write!(stream, ")")?;
+            }
             _ => unimplemented!(),
         }
 

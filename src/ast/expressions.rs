@@ -1,18 +1,14 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{
-    functions::FunctionNode, identifiers::Identifier, types, values, variables::VariableNode, Ast,
-    IAst, Stream,
-};
+use crate::ast::{identifiers::Identifier, types, values, Ast, IAst, Stream};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
-use crate::lexer::{self, Lexem};
+use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
-use std::str::FromStr;
 
 #[derive(Clone, PartialEq)]
 pub enum Expression {
@@ -32,10 +28,49 @@ impl Expression {
         let old_opt = parser.does_ignore_nl();
 
         parser.set_ignore_nl_option(false);
-        let res = Self::parse_assign(parser);
+        let expr = Self::parse_assign(parser)?;
         parser.set_ignore_nl_option(old_opt);
 
-        res
+        if let Ast::Expression { node } = &expr {
+            if let Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = node.as_ref()
+            {
+                let new_op = match operation {
+                    Lexem::AddAssign => Some(Lexem::Plus),
+                    Lexem::SubAssign => Some(Lexem::Minus),
+                    Lexem::MulAssign => Some(Lexem::Star),
+                    Lexem::DivAssign => Some(Lexem::Slash),
+                    Lexem::ModAssign => Some(Lexem::Percent),
+                    Lexem::XorAssign => Some(Lexem::Xor),
+                    Lexem::AndAssign => Some(Lexem::Ampersand),
+                    Lexem::OrAssign => Some(Lexem::Stick),
+                    Lexem::LShiftAssign => Some(Lexem::LShift),
+                    Lexem::RShiftAssign => Some(Lexem::RShift),
+                    _ => None,
+                };
+
+                if let Some(new_op) = new_op {
+                    return Ok(Ast::Expression {
+                        node: Box::new(Expression::Binary {
+                            operation: Lexem::Assign,
+                            lhs: lhs.clone(),
+                            rhs: Box::new(Ast::Expression {
+                                node: Box::new(Expression::Binary {
+                                    operation: new_op,
+                                    lhs: lhs.clone(),
+                                    rhs: rhs.clone(),
+                                }),
+                            }),
+                        }),
+                    });
+                }
+            }
+        }
+
+        Ok(expr)
     }
 
     pub fn parse_factor(parser: &mut Parser) -> Result<Ast, &'static str> {
@@ -205,37 +240,25 @@ impl Expression {
                             Lexem::Star => "mul",
                             Lexem::Slash => "div",
                             Lexem::Percent => "mod",
+                            Lexem::LShift => "lshift",
+                            Lexem::RShift => "rshift",
+                            Lexem::Stick => "or",
+                            Lexem::Ampersand => "and",
                             _ => return Err("Unexpected operation"),
                         },
-                        lhs_type.clone(),
-                        rhs_type.clone()
+                        lhs_type,
+                        rhs_type
                     ));
 
-                    *expr_node = Ast::FuncDef {
-                        node: FunctionNode {
+                    *expr_node = Ast::Value {
+                        node: values::Value::Call {
                             identifier: func_id,
-                            return_type: lhs_type.clone(),
-                            parameters: vec![
-                                Ast::VariableDef {
-                                    node: VariableNode {
-                                        identifier: Identifier::from_str("_A")?,
-                                        var_type: lhs_type.clone(),
-                                        is_global: false,
-                                        is_mutable: false,
-                                    },
-                                },
-                                Ast::VariableDef {
-                                    node: VariableNode {
-                                        identifier: Identifier::from_str("_B")?,
-                                        var_type: rhs_type,
-                                        is_global: false,
-                                        is_mutable: false,
-                                    },
-                                },
+                            arguments: vec![
+                                values::CallParam::Positional(0, lhs.clone()),
+                                values::CallParam::Positional(1, rhs.clone()),
                             ],
-                            body: None,
                         },
-                    }
+                    };
                 } else {
                     let rhs_type = if let Ast::Value {
                         node: values::Value::Identifier(id),
@@ -787,7 +810,7 @@ impl IAst for Expression {
                 node.codegen(stream)?;
             }
             Expression::Binary {
-                operation: lexer::Lexem::Assign,
+                operation: Lexem::Assign,
                 lhs,
                 rhs,
             } => {
@@ -796,7 +819,7 @@ impl IAst for Expression {
                 rhs.codegen(stream)?;
             }
             Expression::Binary {
-                operation: lexer::Lexem::KwAs,
+                operation: Lexem::KwAs,
                 lhs,
                 rhs,
             } => {
