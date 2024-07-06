@@ -3,13 +3,13 @@ use crate::ast::{
     functions::FunctionNode, identifiers::Identifier, types, values, variables::VariableNode, Ast,
     IAst, Stream,
 };
+use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
 use crate::lexer::Lexem;
-use crate::parser::put_intent;
-use crate::parser::Parser;
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 use std::str::FromStr;
@@ -777,12 +777,13 @@ impl IAst for Expression {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        println!("Warning(Expression): only basic codegen");
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::SourceOnly;
 
         match self {
             Expression::Unary { operation, node } => {
-                writeln!(stream, "{}", operation)?;
+                write!(stream, "{}", operation)?;
                 node.codegen(stream)?;
             }
             Expression::Binary {
@@ -791,11 +792,12 @@ impl IAst for Expression {
                 rhs,
             } => {
                 lhs.codegen(stream)?;
-                writeln!(stream, "{}", operation)?;
+                write!(stream, " {} ", operation)?;
                 rhs.codegen(stream)?;
             }
         }
 
+        stream.mode = old_mode;
         Ok(())
     }
 }

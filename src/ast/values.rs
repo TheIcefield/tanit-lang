@@ -2,6 +2,7 @@ use crate::analyzer::SymbolData;
 use crate::ast::{
     expressions::Expression, identifiers::Identifier, types, types::Type, Ast, IAst, Stream,
 };
+use crate::codegen::CodeGenStream;
 use crate::error_listener::{
     IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
 };
@@ -31,7 +32,7 @@ impl IAst for CallParam {
         Ok(())
     }
 
-    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {
         unimplemented!()
     }
 }
@@ -469,7 +470,7 @@ impl IAst for Value {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
         match self {
             Self::Integer(val) => write!(stream, "{}", *val)?,
             Self::Decimal(val) => write!(stream, "{}", *val)?,

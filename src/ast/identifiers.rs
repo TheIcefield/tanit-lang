@@ -1,4 +1,5 @@
 use crate::ast::{expressions::Expression, values::Value, Ast, IAst, Stream};
+use crate::codegen::CodeGenStream;
 use crate::lexer::Lexem;
 
 use std::io::Write;
@@ -146,16 +147,18 @@ impl IAst for Identifier {
         write!(stream, "{}", self)
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        match self {
-            Self::Common(s) => write!(stream, " {} ", s),
-            Self::Complex(ss) => {
-                write!(stream, "{}", ss[0])?;
-                for comp in ss.iter() {
-                    write!(stream, "__{}", comp)?;
-                }
-                Ok(())
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        if let Self::Common(id) = self {
+            write!(stream, "{}", id)?;
+        }
+
+        if let Self::Complex(ids) = self {
+            write!(stream, "{}", ids[0])?;
+            for id in ids.iter().skip(1) {
+                write!(stream, "__{}", id)?;
             }
         }
+
+        Ok(())
     }
 }

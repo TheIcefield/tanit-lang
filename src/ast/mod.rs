@@ -1,4 +1,5 @@
 use crate::analyzer::Analyzer;
+use crate::codegen::CodeGenStream;
 
 pub mod branches;
 pub mod expressions;
@@ -19,7 +20,7 @@ pub trait IAst {
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()>;
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()>;
 
     fn get_type(&self, _analyzer: &mut Analyzer) -> types::Type {
         types::Type::Tuple {
@@ -112,7 +113,7 @@ impl Ast {
         }
     }
 
-    pub fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    pub fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
         match self {
             Self::Scope { node } => node.codegen(stream),
             Self::ModuleDef { node } => node.codegen(stream),

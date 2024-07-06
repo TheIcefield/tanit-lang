@@ -1,5 +1,6 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst, Stream};
+use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
@@ -229,6 +230,14 @@ impl Type {
             Self::I128 => "signed long long",
             Self::F32 => "float",
             Self::F64 => "double",
+            Self::Custom(id) => id,
+            Self::Tuple { components } => {
+                if components.is_empty() {
+                    "void"
+                } else {
+                    unimplemented!()
+                }
+            }
             _ => unimplemented!(),
         }
         .to_string()
@@ -370,8 +379,8 @@ impl IAst for Type {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        write!(stream, " {} ", self.get_c_type())
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        write!(stream, "{}", self.get_c_type())
     }
 }
 
@@ -481,11 +490,15 @@ impl IAst for Alias {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::HeaderOnly;
+
         write!(stream, "typedef {} ", self.value.get_c_type())?;
 
         self.identifier.codegen(stream)?;
 
+        stream.mode = old_mode;
         writeln!(stream, ";\n")
     }
 }

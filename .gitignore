@@ -1,5 +1,6 @@
 /target
 Cargo.lock
-*_generated.c
 *_ast.xml
 *_symbol_table.txt
+*_generated.c
+*_generated.h

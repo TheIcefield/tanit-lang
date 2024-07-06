@@ -1,5 +1,6 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{identifiers::Identifier, types::Type, Ast, IAst, Stream};
+use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
@@ -182,7 +183,10 @@ impl IAst for StructNode {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::HeaderOnly;
+
         write!(stream, "struct ")?;
 
         self.identifier.codegen(stream)?;
@@ -194,6 +198,7 @@ impl IAst for StructNode {
         }
         writeln!(stream, "}}")?;
 
+        stream.mode = old_mode;
         Ok(())
     }
 }
@@ -278,7 +283,7 @@ impl IAst for EnumField {
         Ok(())
     }
 
-    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {
         unimplemented!()
     }
 }
@@ -469,7 +474,10 @@ impl IAst for EnumNode {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::HeaderOnly;
+
         write!(stream, "enum ")?;
 
         self.identifier.codegen(stream)?;
@@ -481,6 +489,7 @@ impl IAst for EnumNode {
         }
         writeln!(stream, "}}")?;
 
+        stream.mode = old_mode;
         Ok(())
     }
 }

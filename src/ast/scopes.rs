@@ -1,3 +1,4 @@
+use crate::codegen::CodeGenStream;
 use crate::error_listener::UNEXPECTED_END_OF_LINE_ERROR_STR;
 use crate::lexer::Lexem;
 use crate::parser::Parser;
@@ -204,21 +205,25 @@ impl IAst for Scope {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
         if !self.is_global {
-            write!(stream, "\n{{\n")?;
+            writeln!(stream, "{{")?;
         }
 
         for stmt in self.statements.iter() {
             stmt.codegen(stream)?;
 
-            if !self.is_global {
-                writeln!(stream, ";")?;
+            match stmt {
+                Ast::Expression { .. }
+                | Ast::BreakStmt { .. }
+                | Ast::ContinueStmt { .. }
+                | Ast::ReturnStmt { .. } => writeln!(stream, ";")?,
+                _ => {}
             }
         }
 
         if !self.is_global {
-            write!(stream, "\n}}\n")?;
+            writeln!(stream, "}}")?;
         }
         Ok(())
     }

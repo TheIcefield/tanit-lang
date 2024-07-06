@@ -1,4 +1,5 @@
 use crate::ast::{expressions::Expression, scopes, Ast, IAst, Stream};
+use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     UNEXPECTED_BREAK_STMT_ERROR_STR, UNEXPECTED_CONTINUE_STMT_ERROR_STR,
     UNEXPECTED_RETURN_STMT_ERROR_STR,
@@ -178,8 +179,41 @@ impl IAst for Branch {
         Ok(())
     }
 
-    fn codegen(&self, _stream: &mut Stream) -> std::io::Result<()> {
-        unimplemented!();
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::SourceOnly;
+        match self {
+            Self::IfElse {
+                condition,
+                main_body,
+                else_body,
+            } => {
+                write!(stream, "if (")?;
+                condition.codegen(stream)?;
+                writeln!(stream, ")")?;
+
+                main_body.codegen(stream)?;
+
+                if let Some(else_body) = else_body {
+                    writeln!(stream, "else")?;
+                    else_body.codegen(stream)?;
+                }
+            }
+            Self::Loop { body, condition } => {
+                write!(stream, "while (")?;
+
+                if let Some(condition) = condition {
+                    condition.codegen(stream)?;
+                } else {
+                    write!(stream, "1")?;
+                }
+                writeln!(stream, ")")?;
+
+                body.codegen(stream)?;
+            }
+        }
+        stream.mode = old_mode;
+        Ok(())
     }
 }
 
@@ -246,9 +280,14 @@ impl IAst for Break {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        println!("Warning: only basic codegen");
-        writeln!(stream, "break")
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::SourceOnly;
+
+        write!(stream, "break")?;
+
+        stream.mode = old_mode;
+        Ok(())
     }
 }
 
@@ -285,9 +324,14 @@ impl IAst for Continue {
         writeln!(stream, "{}<continue/>", put_intent(intent))
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        println!("Warning(Continue): only basic codegen");
-        writeln!(stream, "continue")
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::SourceOnly;
+
+        write!(stream, "continue")?;
+
+        stream.mode = old_mode;
+        Ok(())
     }
 }
 
@@ -354,13 +398,16 @@ impl IAst for Return {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        write!(stream, "return ")?;
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = CodeGenMode::SourceOnly;
 
-        if let Some(expr) = &self.expr {
+        write!(stream, "return ")?;
+        if let Some(expr) = self.expr.as_ref() {
             expr.codegen(stream)?;
         }
 
+        stream.mode = old_mode;
         Ok(())
     }
 }

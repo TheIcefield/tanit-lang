@@ -2,6 +2,7 @@ use crate::analyzer::SymbolData;
 use crate::ast::{
     identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst, Stream,
 };
+use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
@@ -191,15 +192,23 @@ impl IAst for FunctionNode {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        println!("Warning(FunctionNode): only basic implementation");
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
+        let old_mode = stream.mode;
+        stream.mode = if self.body.is_some() {
+            CodeGenMode::Both
+        } else {
+            CodeGenMode::HeaderOnly
+        };
 
         self.return_type.codegen(stream)?;
+
+        write!(stream, " ")?;
+
         self.identifier.codegen(stream)?;
 
         // generate parameters
         write!(stream, "(")?;
-        if self.parameters.len() > 0 {
+        if !self.parameters.is_empty() {
             self.parameters[0].codegen(stream)?;
         }
 
@@ -209,10 +218,15 @@ impl IAst for FunctionNode {
         }
         write!(stream, ")")?;
 
+        stream.mode = CodeGenMode::HeaderOnly;
+        writeln!(stream, ";")?;
+
         if let Some(body) = &self.body {
+            stream.mode = CodeGenMode::SourceOnly;
             body.codegen(stream)?;
         }
 
+        stream.mode = old_mode;
         Ok(())
     }
 }

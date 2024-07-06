@@ -1,9 +1,9 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst, Stream};
+use crate::codegen::CodeGenStream;
 use crate::error_listener::{self, MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR};
 use crate::lexer::{Lexem, Lexer};
-use crate::parser::put_intent;
-use crate::parser::Parser;
+use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
@@ -201,21 +201,7 @@ impl IAst for ModuleNode {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
-        if let Identifier::Common(id) = &self.identifier {
-            let mut new_stream = Stream::open(id).unwrap();
-
-            writeln!(new_stream, "#ifndef _{}\n#define _{}\n", id, id)?;
-
-            self.body.codegen(&mut new_stream)?;
-
-            writeln!(new_stream, "#endif")?;
-
-            writeln!(stream, "#include \"{}\"", id)?;
-
-            return Ok(());
-        }
-
+    fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {
         unimplemented!()
     }
 }

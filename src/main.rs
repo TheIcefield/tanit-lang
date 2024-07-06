@@ -1,12 +1,4 @@
-use tanit::{analyzer, ast::Ast, error_listener, lexer, parser};
-
-use std::io::Write;
-
-fn codegen(ast: &Ast, output: &str) {
-    let mut stream = std::fs::File::create(format!("{}_generated.c", output)).unwrap();
-    let _ = writeln!(stream, "#include <stdio.h>");
-    let _ = ast.codegen(&mut stream);
-}
+use tanit::{analyzer, codegen, error_listener, lexer, parser};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -74,9 +66,23 @@ fn main() {
 
     if dump_symtable {
         if let Err(err) = analyzer::dump_symtable(&output_file, &symtable) {
-            println!("{}", err);
+            eprintln!("{}", err);
         }
     }
 
-    codegen(&ast, &output_file);
+    let mut codegen = {
+        let codegen = codegen::CodeGenStream::new(&output_file);
+        match codegen {
+            Ok(codegen) => codegen,
+            Err(err) => {
+                eprintln!("Error when open file \"{}\": {}", source_file, err);
+                return;
+            }
+        }
+    };
+
+    match ast.codegen(&mut codegen) {
+        Ok(_) => println!("C code generated"),
+        Err(_) => eprintln!("Error occured during C code generating"),
+    }
 }

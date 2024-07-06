@@ -1,5 +1,8 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, types, Ast, IAst, Stream};
+use crate::ast::{
+    expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst, Stream,
+};
+use crate::codegen::CodeGenStream;
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
     VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR,
@@ -9,12 +12,10 @@ use crate::parser::{put_intent, Parser};
 
 use std::io::Write;
 
-use super::identifiers::Identifier;
-
 #[derive(Clone, PartialEq)]
 pub struct VariableNode {
     pub identifier: Identifier,
-    pub var_type: types::Type,
+    pub var_type: Type,
     pub is_global: bool,
     pub is_mutable: bool,
 }
@@ -62,13 +63,13 @@ impl VariableNode {
 
         let next = parser.peek_token();
 
-        let mut var_type: Option<types::Type> = None;
+        let mut var_type: Option<Type> = None;
         let mut rvalue: Option<Ast> = None;
 
         if Lexem::Colon == next.lexem {
             parser.consume_token(Lexem::Colon)?;
 
-            var_type = Some(types::Type::parse(parser)?);
+            var_type = Some(Type::parse(parser)?);
         }
 
         let next = parser.peek_token();
@@ -102,7 +103,7 @@ impl VariableNode {
         }
 
         if var_type.is_none() && rvalue.is_some() {
-            var_type = Some(types::Type::Custom("@auto".to_string()));
+            var_type = Some(Type::Custom("@auto".to_string()));
         }
 
         let var_node = Ast::VariableDef {
@@ -133,7 +134,7 @@ impl VariableNode {
 
         parser.consume_token(Lexem::Colon)?;
 
-        let var_type = types::Type::parse(parser)?;
+        let var_type = Type::parse(parser)?;
 
         Ok(Self {
             identifier,
@@ -145,7 +146,7 @@ impl VariableNode {
 }
 
 impl IAst for VariableNode {
-    fn get_type(&self, _analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+    fn get_type(&self, _analyzer: &mut crate::analyzer::Analyzer) -> Type {
         self.var_type.clone()
     }
 
@@ -190,10 +191,10 @@ impl IAst for VariableNode {
         Ok(())
     }
 
-    fn codegen(&self, stream: &mut Stream) -> std::io::Result<()> {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
         self.var_type.codegen(stream)?;
 
-        write!(stream, " {} ", if self.is_mutable { "" } else { "const" })?;
+        write!(stream, "{}", if self.is_mutable { " " } else { " const " })?;
 
         self.identifier.codegen(stream)?;
 
