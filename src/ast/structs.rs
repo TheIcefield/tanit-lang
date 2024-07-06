@@ -187,16 +187,18 @@ impl IAst for StructNode {
         let old_mode = stream.mode;
         stream.mode = CodeGenMode::HeaderOnly;
 
-        write!(stream, "struct ")?;
+        writeln!(stream, "typedef struct {{")?;
+        for (field_id, field_type) in self.fields.iter() {
+            field_type.codegen(stream)?;
+            write!(stream, " ")?;
+            field_id.codegen(stream)?;
+            writeln!(stream, ";")?;
+        }
+        write!(stream, "}} ")?;
 
         self.identifier.codegen(stream)?;
 
-        writeln!(stream, "{{")?;
-        for (field_id, field_type) in self.fields.iter() {
-            field_type.codegen(stream)?;
-            field_id.codegen(stream)?;
-        }
-        writeln!(stream, "}}")?;
+        writeln!(stream, ";")?;
 
         stream.mode = old_mode;
         Ok(())
@@ -478,16 +480,16 @@ impl IAst for EnumNode {
         let old_mode = stream.mode;
         stream.mode = CodeGenMode::HeaderOnly;
 
-        write!(stream, "enum ")?;
-
-        self.identifier.codegen(stream)?;
-
-        writeln!(stream, "{{")?;
+        writeln!(stream, "typedef enum {{")?;
         for (field_id, _) in self.fields.iter() {
             field_id.codegen(stream)?;
             writeln!(stream, ",")?;
         }
-        writeln!(stream, "}}")?;
+        write!(stream, "}} ")?;
+
+        self.identifier.codegen(stream)?;
+
+        writeln!(stream, ";")?;
 
         stream.mode = old_mode;
         Ok(())
