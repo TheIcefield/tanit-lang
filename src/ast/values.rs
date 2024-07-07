@@ -63,7 +63,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn parse_call(parser: &mut Parser) -> Result<Vec<CallParam>, &'static str> {
+    pub fn parse_call_params(parser: &mut Parser) -> Result<Vec<CallParam>, &'static str> {
         parser.consume_token(Lexem::LParen)?;
 
         let mut args = Vec::<CallParam>::new();

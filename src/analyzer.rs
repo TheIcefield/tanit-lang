@@ -323,6 +323,7 @@ impl Analyzer {
         if let Ok(ss) = self.check_identifier_existance(identifier) {
             match &ss.data {
                 SymbolData::FunctionDef { args, .. } => {
+                    /* Check parameters */
                     if args.len() == arguments.len() {
                         for i in args.iter() {
                             for j in arguments.iter() {

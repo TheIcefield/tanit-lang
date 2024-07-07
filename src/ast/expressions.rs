@@ -100,7 +100,22 @@ impl Expression {
                 let next = parser.peek_token();
                 if next.lexem == Lexem::LParen {
                     // if call
-                    let arguments = values::Value::parse_call(parser)?;
+                    let arguments = values::Value::parse_call_params(parser)?;
+
+                    let mut positional_skiped = false;
+                    for arg in arguments.iter() {
+                        match arg {
+                            values::CallParam::Notified(..) => positional_skiped = true,
+                            values::CallParam::Positional(..) => {
+                                if positional_skiped {
+                                    parser.error(
+                                        "Positional parameters must be passed before notified",
+                                        next.get_location(),
+                                    );
+                                }
+                            }
+                        }
+                    }
 
                     return Ok(Ast::Value {
                         node: values::Value::Call {
