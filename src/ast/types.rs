@@ -30,6 +30,7 @@ pub enum Type {
         arguments: Vec<Type>,
     },
     Custom(String),
+    Auto,
     Bool,
     U8,
     U16,
@@ -218,6 +219,7 @@ impl Type {
 
     fn get_c_type(&self) -> String {
         match self {
+            Self::Auto => unreachable!("automatic type is not eliminated"),
             Self::Bool | Self::U8 => "unsigned char",
             Self::U16 => "unsigned short",
             Self::U32 => "unsigned int",
@@ -360,6 +362,7 @@ impl IAst for Type {
                 writeln!(stream, "{}<type name=\"{}\"/>", put_intent(intent), id)?;
             }
 
+            Self::Auto => writeln!(stream, "{}<auto/>", put_intent(intent))?,
             Self::Bool => writeln!(stream, "{}<type name=\"bool\"/>", put_intent(intent))?,
             Self::I8 => writeln!(stream, "{}<type name=\"i8\"/>", put_intent(intent))?,
             Self::I16 => writeln!(stream, "{}<type name=\"i16\"/>", put_intent(intent))?,
@@ -426,6 +429,8 @@ impl std::fmt::Display for Type {
             }
             Self::Array { value_type, .. } => write!(f, "[{}]", value_type),
             Self::Custom(s) => write!(f, "{}", s),
+
+            Self::Auto => write!(f, "@auto"),
             Self::Bool => write!(f, "bool"),
             Self::I8 => write!(f, "i8"),
             Self::I16 => write!(f, "i16"),

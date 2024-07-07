@@ -88,6 +88,23 @@ impl Identifier {
 
         Ok(res)
     }
+
+    pub fn get_string(&self) -> String {
+        if let Self::Common(id) = self {
+            return id.clone();
+        }
+
+        if let Self::Complex(ids) = self {
+            let mut res = ids[0].clone();
+            for id in ids.iter().skip(1) {
+                res.push_str("::");
+                res.push_str(id);
+            }
+            return res;
+        }
+
+        unreachable!()
+    }
 }
 
 // Private methods

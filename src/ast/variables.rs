@@ -103,7 +103,7 @@ impl VariableNode {
         }
 
         if var_type.is_none() && rvalue.is_some() {
-            var_type = Some(Type::Custom("@auto".to_string()));
+            var_type = Some(Type::Auto);
         }
 
         let var_node = Ast::VariableDef {

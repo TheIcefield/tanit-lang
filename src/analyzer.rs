@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::ast::{identifiers::Identifier, structs, structs::EnumField, types, values, Ast, IAst};
+use crate::ast::{identifiers::Identifier, structs, structs::EnumField, types, Ast};
 use crate::error_listener::{
-    ErrorListener, ANALYZING_FAILED_ERROR_STR, FUNCTION_NOT_FOUND_ERROR_STR,
-    IDENTIFIER_NOT_FOUND_ERROR_STR, MISMATCHED_TYPES_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
-    WRONG_CALL_ARGUMENTS_ERROR_STR,
+    ErrorListener, ANALYZING_FAILED_ERROR_STR, IDENTIFIER_NOT_FOUND_ERROR_STR,
 };
 
 use std::io::Write;
@@ -63,7 +61,7 @@ pub enum SymbolData {
         components: Vec<structs::EnumField>,
     },
     FunctionDef {
-        args: Vec<types::Type>,
+        args: Vec<(String, types::Type)>,
         return_type: types::Type,
         is_declaration: bool,
     },
@@ -96,7 +94,7 @@ impl SymbolData {
                 )?;
 
                 for arg in args.iter() {
-                    write!(stream, "{} ", arg)?;
+                    write!(stream, "{}:{} ", arg.0, arg.1)?;
                 }
 
                 write!(stream, ") -> {}", return_type)
@@ -278,7 +276,7 @@ impl Analyzer {
         }
     }
 
-    fn is_built_in_identifier(id: &Identifier) -> bool {
+    pub fn is_built_in_identifier(id: &Identifier) -> bool {
         if let Identifier::Common(id) = id {
             return id.starts_with("__tanit_compiler__");
         }
@@ -296,53 +294,6 @@ impl Analyzer {
         }
 
         Err(IDENTIFIER_NOT_FOUND_ERROR_STR)
-    }
-
-    pub fn check_call_args(&mut self, node: &values::Value) -> Result<Symbol, &'static str> {
-        let (identifier, arguments) = if let values::Value::Call {
-            identifier,
-            arguments,
-        } = node
-        {
-            (identifier, arguments)
-        } else {
-            return Err(UNEXPECTED_NODE_PARSED_ERROR_STR);
-        };
-
-        if Self::is_built_in_identifier(identifier) {
-            return Ok(Symbol {
-                scope: Scope(vec!["@s.0".to_string()]),
-                data: SymbolData::FunctionDef {
-                    args: vec![],
-                    return_type: types::Type::new(),
-                    is_declaration: false,
-                },
-            });
-        }
-
-        if let Ok(ss) = self.check_identifier_existance(identifier) {
-            match &ss.data {
-                SymbolData::FunctionDef { args, .. } => {
-                    /* Check parameters */
-                    if args.len() == arguments.len() {
-                        for i in args.iter() {
-                            for j in arguments.iter() {
-                                let j_type = j.get_type(self);
-                                if j_type != *i {
-                                    return Err(MISMATCHED_TYPES_ERROR_STR);
-                                }
-                            }
-                        }
-                        Ok(ss.clone())
-                    } else {
-                        Err(WRONG_CALL_ARGUMENTS_ERROR_STR)
-                    }
-                }
-                _ => Err(FUNCTION_NOT_FOUND_ERROR_STR),
-            }
-        } else {
-            Err(IDENTIFIER_NOT_FOUND_ERROR_STR)
-        }
     }
 
     pub fn error(&mut self, message: &str) {

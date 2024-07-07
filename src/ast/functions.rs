@@ -119,10 +119,10 @@ impl IAst for FunctionNode {
 
         analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
-        let mut arguments = Vec::<types::Type>::new();
+        let mut arguments = Vec::<(String, types::Type)>::new();
         for p in self.parameters.iter_mut() {
             if let Ast::VariableDef { node } = p {
-                arguments.push(node.var_type.clone());
+                arguments.push((node.identifier.get_string(), node.var_type.clone()));
                 p.analyze(analyzer)?;
             }
         }

@@ -11,12 +11,8 @@ pub static VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR: &str = "variable defined wit
 pub static PARSING_FAILED_ERROR_STR: &str = "some error occured during parsing";
 pub static ANALYZING_FAILED_ERROR_STR: &str = "some error occured during analyzing";
 pub static IDENTIFIER_NOT_FOUND_ERROR_STR: &str = "identifier not found in current scope";
-pub static FUNCTION_NOT_FOUND_ERROR_STR: &str =
-    "function with this name not found in current scope";
-pub static WRONG_CALL_ARGUMENTS_ERROR_STR: &str = "wrong call arguments";
 pub static MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR: &str =
     "identifier defined multiple times in current scope";
-pub static MISMATCHED_TYPES_ERROR_STR: &str = "mismatched types";
 pub static UNEXPECTED_BREAK_STMT_ERROR_STR: &str = "unexpected break statement";
 pub static UNEXPECTED_CONTINUE_STMT_ERROR_STR: &str = "unexpected continue statement";
 pub static UNEXPECTED_RETURN_STMT_ERROR_STR: &str = "unexpected return statement";

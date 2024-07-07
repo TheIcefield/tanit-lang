@@ -81,7 +81,6 @@ impl Ast {
     }
 
     pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str> {
-        let _ = expressions::Expression::convert_ast_node(self, analyzer);
         match self {
             Ast::Scope { node } => node.analyze(analyzer),
 
@@ -110,7 +109,14 @@ impl Ast {
             Ast::BreakStmt { node } => node.analyze(analyzer),
 
             Ast::TypeDecl { node } => node.analyze(analyzer),
-        }
+        }?;
+
+        // TODO: fix conversion
+        // if matches!(self, Ast::Expression { .. }) {
+        //     expressions::Expression::convert_ast_node(self, analyzer)?;
+        // }
+
+        Ok(())
     }
 
     pub fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

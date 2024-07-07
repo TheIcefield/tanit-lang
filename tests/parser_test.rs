@@ -1,5 +1,9 @@
 use tanit::{
-    ast::{identifiers::Identifier, structs::EnumField, types::Type},
+    ast::{
+        identifiers::Identifier,
+        structs::EnumField,
+        types::{self, Type},
+    },
     lexer::Lexem,
 };
 
@@ -301,15 +305,12 @@ fn variables_test() {
                     panic!("rhs has to be \'Expression\'");
                 };
 
-                if let ast::Ast::Value { node } = rhs.as_ref() {
-                    if let ast::values::Value::Identifier(id) = node {
-                        assert!(*id == Identifier::from_str("i32").unwrap());
-                    } else {
-                        panic!("rhs has to be \'i32\'")
+                assert!(matches!(
+                    rhs.as_ref(),
+                    ast::Ast::TypeDecl {
+                        node: types::Type::I32
                     }
-                } else {
-                    panic!("rhs has to be \'Value\'");
-                }
+                ));
             } else {
                 panic!("Expected binary expression");
             }
@@ -450,7 +451,7 @@ fn types_test() {
 #[test]
 fn conversion_test() {
     use tanit::{
-        ast::{expressions::Expression, identifiers::Identifier, values::Value, Ast},
+        ast::{expressions::Expression, values::Value, Ast},
         error_listener::ErrorListener,
         lexer::{Lexem, Lexer},
         parser::Parser,
@@ -479,17 +480,12 @@ fn conversion_test() {
                 }
             ));
 
-            if let Ast::Value {
-                node: Value::Identifier(id),
-            } = rhs.as_ref()
-            {
-                match id {
-                    Identifier::Common(id) => assert_eq!(id, "f32"),
-                    _ => panic!("expected Identifier::Common"),
+            assert!(matches!(
+                rhs.as_ref(),
+                Ast::TypeDecl {
+                    node: types::Type::F32
                 }
-            } else {
-                panic!("Identifier");
-            }
+            ))
         } else {
             panic!("Expected binary expression");
         }

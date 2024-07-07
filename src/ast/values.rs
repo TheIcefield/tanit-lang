@@ -1,11 +1,8 @@
-use crate::analyzer::SymbolData;
+use crate::analyzer::{Analyzer, SymbolData};
 use crate::ast::{
     expressions::Expression, identifiers::Identifier, types, types::Type, Ast, IAst, Stream,
 };
 use crate::codegen::CodeGenStream;
-use crate::error_listener::{
-    IDENTIFIER_NOT_FOUND_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR, WRONG_CALL_ARGUMENTS_ERROR_STR,
-};
 use crate::lexer::Lexem;
 use crate::parser::{put_intent, Parser};
 
@@ -112,7 +109,7 @@ impl Value {
                 break;
             } else {
                 parser.error("Unexpected token when parsing call", next.get_location());
-                return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                return Err("Unexpected token");
             }
         }
 
@@ -144,7 +141,7 @@ impl Value {
                 break;
             } else {
                 parser.error("Unexpected token when parsing call", next.get_location());
-                return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                return Err("Unexpected token");
             }
         }
 
@@ -186,13 +183,116 @@ impl Value {
                     "Unexpected token when parsing struct value",
                     next.get_location(),
                 );
-                return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                return Err("Unexpected token");
             }
         }
 
         parser.consume_token(Lexem::Rcb)?;
 
         Ok(components)
+    }
+}
+
+// Value::Call
+impl Value {
+    fn check_call_args(
+        &mut self,
+        analyzer: &mut crate::analyzer::Analyzer,
+    ) -> Result<(), &'static str> {
+        let (identifier, arguments) = if let Self::Call {
+            identifier,
+            arguments,
+        } = self
+        {
+            (identifier, arguments)
+        } else {
+            return Err("Expected call node, but provided another");
+        };
+
+        if Analyzer::is_built_in_identifier(identifier) {
+            return Ok(());
+        }
+
+        if let Ok(ss) = analyzer.check_identifier_existance(identifier) {
+            match &ss.data {
+                SymbolData::FunctionDef { args, .. } => {
+                    if arguments.len() > args.len() {
+                        analyzer.error(&format!(
+                            "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
+                            identifier, args.len(), arguments.len()));
+                        return Err("Too many arguments passed");
+                    }
+
+                    if arguments.len() < args.len() {
+                        analyzer.error(&format!(
+                            "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
+                            identifier, args.len(), arguments.len()));
+                        return Err("Too few arguments passed");
+                    }
+
+                    let mut positional_skiped = false;
+                    for call_arg in arguments.iter_mut() {
+                        let arg_clone = call_arg.clone();
+                        match arg_clone {
+                            CallParam::Notified(param_id, param_value) => {
+                                positional_skiped = true;
+
+                                // check if such parameter declared in the function
+                                let mut param_found = false;
+                                let param_id = param_id.get_string();
+                                for (param_index, (func_param_name, func_param_type)) in
+                                    args.iter().enumerate()
+                                {
+                                    if *func_param_name == param_id {
+                                        param_found = true;
+
+                                        let param_type = param_value.get_type(analyzer);
+                                        if *func_param_type != param_type {
+                                            analyzer.error(&format!(
+                                                "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
+                                                func_param_name, func_param_type, param_type)
+                                            );
+                                        }
+
+                                        let modified_param =
+                                            CallParam::Positional(param_index, param_value.clone());
+                                        *call_arg = modified_param;
+                                    }
+                                }
+                                if !param_found {
+                                    analyzer.error(&format!(
+                                        "No parameter named \"{}\" in function \"{}\"",
+                                        param_id, identifier
+                                    ))
+                                }
+                            }
+                            CallParam::Positional(..) => {
+                                if positional_skiped {
+                                    analyzer.error(
+                                        "Positional parameters must be passed before notified",
+                                    );
+                                    return Err("Positional param passed after notified");
+                                }
+                            }
+                        }
+                    }
+
+                    /* Check parameters */
+                    for i in args.iter() {
+                        for j in arguments.iter() {
+                            let j_type = j.get_type(analyzer);
+                            if j_type != i.1 {
+                                return Err("Mismatched types");
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                _ => Err("No such function found"),
+            }
+        } else {
+            Err("No such identifier found")
+        }
     }
 }
 
@@ -208,16 +308,20 @@ impl IAst for Value {
             Self::Identifier(id) => {
                 if analyzer.check_identifier_existance(id).is_err() {
                     analyzer.error(&format!("Cannot find \"{}\" in this scope", id));
-                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                    return Err("No such identifier gound");
                 }
 
                 Ok(())
             }
 
-            Self::Call { .. } => {
-                if analyzer.check_call_args(self).is_err() {
+            Self::Call { arguments, .. } => {
+                for arg in arguments.iter_mut() {
+                    arg.analyze(analyzer)?;
+                }
+
+                if self.check_call_args(analyzer).is_err() {
                     analyzer.error("Wrong call arguments");
-                    return Err(WRONG_CALL_ARGUMENTS_ERROR_STR);
+                    return Err("Wrong call arguments");
                 }
 
                 Ok(())
@@ -230,7 +334,7 @@ impl IAst for Value {
                 let ss = analyzer.check_identifier_existance(identifier);
                 if ss.is_err() {
                     analyzer.error(&format!("Cannot find \"{}\" in this scope", identifier));
-                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                    return Err("No such identifier found");
                 }
 
                 let ss = ss.unwrap();
@@ -267,7 +371,7 @@ impl IAst for Value {
                         "Cannot find struct named \"{}\" in this scope",
                         identifier
                     ));
-                    return Err(IDENTIFIER_NOT_FOUND_ERROR_STR);
+                    return Err("No such identifier found");
                 }
 
                 Ok(())
@@ -350,7 +454,7 @@ impl IAst for Value {
                 if len == 0 {
                     return types::Type::Array {
                         size: None,
-                        value_type: Box::new(types::Type::Custom("@auto".to_string())),
+                        value_type: Box::new(types::Type::Auto),
                     };
                 }
 

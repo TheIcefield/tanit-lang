@@ -102,21 +102,6 @@ impl Expression {
                     // if call
                     let arguments = values::Value::parse_call_params(parser)?;
 
-                    let mut positional_skiped = false;
-                    for arg in arguments.iter() {
-                        match arg {
-                            values::CallParam::Notified(..) => positional_skiped = true,
-                            values::CallParam::Positional(..) => {
-                                if positional_skiped {
-                                    parser.error(
-                                        "Positional parameters must be passed before notified",
-                                        next.get_location(),
-                                    );
-                                }
-                            }
-                        }
-                    }
-
                     return Ok(Ast::Value {
                         node: values::Value::Call {
                             identifier,
@@ -239,8 +224,11 @@ impl Expression {
                 operation,
                 lhs,
                 rhs,
-            } = node.as_ref()
+            } = node.as_mut()
             {
+                Self::convert_ast_node(lhs, analyzer)?;
+                Self::convert_ast_node(rhs, analyzer)?;
+
                 let is_conversion = *operation == Lexem::KwAs;
 
                 let lhs_type = lhs.get_type(analyzer);
@@ -578,12 +566,27 @@ impl Expression {
         let lhs = Self::parse_factor(parser)?;
 
         let next = parser.peek_token();
+        let location = next.get_location();
         match next.lexem {
             Lexem::Dot | Lexem::KwAs => {
                 parser.get_token();
                 let operation = next.lexem;
+                let is_conversion = operation == Lexem::KwAs;
 
-                let rhs = Box::new(Self::parse(parser)?);
+                let mut rhs = Box::new(Self::parse(parser)?);
+
+                if is_conversion {
+                    if let Ast::Value {
+                        node: values::Value::Identifier(id),
+                    } = rhs.clone().as_ref()
+                    {
+                        rhs = Box::new(Ast::TypeDecl {
+                            node: types::Type::from_id(id),
+                        })
+                    } else {
+                        parser.error("Rvalue of conversion must be a type", location);
+                    }
+                }
 
                 Ok(Ast::Expression {
                     node: Box::new(Expression::Binary {
@@ -614,22 +617,15 @@ impl IAst for Expression {
                     let is_conversion = *operation == Lexem::KwAs;
 
                     let rhs_type = if is_conversion {
-                        if let Ast::Value {
-                            node: values::Value::Identifier(id),
-                        } = rhs.as_ref()
-                        {
-                            types::Type::from_id(id)
+                        if let Ast::TypeDecl { node } = rhs.as_ref() {
+                            node.clone()
                         } else {
                             analyzer.error("rhs expected to be a type");
                             types::Type::new()
                         }
                     } else {
-                        return rhs.get_type(analyzer);
+                        rhs.get_type(analyzer)
                     };
-
-                    if is_conversion {
-                        return rhs_type;
-                    }
 
                     let mut lhs_type = if let Ast::VariableDef { node } = lhs.as_ref() {
                         node.var_type.clone()
@@ -637,14 +633,16 @@ impl IAst for Expression {
                         lhs.get_type(analyzer)
                     };
 
-                    if let types::Type::Custom(t) = &mut lhs_type {
-                        if t == "@auto" {
-                            lhs_type = rhs_type.clone();
-                        }
+                    if let types::Type::Auto = &mut lhs_type {
+                        lhs_type = rhs_type.clone();
                     }
 
                     if lhs_type == rhs_type {
-                        return lhs_type;
+                        return rhs_type;
+                    }
+
+                    if is_conversion {
+                        return rhs_type;
                     }
 
                     analyzer.error(&format!(
@@ -668,7 +666,7 @@ impl IAst for Expression {
             } => {
                 let is_conversion = *operation == Lexem::KwAs;
 
-                let mut lhs_type: types::Type = lhs.get_type(analyzer);
+                let mut lhs_type = lhs.get_type(analyzer);
 
                 let rhs_type = if is_conversion {
                     if let Ast::TypeDecl { node } = rhs.as_ref() {
@@ -677,9 +675,8 @@ impl IAst for Expression {
                         return Err("rhs must be a type");
                     }
                 } else {
-                    let t = rhs.get_type(analyzer);
                     rhs.analyze(analyzer)?;
-                    t
+                    rhs.get_type(analyzer)
                 };
 
                 if *operation == Lexem::Assign
@@ -693,7 +690,9 @@ impl IAst for Expression {
                     || *operation == Lexem::XorAssign
                     || *operation == Lexem::LShiftAssign
                     || *operation == Lexem::RShiftAssign
+                    || is_conversion
                 {
+                    let does_mutate = !is_conversion;
                     if let Ast::VariableDef { node } = lhs.as_mut() {
                         if analyzer
                             .check_identifier_existance(&node.identifier)
@@ -706,11 +705,9 @@ impl IAst for Expression {
                             return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
                         }
 
-                        if let types::Type::Custom(t) = &node.var_type {
-                            if "@auto" == t {
-                                node.var_type = rhs_type.clone();
-                                lhs_type = rhs_type.clone();
-                            }
+                        if types::Type::Auto == node.var_type {
+                            node.var_type = rhs_type.clone();
+                            lhs_type = rhs_type.clone();
                         }
 
                         if node.var_type != rhs_type {
@@ -732,7 +729,7 @@ impl IAst for Expression {
                             values::Value::Identifier(id) => {
                                 if let Ok(s) = analyzer.check_identifier_existance(id) {
                                     if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
-                                        if !*is_mutable {
+                                        if !*is_mutable && does_mutate {
                                             analyzer.error(&format!(
                                                 "Variable \"{}\" is immutable in current scope",
                                                 id
@@ -844,7 +841,17 @@ impl IAst for Expression {
                 lhs.codegen(stream)?;
                 write!(stream, ")")?;
             }
-            _ => unreachable!(),
+            Expression::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => {
+                // write!(stream, "(")?;
+                lhs.codegen(stream)?;
+                write!(stream, " {} ", operation)?;
+                rhs.codegen(stream)?;
+                // write!(stream, ")")?;
+            }
         }
 
         stream.mode = old_mode;
