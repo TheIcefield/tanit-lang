@@ -1,4 +1,15 @@
-use tanit::{analyzer, codegen, error_listener, lexer, parser};
+use tanit::{analyzer, ast, codegen, error_listener, lexer, parser, serializer};
+
+fn serialize_ast(output: &str, ast: &ast::Ast) -> Result<(), &'static str> {
+    let mut writer = serializer::XmlWriter::new(&format!("{}_ast.xml", output))?;
+    match ast.serialize(&mut writer) {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            eprintln!("Error: {}", err);
+            Err("Error during serializing AST")
+        }
+    }
+}
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -55,7 +66,7 @@ fn main() {
     let (symtable, errors) = analyzer.analyze(&mut ast);
 
     if dump_ast {
-        if let Err(err) = parser::dump_ast(&output_file, &ast) {
+        if let Err(err) = serialize_ast(&output_file, &ast) {
             println!("{}", err);
         }
     }

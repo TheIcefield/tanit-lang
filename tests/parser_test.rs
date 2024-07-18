@@ -86,9 +86,11 @@ fn struct_test() {
             arguments,
         } = &field_type
         {
-            assert_eq!(identifier, "Vec");
+            let expected_id = Identifier::from_str("Vec").unwrap();
+
+            assert!(*identifier == expected_id);
             assert_eq!(arguments.len(), 1);
-            assert!(matches!(arguments[0], Type::I32));
+            assert_eq!(arguments[0], Type::I32);
         } else {
             panic!("wrong type");
         }
@@ -132,8 +134,8 @@ fn enum_test() {
             .unwrap()
         {
             assert_eq!(components.len(), 2);
-            assert!(matches!(components[0], Type::I32));
-            assert!(matches!(components[1], Type::I32));
+            assert_eq!(components[0], Type::I32);
+            assert_eq!(components[1], Type::I32);
         } else {
             panic!("wrong type");
         }
@@ -203,7 +205,7 @@ fn variables_test() {
         assert!(node.identifier == Identifier::from_str("PI").unwrap());
         assert!(!node.is_mutable);
         assert!(!node.is_global);
-        assert!(matches!(node.var_type, Type::F32));
+        assert_eq!(node.var_type, Type::F32);
     } else {
         panic!("first statement has to be \'variable definition\'");
     }
@@ -433,7 +435,7 @@ fn types_test() {
             arguments,
         } = &node.value
         {
-            assert_eq!(identifier, "Vec");
+            assert!(*identifier == Identifier::from_str("Vec").unwrap());
             assert_eq!(arguments.len(), 1);
             if let Type::Custom(id) = &arguments[0] {
                 assert_eq!(id, "Item");

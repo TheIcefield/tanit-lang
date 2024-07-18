@@ -1,11 +1,9 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{
-    identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst, Stream,
-};
+use crate::ast::{identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 
@@ -153,41 +151,28 @@ impl IAst for FunctionNode {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<function name=\"{}\">",
-            put_intent(intent),
-            self.identifier,
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("function-definition")?;
 
-        writeln!(stream, "{}<return-type>", put_intent(intent + 1))?;
+        self.identifier.serialize(writer)?;
 
-        self.return_type.traverse(stream, intent + 2)?;
+        writer.begin_tag("return-type")?;
+        self.return_type.serialize(writer)?;
+        writer.end_tag()?;
 
-        writeln!(stream, "{}</return-type>", put_intent(intent + 1))?;
-
-        writeln!(stream, "{}<parameters>", put_intent(intent + 1))?;
-
-        for param in self.parameters.iter() {
-            param.traverse(stream, intent + 2)?;
-        }
-
-        writeln!(stream, "{}</parameters>", put_intent(intent + 1))?;
-
-        match &self.body {
-            Some(node) => {
-                writeln!(stream, "{}<body>", put_intent(intent + 1))?;
-
-                node.traverse(stream, intent + 2)?;
-
-                writeln!(stream, "{}</body>", put_intent(intent + 1))?;
+        if !self.parameters.is_empty() {
+            writer.begin_tag("parameters")?;
+            for param in self.parameters.iter() {
+                param.serialize(writer)?;
             }
-
-            None => {}
+            writer.end_tag()?;
         }
 
-        writeln!(stream, "{}</function>", put_intent(intent))?;
+        if let Some(body) = &self.body {
+            body.serialize(writer)?;
+        }
+
+        writer.end_tag()?;
 
         Ok(())
     }

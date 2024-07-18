@@ -1,9 +1,9 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 use std::str::FromStr;
@@ -26,7 +26,7 @@ pub enum Type {
         value_type: Box<Type>,
     },
     Template {
-        identifier: String,
+        identifier: Identifier,
         arguments: Vec<Type>,
     },
     Custom(String),
@@ -121,9 +121,10 @@ impl Type {
             return Self::parse_array_def(parser);
         }
 
-        let identifier = parser.consume_identifier()?.get_string();
+        let identifier = parser.consume_identifier()?;
+        let id_str = identifier.get_string();
 
-        match &identifier[..] {
+        match &id_str[..] {
             "bool" => return Ok(Type::Bool),
             "i8" => return Ok(Type::I8),
             "i16" => return Ok(Type::I16),
@@ -145,12 +146,12 @@ impl Type {
             let arguments = Self::parse_template_args(parser)?;
 
             return Ok(Type::Template {
-                identifier,
+                identifier: Identifier::from_token(&identifier)?,
                 arguments,
             });
         }
 
-        Ok(Type::Custom(identifier))
+        Ok(Type::Custom(id_str))
     }
 
     pub fn parse_tuple_def(parser: &mut Parser) -> Result<Self, &'static str> {
@@ -296,88 +297,121 @@ impl IAst for Type {
         unreachable!("Type.analyze() shouln't have been invocked");
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("type")?;
         match self {
             Self::Ref { is_mut, ref_to } => {
-                writeln!(stream, "{}<ref is_mut=\"{}\">", put_intent(intent), is_mut)?;
+                writer.put_param("style", "reference")?;
+                writer.put_param("is-mutable", is_mut)?;
 
-                ref_to.traverse(stream, intent + 1)?;
-
-                writeln!(stream, "{}</ref>", put_intent(intent))?;
+                ref_to.serialize(writer)?;
             }
 
             Self::Ptr { is_mut, ptr_to } => {
-                writeln!(stream, "{}<ptr is_mut=\"{}\">", put_intent(intent), is_mut)?;
+                writer.put_param("style", "pointer")?;
+                writer.put_param("is-mutable", is_mut)?;
 
-                ptr_to.traverse(stream, intent + 1)?;
-
-                writeln!(stream, "{}</ptr>", put_intent(intent))?;
+                ptr_to.serialize(writer)?;
             }
 
             Self::Tuple { components } => {
-                writeln!(stream, "{}<tuple>", put_intent(intent))?;
+                writer.put_param("style", "tuple")?;
 
                 for comp in components.iter() {
-                    comp.traverse(stream, intent + 1)?;
+                    comp.serialize(writer)?;
                 }
-
-                writeln!(stream, "{}</tuple>", put_intent(intent))?;
             }
 
             Self::Array { size, value_type } => {
-                writeln!(stream, "{}<array>", put_intent(intent))?;
+                writer.put_param("style", "array")?;
 
                 if let Some(size) = size {
-                    writeln!(stream, "{}<size>", put_intent(intent + 1))?;
-
-                    size.traverse(stream, intent + 2)?;
-
-                    writeln!(stream, "{}</size>", put_intent(intent + 1))?;
+                    writer.begin_tag("size")?;
+                    size.serialize(writer)?;
+                    writer.end_tag()?;
                 }
 
-                value_type.traverse(stream, intent + 1)?;
-
-                writeln!(stream, "{}</array>", put_intent(intent))?;
+                value_type.serialize(writer)?;
             }
 
             Self::Template {
                 identifier,
                 arguments,
             } => {
-                writeln!(
-                    stream,
-                    "{}<type name=\"{}\">",
-                    put_intent(intent),
-                    identifier
-                )?;
+                writer.put_param("style", "generic")?;
+                identifier.serialize(writer)?;
 
                 for arg in arguments.iter() {
-                    arg.traverse(stream, intent + 1)?;
+                    arg.serialize(writer)?;
                 }
-
-                writeln!(stream, "{}</type>", put_intent(intent))?;
             }
 
             Self::Custom(id) => {
-                writeln!(stream, "{}<type name=\"{}\"/>", put_intent(intent), id)?;
+                writer.put_param("style", "named")?;
+                writer.put_param("name", id)?
             }
 
-            Self::Auto => writeln!(stream, "{}<auto/>", put_intent(intent))?,
-            Self::Bool => writeln!(stream, "{}<type name=\"bool\"/>", put_intent(intent))?,
-            Self::I8 => writeln!(stream, "{}<type name=\"i8\"/>", put_intent(intent))?,
-            Self::I16 => writeln!(stream, "{}<type name=\"i16\"/>", put_intent(intent))?,
-            Self::I32 => writeln!(stream, "{}<type name=\"i32\"/>", put_intent(intent))?,
-            Self::I64 => writeln!(stream, "{}<type name=\"i64\"/>", put_intent(intent))?,
-            Self::I128 => writeln!(stream, "{}<type name=\"i128\"/>", put_intent(intent))?,
-            Self::U8 => writeln!(stream, "{}<type name=\"u8\"/>", put_intent(intent))?,
-            Self::U16 => writeln!(stream, "{}<type name=\"u16\"/>", put_intent(intent))?,
-            Self::U32 => writeln!(stream, "{}<type name=\"u32\"/>", put_intent(intent))?,
-            Self::U64 => writeln!(stream, "{}<type name=\"u64\"/>", put_intent(intent))?,
-            Self::U128 => writeln!(stream, "{}<type name=\"u128\"/>", put_intent(intent))?,
-            Self::F32 => writeln!(stream, "{}<type name=\"f32\"/>", put_intent(intent))?,
-            Self::F64 => writeln!(stream, "{}<type name=\"f64\"/>", put_intent(intent))?,
-            Self::Str => writeln!(stream, "{}<type name=\"str\"/>", put_intent(intent))?,
+            Self::Auto => writer.put_param("style", "automatic")?,
+
+            Self::Bool => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "bool")?;
+            }
+            Self::I8 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "i8")?;
+            }
+            Self::I16 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "i16")?;
+            }
+            Self::I32 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "i32")?;
+            }
+            Self::I64 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "i64")?;
+            }
+            Self::I128 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "i128")?;
+            }
+            Self::U8 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "u8")?;
+            }
+            Self::U16 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "u16")?;
+            }
+            Self::U32 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "u32")?;
+            }
+            Self::U64 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "u64")?;
+            }
+            Self::U128 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "u128")?;
+            }
+            Self::F32 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "f32")?;
+            }
+            Self::F64 => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "f64")?;
+            }
+            Self::Str => {
+                writer.put_param("style", "primitive")?;
+                writer.put_param("name", "str")?;
+            }
         }
+
+        writer.end_tag()?;
 
         Ok(())
     }
@@ -480,17 +514,13 @@ impl IAst for Alias {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<alias name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("alias-defintion")?;
 
-        self.value.traverse(stream, intent + 1)?;
+        self.identifier.serialize(writer)?;
+        self.value.serialize(writer)?;
 
-        writeln!(stream, "{}</alias>", put_intent(intent))?;
+        writer.end_tag()?;
 
         Ok(())
     }

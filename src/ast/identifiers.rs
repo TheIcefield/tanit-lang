@@ -1,4 +1,4 @@
-use crate::ast::{expressions::Expression, values::Value, Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, values::Value, Ast, IAst};
 use crate::codegen::CodeGenStream;
 use crate::lexer::Lexem;
 
@@ -160,8 +160,8 @@ impl IAst for Identifier {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, _intent: usize) -> std::io::Result<()> {
-        write!(stream, "{}", self)
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.put_param("name", self)
     }
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

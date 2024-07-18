@@ -1,11 +1,12 @@
-use crate::ast::{expressions::Expression, scopes, Ast, IAst, Stream};
+use crate::ast::{expressions::Expression, scopes, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     UNEXPECTED_BREAK_STMT_ERROR_STR, UNEXPECTED_CONTINUE_STMT_ERROR_STR,
     UNEXPECTED_RETURN_STMT_ERROR_STR,
 };
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
+use crate::serializer;
 
 use std::io::Write;
 
@@ -124,55 +125,45 @@ impl IAst for Branch {
         }
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
         match self {
             Self::Loop { body, condition } => {
-                writeln!(stream, "{}<loop>", put_intent(intent))?;
+                writer.begin_tag("loop")?;
 
                 if let Some(cond) = condition {
-                    writeln!(stream, "{}<condition>", put_intent(intent + 1))?;
+                    writer.begin_tag("condition")?;
 
-                    cond.traverse(stream, intent + 2)?;
+                    cond.serialize(writer)?;
 
-                    writeln!(stream, "{}</condition>", put_intent(intent + 1))?;
+                    writer.end_tag()?;
                 }
 
-                body.traverse(stream, intent + 1)?;
+                body.serialize(writer)?;
 
-                writeln!(stream, "{}</loop>", put_intent(intent))?;
+                writer.end_tag()?;
             }
             Self::IfElse {
                 condition,
                 main_body,
                 else_body,
             } => {
-                writeln!(stream, "{}<branch>", put_intent(intent))?;
+                writer.begin_tag("branch")?;
 
-                {
-                    writeln!(stream, "{}<condition>", put_intent(intent + 1))?;
+                writer.begin_tag("condition")?;
+                condition.serialize(writer)?;
+                writer.end_tag()?;
 
-                    condition.traverse(stream, intent + 2)?;
-
-                    writeln!(stream, "{}</condition>", put_intent(intent + 1))?;
-                }
-
-                {
-                    writeln!(stream, "{}<true>", put_intent(intent + 1))?;
-
-                    main_body.traverse(stream, intent + 2)?;
-
-                    writeln!(stream, "{}</true>", put_intent(intent + 1))?;
-                }
+                writer.begin_tag("true")?;
+                main_body.serialize(writer)?;
+                writer.end_tag()?;
 
                 if let Some(else_body) = else_body {
-                    writeln!(stream, "{}<false>", put_intent(intent + 1))?;
-
-                    else_body.traverse(stream, intent + 2)?;
-
-                    writeln!(stream, "{}</false>", put_intent(intent + 1))?;
+                    writer.begin_tag("false")?;
+                    else_body.serialize(writer)?;
+                    writer.end_tag()?;
                 }
 
-                writeln!(stream, "{}</branch>", put_intent(intent))?;
+                writer.end_tag()?;
             }
         }
 
@@ -265,17 +256,14 @@ impl IAst for Break {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        match &self.expr {
-            Some(cond) => {
-                writeln!(stream, "{}<break>", put_intent(intent))?;
-                cond.traverse(stream, intent + 1)?;
-                writeln!(stream, "{}</break>", put_intent(intent))?;
-            }
-            _ => {
-                writeln!(stream, "{}<break/>", put_intent(intent))?;
-            }
+    fn serialize(&self, writer: &mut serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("break-statement")?;
+
+        if let Some(expr) = &self.expr {
+            expr.serialize(writer)?;
         }
+
+        writer.end_tag()?;
 
         Ok(())
     }
@@ -320,8 +308,9 @@ impl IAst for Continue {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(stream, "{}<continue/>", put_intent(intent))
+    fn serialize(&self, writer: &mut serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("continue-statement")?;
+        writer.end_tag()
     }
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
@@ -383,17 +372,14 @@ impl IAst for Return {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        match &self.expr {
-            Some(cond) => {
-                writeln!(stream, "{}<return>", put_intent(intent))?;
-                cond.traverse(stream, intent + 1)?;
-                writeln!(stream, "{}</return>", put_intent(intent))?;
-            }
-            _ => {
-                writeln!(stream, "{}<return/>", put_intent(intent))?;
-            }
+    fn serialize(&self, writer: &mut serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("return-statement")?;
+
+        if let Some(expr) = &self.expr {
+            expr.serialize(writer)?;
         }
+
+        writer.end_tag()?;
 
         Ok(())
     }

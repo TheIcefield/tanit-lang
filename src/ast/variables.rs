@@ -1,14 +1,12 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{
-    expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst, Stream,
-};
+use crate::ast::{expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst};
 use crate::codegen::CodeGenStream;
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR,
     VARIABLE_DEFINED_WITHOUT_TYPE_ERROR_STR,
 };
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 
@@ -174,19 +172,16 @@ impl IAst for VariableNode {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<variable name=\"{}\" is_global=\"{}\" is_mutable=\"{}\">",
-            put_intent(intent),
-            self.identifier,
-            self.is_global,
-            self.is_mutable
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("variable-definition")?;
 
-        self.var_type.traverse(stream, intent + 1)?;
+        self.identifier.serialize(writer)?;
+        writer.put_param("is-global", self.is_global)?;
+        writer.put_param("is-mutable", self.is_mutable)?;
 
-        writeln!(stream, "{}</variable>", put_intent(intent))?;
+        self.var_type.serialize(writer)?;
+
+        writer.end_tag()?;
 
         Ok(())
     }

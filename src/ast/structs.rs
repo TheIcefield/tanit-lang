@@ -1,12 +1,12 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{identifiers::Identifier, types::Type, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, types::Type, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::collections::HashMap;
 use std::io::Write;
@@ -145,40 +145,25 @@ impl IAst for StructNode {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<struct-def name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("struct-definition")?;
+
+        self.identifier.serialize(writer)?;
 
         for internal in self.internals.iter() {
-            internal.traverse(stream, intent + 1)?;
+            internal.serialize(writer)?;
         }
 
-        for field in self.fields.iter() {
-            writeln!(
-                stream,
-                "{}<field name=\"{}\">",
-                put_intent(intent + 1),
-                field.0
-            )?;
+        for (field_id, field_type) in self.fields.iter() {
+            writer.begin_tag("field")?;
 
-            field.1.traverse(stream, intent + 2)?;
+            field_id.serialize(writer)?;
+            field_type.serialize(writer)?;
 
-            writeln!(stream, "{}</field>", put_intent(intent + 1))?;
+            writer.end_tag()?;
         }
 
-        for field in self.fields.iter() {
-            writeln!(stream, "{}<field {}>", put_intent(intent + 1), field.0)?;
-
-            field.1.traverse(stream, intent + 2)?;
-
-            writeln!(stream, "{}</field>", put_intent(intent + 1))?;
-        }
-
-        writeln!(stream, "{}</struct-def>", put_intent(intent))?;
+        writer.end_tag()?;
 
         Ok(())
     }
@@ -263,20 +248,21 @@ impl IAst for EnumField {
         todo!("EnumField analyzer")
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
         match self {
             Self::StructLike(s) => {
-                for f in s.iter() {
-                    writeln!(stream, "{}<field name=\"{}\">", put_intent(intent), f.0)?;
+                for (field_id, field_type) in s.iter() {
+                    writer.begin_tag("field")?;
 
-                    f.1.traverse(stream, intent + 1)?;
+                    field_id.serialize(writer)?;
+                    field_type.serialize(writer)?;
 
-                    writeln!(stream, "{}</field>", put_intent(intent))?;
+                    writer.end_tag()?;
                 }
             }
-            Self::TupleLike(t) => {
-                for c in t.iter() {
-                    c.traverse(stream, intent)?;
+            Self::TupleLike(tuple_field) => {
+                for tuple_component in tuple_field.iter() {
+                    tuple_component.serialize(writer)?;
                 }
             }
             _ => {}
@@ -436,42 +422,31 @@ impl IAst for EnumNode {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<enum-def name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("enum-definition")?;
+
+        self.identifier.serialize(writer)?;
 
         for internal in self.internals.iter() {
-            internal.traverse(stream, intent + 1)?;
+            internal.serialize(writer)?;
         }
 
-        for field in self.fields.iter() {
-            if matches!(field.1, EnumField::Common) {
-                writeln!(
-                    stream,
-                    "{}<field name=\"{}\"/>",
-                    put_intent(intent + 1),
-                    field.0
-                )?;
+        for (field_id, field) in self.fields.iter() {
+            writer.begin_tag("field")?;
+
+            field_id.serialize(writer)?;
+
+            if EnumField::Common == *field {
+                writer.end_tag()?;
                 continue;
             }
 
-            writeln!(
-                stream,
-                "{}<field name=\"{}\">",
-                put_intent(intent + 1),
-                field.0
-            )?;
+            field.serialize(writer)?;
 
-            field.1.traverse(stream, intent + 2)?;
-
-            writeln!(stream, "{}</field>", put_intent(intent + 1))?;
+            writer.end_tag()?;
         }
 
-        writeln!(stream, "{}</enum-def>", put_intent(intent))?;
+        writer.end_tag()?;
 
         Ok(())
     }

@@ -1,12 +1,12 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{identifiers::Identifier, types, values, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, types, values, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
 use crate::error_listener::{
     MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
     UNEXPECTED_TOKEN_ERROR_STR,
 };
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 
@@ -775,39 +775,29 @@ impl IAst for Expression {
         }
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("operation")?;
+
         match self {
             Self::Unary { operation, node } => {
-                writeln!(
-                    stream,
-                    "{}<operation style=\"unary\" operator=\"{}\">",
-                    put_intent(intent),
-                    operation
-                )?;
-
-                node.traverse(stream, intent + 1)?;
-
-                writeln!(stream, "{}</operation>", put_intent(intent))?;
+                writer.put_param("style", "unary")?;
+                writer.put_param("operation", operation)?;
+                node.serialize(writer)?;
             }
             Self::Binary {
                 operation,
                 lhs,
                 rhs,
             } => {
-                writeln!(
-                    stream,
-                    "{}<operation style=\"binary\" operator=\"{}\">",
-                    put_intent(intent),
-                    operation
-                )?;
+                writer.put_param("style", "binary")?;
+                writer.put_param("operation", operation)?;
 
-                lhs.traverse(stream, intent + 1)?;
-
-                rhs.traverse(stream, intent + 1)?;
-
-                writeln!(stream, "{}</operation>", put_intent(intent))?;
+                lhs.serialize(writer)?;
+                rhs.serialize(writer)?;
             }
         }
+
+        writer.end_tag()?;
 
         Ok(())
     }

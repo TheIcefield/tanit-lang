@@ -1,10 +1,8 @@
 use crate::analyzer::{Analyzer, SymbolData};
-use crate::ast::{
-    expressions::Expression, identifiers::Identifier, types, types::Type, Ast, IAst, Stream,
-};
+use crate::ast::{expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst};
 use crate::codegen::CodeGenStream;
 use crate::lexer::Lexem;
-use crate::parser::{put_intent, Parser};
+use crate::parser::Parser;
 
 use std::io::Write;
 
@@ -15,7 +13,7 @@ pub enum CallParam {
 }
 
 impl IAst for CallParam {
-    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> Type {
         match self {
             Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(analyzer),
         }
@@ -25,8 +23,8 @@ impl IAst for CallParam {
         Ok(())
     }
 
-    fn traverse(&self, _stream: &mut Stream, _intent: usize) -> std::io::Result<()> {
-        Ok(())
+    fn serialize(&self, _writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        todo!("serialize CallParam")
     }
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
@@ -416,7 +414,7 @@ impl IAst for Value {
         }
     }
 
-    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> types::Type {
+    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> Type {
         match self {
             Self::Text(_) => Type::Ref {
                 is_mut: false,
@@ -435,30 +433,28 @@ impl IAst for Value {
                     }
                 }
                 analyzer.error(&format!("No variable found with name \"{}\"", id));
-                types::Type::Tuple {
-                    components: Vec::new(),
-                }
+                Type::new()
             }
-            Self::Struct { identifier, .. } => types::Type::Custom(identifier.to_string()),
+            Self::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
             Self::Tuple { components } => {
                 let mut comp_vec = Vec::<Type>::new();
                 for comp in components.iter() {
                     comp_vec.push(comp.get_type(analyzer));
                 }
-                types::Type::Tuple {
+                Type::Tuple {
                     components: comp_vec,
                 }
             }
             Self::Array { components } => {
                 let len = components.len();
                 if len == 0 {
-                    return types::Type::Array {
+                    return Type::Array {
                         size: None,
-                        value_type: Box::new(types::Type::Auto),
+                        value_type: Box::new(Type::Auto),
                     };
                 }
 
-                types::Type::Array {
+                Type::Array {
                     size: Some(Box::new(Ast::Value {
                         node: Value::Integer(len),
                     })),
@@ -471,114 +467,99 @@ impl IAst for Value {
                         return return_type.clone();
                     }
                 }
-                types::Type::Tuple {
-                    components: Vec::new(),
-                }
+                Type::new()
             }
         }
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
         match self {
             Self::Call {
                 identifier,
                 arguments,
             } => {
-                writeln!(
-                    stream,
-                    "{}<call name=\"{}\">",
-                    put_intent(intent),
-                    identifier
-                )?;
+                writer.begin_tag("call-statement")?;
 
+                identifier.serialize(writer)?;
+
+                writer.begin_tag("parameters")?;
                 for arg in arguments.iter() {
+                    writer.begin_tag("parameter")?;
                     match arg {
                         CallParam::Notified(id, expr) => {
-                            writeln!(stream, "{}<param name=\"{}\">", put_intent(intent + 1), id)?;
-
-                            expr.traverse(stream, intent + 2)?;
+                            id.serialize(writer)?;
+                            expr.serialize(writer)?;
                         }
                         CallParam::Positional(index, expr) => {
-                            writeln!(
-                                stream,
-                                "{}<param index=\"{}\">",
-                                put_intent(intent + 1),
-                                index
-                            )?;
-
-                            expr.traverse(stream, intent + 2)?;
+                            writer.put_param("index", index)?;
+                            expr.serialize(writer)?;
                         }
                     }
-
-                    writeln!(stream, "{}</param>", put_intent(intent + 1))?;
+                    writer.end_tag()?; //parameter
                 }
-
-                writeln!(stream, "{}</call>", put_intent(intent))?;
+                writer.end_tag()?; // parameters
+                writer.end_tag()?; // call-statement
             }
             Self::Struct {
                 identifier,
                 components,
             } => {
-                if components.is_empty() {
-                    return writeln!(stream, "{}<struct {}/>", put_intent(intent), identifier);
+                writer.begin_tag("struct-initialization")?;
+
+                identifier.serialize(writer)?;
+
+                for (comp_id, comp_type) in components.iter() {
+                    writer.begin_tag("field")?;
+
+                    comp_id.serialize(writer)?;
+                    comp_type.serialize(writer)?;
+
+                    writer.end_tag()?;
                 }
 
-                writeln!(stream, "{}<struct {}>", put_intent(intent), identifier)?;
-
-                for comp in components.iter() {
-                    writeln!(stream, "{}<field {}>", put_intent(intent + 1), comp.0)?;
-
-                    comp.1.traverse(stream, intent + 2)?;
-
-                    writeln!(stream, "{}</field>", put_intent(intent + 1))?;
-                }
-
-                writeln!(stream, "{}</struct>", put_intent(intent))?;
+                writer.end_tag()?;
             }
             Self::Tuple { components } => {
-                if components.is_empty() {
-                    return writeln!(stream, "{}<tuple/>", put_intent(intent));
+                writer.begin_tag("tuple-initialization")?;
+
+                for component in components.iter() {
+                    component.serialize(writer)?;
                 }
 
-                writeln!(stream, "{}<tuple>", put_intent(intent))?;
-
-                for comp in components.iter() {
-                    comp.traverse(stream, intent + 1)?;
-                }
-
-                writeln!(stream, "{}</tuple>", put_intent(intent))?;
+                writer.end_tag()?;
             }
             Self::Array { components } => {
-                if components.is_empty() {
-                    return writeln!(stream, "{}<array/>", put_intent(intent));
+                writer.begin_tag("array-initialization")?;
+
+                for component in components.iter() {
+                    component.serialize(writer)?;
                 }
 
-                writeln!(stream, "{}<array>", put_intent(intent))?;
-
-                for comp in components.iter() {
-                    comp.traverse(stream, intent + 1)?;
-                }
-
-                writeln!(stream, "{}</array>", put_intent(intent))?;
+                writer.end_tag()?;
             }
             Self::Identifier(id) => {
-                writeln!(stream, "{}<variable name=\"{}\"/>", put_intent(intent), id)?
+                writer.begin_tag("variable")?;
+                id.serialize(writer)?;
+                writer.end_tag()?;
             }
-            Self::Text(text) => {
-                writeln!(stream, "{}<text content=\"{}\"/>", put_intent(intent), text)?
+            Self::Text(value) => {
+                writer.begin_tag("literal")?;
+                writer.put_param("style", "text")?;
+                writer.put_param("value", value)?;
+                writer.end_tag()?;
             }
-            Self::Integer(val) => writeln!(
-                stream,
-                "{}<value type=\"int\" value=\"{}\"/>",
-                put_intent(intent),
-                val
-            )?,
-            Self::Decimal(val) => writeln!(
-                stream,
-                "{}<value type=\"float\" value=\"{}\"/>",
-                put_intent(intent),
-                val
-            )?,
+            Self::Integer(value) => {
+                writer.begin_tag("literal")?;
+                writer.put_param("style", "integer-number")?;
+                writer.put_param("value", value)?;
+                writer.end_tag()?;
+            }
+            Self::Decimal(value) => {
+                writer.begin_tag("literal")?;
+                writer.put_param("style", "decimal-number")?;
+                writer.put_param("value", value)?;
+                writer.end_tag()?;
+            }
         }
 
         Ok(())

@@ -1,5 +1,6 @@
 use crate::analyzer::Analyzer;
 use crate::codegen::CodeGenStream;
+use crate::serializer::XmlWriter;
 
 pub mod branches;
 pub mod expressions;
@@ -13,10 +14,8 @@ pub mod values;
 pub mod variables;
 // pub mod externs;
 
-type Stream = std::fs::File;
-
 pub trait IAst {
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()>;
+    fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()>;
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
 
@@ -61,22 +60,22 @@ pub enum Ast {
 }
 
 impl Ast {
-    pub fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    pub fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         match self {
-            Self::Scope { node } => node.traverse(stream, intent),
-            Self::ModuleDef { node } => node.traverse(stream, intent),
-            Self::StructDef { node } => node.traverse(stream, intent),
-            Self::EnumDef { node } => node.traverse(stream, intent),
-            Self::FuncDef { node } => node.traverse(stream, intent),
-            Self::VariableDef { node } => node.traverse(stream, intent),
-            Self::Value { node } => node.traverse(stream, intent),
-            Self::TypeDecl { node } => node.traverse(stream, intent),
-            Self::AliasDef { node } => node.traverse(stream, intent),
-            Self::Expression { node } => node.traverse(stream, intent),
-            Self::BranchStmt { node } => node.traverse(stream, intent),
-            Self::BreakStmt { node } => node.traverse(stream, intent),
-            Self::ContinueStmt { node } => node.traverse(stream, intent),
-            Self::ReturnStmt { node } => node.traverse(stream, intent),
+            Self::Scope { node } => node.serialize(writer),
+            Self::ModuleDef { node } => node.serialize(writer),
+            Self::StructDef { node } => node.serialize(writer),
+            Self::EnumDef { node } => node.serialize(writer),
+            Self::FuncDef { node } => node.serialize(writer),
+            Self::VariableDef { node } => node.serialize(writer),
+            Self::Value { node } => node.serialize(writer),
+            Self::TypeDecl { node } => node.serialize(writer),
+            Self::AliasDef { node } => node.serialize(writer),
+            Self::Expression { node } => node.serialize(writer),
+            Self::BranchStmt { node } => node.serialize(writer),
+            Self::BreakStmt { node } => node.serialize(writer),
+            Self::ContinueStmt { node } => node.serialize(writer),
+            Self::ReturnStmt { node } => node.serialize(writer),
         }
     }
 

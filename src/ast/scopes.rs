@@ -4,7 +4,7 @@ use crate::lexer::Lexem;
 use crate::parser::Parser;
 use crate::{
     ast,
-    ast::{Ast, IAst, Stream},
+    ast::{Ast, IAst},
 };
 
 use std::io::Write;
@@ -197,9 +197,9 @@ impl IAst for Scope {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
         for stmt in self.statements.iter() {
-            stmt.traverse(stream, intent)?;
+            stmt.serialize(writer)?;
         }
 
         Ok(())

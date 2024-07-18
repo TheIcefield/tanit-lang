@@ -1,11 +1,9 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst, Stream};
+use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst};
 use crate::codegen::CodeGenStream;
 use crate::error_listener::{self, MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR};
 use crate::lexer::{Lexem, Lexer};
-use crate::parser::{put_intent, Parser};
-
-use std::io::Write;
+use crate::parser::Parser;
 
 #[derive(Clone, PartialEq)]
 pub struct ModuleNode {
@@ -186,17 +184,12 @@ impl IAst for ModuleNode {
         Ok(())
     }
 
-    fn traverse(&self, stream: &mut Stream, intent: usize) -> std::io::Result<()> {
-        writeln!(
-            stream,
-            "{}<module name=\"{}\">",
-            put_intent(intent),
-            self.identifier
-        )?;
+    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
+        writer.begin_tag("module-definition")?;
 
-        self.body.traverse(stream, intent + 1)?;
+        self.body.serialize(writer)?;
 
-        writeln!(stream, "{}</module>", put_intent(intent))?;
+        writer.end_tag()?;
 
         Ok(())
     }

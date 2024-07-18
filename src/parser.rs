@@ -240,16 +240,3 @@ impl Parser {
         self.error_listener.push_error(error)
     }
 }
-
-pub fn put_intent(intent: usize) -> String {
-    let mut res = "".to_string();
-    for _ in 0..intent {
-        res.push(' ');
-    }
-    res
-}
-
-pub fn dump_ast(output: &str, ast: &Ast) -> std::io::Result<()> {
-    let mut stream = std::fs::File::create(format!("{}_ast.xml", output)).unwrap();
-    ast.traverse(&mut stream, 0)
-}
