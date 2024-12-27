@@ -1,8 +1,8 @@
 use crate::analyzer::{Analyzer, SymbolData};
 use crate::ast::{expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst};
 use crate::codegen::CodeGenStream;
-use crate::lexer::Lexem;
-use crate::parser::Parser;
+use crate::messages::Message;
+use crate::parser::{location::Location, token::Lexem, Parser};
 
 use std::io::Write;
 
@@ -19,7 +19,7 @@ impl IAst for CallParam {
         }
     }
 
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         Ok(())
     }
 
@@ -36,7 +36,7 @@ impl IAst for CallParam {
 }
 
 #[derive(Clone, PartialEq)]
-pub enum Value {
+pub enum ValueType {
     Call {
         identifier: Identifier,
         arguments: Vec<CallParam>,
@@ -57,9 +57,15 @@ pub enum Value {
     Decimal(f64),
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Value {
+    pub location: Location,
+    pub value: ValueType,
+}
+
 impl Value {
-    pub fn parse_call_params(parser: &mut Parser) -> Result<Vec<CallParam>, &'static str> {
-        parser.consume_token(Lexem::LParen)?;
+    pub fn parse_call_params(parser: &mut Parser) -> Result<Vec<CallParam>, Message> {
+        let _ = parser.consume_token(Lexem::LParen)?.location;
 
         let mut args = Vec::<CallParam>::new();
 
@@ -74,7 +80,11 @@ impl Value {
             let expr = Expression::parse(parser)?;
 
             let param_id = if let Ast::Value {
-                node: Self::Identifier(id),
+                node:
+                    Value {
+                        location: _,
+                        value: ValueType::Identifier(id),
+                    },
             } = &expr
             {
                 if parser.peek_token().lexem == Lexem::Colon {
@@ -106,8 +116,7 @@ impl Value {
                 // end parsing if ')'
                 break;
             } else {
-                parser.error("Unexpected token when parsing call", next.get_location());
-                return Err("Unexpected token");
+                return Err(Message::unexpected_token(next, &[]));
             }
         }
 
@@ -116,8 +125,8 @@ impl Value {
         Ok(args)
     }
 
-    pub fn parse_array(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::Lsb)?;
+    pub fn parse_array(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::Lsb)?.location;
 
         let mut components = Vec::<Ast>::new();
 
@@ -138,19 +147,21 @@ impl Value {
                 // end parsing if ']'
                 break;
             } else {
-                parser.error("Unexpected token when parsing call", next.get_location());
-                return Err("Unexpected token");
+                return Err(Message::unexpected_token(next, &[]));
             }
         }
 
         parser.consume_token(Lexem::Rsb)?;
 
         Ok(Ast::Value {
-            node: Value::Array { components },
+            node: Self {
+                location,
+                value: ValueType::Array { components },
+            },
         })
     }
 
-    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, &'static str> {
+    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, Message> {
         parser.consume_token(Lexem::Lcb)?;
 
         let mut components = Vec::<(Identifier, Ast)>::new();
@@ -177,11 +188,7 @@ impl Value {
                 // end parsing if '}'
                 break;
             } else {
-                parser.error(
-                    "Unexpected token when parsing struct value",
-                    next.get_location(),
-                );
-                return Err("Unexpected token");
+                return Err(Message::unexpected_token(next, &[]));
             }
         }
 
@@ -193,39 +200,37 @@ impl Value {
 
 // Value::Call
 impl Value {
-    fn check_call_args(
-        &mut self,
-        analyzer: &mut crate::analyzer::Analyzer,
-    ) -> Result<(), &'static str> {
-        let (identifier, arguments) = if let Self::Call {
+    fn check_call_args(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+        let (identifier, arguments) = if let ValueType::Call {
             identifier,
             arguments,
-        } = self
+        } = &mut self.value
         {
             (identifier, arguments)
         } else {
-            return Err("Expected call node, but provided another");
+            return Err(Message::new(
+                self.location,
+                "Expected call node, but provided another",
+            ));
         };
 
         if Analyzer::is_built_in_identifier(identifier) {
             return Ok(());
         }
 
-        if let Ok(ss) = analyzer.check_identifier_existance(identifier) {
-            match &ss.data {
+        if let Ok(mut ss) = analyzer.check_identifier_existance(identifier) {
+            match &mut ss.data {
                 SymbolData::FunctionDef { args, .. } => {
                     if arguments.len() > args.len() {
-                        analyzer.error(&format!(
+                        return Err(Message::new(self.location, &format!(
                             "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
-                            identifier, args.len(), arguments.len()));
-                        return Err("Too many arguments passed");
+                            identifier, args.len(), arguments.len())));
                     }
 
                     if arguments.len() < args.len() {
-                        analyzer.error(&format!(
+                        return Err(Message::new(self.location, &format!(
                             "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
-                            identifier, args.len(), arguments.len()));
-                        return Err("Too few arguments passed");
+                            identifier, args.len(), arguments.len())));
                     }
 
                     let mut positional_skiped = false;
@@ -246,9 +251,10 @@ impl Value {
 
                                         let param_type = param_value.get_type(analyzer);
                                         if *func_param_type != param_type {
-                                            analyzer.error(&format!(
+                                            analyzer.error(Message::new(
+                                                self.location, &format!(
                                                 "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
-                                                func_param_name, func_param_type, param_type)
+                                                func_param_name, func_param_type, param_type))
                                             );
                                         }
 
@@ -258,18 +264,21 @@ impl Value {
                                     }
                                 }
                                 if !param_found {
-                                    analyzer.error(&format!(
-                                        "No parameter named \"{}\" in function \"{}\"",
-                                        param_id, identifier
+                                    analyzer.error(Message::new(
+                                        self.location,
+                                        &format!(
+                                            "No parameter named \"{}\" in function \"{}\"",
+                                            param_id, identifier
+                                        ),
                                     ))
                                 }
                             }
                             CallParam::Positional(..) => {
                                 if positional_skiped {
-                                    analyzer.error(
+                                    return Err(Message::new(
+                                        self.location,
                                         "Positional parameters must be passed before notified",
-                                    );
-                                    return Err("Positional param passed after notified");
+                                    ));
                                 }
                             }
                         }
@@ -280,75 +289,66 @@ impl Value {
                         for j in arguments.iter() {
                             let j_type = j.get_type(analyzer);
                             if j_type != i.1 {
-                                return Err("Mismatched types");
+                                return Err(Message::new(self.location, "Mismatched types"));
                             }
                         }
                     }
                     Ok(())
                 }
-                _ => Err("No such function found"),
+                _ => Err(Message::new(self.location, "No such function found")),
             }
         } else {
-            Err("No such identifier found")
+            Err(Message::new(self.location, "No such identifier found"))
         }
     }
 }
 
 impl IAst for Value {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
-        match self {
-            Self::Integer(_) => Ok(()),
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+        match &mut self.value {
+            ValueType::Integer(_) => Ok(()),
 
-            Self::Decimal(_) => Ok(()),
+            ValueType::Decimal(_) => Ok(()),
 
-            Self::Text(_) => Ok(()),
+            ValueType::Text(_) => Ok(()),
 
-            Self::Identifier(id) => {
-                if analyzer.check_identifier_existance(id).is_err() {
-                    analyzer.error(&format!("Cannot find \"{}\" in this scope", id));
-                    return Err("No such identifier gound");
-                }
-
+            ValueType::Identifier(id) => {
+                let _ = analyzer.check_identifier_existance(id)?;
                 Ok(())
             }
 
-            Self::Call { arguments, .. } => {
+            ValueType::Call { arguments, .. } => {
                 for arg in arguments.iter_mut() {
                     arg.analyze(analyzer)?;
                 }
 
                 if self.check_call_args(analyzer).is_err() {
-                    analyzer.error("Wrong call arguments");
-                    return Err("Wrong call arguments");
+                    return Err(Message::new(self.location, "Wrong call arguments"));
                 }
 
                 Ok(())
             }
 
-            Self::Struct {
+            ValueType::Struct {
                 identifier,
                 components: value_comps,
             } => {
-                let ss = analyzer.check_identifier_existance(identifier);
-                if ss.is_err() {
-                    analyzer.error(&format!("Cannot find \"{}\" in this scope", identifier));
-                    return Err("No such identifier found");
-                }
-
-                let ss = ss.unwrap();
+                let ss = analyzer.check_identifier_existance(identifier)?;
 
                 if let SymbolData::StructDef {
                     components: struct_comps,
                 } = &ss.data
                 {
                     if value_comps.len() != struct_comps.len() {
-                        analyzer.error(&format!(
-                            "Struct \"{}\" consists of {} fields, but {} were supplied",
-                            identifier,
-                            struct_comps.len(),
-                            value_comps.len()
+                        return Err(Message::new(
+                            self.location,
+                            &format!(
+                                "Struct \"{}\" consists of {} fields, but {} were supplied",
+                                identifier,
+                                struct_comps.len(),
+                                value_comps.len()
+                            ),
                         ));
-                        return Err("Struct definition and declarations is different");
                     }
 
                     for comp_id in 0..value_comps.len() {
@@ -357,25 +357,26 @@ impl IAst for Value {
                         let struct_comp_type = struct_comps.get(comp_id).unwrap();
 
                         if value_comp_type != *struct_comp_type {
-                            analyzer.error(&format!(
-                                "Field named \"{}\" is {}, but initialized like {}",
-                                value_comp.0, struct_comp_type, value_comp_type
+                            return Err(Message::new(
+                                self.location,
+                                &format!(
+                                    "Field named \"{}\" is {}, but initialized like {}",
+                                    value_comp.0, struct_comp_type, value_comp_type
+                                ),
                             ));
-                            return Err("Mismatched types during struct initialization");
                         }
                     }
                 } else {
-                    analyzer.error(&format!(
-                        "Cannot find struct named \"{}\" in this scope",
-                        identifier
+                    return Err(Message::new(
+                        self.location,
+                        &format!("Cannot find struct named \"{}\" in this scope", identifier),
                     ));
-                    return Err("No such identifier found");
                 }
 
                 Ok(())
             }
 
-            Self::Tuple { components } => {
+            ValueType::Tuple { components } => {
                 for comp in components.iter_mut() {
                     comp.analyze(analyzer)?;
                 }
@@ -383,7 +384,7 @@ impl IAst for Value {
                 Ok(())
             }
 
-            Self::Array { components } => {
+            ValueType::Array { components } => {
                 if components.is_empty() {
                     return Ok(());
                 }
@@ -393,19 +394,21 @@ impl IAst for Value {
                 for comp in components.iter().enumerate() {
                     let current_comp_type = comp.1.get_type(analyzer);
                     if comp_type != current_comp_type {
-                        analyzer.error(&format!(
-                            "Array type is declared like {}, but {}{} element has type {}",
-                            comp_type,
-                            comp.0 + 1,
-                            match comp.0 % 10 {
-                                0 => "st",
-                                1 => "nd",
-                                2 => "rd",
-                                _ => "th",
-                            },
-                            current_comp_type
+                        return Err(Message::new(
+                            self.location,
+                            &format!(
+                                "Array type is declared like {}, but {}{} element has type {}",
+                                comp_type,
+                                comp.0 + 1,
+                                match comp.0 % 10 {
+                                    0 => "st",
+                                    1 => "nd",
+                                    2 => "rd",
+                                    _ => "th",
+                                },
+                                current_comp_type
+                            ),
                         ));
-                        return Err("Array components have different types");
                     }
                 }
 
@@ -415,14 +418,14 @@ impl IAst for Value {
     }
 
     fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> Type {
-        match self {
-            Self::Text(_) => Type::Ref {
+        match &self.value {
+            ValueType::Text(_) => Type::Ref {
                 is_mut: false,
                 ref_to: Box::new(Type::Str),
             },
-            Self::Decimal(_) => Type::F32,
-            Self::Integer(_) => Type::I32,
-            Self::Identifier(id) => {
+            ValueType::Decimal(_) => Type::F32,
+            ValueType::Integer(_) => Type::I32,
+            ValueType::Identifier(id) => {
                 if let Some(ss) = analyzer.get_symbols(id) {
                     for s in ss.iter().rev() {
                         if analyzer.scope.0.starts_with(&s.scope.0) {
@@ -432,11 +435,14 @@ impl IAst for Value {
                         }
                     }
                 }
-                analyzer.error(&format!("No variable found with name \"{}\"", id));
+                analyzer.error(Message::new(
+                    self.location,
+                    &format!("No variable found with name \"{}\"", id),
+                ));
                 Type::new()
             }
-            Self::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
-            Self::Tuple { components } => {
+            ValueType::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
+            ValueType::Tuple { components } => {
                 let mut comp_vec = Vec::<Type>::new();
                 for comp in components.iter() {
                     comp_vec.push(comp.get_type(analyzer));
@@ -445,7 +451,7 @@ impl IAst for Value {
                     components: comp_vec,
                 }
             }
-            Self::Array { components } => {
+            ValueType::Array { components } => {
                 let len = components.len();
                 if len == 0 {
                     return Type::Array {
@@ -456,12 +462,15 @@ impl IAst for Value {
 
                 Type::Array {
                     size: Some(Box::new(Ast::Value {
-                        node: Value::Integer(len),
+                        node: Self {
+                            location: self.location,
+                            value: ValueType::Integer(len),
+                        },
                     })),
                     value_type: Box::new(components[0].get_type(analyzer)),
                 }
             }
-            Self::Call { identifier, .. } => {
+            ValueType::Call { identifier, .. } => {
                 if let Ok(ss) = analyzer.check_identifier_existance(identifier) {
                     if let SymbolData::FunctionDef { return_type, .. } = &ss.data {
                         return return_type.clone();
@@ -473,8 +482,8 @@ impl IAst for Value {
     }
 
     fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        match self {
-            Self::Call {
+        match &self.value {
+            ValueType::Call {
                 identifier,
                 arguments,
             } => {
@@ -500,7 +509,7 @@ impl IAst for Value {
                 writer.end_tag()?; // parameters
                 writer.end_tag()?; // call-statement
             }
-            Self::Struct {
+            ValueType::Struct {
                 identifier,
                 components,
             } => {
@@ -519,7 +528,7 @@ impl IAst for Value {
 
                 writer.end_tag()?;
             }
-            Self::Tuple { components } => {
+            ValueType::Tuple { components } => {
                 writer.begin_tag("tuple-initialization")?;
 
                 for component in components.iter() {
@@ -528,7 +537,7 @@ impl IAst for Value {
 
                 writer.end_tag()?;
             }
-            Self::Array { components } => {
+            ValueType::Array { components } => {
                 writer.begin_tag("array-initialization")?;
 
                 for component in components.iter() {
@@ -537,24 +546,24 @@ impl IAst for Value {
 
                 writer.end_tag()?;
             }
-            Self::Identifier(id) => {
+            ValueType::Identifier(id) => {
                 writer.begin_tag("variable")?;
                 id.serialize(writer)?;
                 writer.end_tag()?;
             }
-            Self::Text(value) => {
+            ValueType::Text(value) => {
                 writer.begin_tag("literal")?;
                 writer.put_param("style", "text")?;
                 writer.put_param("value", value)?;
                 writer.end_tag()?;
             }
-            Self::Integer(value) => {
+            ValueType::Integer(value) => {
                 writer.begin_tag("literal")?;
                 writer.put_param("style", "integer-number")?;
                 writer.put_param("value", value)?;
                 writer.end_tag()?;
             }
-            Self::Decimal(value) => {
+            ValueType::Decimal(value) => {
                 writer.begin_tag("literal")?;
                 writer.put_param("style", "decimal-number")?;
                 writer.put_param("value", value)?;
@@ -566,11 +575,11 @@ impl IAst for Value {
     }
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        match self {
-            Self::Integer(val) => write!(stream, "{}", *val)?,
-            Self::Decimal(val) => write!(stream, "{}", *val)?,
-            Self::Identifier(val) => val.codegen(stream)?,
-            Self::Call {
+        match &self.value {
+            ValueType::Integer(val) => write!(stream, "{}", *val)?,
+            ValueType::Decimal(val) => write!(stream, "{}", *val)?,
+            ValueType::Identifier(val) => val.codegen(stream)?,
+            ValueType::Call {
                 identifier,
                 arguments,
             } => {

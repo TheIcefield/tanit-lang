@@ -1,18 +1,23 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{identifiers::Identifier, scopes::Scope, Ast, IAst};
+use crate::ast::{
+    identifiers::{Identifier, IdentifierType},
+    scopes::Scope,
+    Ast, IAst,
+};
 use crate::codegen::CodeGenStream;
-use crate::error_listener::{self, MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR};
-use crate::lexer::{Lexem, Lexer};
-use crate::parser::Parser;
+use crate::messages::Message;
+use crate::parser::location::Location;
+use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 
 #[derive(Clone, PartialEq)]
 pub struct ModuleNode {
+    pub location: Location,
     pub identifier: Identifier,
     pub body: Box<Ast>,
 }
 
 impl ModuleNode {
-    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, Message> {
         let mut node = Self::parse_header(parser)?;
 
         node.body = Box::new(Scope::parse_global(parser)?);
@@ -20,12 +25,13 @@ impl ModuleNode {
         Ok(Ast::ModuleDef { node })
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(Lexem::KwModule)?;
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
+        let location = parser.consume_token(Lexem::KwModule)?.location;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(Self {
+            location,
             identifier,
             body: Box::new(Ast::Scope {
                 node: Scope {
@@ -36,7 +42,7 @@ impl ModuleNode {
         })
     }
 
-    pub fn parse_ext_module(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_ext_module(parser: &mut Parser) -> Result<Ast, Message> {
         let mut node = Self::parse_header(parser)?;
 
         node.body = Self::parse_ext_body(&node.identifier, parser)?;
@@ -47,13 +53,13 @@ impl ModuleNode {
     pub fn parse_ext_body(
         identifier: &Identifier,
         parser: &mut Parser,
-    ) -> Result<Box<Ast>, &'static str> {
-        let identifier = match identifier {
-            Identifier::Common(id) => id.clone(),
-            Identifier::Complex(..) => unimplemented!(),
+    ) -> Result<Box<Ast>, Message> {
+        let identifier = match &identifier.identifier {
+            IdentifierType::Common(id) => id.clone(),
+            IdentifierType::Complex(..) => unimplemented!(),
         };
 
-        let mut path = parser.get_path()?;
+        let mut path = parser.get_path();
         let verbose = parser.is_token_verbose();
         let mut body: Option<Box<Ast>> = None;
 
@@ -77,21 +83,23 @@ impl ModuleNode {
             let lexer = Lexer::from_file(&path, verbose);
 
             if let Ok(lexer) = lexer {
-                let mut parser_int = Parser::new(lexer, error_listener::ErrorListener::new());
+                let mut parser_int = Parser::new(lexer);
 
                 match parser_int.parse() {
-                    Err(mut errors) => {
-                        for e in errors.take_errors().iter() {
-                            parser.push_error(e.to_string())
+                    Err(messages) => {
+                        for err in messages.0.iter() {
+                            parser.error(err.clone())
                         }
-                        parser.error(
+                        for warn in messages.1.iter() {
+                            parser.warning(warn.clone())
+                        }
+                        return Err(Message::new(
+                            parser.get_location(),
                             &format!(
                                 "Error occured during parsing module \"{}\" body",
                                 identifier
                             ),
-                            parser.get_location(),
-                        );
-                        return Err("Submodule body parsing error");
+                        ));
                     }
 
                     Ok(node) => {
@@ -110,21 +118,23 @@ impl ModuleNode {
             let lexer = Lexer::from_file(&path, verbose);
 
             if let Ok(lexer) = lexer {
-                let mut parser_int = Parser::new(lexer, error_listener::ErrorListener::new());
+                let mut parser_int = Parser::new(lexer);
 
                 match parser_int.parse() {
-                    Err(mut errors) => {
-                        for e in errors.take_errors().iter() {
-                            parser.push_error(e.to_string())
+                    Err(messages) => {
+                        for err in messages.0.iter() {
+                            parser.error(err.clone())
                         }
-                        parser.error(
+                        for warn in messages.1.iter() {
+                            parser.warning(warn.clone())
+                        }
+                        return Err(Message::new(
+                            parser.get_location(),
                             &format!(
                                 "Error occured during parsing module \"{}\" body",
                                 identifier
                             ),
-                            parser.get_location(),
-                        );
-                        return Err("Submodule body parsing error");
+                        ));
                     }
 
                     Ok(node) => {
@@ -135,11 +145,10 @@ impl ModuleNode {
         }
 
         if body.is_none() {
-            parser.error(
-                &format!("Not found definition for module \"{}\"", identifier),
+            return Err(Message::new(
                 parser.get_location(),
-            );
-            return Err("Module definition not found");
+                &format!("Not found definition for module \"{}\"", identifier),
+            ));
         }
 
         Ok(body.unwrap())
@@ -147,15 +156,17 @@ impl ModuleNode {
 }
 
 impl IAst for ModuleNode {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
-        let identifier = match &self.identifier {
-            Identifier::Common(id) => id.clone(),
-            Identifier::Complex(..) => {
-                analyzer.error(&format!(
-                    "Expected common identifier, actually complex: {}",
-                    self.identifier
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+        let identifier = match &self.identifier.identifier {
+            IdentifierType::Common(id) => id.clone(),
+            IdentifierType::Complex(..) => {
+                return Err(Message::new(
+                    self.location,
+                    &format!(
+                        "Expected common identifier, actually complex: {}",
+                        self.identifier
+                    ),
                 ));
-                return Err("Wrong identifier value");
             }
         };
 
@@ -163,11 +174,10 @@ impl IAst for ModuleNode {
             .check_identifier_existance(&self.identifier)
             .is_ok()
         {
-            analyzer.error(&format!(
-                "Identifier \"{}\" defined multiple times",
-                &self.identifier
+            return Err(Message::new(
+                self.location,
+                &format!("Identifier \"{}\" defined multiple times", &self.identifier),
             ));
-            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
         analyzer.scope.push(&identifier);
@@ -197,4 +207,36 @@ impl IAst for ModuleNode {
     fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {
         unimplemented!()
     }
+}
+
+#[test]
+fn module_test() {
+    use std::str::FromStr;
+
+    static SRC_PATH: &str = "./examples/modules.tt";
+
+    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+
+    let mut parser = Parser::new(lexer);
+
+    let res = ModuleNode::parse_def(&mut parser).unwrap();
+
+    let res = if let Ast::ModuleDef { node } = &res {
+        assert!(node.identifier == Identifier::from_str("M1").unwrap());
+        &node.body
+    } else {
+        panic!("res should be \'ModuleDef\'");
+    };
+
+    let res = if let Ast::Scope { node } = res.as_ref() {
+        &node.statements[0]
+    } else {
+        panic!("res should be \'global scope\'");
+    };
+
+    if let Ast::ModuleDef { node } = res {
+        assert!(node.identifier == Identifier::from_str("M2").unwrap());
+    } else {
+        panic!("res should be \'ModuleDef\'");
+    };
 }

@@ -1,5 +1,6 @@
 use crate::analyzer::Analyzer;
 use crate::codegen::CodeGenStream;
+use crate::messages::Message;
 use crate::serializer::XmlWriter;
 
 pub mod branches;
@@ -17,7 +18,7 @@ pub mod variables;
 pub trait IAst {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()>;
 
-    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message>;
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()>;
 
@@ -79,7 +80,7 @@ impl Ast {
         }
     }
 
-    pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str> {
+    pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match self {
             Ast::Scope { node } => node.analyze(analyzer),
 

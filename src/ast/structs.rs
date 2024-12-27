@@ -1,11 +1,9 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{identifiers::Identifier, types::Type, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::error_listener::{
-    MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_NODE_PARSED_ERROR_STR,
-    UNEXPECTED_TOKEN_ERROR_STR,
-};
-use crate::lexer::Lexem;
+use crate::messages::Message;
+use crate::parser::location::Location;
+use crate::parser::token::Lexem;
 use crate::parser::Parser;
 
 use std::collections::HashMap;
@@ -13,13 +11,14 @@ use std::io::Write;
 
 #[derive(Clone, PartialEq)]
 pub struct StructNode {
+    pub location: Location,
     pub identifier: Identifier,
     pub fields: HashMap<Identifier, Type>,
     pub internals: Vec<Ast>,
 }
 
 impl StructNode {
-    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, Message> {
         let identifier = Self::parse_header(parser)?.identifier;
 
         if let Ast::StructDef { mut node } = Self::parse_body_external(parser)? {
@@ -27,22 +26,23 @@ impl StructNode {
             return Ok(Ast::StructDef { node });
         }
 
-        Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
+        unreachable!()
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(Lexem::KwStruct)?;
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
+        let location = parser.consume_token(Lexem::KwStruct)?.location;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(StructNode {
+            location,
             identifier,
             fields: HashMap::new(),
             internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, Message> {
         parser.consume_token(Lexem::Lcb)?;
 
         let fields = Self::parse_body_internal(parser);
@@ -52,7 +52,7 @@ impl StructNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
         let mut fields = HashMap::<Identifier, Type>::new();
         let mut internals = Vec::<Ast>::new();
 
@@ -79,10 +79,10 @@ impl StructNode {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
-                        parser.error(
+                        parser.error(Message::new(
+                            next.location,
                             &format!("Struct has already field with identifier {}", id),
-                            next.get_location(),
-                        );
+                        ));
                         continue;
                     }
 
@@ -92,18 +92,17 @@ impl StructNode {
                 }
 
                 _ => {
-                    parser.error(
+                    return Err(Message::new(
+                        next.location,
                         "Unexpected token when parsing struct fields",
-                        next.get_location(),
-                    );
-
-                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                    ));
                 }
             }
         }
 
         Ok(Ast::StructDef {
             node: Self {
+                location: Location::new(),
                 identifier: Identifier::new(),
                 fields,
                 internals,
@@ -113,16 +112,15 @@ impl StructNode {
 }
 
 impl IAst for StructNode {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         if analyzer
             .check_identifier_existance(&self.identifier)
             .is_ok()
         {
-            analyzer.error(&format!(
-                "Identifier \"{}\" defined multiple times",
-                &self.identifier
+            return Err(Message::multiple_ids(
+                self.location,
+                &self.identifier.get_string(),
             ));
-            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
         analyzer.scope.push(&format!("@s.{}", &self.identifier));
@@ -198,7 +196,7 @@ pub enum EnumField {
 }
 
 impl EnumField {
-    pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
+    pub fn parse(parser: &mut Parser) -> Result<Self, Message> {
         let old_opt = parser.does_ignore_nl();
 
         parser.set_ignore_nl_option(false);
@@ -208,7 +206,7 @@ impl EnumField {
         res
     }
 
-    fn parse_internal(parser: &mut Parser) -> Result<Self, &'static str> {
+    fn parse_internal(parser: &mut Parser) -> Result<Self, Message> {
         let next = parser.peek_token();
         match next.lexem {
             Lexem::EndOfLine => Ok(EnumField::Common),
@@ -217,34 +215,37 @@ impl EnumField {
                 if let Type::Tuple { components } = Type::parse_tuple_def(parser)? {
                     Ok(Self::TupleLike(components))
                 } else {
-                    Err(UNEXPECTED_TOKEN_ERROR_STR)
+                    Err(Message::unexpected_token(next, &[]))
                 }
             }
 
             Lexem::Lcb => {
                 if let Ast::StructDef { node } = StructNode::parse_body_external(parser)? {
                     if !node.internals.is_empty() {
-                        parser.error("Internal structs are not allowed here", next.get_location());
+                        parser.error(Message::new(
+                            next.location,
+                            "Internal structs are not allowed here",
+                        ));
                     }
 
                     return Ok(EnumField::StructLike(node.fields));
                 }
-                Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
+                unreachable!()
             }
 
             _ => {
-                parser.error(
+                parser.error(Message::new(
+                    next.location,
                     &format!("Unexpected token during parsing enum: {}", next),
-                    next.get_location(),
-                );
-                Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
+                ));
+                unreachable!()
             }
         }
     }
 }
 
 impl IAst for EnumField {
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         todo!("EnumField analyzer")
     }
 
@@ -278,13 +279,14 @@ impl IAst for EnumField {
 
 #[derive(Clone, PartialEq)]
 pub struct EnumNode {
+    pub location: Location,
     pub identifier: Identifier,
     pub fields: HashMap<Identifier, EnumField>,
     pub internals: Vec<Ast>,
 }
 
 impl EnumNode {
-    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, Message> {
         let identifier = Self::parse_header(parser)?.identifier;
 
         if let Ast::EnumDef { mut node } = Self::parse_body_external(parser)? {
@@ -292,22 +294,23 @@ impl EnumNode {
             return Ok(Ast::EnumDef { node });
         }
 
-        Err(UNEXPECTED_NODE_PARSED_ERROR_STR)
+        unreachable!()
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(Lexem::KwEnum)?;
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
+        let location = parser.consume_token(Lexem::KwEnum)?.location;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(EnumNode {
+            location,
             identifier,
             fields: HashMap::new(),
             internals: Vec::new(),
         })
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, Message> {
         parser.consume_token(Lexem::Lcb)?;
         let old_opt = parser.does_ignore_nl();
 
@@ -320,7 +323,7 @@ impl EnumNode {
         fields
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
         let mut fields = HashMap::<Identifier, EnumField>::new();
         let mut internals = Vec::<Ast>::new();
 
@@ -343,10 +346,10 @@ impl EnumNode {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
                     if fields.contains_key(&identifier) {
-                        parser.error(
+                        parser.error(Message::new(
+                            next.location,
                             &format!("Enum has already field with identifier \"{}\"", id),
-                            next.get_location(),
-                        );
+                        ));
                         continue;
                     }
 
@@ -356,35 +359,26 @@ impl EnumNode {
                 }
 
                 Lexem::Lcb => {
-                    parser.error(
+                    return Err(Message::new(
+                        next.location,
                         &format!(
                             "{}\nHelp: {}{}",
                             "Unexpected token: \"{\" during parsing enum fields.",
                             "If you tried to declare struct-like field, place \"{\" ",
                             "in the same line with name of the field."
                         ),
-                        next.get_location(),
-                    );
-
-                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                    ));
                 }
 
                 _ => {
-                    parser.error(
-                        &format!(
-                            "Unexpected token: \"{}\" during parsing enum fields",
-                            next.lexem
-                        ),
-                        next.get_location(),
-                    );
-
-                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                    return Err(Message::unexpected_token(next, &[]));
                 }
             }
         }
 
         Ok(Ast::EnumDef {
             node: Self {
+                location: Location::new(),
                 identifier: Identifier::new(),
                 fields,
                 internals,
@@ -394,13 +388,12 @@ impl EnumNode {
 }
 
 impl IAst for EnumNode {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            analyzer.error(&format!(
-                "Identifier \"{}\" defined multiple times",
-                &self.identifier
+            return Err(Message::multiple_ids(
+                self.location,
+                &self.identifier.get_string(),
             ));
-            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
         analyzer.scope.push(&format!("@e.{}", &self.identifier));
@@ -469,4 +462,106 @@ impl IAst for EnumNode {
         stream.mode = old_mode;
         Ok(())
     }
+}
+
+#[test]
+fn struct_test() {
+    use crate::parser::lexer::Lexer;
+    use std::str::FromStr;
+
+    static SRC_PATH: &str = "./examples/structs.tt";
+
+    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+
+    let mut parser = Parser::new(lexer);
+
+    let res = StructNode::parse_def(&mut parser).unwrap();
+
+    if let Ast::StructDef { node } = res {
+        assert!(node.identifier == Identifier::from_str("S1").unwrap());
+
+        let field_type = node
+            .fields
+            .get(&Identifier::from_str("f1").unwrap())
+            .unwrap();
+        assert!(matches!(field_type, Type::I32));
+
+        let field_type = node
+            .fields
+            .get(&Identifier::from_str("f2").unwrap())
+            .unwrap();
+
+        if let Type::Template {
+            identifier,
+            arguments,
+        } = &field_type
+        {
+            let expected_id = Identifier::from_str("Vec").unwrap();
+
+            assert!(*identifier == expected_id);
+            assert_eq!(arguments.len(), 1);
+            assert_eq!(arguments[0], Type::I32);
+        } else {
+            panic!("wrong type");
+        }
+    } else {
+        panic!("res should be \'StructDef\'");
+    };
+}
+
+#[test]
+fn enum_test() {
+    use crate::parser::lexer::Lexer;
+    use std::str::FromStr;
+
+    static SRC_PATH: &str = "./examples/structs.tt";
+
+    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+
+    let mut parser = Parser::new(lexer);
+
+    StructNode::parse_def(&mut parser).unwrap();
+
+    let res = EnumNode::parse_def(&mut parser).unwrap();
+
+    if let Ast::EnumDef { node } = &res {
+        assert!(node.identifier == Identifier::from_str("E1").unwrap());
+
+        assert!(matches!(
+            node.fields.get(&Identifier::from_str("f1").unwrap()),
+            Some(&EnumField::Common)
+        ));
+
+        if let EnumField::TupleLike(components) = node
+            .fields
+            .get(&Identifier::from_str("f2").unwrap())
+            .unwrap()
+        {
+            assert_eq!(components.len(), 2);
+            assert_eq!(components[0], Type::I32);
+            assert_eq!(components[1], Type::I32);
+        } else {
+            panic!("wrong type");
+        }
+
+        let field = node
+            .fields
+            .get(&Identifier::from_str("f3").unwrap())
+            .unwrap();
+        if let EnumField::StructLike(components) = &field {
+            assert_eq!(components.len(), 2);
+            assert!(matches!(
+                components.get(&Identifier::from_str("f1").unwrap()),
+                Some(&Type::I32)
+            ));
+            assert!(matches!(
+                components.get(&Identifier::from_str("f2").unwrap()),
+                Some(&Type::F32)
+            ));
+        } else {
+            panic!("wrong type");
+        }
+    } else {
+        panic!("res should be \'EnumDef\'");
+    };
 }

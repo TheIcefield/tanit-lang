@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::ast::{identifiers::Identifier, structs, structs::EnumField, types, Ast};
-use crate::error_listener::{
-    ErrorListener, ANALYZING_FAILED_ERROR_STR, IDENTIFIER_NOT_FOUND_ERROR_STR,
-};
+use crate::ast::{identifiers::Identifier, structs::EnumField, types::Type, Ast};
+use crate::messages::{Errors, Message, Warnings};
 
 use std::io::Write;
 
@@ -55,18 +53,18 @@ pub enum SymbolData {
         full_name: Vec<String>,
     },
     StructDef {
-        components: Vec<types::Type>,
+        components: Vec<Type>,
     },
     EnumDef {
-        components: Vec<structs::EnumField>,
+        components: Vec<EnumField>,
     },
     FunctionDef {
-        args: Vec<(String, types::Type)>,
-        return_type: types::Type,
+        args: Vec<(String, Type)>,
+        return_type: Type,
         is_declaration: bool,
     },
     VariableDef {
-        var_type: types::Type,
+        var_type: Type,
         is_mutable: bool,
         is_initialization: bool,
     },
@@ -218,33 +216,42 @@ pub struct Analyzer {
     table: SymbolTable,
     pub scope: Scope,
     counter: usize,
-    error_listener: ErrorListener,
+    errors: Errors,
+    warnings: Warnings,
 }
 
 impl Analyzer {
-    pub fn new(error_listener: ErrorListener) -> Self {
+    pub fn new() -> Self {
         Self {
             table: SymbolTable::new(),
             scope: Scope::new(),
             counter: 0,
-            error_listener,
+            errors: Errors::new(),
+            warnings: Warnings::new(),
         }
     }
 
-    pub fn analyze(&mut self, ast: &mut Ast) -> (SymbolTable, ErrorListener) {
+    pub fn analyze(&mut self, ast: &mut Ast) -> (SymbolTable, Errors, Warnings) {
         let table = {
             if ast.analyze(self).is_ok() {
                 Ok(std::mem::take(&mut self.table))
             } else {
-                Err(ANALYZING_FAILED_ERROR_STR)
+                Err((
+                    std::mem::take(&mut self.errors),
+                    std::mem::take(&mut self.warnings),
+                ))
             }
         };
 
         if let Ok(table) = table {
-            return (table, self.error_listener.clone());
+            return (table, self.errors.clone(), self.warnings.clone());
         }
 
-        (SymbolTable::new(), self.error_listener.clone())
+        (
+            SymbolTable::new(),
+            self.errors.clone(),
+            self.warnings.clone(),
+        )
     }
 
     pub fn counter(&mut self) -> usize {
@@ -277,14 +284,16 @@ impl Analyzer {
     }
 
     pub fn is_built_in_identifier(id: &Identifier) -> bool {
-        if let Identifier::Common(id) = id {
+        use crate::ast::identifiers::IdentifierType;
+
+        if let IdentifierType::Common(id) = &id.identifier {
             return id.starts_with("__tanit_compiler__");
         }
 
         false
     }
 
-    pub fn check_identifier_existance(&self, id: &Identifier) -> Result<Symbol, &'static str> {
+    pub fn check_identifier_existance(&self, id: &Identifier) -> Result<Symbol, Message> {
         if let Some(ss) = self.table.get(id) {
             for s in ss.iter() {
                 if self.scope.0.starts_with(&s.scope.0) {
@@ -293,14 +302,113 @@ impl Analyzer {
             }
         }
 
-        Err(IDENTIFIER_NOT_FOUND_ERROR_STR)
+        Err(Message::new(
+            id.location,
+            &format!("Identifier {} not found in this scope", id),
+        ))
     }
 
-    pub fn error(&mut self, message: &str) {
-        self.error_listener.semantic_error(message, &self.scope);
+    pub fn error(&mut self, mut error: Message) {
+        error.text = format!("Semantic error: {}", error.text);
+        self.errors.push(error);
     }
 
-    pub fn error_listener(&mut self) -> ErrorListener {
-        std::mem::take(&mut self.error_listener)
+    pub fn warning(&mut self, mut warn: Message) {
+        warn.text = format!("Semantic warning: {}", warn.text);
+        self.warnings.push(warn);
     }
+}
+
+impl Default for Analyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[test]
+fn scope_test() {
+    /* example:
+     * Module Main {       # Main: @s
+     *     func bar() { }  # bar:  @s/Main
+     *     func main() {   # main: @s/Main
+     *         let var = 5 # var:  @s/Main/main
+     *     }
+     * }
+     */
+
+    use std::str::FromStr;
+    let mut analyzer = Analyzer::new();
+    analyzer.scope.push("@s"); // @s
+
+    analyzer.add_symbol(
+        &Identifier::from_str("Main").unwrap(),
+        analyzer.create_symbol(SymbolData::ModuleDef {
+            full_name: vec!["Main".to_string()],
+        }),
+    );
+
+    analyzer.scope.push("Main"); // @s/Main
+    analyzer.add_symbol(
+        &Identifier::from_str("main").unwrap(),
+        analyzer.create_symbol(SymbolData::FunctionDef {
+            args: Vec::new(),
+            return_type: Type::Tuple {
+                components: Vec::new(),
+            },
+            is_declaration: true,
+        }),
+    );
+
+    analyzer.add_symbol(
+        &Identifier::from_str("bar").unwrap(),
+        analyzer.create_symbol(SymbolData::FunctionDef {
+            args: Vec::new(),
+            return_type: Type::Tuple {
+                components: Vec::new(),
+            },
+            is_declaration: true,
+        }),
+    );
+
+    analyzer.scope.push("main"); // @s/Main/main
+    analyzer.add_symbol(
+        &Identifier::from_str("var").unwrap(),
+        analyzer.create_symbol(SymbolData::VariableDef {
+            var_type: Type::I32,
+            is_mutable: false,
+            is_initialization: true,
+        }),
+    );
+
+    // check if var defined in main
+    assert!(analyzer
+        .check_identifier_existance(&Identifier::from_str("var").unwrap())
+        .is_ok());
+
+    // check if main inside Main
+    analyzer.scope.pop(); // @s/Main
+    assert!(analyzer
+        .check_identifier_existance(&Identifier::from_str("main").unwrap())
+        .is_ok());
+
+    // check if baz not defined in Main
+    assert!(!analyzer
+        .check_identifier_existance(&Identifier::from_str("baz").unwrap())
+        .is_ok());
+
+    // check if var unaccessible in Main
+    assert!(!analyzer
+        .check_identifier_existance(&Identifier::from_str("var").unwrap())
+        .is_ok());
+
+    // check if var unaccessible in bar
+    analyzer.scope.push("bar");
+    assert!(!analyzer
+        .check_identifier_existance(&Identifier::from_str("var").unwrap())
+        .is_ok());
+
+    // check if bar accessible in bar
+    assert!(analyzer
+        .check_identifier_existance(&Identifier::from_str("bar").unwrap())
+        .is_ok());
 }

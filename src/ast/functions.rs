@@ -1,14 +1,14 @@
 use crate::analyzer::SymbolData;
 use crate::ast::{identifiers::Identifier, scopes, types, variables::VariableNode, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::error_listener::{MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR, UNEXPECTED_TOKEN_ERROR_STR};
-use crate::lexer::Lexem;
-use crate::parser::Parser;
+use crate::messages::Message;
+use crate::parser::{location::Location, token::Lexem, Parser};
 
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
 pub struct FunctionNode {
+    pub location: Location,
     pub identifier: Identifier,
     pub return_type: types::Type,
     pub parameters: Vec<Ast>,
@@ -16,7 +16,7 @@ pub struct FunctionNode {
 }
 
 impl FunctionNode {
-    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, Message> {
         let mut node = Self::parse_header(parser)?;
 
         let next = parser.peek_token();
@@ -26,19 +26,18 @@ impl FunctionNode {
             }
 
             _ => {
-                parser.error(
-                    &format!("Unexpected token \"{}\", allowed EOL or \'}}\'", next),
-                    next.get_location(),
-                );
-                return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                return Err(Message::unexpected_token(
+                    next,
+                    &[Lexem::Lcb, Lexem::EndOfLine],
+                ));
             }
         }
 
         Ok(Ast::FuncDef { node })
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Result<Self, &'static str> {
-        parser.consume_token(Lexem::KwFunc)?;
+    pub fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
+        let location = parser.consume_token(Lexem::KwFunc)?.location;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
@@ -55,6 +54,7 @@ impl FunctionNode {
         };
 
         Ok(Self {
+            location,
             identifier,
             return_type,
             parameters,
@@ -62,7 +62,7 @@ impl FunctionNode {
         })
     }
 
-    pub fn parse_header_params(parser: &mut Parser) -> Result<Vec<Ast>, &'static str> {
+    pub fn parse_header_params(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
         parser.consume_token(Lexem::LParen)?;
 
         let mut parameters = Vec::<Ast>::new();
@@ -80,24 +80,13 @@ impl FunctionNode {
                 } else if next.lexem == Lexem::RParen {
                     continue;
                 } else {
-                    parser.error(
-                        &format!("Unexpected token \"{}\", allowed \',\' or \')\'", next),
-                        next.get_location(),
-                    );
-                    return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                    return Err(Message::unexpected_token(next, &[]));
                 }
             } else if next.lexem == Lexem::RParen {
                 parser.get_token();
                 break;
             } else {
-                parser.error(
-                    &format!(
-                        "Unexpected token \'{}\', allowed \'identifier\' or \')\'",
-                        next
-                    ),
-                    next.get_location(),
-                );
-                return Err(UNEXPECTED_TOKEN_ERROR_STR);
+                return Err(Message::unexpected_token(next, &[]));
             }
         }
 
@@ -106,13 +95,12 @@ impl FunctionNode {
 }
 
 impl IAst for FunctionNode {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            analyzer.error(&format!(
-                "Identifier \"{}\" defined multiple times",
-                &self.identifier
+            return Err(Message::multiple_ids(
+                self.location,
+                &self.identifier.get_string(),
             ));
-            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
         analyzer.scope.push(&format!("@f.{}", &self.identifier));
@@ -213,5 +201,72 @@ impl IAst for FunctionNode {
 
         stream.mode = old_mode;
         Ok(())
+    }
+}
+
+#[test]
+fn functions_test() {
+    use crate::ast::expressions::ExpressionType;
+    use crate::parser::lexer::Lexer;
+
+    static SRC_PATH: &str = "./examples/functions.tt";
+
+    let lexer = Lexer::from_file(SRC_PATH, true).unwrap();
+
+    let mut parser = Parser::new(lexer);
+
+    {
+        let func = FunctionNode::parse_def(&mut parser).unwrap();
+
+        let scope = if let Ast::FuncDef { node } = &func {
+            node.body.as_ref()
+        } else {
+            panic!("node should be \'FuncDef\'");
+        };
+
+        let node = if let Ast::Scope { node } = scope.unwrap().as_ref() {
+            assert_eq!(node.statements.len(), 1);
+            &node.statements[0]
+        } else {
+            panic!("node should be \'local scope\'");
+        };
+
+        assert!(matches!(node, Ast::ReturnStmt { .. }));
+    }
+
+    {
+        let func = FunctionNode::parse_def(&mut parser).unwrap();
+
+        let scope = if let Ast::FuncDef { node } = &func {
+            node.body.as_ref()
+        } else {
+            panic!("node should be \'FuncDef\'");
+        };
+
+        let node = if let Ast::Scope { node } = scope.unwrap().as_ref() {
+            assert_eq!(node.statements.len(), 1);
+            &node.statements[0]
+        } else {
+            panic!("node should be \'local scope\'");
+        };
+
+        let (lhs, rhs) = if let Ast::Expression { node } = node {
+            if let ExpressionType::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = &node.as_ref().expr
+            {
+                assert_eq!(*operation, Lexem::Assign);
+                (lhs.as_ref(), rhs.as_ref())
+            } else {
+                panic!("Expression expected to be binary");
+            }
+        } else {
+            panic!("Expected expression");
+        };
+
+        assert!(matches!(lhs, Ast::VariableDef { .. }));
+        assert!(matches!(rhs, Ast::Value { .. }));
     }
 }

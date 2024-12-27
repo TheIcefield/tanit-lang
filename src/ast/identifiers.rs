@@ -1,87 +1,111 @@
-use crate::ast::{expressions::Expression, values::Value, Ast, IAst};
+use crate::ast::{expressions::Expression, values::ValueType, Ast, IAst};
 use crate::codegen::CodeGenStream;
-use crate::lexer::Lexem;
+use crate::messages::Message;
+use crate::parser::{
+    location::Location,
+    token::{Lexem, Token},
+};
 
 use std::io::Write;
 use std::str::FromStr;
 
+use super::expressions::ExpressionType;
+
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub enum Identifier {
+pub enum IdentifierType {
     Common(String),
     Complex(Vec<String>),
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Identifier {
+    pub location: Location,
+    pub identifier: IdentifierType,
+}
+
 impl FromStr for Identifier {
-    type Err = &'static str;
+    type Err = Message;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::Common(s.to_string()))
+        Ok(Self {
+            location: Location::new(),
+            identifier: IdentifierType::Common(s.to_string()),
+        })
     }
 }
 
 impl Identifier {
     pub fn new() -> Self {
-        Self::Common(String::new())
+        Self {
+            location: Location::new(),
+            identifier: IdentifierType::Common(String::new()),
+        }
     }
 
-    pub fn from_token(tkn: &Lexem) -> Result<Self, &'static str> {
-        if let Lexem::Identifier(id) = tkn {
+    pub fn from_token(tkn: &Token) -> Result<Self, Message> {
+        if let Lexem::Identifier(id) = &tkn.lexem {
             return Self::from_str(id);
         }
 
-        Err("token must be an identifier")
+        Err(Message::new(tkn.location, "token must be an identifier"))
     }
 
     // Converts expression chained by '::' to Identifier::Complex
-    pub fn from_expr(expr: &Expression) -> Result<Self, &'static str> {
-        let mut res = Self::Complex(Vec::new());
+    pub fn from_expr(expr: &Expression) -> Result<Self, Message> {
+        let mut res = Self {
+            location: expr.location,
+            identifier: IdentifierType::Complex(Vec::new()),
+        };
 
-        if let Expression::Unary { .. } = expr {
-            return Err("Expected binary expression");
+        if let ExpressionType::Unary { .. } = expr.expr {
+            return Err(Message::new(expr.location, "Expected binary expression"));
         }
 
-        if let Expression::Binary {
+        if let ExpressionType::Binary {
             operation,
             lhs,
             rhs,
-        } = expr
+        } = &expr.expr
         {
             if Lexem::Dcolon != *operation {
-                return Err("Expected expression chained by \"::\"");
+                return Err(Message::new(
+                    expr.location,
+                    "Expected expression chained by \"::\"",
+                ));
             }
 
             if let Ast::Expression { node } = rhs.as_ref() {
                 // recursively parse expression tail
-                res.append(Self::from_expr(node)?)?;
+                res.append(Self::from_expr(node)?);
             }
 
             let rhs_id = if let Ast::Value { node } = rhs.as_ref() {
-                if let Value::Identifier(id) = node {
+                if let ValueType::Identifier(id) = &node.value {
                     Some(id.clone())
                 } else {
-                    return Err("Rhs is not an identifier");
+                    return Err(Message::new(expr.location, "Rhs is not an identifier"));
                 }
             } else {
                 None
             };
 
             let lhs_id = if let Ast::Value { node } = lhs.as_ref() {
-                if let Value::Identifier(id) = node {
+                if let ValueType::Identifier(id) = &node.value {
                     id.clone()
                 } else {
-                    return Err("Lhs is not an identifier");
+                    return Err(Message::new(expr.location, "Lhs is not an identifier"));
                 }
             } else {
-                return Err("Lhs in not a value");
+                return Err(Message::new(expr.location, "Rhs is not a value"));
             };
 
-            if let Self::Complex(..) = res {
+            if let IdentifierType::Complex(..) = res.identifier {
                 let current = res;
                 res = lhs_id;
-                res.append(current)?;
+                res.append(current);
 
                 if let Some(id) = rhs_id {
-                    res.append(id)?;
+                    res.append(id);
                 }
             }
         }
@@ -90,11 +114,11 @@ impl Identifier {
     }
 
     pub fn get_string(&self) -> String {
-        if let Self::Common(id) = self {
+        if let IdentifierType::Common(id) = &self.identifier {
             return id.clone();
         }
 
-        if let Self::Complex(ids) = self {
+        if let IdentifierType::Complex(ids) = &self.identifier {
             let mut res = ids[0].clone();
             for id in ids.iter().skip(1) {
                 res.push_str("::");
@@ -109,36 +133,34 @@ impl Identifier {
 
 // Private methods
 impl Identifier {
-    fn append(&mut self, other: Self) -> Result<(), &'static str> {
+    fn append(&mut self, other: Self) {
         // if self is common, convert to complex
-        if let Self::Common(id) = self {
-            *self = Self::Complex(vec![id.to_string()]);
+        if let IdentifierType::Common(id) = &self.identifier {
+            self.identifier = IdentifierType::Complex(vec![id.to_string()]);
         }
 
         // if self is complex, merge them
-        if let Self::Complex(pieces) = self {
+        if let IdentifierType::Complex(ref mut pieces) = &mut self.identifier {
             // if other is common, just add
-            if let Self::Common(id) = &other {
+            if let IdentifierType::Common(id) = &other.identifier {
                 pieces.push(id.clone());
             }
 
             // if other is complex, concat them
-            if let Self::Complex(ids) = &other {
+            if let IdentifierType::Complex(ids) = &other.identifier {
                 pieces.append(&mut ids.clone());
             }
         }
-
-        Ok(())
     }
 }
 
 impl std::fmt::Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Self::Common(id) = self {
+        if let IdentifierType::Common(id) = &self.identifier {
             write!(f, "{}", id)?;
         }
 
-        if let Self::Complex(ids) = self {
+        if let IdentifierType::Complex(ids) = &self.identifier {
             write!(f, "{}", ids[0])?;
             for id in ids.iter().skip(1) {
                 write!(f, "::{}", id)?;
@@ -156,7 +178,7 @@ impl Default for Identifier {
 }
 
 impl IAst for Identifier {
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         Ok(())
     }
 
@@ -165,11 +187,11 @@ impl IAst for Identifier {
     }
 
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        if let Self::Common(id) = self {
+        if let IdentifierType::Common(id) = &self.identifier {
             write!(stream, "{}", id)?;
         }
 
-        if let Self::Complex(ids) = self {
+        if let IdentifierType::Complex(ids) = &self.identifier {
             write!(stream, "{}", ids[0])?;
             for id in ids.iter().skip(1) {
                 write!(stream, "__{}", id)?;
@@ -177,5 +199,74 @@ impl IAst for Identifier {
         }
 
         Ok(())
+    }
+}
+
+#[test]
+fn str_conversion_test() {
+    use std::str::FromStr;
+
+    let id = Identifier::from_str("hello").unwrap();
+
+    if let IdentifierType::Common(id) = &id.identifier {
+        assert_eq!(id, "hello");
+    } else {
+        panic!("expected common identifier");
+    }
+}
+
+#[test]
+fn expr_conversion_test() {
+    use crate::ast::expressions::ExpressionType;
+    use crate::ast::values::Value;
+
+    let expression = Expression {
+        location: Location::new(),
+        expr: ExpressionType::Binary {
+            operation: Lexem::Dcolon,
+            lhs: Box::new(Ast::Value {
+                node: Value {
+                    location: Location::new(),
+                    value: ValueType::Identifier(Identifier {
+                        location: Location::new(),
+                        identifier: IdentifierType::Common("hello".to_string()),
+                    }),
+                },
+            }),
+            rhs: Box::new(Ast::Expression {
+                node: Box::new(Expression {
+                    location: Location::new(),
+                    expr: ExpressionType::Binary {
+                        operation: Lexem::Dcolon,
+                        lhs: Box::new(Ast::Value {
+                            node: Value {
+                                location: Location::new(),
+                                value: ValueType::Identifier(Identifier {
+                                    location: Location::new(),
+                                    identifier: IdentifierType::Common("my".to_string()),
+                                }),
+                            },
+                        }),
+                        rhs: Box::new(Ast::Value {
+                            node: Value {
+                                location: Location::new(),
+                                value: ValueType::Identifier(Identifier {
+                                    location: Location::new(),
+                                    identifier: IdentifierType::Common("world".to_string()),
+                                }),
+                            },
+                        }),
+                    },
+                }),
+            }),
+        },
+    };
+
+    let expected = vec!["hello".to_string(), "my".to_string(), "world".to_string()];
+
+    if let IdentifierType::Complex(ids) = Identifier::from_expr(&expression).unwrap().identifier {
+        assert_eq!(ids, expected);
+    } else {
+        panic!("expecred complex identifier");
     }
 }

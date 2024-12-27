@@ -1,9 +1,12 @@
 use crate::analyzer::SymbolData;
-use crate::ast::{expressions::Expression, identifiers::Identifier, Ast, IAst};
+use crate::ast::{
+    expressions::Expression,
+    identifiers::{Identifier, IdentifierType},
+    Ast, IAst,
+};
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::error_listener::MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR;
-use crate::lexer::Lexem;
-use crate::parser::Parser;
+use crate::messages::Message;
+use crate::parser::{location::Location, token::Lexem, Parser};
 
 use std::io::Write;
 use std::str::FromStr;
@@ -55,9 +58,9 @@ impl Type {
     }
 
     pub fn from_id(id: &Identifier) -> Self {
-        match id {
-            Identifier::Common(id) => Self::from_str(id).unwrap(),
-            Identifier::Complex(..) => unimplemented!("creation type by complex id"),
+        match &id.identifier {
+            IdentifierType::Common(id) => Self::from_str(id).unwrap(),
+            IdentifierType::Complex(..) => unimplemented!("creation type by complex id"),
         }
     }
 
@@ -80,7 +83,7 @@ impl Type {
         )
     }
 
-    pub fn parse(parser: &mut Parser) -> Result<Self, &'static str> {
+    pub fn parse(parser: &mut Parser) -> Result<Self, Message> {
         let next = parser.peek_token();
 
         if parser.peek_token().lexem == Lexem::Ampersand {
@@ -122,7 +125,7 @@ impl Type {
         }
 
         let identifier = parser.consume_identifier()?;
-        let id_str = identifier.get_string();
+        let id_str = identifier.lexem.get_string();
 
         match &id_str[..] {
             "bool" => return Ok(Type::Bool),
@@ -154,7 +157,7 @@ impl Type {
         Ok(Type::Custom(id_str))
     }
 
-    pub fn parse_tuple_def(parser: &mut Parser) -> Result<Self, &'static str> {
+    pub fn parse_tuple_def(parser: &mut Parser) -> Result<Self, Message> {
         parser.consume_token(Lexem::LParen)?;
 
         let mut children = Vec::<Type>::new();
@@ -179,7 +182,7 @@ impl Type {
         })
     }
 
-    pub fn parse_array_def(parser: &mut Parser) -> Result<Self, &'static str> {
+    pub fn parse_array_def(parser: &mut Parser) -> Result<Self, Message> {
         parser.consume_token(Lexem::Lsb)?;
 
         let mut size: Option<Box<Ast>> = None;
@@ -197,7 +200,7 @@ impl Type {
         Ok(Type::Array { size, value_type })
     }
 
-    pub fn parse_template_args(parser: &mut Parser) -> Result<Vec<Self>, &'static str> {
+    pub fn parse_template_args(parser: &mut Parser) -> Result<Vec<Self>, Message> {
         parser.consume_token(Lexem::Lt)?;
 
         let mut children = Vec::<Type>::new();
@@ -248,7 +251,7 @@ impl Type {
 }
 
 impl std::str::FromStr for Type {
-    type Err = &'static str;
+    type Err = Message;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "bool" => Ok(Type::Bool),
@@ -272,13 +275,14 @@ impl std::str::FromStr for Type {
 
 #[derive(Clone, PartialEq)]
 pub struct Alias {
+    pub location: Location,
     pub identifier: Identifier,
     pub value: Type,
 }
 
 impl Alias {
-    pub fn parse_def(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwAlias)?;
+    pub fn parse_def(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwAlias)?.location;
 
         let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
@@ -287,13 +291,17 @@ impl Alias {
         let value = Type::parse(parser)?;
 
         Ok(Ast::AliasDef {
-            node: Alias { identifier, value },
+            node: Alias {
+                location,
+                identifier,
+                value,
+            },
         })
     }
 }
 
 impl IAst for Type {
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         unreachable!("Type.analyze() shouln't have been invocked");
     }
 
@@ -500,13 +508,12 @@ impl IAst for Alias {
         self.value.clone()
     }
 
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            analyzer.error(&format!(
-                "Identifier \"{}\" defined multiple times",
-                &self.identifier
+            return Err(Message::multiple_ids(
+                self.location,
+                &self.identifier.get_string(),
             ));
-            return Err(MANY_IDENTIFIERS_IN_SCOPE_ERROR_STR);
         }
 
         analyzer.add_symbol(&self.identifier, analyzer.create_symbol(SymbolData::Type));
@@ -536,4 +543,59 @@ impl IAst for Alias {
         stream.mode = old_mode;
         writeln!(stream, ";\n")
     }
+}
+
+#[test]
+fn alias_test() {
+    use crate::ast::functions::FunctionNode;
+    use crate::parser::lexer::Lexer;
+
+    static SRC_PATH: &str = "./examples/types.tt";
+
+    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+
+    let mut parser = Parser::new(lexer);
+
+    let res = if let Ast::FuncDef { node } = FunctionNode::parse_def(&mut parser).unwrap() {
+        assert!(node.identifier == Identifier::from_str("main").unwrap());
+        assert!(node.parameters.is_empty());
+
+        if let Type::Tuple { components } = &node.return_type {
+            assert!(components.is_empty());
+        } else {
+            panic!("Type expected to be an empty tuple");
+        }
+
+        node.body.unwrap()
+    } else {
+        panic!("res has to be \'function definition\'");
+    };
+
+    let statements = if let Ast::Scope { node } = res.as_ref() {
+        &node.statements
+    } else {
+        panic!("node has to be \'local scope\'");
+    };
+
+    if let Ast::AliasDef { node } = &statements[0] {
+        assert!(node.identifier == Identifier::from_str("Items").unwrap());
+
+        if let Type::Template {
+            identifier,
+            arguments,
+        } = &node.value
+        {
+            assert!(*identifier == Identifier::from_str("Vec").unwrap());
+            assert_eq!(arguments.len(), 1);
+            if let Type::Custom(id) = &arguments[0] {
+                assert_eq!(id, "Item");
+            } else {
+                panic!("Type is expected to be \"Item\"")
+            }
+        } else {
+            panic!("Alias type expected to be an template type");
+        }
+    } else {
+        panic!("res has to be \'alias definition\'");
+    };
 }

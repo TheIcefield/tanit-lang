@@ -1,17 +1,13 @@
-use crate::ast::{expressions::Expression, scopes, Ast, IAst};
+use crate::ast::{expressions::Expression, scopes::Scope, Ast, IAst};
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::error_listener::{
-    UNEXPECTED_BREAK_STMT_ERROR_STR, UNEXPECTED_CONTINUE_STMT_ERROR_STR,
-    UNEXPECTED_RETURN_STMT_ERROR_STR,
-};
-use crate::lexer::Lexem;
-use crate::parser::Parser;
+use crate::messages::Message;
+use crate::parser::{location::Location, token::Lexem, Parser};
 use crate::serializer;
 
 use std::io::Write;
 
 #[derive(Clone, PartialEq)]
-pub enum Branch {
+pub enum BranchType {
     Loop {
         body: Box<Ast>,
         condition: Option<Box<Ast>>,
@@ -23,41 +19,50 @@ pub enum Branch {
     },
 }
 
+#[derive(Clone, PartialEq)]
+pub struct Branch {
+    location: Location,
+    branch: BranchType,
+}
+
 impl Branch {
-    pub fn parse_loop(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwLoop)?;
+    pub fn parse_loop(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwLoop)?.location;
 
-        let body = Box::new(scopes::Scope::parse_local(parser)?);
+        let body = Box::new(Scope::parse_local(parser)?);
 
         Ok(Ast::BranchStmt {
-            node: Self::Loop {
-                body,
-                condition: None,
+            node: Self {
+                location,
+                branch: BranchType::Loop {
+                    body,
+                    condition: None,
+                },
             },
         })
     }
 
-    pub fn parse_while(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwWhile)?;
+    pub fn parse_while(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwWhile)?.location;
 
-        let condition = Expression::parse(parser)?;
+        let condition = Some(Box::new(Expression::parse(parser)?));
 
-        let body = Box::new(scopes::Scope::parse_local(parser)?);
+        let body = Box::new(Scope::parse_local(parser)?);
 
         Ok(Ast::BranchStmt {
-            node: Self::Loop {
-                body,
-                condition: Some(Box::new(condition)),
+            node: Self {
+                location,
+                branch: BranchType::Loop { body, condition },
             },
         })
     }
 
-    pub fn parse_if(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwIf)?;
+    pub fn parse_if(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwIf)?.location;
 
         let condition = Box::new(Expression::parse(parser)?);
 
-        let main_body = Box::new(scopes::Scope::parse_local(parser)?);
+        let main_body = Box::new(Scope::parse_local(parser)?);
 
         let else_body = if parser.peek_token().lexem == Lexem::KwElse {
             parser.get_token();
@@ -65,12 +70,9 @@ impl Branch {
             let next = parser.peek_token();
             match next.lexem {
                 Lexem::KwIf => Some(Box::new(Self::parse_if(parser)?)),
-                Lexem::Lcb => Some(Box::new(scopes::Scope::parse_local(parser)?)),
+                Lexem::Lcb => Some(Box::new(Scope::parse_local(parser)?)),
                 _ => {
-                    parser.error(
-                        &format!("Unexpected token \"{}\" in branch expression", next),
-                        next.get_location(),
-                    );
+                    parser.error(Message::unexpected_token(next, &[Lexem::KwIf, Lexem::Lcb]));
                     None
                 }
             }
@@ -79,19 +81,22 @@ impl Branch {
         };
 
         Ok(Ast::BranchStmt {
-            node: Self::IfElse {
-                condition,
-                main_body,
-                else_body,
+            node: Self {
+                location,
+                branch: BranchType::IfElse {
+                    condition,
+                    main_body,
+                    else_body,
+                },
             },
         })
     }
 }
 
 impl IAst for Branch {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
-        match self {
-            Self::IfElse {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+        match &mut self.branch {
+            BranchType::IfElse {
                 condition,
                 main_body,
                 else_body,
@@ -104,7 +109,7 @@ impl IAst for Branch {
 
                 Ok(())
             }
-            Self::Loop { body, condition } => {
+            BranchType::Loop { body, condition } => {
                 let cnt = analyzer.counter();
                 analyzer.scope.push(&format!("@l.{}", cnt));
 
@@ -126,8 +131,8 @@ impl IAst for Branch {
     }
 
     fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        match self {
-            Self::Loop { body, condition } => {
+        match &self.branch {
+            BranchType::Loop { body, condition } => {
                 writer.begin_tag("loop")?;
 
                 if let Some(cond) = condition {
@@ -142,7 +147,7 @@ impl IAst for Branch {
 
                 writer.end_tag()?;
             }
-            Self::IfElse {
+            BranchType::IfElse {
                 condition,
                 main_body,
                 else_body,
@@ -173,8 +178,8 @@ impl IAst for Branch {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
         let old_mode = stream.mode;
         stream.mode = CodeGenMode::SourceOnly;
-        match self {
-            Self::IfElse {
+        match &self.branch {
+            BranchType::IfElse {
                 condition,
                 main_body,
                 else_body,
@@ -190,7 +195,7 @@ impl IAst for Branch {
                     else_body.codegen(stream)?;
                 }
             }
-            Self::Loop { body, condition } => {
+            BranchType::Loop { body, condition } => {
                 write!(stream, "while (")?;
 
                 if let Some(condition) = condition {
@@ -210,18 +215,22 @@ impl IAst for Branch {
 
 #[derive(Clone, PartialEq)]
 pub struct Break {
+    pub location: Location,
     pub expr: Option<Box<Ast>>,
 }
 
 impl Break {
-    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwBreak)?;
+    pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwBreak)?.location;
 
         let old_opt = parser.does_ignore_nl();
 
         parser.set_ignore_nl_option(false);
 
-        let mut node = Break { expr: None };
+        let mut node = Break {
+            location,
+            expr: None,
+        };
 
         match parser.peek_token().lexem {
             Lexem::EndOfLine => {}
@@ -235,7 +244,7 @@ impl Break {
 }
 
 impl IAst for Break {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         let mut in_loop = false;
         for s in analyzer.scope.iter().rev() {
             if s.starts_with("@l.") {
@@ -249,8 +258,7 @@ impl IAst for Break {
         }
 
         if !in_loop {
-            analyzer.error("Unexpected break statement");
-            return Err(UNEXPECTED_BREAK_STMT_ERROR_STR);
+            return Err(Message::new(self.location, "Unexpected break statement"));
         }
 
         Ok(())
@@ -280,18 +288,22 @@ impl IAst for Break {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Continue {}
+pub struct Continue {
+    location: Location,
+}
 
 impl Continue {
-    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwContinue)?;
+    pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwContinue)?.location;
 
-        Ok(Ast::ContinueStmt { node: Self {} })
+        Ok(Ast::ContinueStmt {
+            node: Self { location },
+        })
     }
 }
 
 impl IAst for Continue {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         let mut in_loop = false;
         for s in analyzer.scope.iter().rev() {
             if s.starts_with("@l.") {
@@ -301,8 +313,7 @@ impl IAst for Continue {
         }
 
         if !in_loop {
-            analyzer.error("Unexpected continue statement");
-            return Err(UNEXPECTED_CONTINUE_STMT_ERROR_STR);
+            return Err(Message::new(self.location, "Unexpected continue statement"));
         }
 
         Ok(())
@@ -326,14 +337,18 @@ impl IAst for Continue {
 
 #[derive(Clone, PartialEq)]
 pub struct Return {
+    pub location: Location,
     pub expr: Option<Box<Ast>>,
 }
 
 impl Return {
-    pub fn parse(parser: &mut Parser) -> Result<Ast, &'static str> {
-        parser.consume_token(Lexem::KwReturn)?;
+    pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
+        let location = parser.consume_token(Lexem::KwReturn)?.location;
 
-        let mut node = Return { expr: None };
+        let mut node = Return {
+            location,
+            expr: None,
+        };
 
         let old_opt = parser.does_ignore_nl();
 
@@ -351,7 +366,7 @@ impl Return {
 }
 
 impl IAst for Return {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), &'static str> {
+    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
         let mut in_func = false;
         for s in analyzer.scope.iter().rev() {
             if s.starts_with("@f.") {
@@ -365,8 +380,7 @@ impl IAst for Return {
         }
 
         if !in_func {
-            analyzer.error("Unexpected return statement");
-            return Err(UNEXPECTED_RETURN_STMT_ERROR_STR);
+            return Err(Message::new(self.location, "Unexpected return statement"));
         }
 
         Ok(())
