@@ -7,7 +7,7 @@ struct S1
 
 }
 
-enum E1
+variant V1
 {
 
     f1

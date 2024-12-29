@@ -1,13 +1,13 @@
-use crate::ast::{expressions::Expression, values::ValueType, Ast, IAst};
-use crate::codegen::CodeGenStream;
+use crate::ast::{expressions::Expression, values::ValueType, Ast};
 use crate::messages::Message;
 use crate::parser::{
     location::Location,
     token::{Lexem, Token},
 };
 
-use std::io::Write;
-use std::str::FromStr;
+pub mod analyzer;
+pub mod codegen;
+pub mod serializer;
 
 use super::expressions::ExpressionType;
 
@@ -23,7 +23,7 @@ pub struct Identifier {
     pub identifier: IdentifierType,
 }
 
-impl FromStr for Identifier {
+impl std::str::FromStr for Identifier {
     type Err = Message;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -43,6 +43,7 @@ impl Identifier {
     }
 
     pub fn from_token(tkn: &Token) -> Result<Self, Message> {
+        use std::str::FromStr;
         if let Lexem::Identifier(id) = &tkn.lexem {
             return Self::from_str(id);
         }
@@ -177,96 +178,5 @@ impl Default for Identifier {
     }
 }
 
-impl IAst for Identifier {
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        Ok(())
-    }
-
-    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        writer.put_param("name", self)
-    }
-
-    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        if let IdentifierType::Common(id) = &self.identifier {
-            write!(stream, "{}", id)?;
-        }
-
-        if let IdentifierType::Complex(ids) = &self.identifier {
-            write!(stream, "{}", ids[0])?;
-            for id in ids.iter().skip(1) {
-                write!(stream, "__{}", id)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-#[test]
-fn str_conversion_test() {
-    use std::str::FromStr;
-
-    let id = Identifier::from_str("hello").unwrap();
-
-    if let IdentifierType::Common(id) = &id.identifier {
-        assert_eq!(id, "hello");
-    } else {
-        panic!("expected common identifier");
-    }
-}
-
-#[test]
-fn expr_conversion_test() {
-    use crate::ast::expressions::ExpressionType;
-    use crate::ast::values::Value;
-
-    let expression = Expression {
-        location: Location::new(),
-        expr: ExpressionType::Binary {
-            operation: Lexem::Dcolon,
-            lhs: Box::new(Ast::Value {
-                node: Value {
-                    location: Location::new(),
-                    value: ValueType::Identifier(Identifier {
-                        location: Location::new(),
-                        identifier: IdentifierType::Common("hello".to_string()),
-                    }),
-                },
-            }),
-            rhs: Box::new(Ast::Expression {
-                node: Box::new(Expression {
-                    location: Location::new(),
-                    expr: ExpressionType::Binary {
-                        operation: Lexem::Dcolon,
-                        lhs: Box::new(Ast::Value {
-                            node: Value {
-                                location: Location::new(),
-                                value: ValueType::Identifier(Identifier {
-                                    location: Location::new(),
-                                    identifier: IdentifierType::Common("my".to_string()),
-                                }),
-                            },
-                        }),
-                        rhs: Box::new(Ast::Value {
-                            node: Value {
-                                location: Location::new(),
-                                value: ValueType::Identifier(Identifier {
-                                    location: Location::new(),
-                                    identifier: IdentifierType::Common("world".to_string()),
-                                }),
-                            },
-                        }),
-                    },
-                }),
-            }),
-        },
-    };
-
-    let expected = vec!["hello".to_string(), "my".to_string(), "world".to_string()];
-
-    if let IdentifierType::Complex(ids) = Identifier::from_expr(&expression).unwrap().identifier {
-        assert_eq!(ids, expected);
-    } else {
-        panic!("expecred complex identifier");
-    }
-}
+#[cfg(test)]
+mod tests;

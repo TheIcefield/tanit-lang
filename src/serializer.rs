@@ -1,3 +1,7 @@
+pub trait Serialize {
+    fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()>;
+}
+
 #[derive(Clone)]
 struct XmlWriterState {
     name: String,

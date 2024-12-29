@@ -1,10 +1,18 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use crate::ast::{identifiers::Identifier, structs::EnumField, types::Type, Ast};
+use crate::ast::{identifiers::Identifier, types::Type, variants::VariantField, Ast};
 use crate::messages::{Errors, Message, Warnings};
 
 use std::io::Write;
+
+pub trait Analyze {
+    fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
+        Type::unit()
+    }
+
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message>;
+}
 
 #[derive(Clone)]
 pub struct Scope(pub Vec<String>);
@@ -55,8 +63,8 @@ pub enum SymbolData {
     StructDef {
         components: Vec<Type>,
     },
-    EnumDef {
-        components: Vec<EnumField>,
+    VariantDef {
+        components: Vec<VariantField>,
     },
     FunctionDef {
         args: Vec<(String, Type)>,
@@ -102,20 +110,20 @@ impl SymbolData {
                 write!(stream, "Struct definition: {{{:?}}}", components)
             }
 
-            Self::EnumDef { components } => {
+            Self::VariantDef { components } => {
                 write!(stream, "Enum definition: <")?;
 
                 for comp in components.iter() {
                     match comp {
-                        EnumField::Common => write!(stream, "common ")?,
-                        EnumField::TupleLike(t) => {
+                        VariantField::Common => write!(stream, "common ")?,
+                        VariantField::TupleLike(t) => {
                             write!(stream, "( ")?;
                             for tc in t.iter() {
                                 write!(stream, "{} ", *tc)?;
                             }
                             write!(stream, ")")?;
                         }
-                        EnumField::StructLike(s) => {
+                        VariantField::StructLike(s) => {
                             write!(stream, "{{ ")?;
                             for sc in s.iter() {
                                 write!(stream, "{} ", *sc.1)?;

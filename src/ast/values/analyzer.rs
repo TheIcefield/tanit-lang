@@ -1,206 +1,10 @@
-use crate::analyzer::{Analyzer, SymbolData};
-use crate::ast::{expressions::Expression, identifiers::Identifier, types::Type, Ast, IAst};
-use crate::codegen::CodeGenStream;
+use super::{CallParam, Value, ValueType};
+use crate::analyzer::{Analyze, Analyzer, SymbolData};
+use crate::ast::{types::Type, Ast};
 use crate::messages::Message;
-use crate::parser::{location::Location, token::Lexem, Parser};
-
-use std::io::Write;
-
-#[derive(Clone, PartialEq)]
-pub enum CallParam {
-    Notified(Identifier, Box<Ast>),
-    Positional(usize, Box<Ast>),
-}
-
-impl IAst for CallParam {
-    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> Type {
-        match self {
-            Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(analyzer),
-        }
-    }
-
-    fn analyze(&mut self, _analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        Ok(())
-    }
-
-    fn serialize(&self, _writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        todo!("serialize CallParam")
-    }
-
-    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        match self {
-            Self::Positional(_, node) => node.codegen(stream),
-            Self::Notified(..) => unreachable!("Notified CallParam is not allowed in codegen"),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq)]
-pub enum ValueType {
-    Call {
-        identifier: Identifier,
-        arguments: Vec<CallParam>,
-    },
-    Struct {
-        identifier: Identifier,
-        components: Vec<(Identifier, Ast)>,
-    },
-    Tuple {
-        components: Vec<Ast>,
-    },
-    Array {
-        components: Vec<Ast>,
-    },
-    Identifier(Identifier),
-    Text(String),
-    Integer(usize),
-    Decimal(f64),
-}
-
-#[derive(Clone, PartialEq)]
-pub struct Value {
-    pub location: Location,
-    pub value: ValueType,
-}
 
 impl Value {
-    pub fn parse_call_params(parser: &mut Parser) -> Result<Vec<CallParam>, Message> {
-        let _ = parser.consume_token(Lexem::LParen)?.location;
-
-        let mut args = Vec::<CallParam>::new();
-
-        let mut i = 0;
-        loop {
-            let next = parser.peek_token();
-
-            if next.lexem == Lexem::RParen {
-                break;
-            }
-
-            let expr = Expression::parse(parser)?;
-
-            let param_id = if let Ast::Value {
-                node:
-                    Value {
-                        location: _,
-                        value: ValueType::Identifier(id),
-                    },
-            } = &expr
-            {
-                if parser.peek_token().lexem == Lexem::Colon {
-                    parser.consume_token(Lexem::Colon)?;
-                    Some(id.clone())
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            let param = if let Some(id) = param_id {
-                CallParam::Notified(id, Box::new(Expression::parse(parser)?))
-            } else {
-                CallParam::Positional(i, Box::new(expr))
-            };
-
-            args.push(param);
-
-            i += 1;
-
-            let next = parser.peek_token();
-            if next.lexem == Lexem::Comma {
-                // continue parsing if ','
-                parser.get_token();
-                continue;
-            } else if next.lexem == Lexem::RParen {
-                // end parsing if ')'
-                break;
-            } else {
-                return Err(Message::unexpected_token(next, &[]));
-            }
-        }
-
-        parser.consume_token(Lexem::RParen)?;
-
-        Ok(args)
-    }
-
-    pub fn parse_array(parser: &mut Parser) -> Result<Ast, Message> {
-        let location = parser.consume_token(Lexem::Lsb)?.location;
-
-        let mut components = Vec::<Ast>::new();
-
-        loop {
-            let next = parser.peek_token();
-
-            if next.lexem == Lexem::Rsb {
-                break;
-            }
-            components.push(Expression::parse(parser)?);
-
-            let next = parser.peek_token();
-            if next.lexem == Lexem::Comma {
-                // continue parsing if ','
-                parser.get_token();
-                continue;
-            } else if next.lexem == Lexem::Rsb {
-                // end parsing if ']'
-                break;
-            } else {
-                return Err(Message::unexpected_token(next, &[]));
-            }
-        }
-
-        parser.consume_token(Lexem::Rsb)?;
-
-        Ok(Ast::Value {
-            node: Self {
-                location,
-                value: ValueType::Array { components },
-            },
-        })
-    }
-
-    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, Message> {
-        parser.consume_token(Lexem::Lcb)?;
-
-        let mut components = Vec::<(Identifier, Ast)>::new();
-
-        loop {
-            let next = parser.peek_token();
-
-            if next.lexem == Lexem::Rcb {
-                break;
-            }
-
-            let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-            parser.consume_token(Lexem::Colon)?;
-
-            components.push((identifier, Expression::parse(parser)?));
-
-            let next = parser.peek_token();
-            if next.lexem == Lexem::Comma {
-                // continue parsing if ','
-                parser.get_token();
-                continue;
-            } else if next.lexem == Lexem::Rcb {
-                // end parsing if '}'
-                break;
-            } else {
-                return Err(Message::unexpected_token(next, &[]));
-            }
-        }
-
-        parser.consume_token(Lexem::Rcb)?;
-
-        Ok(components)
-    }
-}
-
-// Value::Call
-impl Value {
-    fn check_call_args(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+    fn check_call_args(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         let (identifier, arguments) = if let ValueType::Call {
             identifier,
             arguments,
@@ -303,8 +107,20 @@ impl Value {
     }
 }
 
-impl IAst for Value {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+impl Analyze for CallParam {
+    fn get_type(&self, analyzer: &mut Analyzer) -> Type {
+        match self {
+            Self::Notified(_, expr) | Self::Positional(_, expr) => expr.get_type(analyzer),
+        }
+    }
+
+    fn analyze(&mut self, _analyzer: &mut Analyzer) -> Result<(), Message> {
+        Ok(())
+    }
+}
+
+impl Analyze for Value {
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match &mut self.value {
             ValueType::Integer(_) => Ok(()),
 
@@ -417,7 +233,7 @@ impl IAst for Value {
         }
     }
 
-    fn get_type(&self, analyzer: &mut crate::analyzer::Analyzer) -> Type {
+    fn get_type(&self, analyzer: &mut Analyzer) -> Type {
         match &self.value {
             ValueType::Text(_) => Type::Ref {
                 is_mut: false,
@@ -479,129 +295,5 @@ impl IAst for Value {
                 Type::new()
             }
         }
-    }
-
-    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        match &self.value {
-            ValueType::Call {
-                identifier,
-                arguments,
-            } => {
-                writer.begin_tag("call-statement")?;
-
-                identifier.serialize(writer)?;
-
-                writer.begin_tag("parameters")?;
-                for arg in arguments.iter() {
-                    writer.begin_tag("parameter")?;
-                    match arg {
-                        CallParam::Notified(id, expr) => {
-                            id.serialize(writer)?;
-                            expr.serialize(writer)?;
-                        }
-                        CallParam::Positional(index, expr) => {
-                            writer.put_param("index", index)?;
-                            expr.serialize(writer)?;
-                        }
-                    }
-                    writer.end_tag()?; //parameter
-                }
-                writer.end_tag()?; // parameters
-                writer.end_tag()?; // call-statement
-            }
-            ValueType::Struct {
-                identifier,
-                components,
-            } => {
-                writer.begin_tag("struct-initialization")?;
-
-                identifier.serialize(writer)?;
-
-                for (comp_id, comp_type) in components.iter() {
-                    writer.begin_tag("field")?;
-
-                    comp_id.serialize(writer)?;
-                    comp_type.serialize(writer)?;
-
-                    writer.end_tag()?;
-                }
-
-                writer.end_tag()?;
-            }
-            ValueType::Tuple { components } => {
-                writer.begin_tag("tuple-initialization")?;
-
-                for component in components.iter() {
-                    component.serialize(writer)?;
-                }
-
-                writer.end_tag()?;
-            }
-            ValueType::Array { components } => {
-                writer.begin_tag("array-initialization")?;
-
-                for component in components.iter() {
-                    component.serialize(writer)?;
-                }
-
-                writer.end_tag()?;
-            }
-            ValueType::Identifier(id) => {
-                writer.begin_tag("variable")?;
-                id.serialize(writer)?;
-                writer.end_tag()?;
-            }
-            ValueType::Text(value) => {
-                writer.begin_tag("literal")?;
-                writer.put_param("style", "text")?;
-                writer.put_param("value", value)?;
-                writer.end_tag()?;
-            }
-            ValueType::Integer(value) => {
-                writer.begin_tag("literal")?;
-                writer.put_param("style", "integer-number")?;
-                writer.put_param("value", value)?;
-                writer.end_tag()?;
-            }
-            ValueType::Decimal(value) => {
-                writer.begin_tag("literal")?;
-                writer.put_param("style", "decimal-number")?;
-                writer.put_param("value", value)?;
-                writer.end_tag()?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        match &self.value {
-            ValueType::Integer(val) => write!(stream, "{}", *val)?,
-            ValueType::Decimal(val) => write!(stream, "{}", *val)?,
-            ValueType::Identifier(val) => val.codegen(stream)?,
-            ValueType::Call {
-                identifier,
-                arguments,
-            } => {
-                /* at this point, all arguments must be converted to positional */
-
-                identifier.codegen(stream)?;
-                write!(stream, "(")?;
-
-                if !arguments.is_empty() {
-                    arguments[0].codegen(stream)?;
-                }
-
-                for arg in arguments.iter().skip(1) {
-                    write!(stream, ", ")?;
-                    arg.codegen(stream)?;
-                }
-
-                write!(stream, ")")?;
-            }
-            _ => unimplemented!(),
-        }
-
-        Ok(())
     }
 }

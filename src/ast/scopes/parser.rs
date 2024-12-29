@@ -1,28 +1,9 @@
-use crate::codegen::CodeGenStream;
+use super::Scope;
+use crate::ast::{aliases, Ast};
 use crate::messages::Message;
-use crate::parser::token::Lexem;
-use crate::parser::Parser;
-use crate::{
-    ast,
-    ast::{Ast, IAst},
-};
-
-use std::io::Write;
-
-#[derive(Clone, PartialEq)]
-pub struct Scope {
-    pub statements: Vec<Ast>,
-    pub is_global: bool,
-}
+use crate::parser::{token::Lexem, Parser};
 
 impl Scope {
-    pub fn new() -> Self {
-        Self {
-            statements: Vec::new(),
-            is_global: false,
-        }
-    }
-
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, Message> {
         parser.consume_token(Lexem::Lcb)?;
 
@@ -39,6 +20,8 @@ impl Scope {
     }
 
     pub fn parse_global_internal(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
+        use crate::ast::{aliases, functions, modules, structs, variables, variants};
+
         let mut children = Vec::<Ast>::new();
 
         loop {
@@ -54,15 +37,15 @@ impl Scope {
                     continue;
                 }
 
-                Lexem::KwModule => ast::modules::ModuleNode::parse_def(parser),
+                Lexem::KwModule => modules::ModuleDef::parse(parser),
 
-                Lexem::KwFunc => ast::functions::FunctionNode::parse_def(parser),
+                Lexem::KwFunc => functions::FunctionDef::parse(parser),
 
-                Lexem::KwStruct => ast::structs::StructNode::parse_def(parser),
+                Lexem::KwStruct => structs::StructDef::parse(parser),
 
-                Lexem::KwEnum => ast::structs::EnumNode::parse_def(parser),
+                Lexem::KwVariant => variants::VariantDef::parse(parser),
 
-                Lexem::KwStatic => ast::variables::VariableNode::parse_def(parser),
+                Lexem::KwStatic => variables::VariableDef::parse(parser),
 
                 Lexem::KwDef => {
                     parser.consume_token(Lexem::KwDef)?;
@@ -70,7 +53,7 @@ impl Scope {
                     let next = parser.peek_token();
 
                     match next.lexem {
-                        Lexem::KwModule => ast::modules::ModuleNode::parse_ext_module(parser),
+                        Lexem::KwModule => modules::ModuleDef::parse_ext_module(parser),
 
                         _ => {
                             parser.error(Message::new(
@@ -82,7 +65,7 @@ impl Scope {
                     }
                 }
 
-                Lexem::KwAlias => ast::types::Alias::parse_def(parser),
+                Lexem::KwAlias => aliases::AliasDef::parse(parser),
 
                 _ => {
                     parser.skip_until(&[Lexem::EndOfLine]);
@@ -125,6 +108,8 @@ impl Scope {
     }
 
     pub fn parse_local_internal(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
+        use crate::ast::{branches, expressions, structs, variables, variants};
+
         let mut children = Vec::<Ast>::new();
 
         loop {
@@ -138,28 +123,28 @@ impl Scope {
                     continue;
                 }
 
-                Lexem::KwLet => ast::variables::VariableNode::parse_def(parser),
+                Lexem::KwLet => variables::VariableDef::parse(parser),
 
-                Lexem::KwStruct => ast::structs::StructNode::parse_def(parser),
+                Lexem::KwStruct => structs::StructDef::parse(parser),
 
-                Lexem::KwEnum => ast::structs::EnumNode::parse_def(parser),
+                Lexem::KwVariant => variants::VariantDef::parse(parser),
 
-                Lexem::KwAlias => ast::types::Alias::parse_def(parser),
+                Lexem::KwAlias => aliases::AliasDef::parse(parser),
 
-                Lexem::KwIf => ast::branches::Branch::parse_if(parser),
+                Lexem::KwIf => branches::Branch::parse_if(parser),
 
-                Lexem::KwLoop => ast::branches::Branch::parse_loop(parser),
+                Lexem::KwLoop => branches::Branch::parse_loop(parser),
 
-                Lexem::KwWhile => ast::branches::Branch::parse_while(parser),
+                Lexem::KwWhile => branches::Branch::parse_while(parser),
 
-                // Lexem::KwFor => ast::branch_node::parse_for(parser),
-                Lexem::KwReturn => ast::branches::Return::parse(parser),
+                // Lexem::KwFor => branches::parse_for(parser),
+                Lexem::KwReturn => branches::Return::parse(parser),
 
-                Lexem::KwBreak => ast::branches::Break::parse(parser),
+                Lexem::KwBreak => branches::Break::parse(parser),
 
-                Lexem::KwContinue => ast::branches::Continue::parse(parser),
+                Lexem::KwContinue => branches::Continue::parse(parser),
 
-                Lexem::Identifier(_) => ast::expressions::Expression::parse(parser),
+                Lexem::Identifier(_) => expressions::Expression::parse(parser),
 
                 Lexem::Lcb => Self::parse_local(parser),
 
@@ -187,57 +172,5 @@ impl Scope {
         }
 
         Ok(children)
-    }
-}
-
-impl IAst for Scope {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        let cnt = analyzer.counter();
-        analyzer.scope.push(&format!("@s.{}", cnt));
-        for n in self.statements.iter_mut() {
-            let _ = n.analyze(analyzer);
-        }
-        analyzer.scope.pop();
-        Ok(())
-    }
-
-    fn serialize(&self, writer: &mut crate::serializer::XmlWriter) -> std::io::Result<()> {
-        for stmt in self.statements.iter() {
-            stmt.serialize(writer)?;
-        }
-
-        Ok(())
-    }
-
-    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
-        if !self.is_global {
-            writeln!(stream, "{{")?;
-        }
-
-        for stmt in self.statements.iter() {
-            stmt.codegen(stream)?;
-
-            match stmt {
-                Ast::Expression { .. }
-                | Ast::BreakStmt { .. }
-                | Ast::ContinueStmt { .. }
-                | Ast::ReturnStmt { .. }
-                | Ast::VariableDef { .. } => write!(stream, ";")?,
-                _ => {}
-            }
-
-            writeln!(stream)?;
-        }
-
-        if !self.is_global {
-            writeln!(stream, "}}")?;
-        }
-        Ok(())
-    }
-}
-
-impl Default for Scope {
-    fn default() -> Self {
-        Self::new()
     }
 }
