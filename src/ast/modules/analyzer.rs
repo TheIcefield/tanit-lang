@@ -1,5 +1,5 @@
 use super::ModuleDef;
-use crate::analyzer::{Analyze, Analyzer, SymbolData};
+use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::identifiers::IdentifierType;
 use crate::messages::Message;
 

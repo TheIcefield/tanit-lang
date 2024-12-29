@@ -1,5 +1,6 @@
 use tanit::{
-    analyzer, ast, codegen,
+    analyzer::{self, symbol_table::SymbolTable},
+    ast, codegen,
     messages::{Error, Warning},
     parser, serializer,
 };
@@ -15,21 +16,29 @@ fn serialize_ast(output: &str, ast: &ast::Ast) -> Result<(), &'static str> {
     }
 }
 
-fn dump_errors(errors: &[Error]) {
+fn print_errors(errors: &[Error]) {
     for err in errors.iter() {
         eprintln!("{}: {}", err.location, err.text);
     }
 }
 
-fn dump_warnings(warnings: &[Warning]) {
+fn print_warnings(warnings: &[Warning]) {
     for warn in warnings.iter() {
         eprintln!("{}: {}", warn.location, warn.text);
     }
 }
 
-fn dump_messages(errors: &[Error], warnings: &[Warning]) {
-    dump_errors(errors);
-    dump_warnings(warnings);
+fn print_messages(errors: &[Error], warnings: &[Warning]) {
+    print_errors(errors);
+    print_warnings(warnings);
+}
+
+fn print_symtable(output: &str, symbol_table: &SymbolTable) {
+    let mut stream = std::fs::File::create(format!("{}_symbol_table.txt", output)).unwrap();
+
+    if let Err(err) = symbol_table.traverse(&mut stream) {
+        eprintln!("{}", err);
+    }
 }
 
 fn main() {
@@ -74,7 +83,7 @@ fn main() {
     let mut ast = match parser.parse() {
         Ok(ast) => ast,
         Err(messages) => {
-            dump_messages(&messages.0, &messages.1);
+            print_messages(&messages.0, &messages.1);
             return;
         }
     };
@@ -90,17 +99,15 @@ fn main() {
     }
 
     if dump_symtable {
-        if let Err(err) = analyzer::dump_symtable(&output_file, &symtable) {
-            eprintln!("{}", err);
-        }
+        print_symtable(&output_file, &symtable);
     }
 
     if !errors.is_empty() {
-        dump_errors(&errors);
+        print_errors(&errors);
         return;
     }
 
-    dump_warnings(&warnings);
+    print_warnings(&warnings);
 
     let mut codegen = {
         let codegen = codegen::CodeGenStream::new(&output_file);

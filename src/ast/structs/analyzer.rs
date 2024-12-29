@@ -1,5 +1,5 @@
 use super::StructDef;
-use crate::analyzer::{Analyze, Analyzer, SymbolData};
+use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::types::Type;
 use crate::messages::Message;
 

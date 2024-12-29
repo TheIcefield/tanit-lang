@@ -1,6 +1,6 @@
 use super::AliasDef;
 use crate::{
-    analyzer::{Analyze, Analyzer, SymbolData},
+    analyzer::{symbol_table::SymbolData, Analyze, Analyzer},
     ast::types::Type,
     messages::Message,
 };

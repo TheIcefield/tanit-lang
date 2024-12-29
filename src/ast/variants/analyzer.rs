@@ -1,5 +1,5 @@
 use super::{VariantDef, VariantField};
-use crate::analyzer::{Analyze, Analyzer, SymbolData};
+use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::messages::Message;
 
 impl Analyze for VariantField {

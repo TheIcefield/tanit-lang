@@ -1,5 +1,5 @@
 use super::{Expression, ExpressionType};
-use crate::analyzer::{Analyze, Analyzer, SymbolData};
+use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::{types::Type, values::ValueType, Ast};
 use crate::messages::Message;
 use crate::parser::token::Lexem;
