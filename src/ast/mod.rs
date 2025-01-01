@@ -1,7 +1,9 @@
-use crate::analyzer::Analyzer;
-use crate::codegen::CodeGenStream;
-use crate::serializer::XmlWriter;
+use crate::analyzer::{Analyze, Analyzer};
+use crate::codegen::{CodeGenStream, Codegen};
+use crate::messages::Message;
+use crate::serializer::{Serialize, XmlWriter};
 
+pub mod aliases;
 pub mod branches;
 pub mod expressions;
 pub mod functions;
@@ -12,41 +14,28 @@ pub mod structs;
 pub mod types;
 pub mod values;
 pub mod variables;
+pub mod variants;
 // pub mod externs;
-
-pub trait IAst {
-    fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()>;
-
-    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str>;
-
-    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()>;
-
-    fn get_type(&self, _analyzer: &mut Analyzer) -> types::Type {
-        types::Type::Tuple {
-            components: Vec::new(),
-        }
-    }
-}
 
 #[derive(Clone, PartialEq)]
 pub enum Ast {
     Scope { node: scopes::Scope },
 
-    ModuleDef { node: modules::ModuleNode },
+    ModuleDef { node: modules::ModuleDef },
 
-    StructDef { node: structs::StructNode },
+    StructDef { node: structs::StructDef },
 
-    EnumDef { node: structs::EnumNode },
+    VariantDef { node: variants::VariantDef },
 
-    FuncDef { node: functions::FunctionNode },
+    FuncDef { node: functions::FunctionDef },
 
-    VariableDef { node: variables::VariableNode },
+    VariableDef { node: variables::VariableDef },
 
     Value { node: values::Value },
 
-    TypeDecl { node: types::Type },
+    Type { node: types::Type },
 
-    AliasDef { node: types::Alias },
+    AliasDef { node: aliases::AliasDef },
 
     Expression { node: Box<expressions::Expression> },
 
@@ -65,11 +54,11 @@ impl Ast {
             Self::Scope { node } => node.serialize(writer),
             Self::ModuleDef { node } => node.serialize(writer),
             Self::StructDef { node } => node.serialize(writer),
-            Self::EnumDef { node } => node.serialize(writer),
+            Self::VariantDef { node } => node.serialize(writer),
             Self::FuncDef { node } => node.serialize(writer),
             Self::VariableDef { node } => node.serialize(writer),
             Self::Value { node } => node.serialize(writer),
-            Self::TypeDecl { node } => node.serialize(writer),
+            Self::Type { node } => node.serialize(writer),
             Self::AliasDef { node } => node.serialize(writer),
             Self::Expression { node } => node.serialize(writer),
             Self::BranchStmt { node } => node.serialize(writer),
@@ -79,7 +68,7 @@ impl Ast {
         }
     }
 
-    pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), &'static str> {
+    pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match self {
             Ast::Scope { node } => node.analyze(analyzer),
 
@@ -91,7 +80,7 @@ impl Ast {
 
             Ast::StructDef { node } => node.analyze(analyzer),
 
-            Ast::EnumDef { node } => node.analyze(analyzer),
+            Ast::VariantDef { node } => node.analyze(analyzer),
 
             Ast::VariableDef { node } => node.analyze(analyzer),
 
@@ -107,7 +96,7 @@ impl Ast {
 
             Ast::BreakStmt { node } => node.analyze(analyzer),
 
-            Ast::TypeDecl { node } => node.analyze(analyzer),
+            Ast::Type { node } => node.analyze(analyzer),
         }?;
 
         // TODO: fix conversion
@@ -123,11 +112,11 @@ impl Ast {
             Self::Scope { node } => node.codegen(stream),
             Self::ModuleDef { node } => node.codegen(stream),
             Self::StructDef { node } => node.codegen(stream),
-            Self::EnumDef { node } => node.codegen(stream),
+            Self::VariantDef { node } => node.codegen(stream),
             Self::FuncDef { node } => node.codegen(stream),
             Self::VariableDef { node } => node.codegen(stream),
             Self::Value { node } => node.codegen(stream),
-            Self::TypeDecl { node } => node.codegen(stream),
+            Self::Type { node } => node.codegen(stream),
             Self::AliasDef { node } => node.codegen(stream),
             Self::Expression { node } => node.codegen(stream),
             Self::BranchStmt { node } => node.codegen(stream),

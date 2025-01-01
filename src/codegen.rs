@@ -1,3 +1,7 @@
+pub trait Codegen {
+    fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()>;
+}
+
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum CodeGenMode {
     Unset,
