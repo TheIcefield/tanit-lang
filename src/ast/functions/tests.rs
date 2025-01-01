@@ -4,9 +4,17 @@ use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 
 #[test]
 fn functions_test() {
-    static SRC_PATH: &str = "./examples/functions.tt";
+    static SRC_TEXT: &str = "func f(a: i32, b: i32) -> f32 {\
+                                return a + b\
+                            }\
+                            func main() {\
+                                let res = f(a: 1, 2, c: 1 + 2)\
+                            }\
+                            func bar () {\
+                                let PI = 3.14\
+                            }";
 
-    let lexer = Lexer::from_file(SRC_PATH, true).unwrap();
+    let lexer = Lexer::from_text(SRC_TEXT, true).unwrap();
 
     let mut parser = Parser::new(lexer);
 

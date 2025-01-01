@@ -5,9 +5,13 @@ use std::str::FromStr;
 
 #[test]
 fn struct_test() {
-    static SRC_PATH: &str = "./examples/structs.tt";
+    static SRC_TEXT: &str = "struct S1
+                             {
+                                 f1: i32
+                                 f2: Vec<i32>
+                             }";
 
-    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
 
     let mut parser = Parser::new(lexer);
 

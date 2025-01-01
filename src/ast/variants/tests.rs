@@ -1,18 +1,24 @@
 use super::{VariantDef, VariantField};
-use crate::ast::{identifiers::Identifier, structs::StructDef, types::Type, Ast};
+use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::{lexer::Lexer, Parser};
 
 use std::str::FromStr;
 
 #[test]
 fn variant_test() {
-    static SRC_PATH: &str = "./examples/structs.tt";
+    static SRC_TEXT: &str = "variant V1\
+                             {\n
+                                 f1\n
+                                 f2(i32, i32)\n
+                                 f3 {\n
+                                     f1: i32\n
+                                     f2: f32\n
+                                 }\n
+                             }";
 
-    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
 
     let mut parser = Parser::new(lexer);
-
-    StructDef::parse(&mut parser).unwrap();
 
     let res = VariantDef::parse(&mut parser).unwrap();
 
@@ -54,6 +60,6 @@ fn variant_test() {
             panic!("wrong type");
         }
     } else {
-        panic!("res should be \'EnumDef\'");
+        panic!("res should be \'VariantDef\'");
     };
 }

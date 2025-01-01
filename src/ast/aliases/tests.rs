@@ -8,9 +8,12 @@ fn alias_test() {
     use crate::ast::functions::FunctionDef;
     use crate::parser::lexer::Lexer;
 
-    static SRC_PATH: &str = "./examples/types.tt";
+    static SRC_TEXT: &str = "func main() -> ()\
+                            {\
+                                alias Items = Vec<Item>\
+                            }";
 
-    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
 
     let mut parser = Parser::new(lexer);
 
