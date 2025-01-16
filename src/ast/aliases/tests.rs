@@ -1,21 +1,42 @@
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use crate::parser::Parser;
+use crate::ast::{aliases::AliasDef, identifiers::Identifier, types::Type, Ast};
+use crate::parser::{lexer::Lexer, Parser};
+use crate::serializer::XmlWriter;
 
 use std::str::FromStr;
 
 #[test]
-fn alias_test() {
+fn alias_def_test() {
+    static SRC_TEXT: &str = "alias MyAlias = f32";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+
+    let alias_node = AliasDef::parse(&mut parser).unwrap();
+
+    {
+        const EXPECTED: &str = "\n<alias-definition name=\"MyAlias\">\
+                                \n    <type style=\"primitive\" name=\"f32\"/>\
+                                \n</alias-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        alias_node.serialize(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_eq!(EXPECTED, res);
+    }
+}
+
+#[test]
+fn alias_in_func_test() {
     use crate::ast::functions::FunctionDef;
-    use crate::parser::lexer::Lexer;
 
     static SRC_TEXT: &str = "func main() -> ()\
                             {\
                                 alias Items = Vec<Item>\
                             }";
 
-    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
-
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
 
     let res = if let Ast::FuncDef { node } = FunctionDef::parse(&mut parser).unwrap() {
         assert!(node.identifier == Identifier::from_str("main").unwrap());
