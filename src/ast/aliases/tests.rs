@@ -1,4 +1,5 @@
 use crate::ast::{aliases::AliasDef, identifiers::Identifier, types::Type, Ast};
+use crate::codegen::CodeGenStream;
 use crate::parser::{lexer::Lexer, Parser};
 use crate::serializer::XmlWriter;
 
@@ -24,6 +25,22 @@ fn alias_def_test() {
         let res = String::from_utf8(buffer).unwrap();
 
         assert_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef float MyAlias;\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        alias_node.codegen(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        let source_res = String::from_utf8(source_buffer).unwrap();
+
+        assert_eq!(HEADER_EXPECTED, header_res);
+        assert!(source_res.is_empty());
     }
 }
 
