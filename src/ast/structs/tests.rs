@@ -1,5 +1,6 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::codegen::CodeGenStream;
 use crate::parser::{lexer::Lexer, Parser};
 use crate::serializer::XmlWriter;
 use std::str::FromStr;
@@ -9,7 +10,7 @@ fn struct_def_test() {
     const SRC_TEXT: &str = "\nstruct MyStruct\
                             \n{\
                             \n    f1: i32\
-                            \n    f2: Vec<i32>\
+                            \n    f2: f32\
                             \n}";
 
     let mut parser =
@@ -30,20 +31,7 @@ fn struct_def_test() {
             .fields
             .get(&Identifier::from_str("f2").unwrap())
             .unwrap();
-
-        if let Type::Template {
-            identifier,
-            arguments,
-        } = &field_type
-        {
-            let expected_id = Identifier::from_str("Vec").unwrap();
-
-            assert!(*identifier == expected_id);
-            assert_eq!(arguments.len(), 1);
-            assert_eq!(arguments[0], Type::I32);
-        } else {
-            panic!("wrong type");
-        }
+        assert!(matches!(field_type, Type::F32));
     } else {
         panic!("res should be \'StructDef\'");
     };
@@ -54,9 +42,7 @@ fn struct_def_test() {
                                 \n        <type style=\"primitive\" name=\"i32\"/>\
                                 \n    </field>\
                                 \n    <field name=\"f2\">\
-                                \n        <type style=\"generic\" name=\"Vec\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </type>\
+                                \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </field>\
                                 \n</struct-definition>";
 
@@ -67,5 +53,24 @@ fn struct_def_test() {
         let res = String::from_utf8(buffer).unwrap();
 
         assert_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \nsigned int f1;\
+                                     \nfloat f2;\
+                                     \n} MyStruct;\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        struct_node.codegen(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        let source_res = String::from_utf8(source_buffer).unwrap();
+
+        assert_eq!(HEADER_EXPECTED, header_res);
+        assert!(source_res.is_empty());
     }
 }
