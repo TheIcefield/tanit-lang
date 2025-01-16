@@ -5,19 +5,41 @@ use tanit::{
     parser, serializer,
 };
 
-fn serialize_ast(output: &str, ast: &ast::Ast) -> Result<(), &'static str> {
-    let mut file = if let Ok(file) = std::fs::File::create(format!("{}_ast.xml", output)) {
-        file
-    } else {
-        return Err("Error: can't create file");
-    };
-    let mut writer = serializer::XmlWriter::new(&mut file)?;
+fn serialize_ast(output: &str, ast: &ast::Ast) {
+    let mut file = std::fs::File::create(format!("{}_ast.xml", output))
+        .expect("Error: can't create file for dumping AST");
+
+    let mut writer =
+        serializer::XmlWriter::new(&mut file).expect("Error: can't create AST serializer");
+
     match ast.serialize(&mut writer) {
-        Ok(_) => Ok(()),
+        Ok(_) => {}
         Err(err) => {
             eprintln!("Error: {}", err);
-            Err("Error during serializing AST")
         }
+    }
+}
+
+fn serialize_symbol_table(output: &str, symbol_table: &SymbolTable) {
+    let mut stream = std::fs::File::create(format!("{}_symbol_table.txt", output))
+        .expect("Error: can't create file for serializing symbol table");
+
+    if let Err(err) = symbol_table.traverse(&mut stream) {
+        eprintln!("Error: {}", err);
+    }
+}
+
+fn generate_code(output: &str, ast: &ast::Ast) {
+    let mut header_stream = std::fs::File::create(format!("{}_generated.h", output))
+        .expect("Error: can't create file for header stream");
+    let mut source_stream = std::fs::File::create(format!("{}_generated.h", output))
+        .expect("Error: can't create file for header stream");
+
+    let mut writer = codegen::CodeGenStream::new(&mut header_stream, &mut source_stream)
+        .expect("Error: can't create codegen writer");
+
+    if let Err(err) = ast.codegen(&mut writer) {
+        eprintln!("Error: {}", err);
     }
 }
 
@@ -36,14 +58,6 @@ fn print_warnings(warnings: &[Warning]) {
 fn print_messages(errors: &[Error], warnings: &[Warning]) {
     print_errors(errors);
     print_warnings(warnings);
-}
-
-fn print_symtable(output: &str, symbol_table: &SymbolTable) {
-    let mut stream = std::fs::File::create(format!("{}_symbol_table.txt", output)).unwrap();
-
-    if let Err(err) = symbol_table.traverse(&mut stream) {
-        eprintln!("{}", err);
-    }
 }
 
 fn main() {
@@ -73,18 +87,11 @@ fn main() {
         }
     }
 
-    let lexer = {
-        let lexer = parser::lexer::Lexer::from_file(&source_file, dump_tokens);
-        match lexer {
-            Err(err) => {
-                println!("Error when open file \"{}\": {}", source_file, err);
-                return;
-            }
-            Ok(lexer) => lexer,
-        }
-    };
+    let mut parser = parser::Parser::new(
+        parser::lexer::Lexer::from_file(&source_file, dump_tokens)
+            .expect("Error: can't create lexer"),
+    );
 
-    let mut parser = parser::Parser::new(lexer);
     let mut ast = match parser.parse() {
         Ok(ast) => ast,
         Err(messages) => {
@@ -98,13 +105,11 @@ fn main() {
     let (symtable, errors, warnings) = analyzer.analyze(&mut ast);
 
     if dump_ast {
-        if let Err(err) = serialize_ast(&output_file, &ast) {
-            println!("{}", err);
-        }
+        serialize_ast(&output_file, &ast);
     }
 
     if dump_symtable {
-        print_symtable(&output_file, &symtable);
+        serialize_symbol_table(&output_file, &symtable);
     }
 
     if !errors.is_empty() {
@@ -114,19 +119,7 @@ fn main() {
 
     print_warnings(&warnings);
 
-    let mut codegen = {
-        let codegen = codegen::CodeGenStream::new(&output_file);
-        match codegen {
-            Ok(codegen) => codegen,
-            Err(err) => {
-                eprintln!("Error when open file \"{}\": {}", source_file, err);
-                return;
-            }
-        }
-    };
+    generate_code(&output_file, &ast);
 
-    match ast.codegen(&mut codegen) {
-        Ok(_) => println!("C code generated"),
-        Err(_) => eprintln!("Error occured during C code generating"),
-    }
+    println!("C code generated")
 }

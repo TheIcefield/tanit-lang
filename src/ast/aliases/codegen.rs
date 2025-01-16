@@ -12,7 +12,10 @@ impl Codegen for AliasDef {
 
         self.identifier.codegen(stream)?;
 
+        writeln!(stream, ";")?;
+
         stream.mode = old_mode;
-        writeln!(stream, ";\n")
+
+        Ok(())
     }
 }

@@ -10,32 +10,35 @@ pub enum CodeGenMode {
     SourceOnly,
 }
 
-pub struct CodeGenStream {
-    header: std::fs::File,
-    source: std::fs::File,
+pub struct CodeGenStream<'a> {
+    header_stream: &'a mut dyn std::io::Write,
+    source_stream: &'a mut dyn std::io::Write,
     pub mode: CodeGenMode,
 }
 
-impl CodeGenStream {
-    pub fn new(name: &str) -> std::io::Result<Self> {
+impl<'a> CodeGenStream<'a> {
+    pub fn new(
+        header_stream: &'a mut dyn std::io::Write,
+        source_stream: &'a mut dyn std::io::Write,
+    ) -> std::io::Result<Self> {
         Ok(Self {
-            header: std::fs::File::create(format!("{}_generated.h", name))?,
-            source: std::fs::File::create(format!("{}_generated.c", name))?,
+            header_stream,
+            source_stream,
             mode: CodeGenMode::Unset,
         })
     }
 }
 
-impl std::io::Write for CodeGenStream {
+impl<'a> std::io::Write for CodeGenStream<'a> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut res = 0;
 
         if CodeGenMode::HeaderOnly == self.mode || CodeGenMode::Both == self.mode {
-            res += self.header.write(buf)?;
+            res += self.header_stream.write(buf)?;
         }
 
         if CodeGenMode::SourceOnly == self.mode || CodeGenMode::Both == self.mode {
-            res += self.source.write(buf)?;
+            res += self.source_stream.write(buf)?;
         }
 
         Ok(res)
@@ -43,19 +46,19 @@ impl std::io::Write for CodeGenStream {
 
     fn write_fmt(&mut self, fmt: std::fmt::Arguments<'_>) -> std::io::Result<()> {
         if CodeGenMode::HeaderOnly == self.mode || CodeGenMode::Both == self.mode {
-            self.header.write_fmt(fmt)?;
+            self.header_stream.write_fmt(fmt)?;
         }
 
         if CodeGenMode::SourceOnly == self.mode || CodeGenMode::Both == self.mode {
-            self.source.write_fmt(fmt)?;
+            self.source_stream.write_fmt(fmt)?;
         }
 
         Ok(())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.header.flush()?;
-        self.source.flush()?;
+        self.header_stream.flush()?;
+        self.source_stream.flush()?;
         Ok(())
     }
 }
