@@ -11,13 +11,13 @@ pub mod serializer;
 
 use super::expressions::ExpressionType;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum IdentifierType {
     Common(String),
     Complex(Vec<String>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Identifier {
     pub location: Location,
     pub identifier: IdentifierType,

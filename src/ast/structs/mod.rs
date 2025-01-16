@@ -1,7 +1,7 @@
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::location::Location;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub mod analyzer;
 pub mod codegen;
@@ -12,7 +12,7 @@ pub mod serializer;
 pub struct StructDef {
     pub location: Location,
     pub identifier: Identifier,
-    pub fields: HashMap<Identifier, Type>,
+    pub fields: BTreeMap<Identifier, Type>,
     pub internals: Vec<Ast>,
 }
 

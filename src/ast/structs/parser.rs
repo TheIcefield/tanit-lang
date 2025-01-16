@@ -3,7 +3,7 @@ use crate::ast::{identifiers::Identifier, types::Type, variants::VariantDef, Ast
 use crate::messages::Message;
 use crate::parser::{location::Location, token::Lexem, Parser};
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 impl StructDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -25,7 +25,7 @@ impl StructDef {
         Ok(StructDef {
             location,
             identifier,
-            fields: HashMap::new(),
+            fields: BTreeMap::new(),
             internals: Vec::new(),
         })
     }
@@ -41,7 +41,7 @@ impl StructDef {
     }
 
     pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut fields = HashMap::<Identifier, Type>::new();
+        let mut fields = BTreeMap::<Identifier, Type>::new();
         let mut internals = Vec::<Ast>::new();
 
         loop {

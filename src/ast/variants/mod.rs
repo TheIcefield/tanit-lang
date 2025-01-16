@@ -1,7 +1,7 @@
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::location::Location;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 pub mod analyzer;
 pub mod codegen;
@@ -10,7 +10,7 @@ pub mod serializer;
 
 #[derive(Clone, PartialEq)]
 pub enum VariantField {
-    StructLike(HashMap<Identifier, Type>),
+    StructLike(BTreeMap<Identifier, Type>),
     TupleLike(Vec<Type>),
     Common,
 }
@@ -19,7 +19,7 @@ pub enum VariantField {
 pub struct VariantDef {
     pub location: Location,
     pub identifier: Identifier,
-    pub fields: HashMap<Identifier, VariantField>,
+    pub fields: BTreeMap<Identifier, VariantField>,
     pub internals: Vec<Ast>,
 }
 
