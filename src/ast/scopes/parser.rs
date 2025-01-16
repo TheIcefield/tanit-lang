@@ -1,5 +1,5 @@
 use super::Scope;
-use crate::ast::{aliases, Ast};
+use crate::ast::Ast;
 use crate::messages::Message;
 use crate::parser::{token::Lexem, Parser};
 
@@ -108,7 +108,7 @@ impl Scope {
     }
 
     pub fn parse_local_internal(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
-        use crate::ast::{branches, expressions, structs, variables, variants};
+        use crate::ast::{aliases, branches, expressions, structs, variables, variants};
 
         let mut children = Vec::<Ast>::new();
 
