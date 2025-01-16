@@ -8,20 +8,15 @@ struct XmlWriterState {
     has_internal_tags: bool,
 }
 
-pub struct XmlWriter {
-    stream: std::fs::File,
+pub struct XmlWriter<'a> {
+    stream: &'a mut dyn std::io::Write,
     intent: usize,
     current_state: XmlWriterState,
     cached_states: Vec<XmlWriterState>,
 }
 
-impl XmlWriter {
-    pub fn new(path: &str) -> Result<Self, &'static str> {
-        let stream = match std::fs::File::create(path) {
-            Err(_) => return Err("Cannot create XmlWriter"),
-            Ok(stream) => stream,
-        };
-
+impl<'a> XmlWriter<'a> {
+    pub fn new(stream: &'a mut dyn std::io::Write) -> Result<Self, &'static str> {
         Ok(Self {
             stream,
             intent: 0,
@@ -34,8 +29,6 @@ impl XmlWriter {
     }
 
     pub fn begin_tag(&mut self, name: &str) -> std::io::Result<()> {
-        use std::io::Write;
-
         if !self.cached_states.is_empty() && !self.current_state.has_internal_tags {
             /* close previous tag */
             write!(self.stream, ">")?;
@@ -59,13 +52,11 @@ impl XmlWriter {
     }
 
     pub fn end_tag(&mut self) -> std::io::Result<()> {
-        use std::io::Write;
-
         self.decrease_intent();
         if self.current_state.has_internal_tags {
             writeln!(self.stream)?;
             self.put_intent()?;
-            write!(self.stream, "<{}/>", self.current_state.name)?;
+            write!(self.stream, "</{}>", self.current_state.name)?;
         } else {
             write!(self.stream, "/>")?;
         }
@@ -76,8 +67,6 @@ impl XmlWriter {
     }
 
     pub fn put_param<V: std::fmt::Display>(&mut self, key: &str, value: V) -> std::io::Result<()> {
-        use std::io::Write;
-
         if self.current_state.has_internal_tags {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -90,8 +79,6 @@ impl XmlWriter {
     }
 
     fn put_intent(&mut self) -> std::io::Result<()> {
-        use std::io::Write;
-
         for _ in 0..self.intent {
             write!(self.stream, "    ")?;
         }

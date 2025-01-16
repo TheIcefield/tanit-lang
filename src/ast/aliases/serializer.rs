@@ -3,7 +3,7 @@ use crate::serializer::{Serialize, XmlWriter};
 
 impl Serialize for AliasDef {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
-        writer.begin_tag("alias-defintion")?;
+        writer.begin_tag("alias-definition")?;
 
         self.identifier.serialize(writer)?;
         self.value.serialize(writer)?;

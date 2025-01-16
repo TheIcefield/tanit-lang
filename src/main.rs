@@ -6,7 +6,12 @@ use tanit::{
 };
 
 fn serialize_ast(output: &str, ast: &ast::Ast) -> Result<(), &'static str> {
-    let mut writer = serializer::XmlWriter::new(&format!("{}_ast.xml", output))?;
+    let mut file = if let Ok(file) = std::fs::File::create(format!("{}_ast.xml", output)) {
+        file
+    } else {
+        return Err("Error: can't create file");
+    };
+    let mut writer = serializer::XmlWriter::new(&mut file)?;
     match ast.serialize(&mut writer) {
         Ok(_) => Ok(()),
         Err(err) => {
