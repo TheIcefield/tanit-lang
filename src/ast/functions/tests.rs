@@ -1,5 +1,6 @@
 use super::FunctionDef;
 use crate::ast::{expressions::ExpressionType, Ast};
+use crate::codegen::CodeGenStream;
 use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 use crate::serializer::XmlWriter;
 
@@ -41,6 +42,25 @@ fn function_def_test() {
         let res = String::from_utf8(buffer).unwrap();
 
         assert_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "float foo(signed int a, signed int b);\n";
+        const SOURCE_EXPECTED: &str = "float foo(signed int a, signed int b){\
+                                       \nreturn a + b;\
+                                       \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        node.codegen(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        let source_res = String::from_utf8(source_buffer).unwrap();
+
+        assert_eq!(HEADER_EXPECTED, header_res);
+        assert_eq!(SOURCE_EXPECTED, source_res);
     }
 }
 
