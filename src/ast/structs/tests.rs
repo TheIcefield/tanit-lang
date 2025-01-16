@@ -1,24 +1,24 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::{lexer::Lexer, Parser};
+use crate::serializer::XmlWriter;
 use std::str::FromStr;
 
 #[test]
-fn struct_test() {
-    static SRC_TEXT: &str = "struct S1
-                             {
-                                 f1: i32
-                                 f2: Vec<i32>
-                             }";
+fn struct_def_test() {
+    const SRC_TEXT: &str = "\nstruct MyStruct\
+                            \n{\
+                            \n    f1: i32\
+                            \n    f2: Vec<i32>\
+                            \n}";
 
-    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
+    let mut parser =
+        Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Failed to create lexer"));
 
-    let mut parser = Parser::new(lexer);
+    let struct_node = StructDef::parse(&mut parser).unwrap();
 
-    let res = StructDef::parse(&mut parser).unwrap();
-
-    if let Ast::StructDef { node } = res {
-        assert!(node.identifier == Identifier::from_str("S1").unwrap());
+    if let Ast::StructDef { node } = &struct_node {
+        assert!(node.identifier == Identifier::from_str("MyStruct").unwrap());
 
         let field_type = node
             .fields
@@ -47,4 +47,25 @@ fn struct_test() {
     } else {
         panic!("res should be \'StructDef\'");
     };
+
+    {
+        const EXPECTED: &str = "\n<struct-definition name=\"MyStruct\">\
+                                \n    <field name=\"f1\">\
+                                \n        <type style=\"primitive\" name=\"i32\"/>\
+                                \n    </field>\
+                                \n    <field name=\"f2\">\
+                                \n        <type style=\"generic\" name=\"Vec\">\
+                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n        </type>\
+                                \n    </field>\
+                                \n</struct-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        struct_node.serialize(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_eq!(EXPECTED, res);
+    }
 }
