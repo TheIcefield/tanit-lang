@@ -1,12 +1,13 @@
-use std::{
-    char::ParseCharError,
-    num::{ParseFloatError, ParseIntError},
-    str::ParseBoolError,
-};
-
 use crate::parser::{
     location::Location,
     token::{Lexem, Token},
+};
+
+use std::{
+    char::ParseCharError,
+    fmt::Display,
+    num::{ParseFloatError, ParseIntError},
+    str::ParseBoolError,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -81,5 +82,19 @@ impl Message {
             location,
             text: err.to_string(),
         }
+    }
+}
+
+impl Display for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.location, self.text)?;
+
+        Ok(())
+    }
+}
+
+pub fn print_messages(messages: &[Message]) {
+    for msg in messages.iter() {
+        eprintln!("{}", msg);
     }
 }

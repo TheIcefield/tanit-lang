@@ -6,7 +6,7 @@ pub mod codegen;
 pub mod parser;
 pub mod serializer;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
     pub identifier: Identifier,

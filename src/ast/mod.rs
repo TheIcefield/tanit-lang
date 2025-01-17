@@ -34,13 +34,9 @@ pub enum Ast {
 
     VariableDef { node: variables::VariableDef },
 
-    Value { node: values::Value },
-
-    Type { node: types::Type },
-
     AliasDef { node: aliases::AliasDef },
 
-    Expression { node: Box<expressions::Expression> },
+    Expression { node: expressions::Expression },
 
     BranchStmt { node: branches::Branch },
 
@@ -49,6 +45,10 @@ pub enum Ast {
     ContinueStmt { node: branches::Continue },
 
     ReturnStmt { node: branches::Return },
+
+    Value { node: values::Value },
+
+    Type { node: types::Type },
 }
 
 impl Ast {

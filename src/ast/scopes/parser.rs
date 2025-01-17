@@ -5,29 +5,21 @@ use crate::parser::{token::Lexem, Parser};
 
 impl Scope {
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, Message> {
-        parser.consume_token(Lexem::Lcb)?;
+        let mut node = Self::new();
 
-        let statements = Self::parse_global_internal(parser)?;
+        node.parse_global_internal(parser)?;
+        node.is_global = true;
 
-        parser.consume_token(Lexem::Rcb)?;
-
-        Ok(Ast::Scope {
-            node: Scope {
-                statements,
-                is_global: true,
-            },
-        })
+        Ok(Ast::Scope { node })
     }
 
-    pub fn parse_global_internal(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
+    fn parse_global_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {
         use crate::ast::{aliases, functions, modules, structs, variables, variants};
-
-        let mut children = Vec::<Ast>::new();
 
         loop {
             let next = parser.peek_token();
 
-            let child = match next.lexem {
+            let statement = match next.lexem {
                 Lexem::Rcb | Lexem::EndOfFile => {
                     break;
                 }
@@ -79,13 +71,13 @@ impl Scope {
                 }
             };
 
-            match child {
-                Ok(child) => children.push(child),
+            match statement {
+                Ok(child) => self.statements.push(child),
                 Err(err) => parser.error(err),
             }
         }
 
-        Ok(children)
+        Ok(())
     }
 
     pub fn parse_local(parser: &mut Parser) -> Result<Ast, Message> {

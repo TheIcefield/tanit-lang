@@ -1,8 +1,6 @@
 use tanit::{
     analyzer::{self, symbol_table::SymbolTable},
-    ast, codegen,
-    messages::{Error, Warning},
-    parser, serializer,
+    ast, codegen, messages, parser, serializer,
 };
 
 fn serialize_ast(output: &str, ast: &ast::Ast) {
@@ -43,23 +41,6 @@ fn generate_code(output: &str, ast: &ast::Ast) {
     }
 }
 
-fn print_errors(errors: &[Error]) {
-    for err in errors.iter() {
-        eprintln!("{}: {}", err.location, err.text);
-    }
-}
-
-fn print_warnings(warnings: &[Warning]) {
-    for warn in warnings.iter() {
-        eprintln!("{}: {}", warn.location, warn.text);
-    }
-}
-
-fn print_messages(errors: &[Error], warnings: &[Warning]) {
-    print_errors(errors);
-    print_warnings(warnings);
-}
-
 fn main() {
     let mut source_file = "main.tt".to_string();
     let mut output_file = "a".to_string();
@@ -92,32 +73,41 @@ fn main() {
             .expect("Error: can't create lexer"),
     );
 
-    let mut ast = match parser.parse() {
-        Ok(ast) => ast,
-        Err(messages) => {
-            print_messages(&messages.0, &messages.1);
-            return;
-        }
-    };
+    let parse_res = parser.parse();
+
+    if parser.has_errors() || parse_res.is_none() {
+        messages::print_messages(&parser.get_errors());
+        return;
+    }
+
+    if parser.has_warnings() {
+        messages::print_messages(&parser.get_warnings());
+    }
+
+    let mut ast = parse_res.unwrap();
 
     let mut analyzer = analyzer::Analyzer::new();
 
-    let (symtable, errors, warnings) = analyzer.analyze(&mut ast);
+    let analyze_res = analyzer.analyze(&mut ast);
+
+    if analyzer.has_errors() || analyze_res.is_none() {
+        messages::print_messages(&analyzer.get_errors());
+        return;
+    }
+
+    if analyzer.has_warnings() {
+        messages::print_messages(&analyzer.get_warnings());
+    }
+
+    let symbol_table = analyze_res.unwrap();
 
     if dump_ast {
         serialize_ast(&output_file, &ast);
     }
 
     if dump_symtable {
-        serialize_symbol_table(&output_file, &symtable);
+        serialize_symbol_table(&output_file, &symbol_table);
     }
-
-    if !errors.is_empty() {
-        print_errors(&errors);
-        return;
-    }
-
-    print_warnings(&warnings);
 
     generate_code(&output_file, &ast);
 

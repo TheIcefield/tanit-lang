@@ -16,7 +16,7 @@ fn conversion_test() {
             operation,
             lhs,
             rhs,
-        } = &node.as_ref().expr
+        } = &node.expr
         {
             assert_eq!(*operation, Lexem::KwAs);
 

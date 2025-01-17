@@ -104,14 +104,14 @@ impl VariableDef {
 
         if let Some(rhs) = rvalue {
             return Ok(Ast::Expression {
-                node: Box::new(Expression {
+                node: Expression {
                     location,
                     expr: ExpressionType::Binary {
                         operation: Lexem::Assign,
                         lhs: Box::new(var_node),
                         rhs: Box::new(rhs),
                     },
-                }),
+                },
             });
         }
 

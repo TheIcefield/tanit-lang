@@ -4,7 +4,7 @@ use crate::ast::{
     scopes::Scope,
     Ast,
 };
-use crate::messages::Message;
+use crate::messages::{self, Message};
 use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 
 impl ModuleDef {
@@ -73,14 +73,16 @@ impl ModuleDef {
             if let Ok(lexer) = lexer {
                 let mut parser_int = Parser::new(lexer);
 
-                match parser_int.parse() {
-                    Err(messages) => {
-                        for err in messages.0.iter() {
-                            parser.error(err.clone())
-                        }
-                        for warn in messages.1.iter() {
-                            parser.warning(warn.clone())
-                        }
+                let parse_res = parser_int.parse();
+
+                if parser_int.has_errors() {
+                    messages::print_messages(&parser_int.get_errors());
+                } else if parser_int.has_warnings() {
+                    messages::print_messages(&parser_int.get_warnings());
+                }
+
+                match parse_res {
+                    None => {
                         return Err(Message::new(
                             parser.get_location(),
                             &format!(
@@ -90,7 +92,7 @@ impl ModuleDef {
                         ));
                     }
 
-                    Ok(node) => {
+                    Some(node) => {
                         body = Some(Box::new(node));
                     }
                 }
@@ -108,14 +110,16 @@ impl ModuleDef {
             if let Ok(lexer) = lexer {
                 let mut parser_int = Parser::new(lexer);
 
-                match parser_int.parse() {
-                    Err(messages) => {
-                        for err in messages.0.iter() {
-                            parser.error(err.clone())
-                        }
-                        for warn in messages.1.iter() {
-                            parser.warning(warn.clone())
-                        }
+                let parser_res = parser_int.parse();
+
+                if parser_int.has_errors() {
+                    messages::print_messages(&parser_int.get_errors());
+                } else if parser_int.has_warnings() {
+                    messages::print_messages(&parser_int.get_warnings());
+                }
+
+                match parser_res {
+                    None => {
                         return Err(Message::new(
                             parser.get_location(),
                             &format!(
@@ -125,8 +129,8 @@ impl ModuleDef {
                         ));
                     }
 
-                    Ok(node) => {
-                        body = Some(Box::new(node));
+                    Some(ast) => {
+                        body = Some(Box::new(ast));
                     }
                 }
             }
