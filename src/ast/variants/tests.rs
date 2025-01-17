@@ -1,29 +1,28 @@
 use super::{VariantDef, VariantField};
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::{lexer::Lexer, Parser};
+use crate::serializer::XmlWriter;
 
 use std::str::FromStr;
 
 #[test]
-fn variant_test() {
-    static SRC_TEXT: &str = "variant V1\
-                             {\n
-                                 f1\n
-                                 f2(i32, i32)\n
-                                 f3 {\n
-                                     f1: i32\n
-                                     f2: f32\n
-                                 }\n
-                             }";
+fn variant_def_test() {
+    const SRC_TEXT: &str = "\nvariant MyVariant\
+                             \n{\
+                             \n    f1\
+                             \n    f2(i32, i32)\
+                             \n    f3 {\
+                             \n        f1: i32\
+                             \n        f2: f32\
+                             \n    }\
+                             \n}";
 
-    let lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
 
-    let mut parser = Parser::new(lexer);
+    let variant_node = VariantDef::parse(&mut parser).unwrap();
 
-    let res = VariantDef::parse(&mut parser).unwrap();
-
-    if let Ast::VariantDef { node } = &res {
-        assert!(node.identifier == Identifier::from_str("V1").unwrap());
+    if let Ast::VariantDef { node } = &variant_node {
+        assert!(node.identifier == Identifier::from_str("MyVariant").unwrap());
 
         assert!(matches!(
             node.fields.get(&Identifier::from_str("f1").unwrap()),
@@ -62,4 +61,30 @@ fn variant_test() {
     } else {
         panic!("res should be \'VariantDef\'");
     };
+
+    {
+        const EXPECTED: &str = "\n<variant-definition name=\"MyVariant\">\
+                                \n    <field name=\"f1\"/>\
+                                \n    <field name=\"f2\">\
+                                \n        <type style=\"primitive\" name=\"i32\"/>\
+                                \n        <type style=\"primitive\" name=\"i32\"/>\
+                                \n    </field>\
+                                \n    <field name=\"f3\">\
+                                \n        <field name=\"f1\">\
+                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n        </field>\
+                                \n        <field name=\"f2\">\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </field>\
+                                \n    </field>\
+                                \n</variant-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        variant_node.serialize(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_eq!(EXPECTED, res);
+    }
 }

@@ -3,7 +3,7 @@ use crate::ast::{identifiers::Identifier, structs::StructDef, types::Type, Ast};
 use crate::messages::Message;
 use crate::parser::{location::Location, token::Lexem, Parser};
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 impl VariantField {
     pub fn parse(parser: &mut Parser) -> Result<Self, Message> {
@@ -74,7 +74,7 @@ impl VariantDef {
         Ok(VariantDef {
             location,
             identifier,
-            fields: HashMap::new(),
+            fields: BTreeMap::new(),
             internals: Vec::new(),
         })
     }
@@ -93,7 +93,7 @@ impl VariantDef {
     }
 
     fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut fields = HashMap::<Identifier, VariantField>::new();
+        let mut fields = BTreeMap::<Identifier, VariantField>::new();
         let mut internals = Vec::<Ast>::new();
 
         loop {
