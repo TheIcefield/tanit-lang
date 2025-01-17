@@ -5,6 +5,7 @@ use crate::serializer::{Serialize, XmlWriter};
 
 pub mod aliases;
 pub mod branches;
+pub mod enums;
 pub mod expressions;
 pub mod functions;
 pub mod identifiers;
@@ -24,6 +25,8 @@ pub enum Ast {
     ModuleDef { node: modules::ModuleDef },
 
     StructDef { node: structs::StructDef },
+
+    EnumDef { node: enums::EnumDef },
 
     VariantDef { node: variants::VariantDef },
 
@@ -55,6 +58,7 @@ impl Ast {
             Self::ModuleDef { node } => node.serialize(writer),
             Self::StructDef { node } => node.serialize(writer),
             Self::VariantDef { node } => node.serialize(writer),
+            Self::EnumDef { node } => node.serialize(writer),
             Self::FuncDef { node } => node.serialize(writer),
             Self::VariableDef { node } => node.serialize(writer),
             Self::Value { node } => node.serialize(writer),
@@ -70,33 +74,21 @@ impl Ast {
 
     pub fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match self {
-            Ast::Scope { node } => node.analyze(analyzer),
-
-            Ast::FuncDef { node } => node.analyze(analyzer),
-
-            Ast::AliasDef { node } => node.analyze(analyzer),
-
-            Ast::ModuleDef { node } => node.analyze(analyzer),
-
-            Ast::StructDef { node } => node.analyze(analyzer),
-
-            Ast::VariantDef { node } => node.analyze(analyzer),
-
-            Ast::VariableDef { node } => node.analyze(analyzer),
-
-            Ast::Value { node } => node.analyze(analyzer),
-
-            Ast::Expression { node } => node.analyze(analyzer),
-
-            Ast::BranchStmt { node } => node.analyze(analyzer),
-
-            Ast::ContinueStmt { node } => node.analyze(analyzer),
-
-            Ast::ReturnStmt { node } => node.analyze(analyzer),
-
-            Ast::BreakStmt { node } => node.analyze(analyzer),
-
-            Ast::Type { node } => node.analyze(analyzer),
+            Self::Scope { node } => node.analyze(analyzer),
+            Self::FuncDef { node } => node.analyze(analyzer),
+            Self::AliasDef { node } => node.analyze(analyzer),
+            Self::ModuleDef { node } => node.analyze(analyzer),
+            Self::StructDef { node } => node.analyze(analyzer),
+            Self::EnumDef { node } => node.analyze(analyzer),
+            Self::VariantDef { node } => node.analyze(analyzer),
+            Self::VariableDef { node } => node.analyze(analyzer),
+            Self::Value { node } => node.analyze(analyzer),
+            Self::Expression { node } => node.analyze(analyzer),
+            Self::BranchStmt { node } => node.analyze(analyzer),
+            Self::ContinueStmt { node } => node.analyze(analyzer),
+            Self::ReturnStmt { node } => node.analyze(analyzer),
+            Self::BreakStmt { node } => node.analyze(analyzer),
+            Self::Type { node } => node.analyze(analyzer),
         }?;
 
         // TODO: fix conversion
@@ -112,6 +104,7 @@ impl Ast {
             Self::Scope { node } => node.codegen(stream),
             Self::ModuleDef { node } => node.codegen(stream),
             Self::StructDef { node } => node.codegen(stream),
+            Self::EnumDef { node } => node.codegen(stream),
             Self::VariantDef { node } => node.codegen(stream),
             Self::FuncDef { node } => node.codegen(stream),
             Self::VariableDef { node } => node.codegen(stream),

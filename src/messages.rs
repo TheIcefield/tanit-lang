@@ -1,3 +1,9 @@
+use std::{
+    char::ParseCharError,
+    num::{ParseFloatError, ParseIntError},
+    str::ParseBoolError,
+};
+
 use crate::parser::{
     location::Location,
     token::{Lexem, Token},
@@ -46,6 +52,34 @@ impl Message {
         Self {
             location,
             text: format!("Identifier \"{}\" defined multiple times", id),
+        }
+    }
+
+    pub fn parse_int_error(location: Location, err: ParseIntError) -> Self {
+        Self {
+            location,
+            text: err.to_string(),
+        }
+    }
+
+    pub fn parse_float_error(location: Location, err: ParseFloatError) -> Self {
+        Self {
+            location,
+            text: err.to_string(),
+        }
+    }
+
+    pub fn parse_char_error(location: Location, err: ParseCharError) -> Self {
+        Self {
+            location,
+            text: err.to_string(),
+        }
+    }
+
+    pub fn parse_bool_error(location: Location, err: ParseBoolError) -> Self {
+        Self {
+            location,
+            text: err.to_string(),
         }
     }
 }
