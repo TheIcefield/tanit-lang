@@ -497,6 +497,7 @@ impl Lexer {
             "module" => Token::new(Lexem::KwModule, location),
             "struct" => Token::new(Lexem::KwStruct, location),
             "variant" => Token::new(Lexem::KwVariant, location),
+            "enum" => Token::new(Lexem::KwEnum, location),
             "let" => Token::new(Lexem::KwLet, location),
             "mut" => Token::new(Lexem::KwMut, location),
             "const" => Token::new(Lexem::KwConst, location),

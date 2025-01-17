@@ -12,6 +12,9 @@ pub enum SymbolData {
     StructDef {
         components: Vec<Type>,
     },
+    EnumDef {
+        components: Vec<(Identifier, usize)>,
+    },
     VariantDef {
         components: Vec<VariantField>,
     },
@@ -32,7 +35,6 @@ impl SymbolData {
     pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
         match self {
             Self::ModuleDef { full_name } => write!(stream, "{:?}", full_name),
-
             Self::FunctionDef {
                 args,
                 return_type,
@@ -54,11 +56,16 @@ impl SymbolData {
 
                 write!(stream, ") -> {}", return_type)
             }
-
             Self::StructDef { components } => {
                 write!(stream, "Struct definition: {{{:?}}}", components)
             }
-
+            Self::EnumDef { components } => {
+                write!(stream, "Enum definition: ")?;
+                for comp in components.iter() {
+                    write!(stream, "{}:{} ", comp.0, comp.1)?;
+                }
+                Ok(())
+            }
             Self::VariantDef { components } => {
                 write!(stream, "Enum definition: <")?;
 
@@ -84,7 +91,6 @@ impl SymbolData {
 
                 write!(stream, ">")
             }
-
             Self::VariableDef {
                 var_type,
                 is_mutable,
@@ -100,7 +106,6 @@ impl SymbolData {
                 if *is_mutable { "mut" } else { "" },
                 var_type
             ),
-
             Self::Type => write!(stream, "type"),
         }
     }

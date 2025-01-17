@@ -17,7 +17,7 @@ impl Analyze for VariantDef {
             ));
         }
 
-        analyzer.scope.push(&format!("@e.{}", &self.identifier));
+        analyzer.scope.push(&format!("@v.{}", &self.identifier));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }
