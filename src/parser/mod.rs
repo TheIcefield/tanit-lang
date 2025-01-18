@@ -40,27 +40,18 @@ impl Parser {
         self.lexer.ignores_nl = opt;
     }
 
-    pub fn parse(&mut self) -> Result<Ast, (Errors, Warnings)> {
-        let ast = {
-            match scopes::Scope::parse_global_internal(self) {
-                Ok(statements) => Ok(Ast::Scope {
-                    node: scopes::Scope {
-                        statements,
-                        is_global: true,
-                    },
-                }),
-                Err(err) => Err((vec![err], Warnings::new())),
-            }
-        };
+    pub fn parse(&mut self) -> Option<Ast> {
+        let res = scopes::Scope::parse_global(self);
 
-        if ast.is_err() || !self.errors.is_empty() {
-            return Err((
-                std::mem::take(&mut self.errors),
-                std::mem::take(&mut self.warnings),
-            ));
+        if let Err(err) = &res {
+            self.error(err.clone());
         }
 
-        Ok(ast.unwrap())
+        if self.has_errors() {
+            None
+        } else {
+            Some(res.unwrap())
+        }
     }
 
     pub fn get_location(&self) -> Location {
@@ -193,5 +184,21 @@ impl Parser {
     pub fn warning(&mut self, mut warn: Message) {
         warn.text = format!("Syntax warning: {}", warn.text);
         self.errors.push(warn);
+    }
+
+    pub fn get_errors(&mut self) -> Errors {
+        std::mem::take(&mut self.errors)
+    }
+
+    pub fn get_warnings(&mut self) -> Warnings {
+        std::mem::take(&mut self.warnings)
+    }
+
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
     }
 }

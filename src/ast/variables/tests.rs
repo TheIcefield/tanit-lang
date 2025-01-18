@@ -54,7 +54,7 @@ fn variables_test() {
             operation,
             lhs,
             rhs,
-        } = &node.as_ref().expr
+        } = &node.expr
         {
             assert_eq!(*operation, Lexem::Assign);
             (lhs.as_ref(), rhs.as_ref())
@@ -71,7 +71,7 @@ fn variables_test() {
         }
 
         if let Ast::Expression { node } = rhs {
-            if let ExpressionType::Binary { operation, .. } = &node.as_ref().expr {
+            if let ExpressionType::Binary { operation, .. } = &node.expr {
                 assert_eq!(*operation, Lexem::Slash);
             } else {
                 panic!("expected binary expression")
@@ -88,7 +88,7 @@ fn variables_test() {
             operation,
             lhs,
             rhs,
-        } = &node.as_ref().expr
+        } = &node.expr
         {
             assert_eq!(*operation, Lexem::Assign);
 
@@ -97,7 +97,7 @@ fn variables_test() {
                     operation,
                     lhs,
                     rhs,
-                } = &node.as_ref().expr
+                } = &node.expr
                 {
                     assert_eq!(*operation, Lexem::KwAs);
                     (lhs.as_ref(), rhs.as_ref())
@@ -125,7 +125,7 @@ fn variables_test() {
             }
 
             let expr = if let Ast::Expression { node } = rhs.as_ref() {
-                node.as_ref()
+                node
             } else {
                 panic!("rhs expected to be \'Expression\'");
             };

@@ -1,30 +1,33 @@
 use super::FunctionDef;
-use crate::ast::{expressions::ExpressionType, Ast};
+use crate::ast::{expressions::ExpressionType, scopes::Scope, Ast};
 use crate::codegen::CodeGenStream;
 use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 use crate::serializer::XmlWriter;
 
 #[test]
 fn function_def_test() {
-    const SRC_TEXT: &str = "\nfunc foo(a: i32, b: i32) -> f32 {\
-                             \n    return a + b\
-                             \n}";
+    const SRC_TEXT: &str = "\nfunc sum(a: f32, b: f32) -> f32 {\
+                            \n    return a + b\
+                            \n}\
+                            \nfunc main() {\
+                            \n    let ret: f32 = sum(a, b)\
+                            \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, true).expect("Lexer creation failed"));
 
-    let node = FunctionDef::parse(&mut parser).unwrap();
+    let node = Scope::parse_global(&mut parser).unwrap();
 
     {
-        const EXPECTED: &str = "\n<function-definition name=\"foo\">\
+        const EXPECTED: &str = "\n<function-definition name=\"sum\">\
                                 \n    <return-type>\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
                                 \n    <parameters>\
                                 \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"true\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"true\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
                                 \n    <return-statement>\
@@ -33,6 +36,26 @@ fn function_def_test() {
                                 \n            <variable name=\"b\"/>\
                                 \n        </operation>\
                                 \n    </return-statement>\
+                                \n</function-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"ret\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </variable-definition>\
+                                \n        <call-statement name=\"sum\">\
+                                \n            <parameters>\
+                                \n                <parameter index=\"0\">\
+                                \n                    <variable name=\"a\"/>\
+                                \n                </parameter>\
+                                \n                <parameter index=\"1\">\
+                                \n                    <variable name=\"b\"/>\
+                                \n                </parameter>\
+                                \n            </parameters>\
+                                \n        </call-statement>\
+                                \n    </operation>\
                                 \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -45,10 +68,14 @@ fn function_def_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "float foo(signed int a, signed int b);\n";
-        const SOURCE_EXPECTED: &str = "float foo(signed int a, signed int b){\
-                                       \nreturn a + b;\
-                                       \n}\n";
+        const HEADER_EXPECTED: &str = "float sum(float a, float b);\
+                                     \nvoid main();\n";
+        const SOURCE_EXPECTED: &str = "float sum(float a, float b){\
+                                     \nreturn a + b;\
+                                     \n}\
+                                     \nvoid main(){\
+                                     \nfloat const ret = sum(a, b);\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -120,7 +147,7 @@ fn functions_test() {
                 operation,
                 lhs,
                 rhs,
-            } = &node.as_ref().expr
+            } = &node.expr
             {
                 assert_eq!(*operation, Lexem::Assign);
                 (lhs.as_ref(), rhs.as_ref())

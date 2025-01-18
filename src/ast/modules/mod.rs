@@ -1,4 +1,4 @@
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::{identifiers::Identifier, scopes::Scope};
 use crate::parser::location::Location;
 
 pub mod analyzer;
@@ -6,11 +6,12 @@ pub mod codegen;
 pub mod parser;
 pub mod serializer;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
     pub identifier: Identifier,
-    pub body: Box<Ast>,
+    pub is_external: bool,
+    pub body: Scope,
 }
 
 #[cfg(test)]

@@ -34,27 +34,18 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze(&mut self, ast: &mut Ast) -> (SymbolTable, Errors, Warnings) {
-        let table = {
-            if ast.analyze(self).is_ok() {
-                Ok(std::mem::take(&mut self.table))
-            } else {
-                Err((
-                    std::mem::take(&mut self.errors),
-                    std::mem::take(&mut self.warnings),
-                ))
-            }
-        };
+    pub fn analyze(&mut self, ast: &mut Ast) -> Option<SymbolTable> {
+        let res = ast.analyze(self);
 
-        if let Ok(table) = table {
-            return (table, self.errors.clone(), self.warnings.clone());
+        if let Err(err) = &res {
+            self.error(err.clone());
         }
 
-        (
-            SymbolTable::new(),
-            self.errors.clone(),
-            self.warnings.clone(),
-        )
+        if self.has_errors() {
+            None
+        } else {
+            Some(std::mem::take(&mut self.table))
+        }
     }
 
     pub fn counter(&mut self) -> usize {
@@ -119,6 +110,22 @@ impl Analyzer {
     pub fn warning(&mut self, mut warn: Message) {
         warn.text = format!("Semantic warning: {}", warn.text);
         self.warnings.push(warn);
+    }
+
+    pub fn get_errors(&mut self) -> Errors {
+        std::mem::take(&mut self.errors)
+    }
+
+    pub fn get_warnings(&mut self) -> Warnings {
+        std::mem::take(&mut self.warnings)
+    }
+
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        !self.warnings.is_empty()
     }
 }
 

@@ -29,7 +29,7 @@ impl<'a> CodeGenStream<'a> {
     }
 }
 
-impl<'a> std::io::Write for CodeGenStream<'a> {
+impl std::io::Write for CodeGenStream<'_> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let mut res = 0;
 

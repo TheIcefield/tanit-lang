@@ -4,52 +4,70 @@ use crate::ast::{
     scopes::Scope,
     Ast,
 };
-use crate::messages::Message;
+use crate::messages::{self, Message};
 use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 
 impl ModuleDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::parse_header(parser)?;
+        let mut node = Self::default();
 
-        node.body = Box::new(Scope::parse_global(parser)?);
-
-        Ok(Ast::ModuleDef { node })
-    }
-
-    fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
-        let location = parser.consume_token(Lexem::KwModule)?.location;
-
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-        Ok(Self {
-            location,
-            identifier,
-            body: Box::new(Ast::Scope {
-                node: Scope {
-                    statements: Vec::new(),
-                    is_global: true,
-                },
-            }),
-        })
-    }
-
-    pub fn parse_ext_module(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::parse_header(parser)?;
-
-        node.body = Self::parse_ext_body(&node.identifier, parser)?;
+        node.parse_header(parser)?;
+        node.parse_body(parser)?;
 
         Ok(Ast::ModuleDef { node })
     }
 
-    fn parse_ext_body(identifier: &Identifier, parser: &mut Parser) -> Result<Box<Ast>, Message> {
-        let identifier = match &identifier.identifier {
+    fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        let next = parser.peek_token();
+        self.location = next.location;
+
+        if Lexem::KwDef == next.lexem {
+            parser.consume_token(Lexem::KwDef)?;
+            self.is_external = true;
+        }
+
+        parser.consume_token(Lexem::KwModule)?;
+
+        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+
+        Ok(())
+    }
+
+    fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        if self.is_external {
+            self.parse_external_body(parser)?;
+        } else {
+            self.parse_internal_body(parser)?;
+        }
+
+        Ok(())
+    }
+
+    fn parse_internal_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        parser.consume_token(Lexem::Lcb)?;
+
+        let scope = Scope::parse_global(parser)?;
+
+        parser.consume_token(Lexem::Rcb)?;
+
+        if let Ast::Scope { node } = scope {
+            self.body = node;
+        } else {
+            return Err(Message::unreachable(self.location));
+        }
+
+        Ok(())
+    }
+
+    fn parse_external_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        let identifier = match &self.identifier.identifier {
             IdentifierType::Common(id) => id.clone(),
             IdentifierType::Complex(..) => unimplemented!(),
         };
 
         let mut path = parser.get_path();
         let verbose = parser.is_token_verbose();
-        let mut body: Option<Box<Ast>> = None;
+        let mut body: Option<Scope> = None;
 
         path = path
             .chars()
@@ -73,14 +91,16 @@ impl ModuleDef {
             if let Ok(lexer) = lexer {
                 let mut parser_int = Parser::new(lexer);
 
-                match parser_int.parse() {
-                    Err(messages) => {
-                        for err in messages.0.iter() {
-                            parser.error(err.clone())
-                        }
-                        for warn in messages.1.iter() {
-                            parser.warning(warn.clone())
-                        }
+                let parse_res = parser_int.parse();
+
+                if parser_int.has_errors() {
+                    messages::print_messages(&parser_int.get_errors());
+                } else if parser_int.has_warnings() {
+                    messages::print_messages(&parser_int.get_warnings());
+                }
+
+                match parse_res {
+                    None => {
                         return Err(Message::new(
                             parser.get_location(),
                             &format!(
@@ -90,8 +110,14 @@ impl ModuleDef {
                         ));
                     }
 
-                    Ok(node) => {
-                        body = Some(Box::new(node));
+                    Some(node) => {
+                        body = {
+                            if let Ast::Scope { node } = node {
+                                Some(node)
+                            } else {
+                                return Err(Message::unreachable(self.location));
+                            }
+                        }
                     }
                 }
             }
@@ -108,14 +134,16 @@ impl ModuleDef {
             if let Ok(lexer) = lexer {
                 let mut parser_int = Parser::new(lexer);
 
-                match parser_int.parse() {
-                    Err(messages) => {
-                        for err in messages.0.iter() {
-                            parser.error(err.clone())
-                        }
-                        for warn in messages.1.iter() {
-                            parser.warning(warn.clone())
-                        }
+                let parser_res = parser_int.parse();
+
+                if parser_int.has_errors() {
+                    messages::print_messages(&parser_int.get_errors());
+                } else if parser_int.has_warnings() {
+                    messages::print_messages(&parser_int.get_warnings());
+                }
+
+                match parser_res {
+                    None => {
                         return Err(Message::new(
                             parser.get_location(),
                             &format!(
@@ -125,20 +153,28 @@ impl ModuleDef {
                         ));
                     }
 
-                    Ok(node) => {
-                        body = Some(Box::new(node));
+                    Some(ast) => {
+                        body = {
+                            if let Ast::Scope { node } = ast {
+                                Some(node)
+                            } else {
+                                return Err(Message::unreachable(self.location));
+                            }
+                        };
                     }
                 }
             }
         }
 
-        if body.is_none() {
-            return Err(Message::new(
-                parser.get_location(),
-                &format!("Not found definition for module \"{}\"", identifier),
-            ));
-        }
+        if let Some(body) = body {
+            self.body = body;
 
-        Ok(body.unwrap())
+            Ok(())
+        } else {
+            Err(Message::new(
+                self.location,
+                &format!("Not found definition for module \"{}\"", identifier),
+            ))
+        }
     }
 }

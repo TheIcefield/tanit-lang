@@ -7,58 +7,39 @@ use crate::parser::{token::Lexem, Parser};
 
 impl FunctionDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::parse_header(parser)?;
+        let mut node = Self::default();
 
-        let next = parser.peek_token();
-        match next.lexem {
-            Lexem::Lcb => {
-                node.body = Some(Box::new(Scope::parse_local(parser)?));
-            }
-
-            _ => {
-                return Err(Message::unexpected_token(
-                    next,
-                    &[Lexem::Lcb, Lexem::EndOfLine],
-                ));
-            }
-        }
+        node.parse_header(parser)?;
+        node.parse_body(parser)?;
 
         Ok(Ast::FuncDef { node })
     }
 
-    fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
-        let location = parser.consume_token(Lexem::KwFunc)?.location;
+    fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        self.location = parser.consume_token(Lexem::KwFunc)?.location;
 
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-        let parameters = Self::parse_header_params(parser)?;
+        self.parse_header_params(parser)?;
 
-        let next = parser.peek_token();
-        let return_type = if next.lexem == Lexem::Arrow {
+        self.return_type = if Lexem::Arrow == parser.peek_token().lexem {
             parser.get_token();
             Type::parse(parser)?
         } else {
             Type::unit()
         };
 
-        Ok(Self {
-            location,
-            identifier,
-            return_type,
-            parameters,
-            body: None,
-        })
+        Ok(())
     }
 
-    fn parse_header_params(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
+    fn parse_header_params(&mut self, parser: &mut Parser) -> Result<(), Message> {
         parser.consume_token(Lexem::LParen)?;
 
-        let mut parameters = Vec::<Ast>::new();
         loop {
             let next = parser.peek_token();
 
             if next.is_identifier() {
-                parameters.push(Ast::VariableDef {
+                self.parameters.push(Ast::VariableDef {
                     node: Self::parse_param(parser)?,
                 });
 
@@ -78,7 +59,25 @@ impl FunctionDef {
             }
         }
 
-        Ok(parameters)
+        Ok(())
+    }
+
+    fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        let next = parser.peek_token();
+        match next.lexem {
+            Lexem::Lcb => {
+                self.body = Some(Box::new(Scope::parse_local(parser)?));
+            }
+
+            _ => {
+                return Err(Message::unexpected_token(
+                    next,
+                    &[Lexem::Lcb, Lexem::EndOfLine],
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     /* parse function param */

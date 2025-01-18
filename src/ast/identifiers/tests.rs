@@ -35,7 +35,7 @@ fn expr_conversion_test() {
                 },
             }),
             rhs: Box::new(Ast::Expression {
-                node: Box::new(Expression {
+                node: Expression {
                     location: Location::new(),
                     expr: ExpressionType::Binary {
                         operation: Lexem::Dcolon,
@@ -58,7 +58,7 @@ fn expr_conversion_test() {
                             },
                         }),
                     },
-                }),
+                },
             }),
         },
     };

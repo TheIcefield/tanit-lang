@@ -1,29 +1,36 @@
 use super::{VariantDef, VariantField};
 use crate::ast::{identifiers::Identifier, structs::StructDef, types::Type, Ast};
 use crate::messages::Message;
-use crate::parser::{location::Location, token::Lexem, Parser};
-
-use std::collections::BTreeMap;
+use crate::parser::{token::Lexem, Parser};
 
 impl VariantField {
     pub fn parse(parser: &mut Parser) -> Result<Self, Message> {
-        let old_opt = parser.does_ignore_nl();
+        let mut node = Self::default();
 
+        let old_opt = parser.does_ignore_nl();
         parser.set_ignore_nl_option(false);
-        let res = Self::parse_internal(parser);
+
+        node.parse_internal(parser)?;
+
         parser.set_ignore_nl_option(old_opt);
 
-        res
+        Ok(node)
     }
 
-    fn parse_internal(parser: &mut Parser) -> Result<Self, Message> {
+    fn parse_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {
         let next = parser.peek_token();
         match next.lexem {
-            Lexem::EndOfLine => Ok(VariantField::Common),
+            Lexem::EndOfLine => {
+                *self = VariantField::Common;
+
+                Ok(())
+            }
 
             Lexem::LParen => {
                 if let Type::Tuple { components } = Type::parse_tuple_def(parser)? {
-                    Ok(Self::TupleLike(components))
+                    *self = Self::TupleLike(components);
+
+                    Ok(())
                 } else {
                     Err(Message::unexpected_token(next, &[]))
                 }
@@ -38,64 +45,52 @@ impl VariantField {
                         ));
                     }
 
-                    return Ok(VariantField::StructLike(node.fields));
+                    *self = VariantField::StructLike(node.fields);
+
+                    return Ok(());
                 }
                 unreachable!()
             }
 
-            _ => {
-                parser.error(Message::new(
-                    next.location,
-                    &format!("Unexpected token during parsing enum: {}", next),
-                ));
-                unreachable!()
-            }
+            _ => Err(Message::new(
+                next.location,
+                &format!("Unexpected token during parsing enum: {}", next),
+            )),
         }
     }
 }
 
 impl VariantDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let identifier = Self::parse_header(parser)?.identifier;
+        let mut node = Self::default();
 
-        if let Ast::VariantDef { mut node } = Self::parse_body(parser)? {
-            node.identifier = identifier;
-            return Ok(Ast::VariantDef { node });
-        }
+        node.parse_header(parser)?;
+        node.parse_body(parser)?;
 
-        unreachable!()
+        Ok(Ast::VariantDef { node })
     }
 
-    fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
-        let location = parser.consume_token(Lexem::KwVariant)?.location;
+    fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        self.location = parser.consume_token(Lexem::KwVariant)?.location;
+        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-        Ok(VariantDef {
-            location,
-            identifier,
-            fields: BTreeMap::new(),
-            internals: Vec::new(),
-        })
+        Ok(())
     }
 
-    fn parse_body(parser: &mut Parser) -> Result<Ast, Message> {
+    fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
         parser.consume_token(Lexem::Lcb)?;
         let old_opt = parser.does_ignore_nl();
 
         parser.set_ignore_nl_option(false);
-        let fields = Self::parse_body_internal(parser);
+        self.parse_body_internal(parser)?;
         parser.set_ignore_nl_option(old_opt);
 
         parser.consume_token(Lexem::Rcb)?;
 
-        fields
+        Ok(())
     }
 
-    fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut fields = BTreeMap::<Identifier, VariantField>::new();
-        let mut internals = Vec::<Ast>::new();
-
+    fn parse_body_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {
         loop {
             let next = parser.peek_token();
 
@@ -107,14 +102,14 @@ impl VariantDef {
                     continue;
                 }
 
-                Lexem::KwStruct => internals.push(StructDef::parse(parser)?),
+                Lexem::KwStruct => self.internals.push(StructDef::parse(parser)?),
 
-                Lexem::KwVariant => internals.push(VariantDef::parse(parser)?),
+                Lexem::KwVariant => self.internals.push(VariantDef::parse(parser)?),
 
                 Lexem::Identifier(id) => {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-                    if fields.contains_key(&identifier) {
+                    if self.fields.contains_key(&identifier) {
                         parser.error(Message::new(
                             next.location,
                             &format!("Enum has already field with identifier \"{}\"", id),
@@ -122,7 +117,7 @@ impl VariantDef {
                         continue;
                     }
 
-                    fields.insert(identifier, VariantField::parse(parser)?);
+                    self.fields.insert(identifier, VariantField::parse(parser)?);
 
                     parser.consume_new_line()?;
                 }
@@ -145,13 +140,6 @@ impl VariantDef {
             }
         }
 
-        Ok(Ast::VariantDef {
-            node: Self {
-                location: Location::new(),
-                identifier: Identifier::new(),
-                fields,
-                internals,
-            },
-        })
+        Ok(())
     }
 }

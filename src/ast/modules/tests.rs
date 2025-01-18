@@ -21,13 +21,7 @@ fn module_test() {
         panic!("res should be \'ModuleDef\'");
     };
 
-    let res = if let Ast::Scope { node } = res.as_ref() {
-        &node.statements[0]
-    } else {
-        panic!("res should be \'global scope\'");
-    };
-
-    if let Ast::ModuleDef { node } = res {
+    if let Ast::ModuleDef { node } = &res.statements[0] {
         assert!(node.identifier == Identifier::from_str("M2").unwrap());
     } else {
         panic!("res should be \'ModuleDef\'");

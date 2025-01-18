@@ -23,7 +23,7 @@ impl Expression {
                 operation,
                 lhs,
                 rhs,
-            } = &node.as_ref().expr
+            } = &node.expr
             {
                 let new_op = match operation {
                     Lexem::AddAssign => Some(Lexem::Plus),
@@ -41,23 +41,23 @@ impl Expression {
 
                 if let Some(new_op) = new_op {
                     return Ok(Ast::Expression {
-                        node: Box::new(Self {
+                        node: Self {
                             location,
                             expr: ExpressionType::Binary {
                                 operation: Lexem::Assign,
                                 lhs: lhs.clone(),
                                 rhs: Box::new(Ast::Expression {
-                                    node: Box::new(Self {
+                                    node: Self {
                                         location,
                                         expr: ExpressionType::Binary {
                                             operation: new_op,
                                             lhs: lhs.clone(),
                                             rhs: rhs.clone(),
                                         },
-                                    }),
+                                    },
                                 }),
                             },
-                        }),
+                        },
                     });
                 }
             }
@@ -77,10 +77,10 @@ impl Expression {
                 let node = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Unary { operation, node },
-                    }),
+                    },
                 })
             }
             Lexem::Integer(_) => Ok(Ast::Value {
@@ -142,14 +142,14 @@ impl Expression {
                     let rhs = Box::new(Self::parse_factor(parser)?);
 
                     return Ok(Ast::Expression {
-                        node: Box::new(Self {
+                        node: Self {
                             location,
                             expr: ExpressionType::Binary {
                                 operation,
                                 lhs,
                                 rhs,
                             },
-                        }),
+                        },
                     });
                 } else if next.lexem == Lexem::Lcb {
                     // if struct
@@ -253,7 +253,7 @@ impl Expression {
                 operation,
                 lhs,
                 rhs,
-            } = &mut node.as_mut().expr
+            } = &mut node.expr
             {
                 Self::convert_ast_node(lhs, analyzer)?;
                 Self::convert_ast_node(rhs, analyzer)?;
@@ -311,14 +311,14 @@ impl Expression {
                         Type::new()
                     };
                     *expr_node = Ast::Expression {
-                        node: Box::new(Self {
+                        node: Self {
                             location,
                             expr: ExpressionType::Binary {
                                 operation: Lexem::KwAs,
                                 lhs: lhs.clone(),
                                 rhs: Box::new(Ast::Type { node: rhs_type }),
                             },
-                        }),
+                        },
                     };
                 };
             }
@@ -354,14 +354,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -383,14 +383,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -412,14 +412,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -441,14 +441,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -470,14 +470,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -499,14 +499,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -528,14 +528,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -557,14 +557,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -586,14 +586,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -615,14 +615,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -644,14 +644,14 @@ impl Expression {
                 let rhs = Box::new(Self::parse(parser)?);
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
 
@@ -693,14 +693,14 @@ impl Expression {
                 }
 
                 Ok(Ast::Expression {
-                    node: Box::new(Self {
+                    node: Self {
                         location: next.location,
                         expr: ExpressionType::Binary {
                             operation,
                             lhs: Box::new(lhs),
                             rhs,
                         },
-                    }),
+                    },
                 })
             }
             _ => Ok(lhs),

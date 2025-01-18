@@ -5,7 +5,7 @@ use crate::messages::Message;
 
 impl Analyze for VariableDef {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
-        unreachable!()
+        self.var_type.clone()
     }
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
