@@ -18,25 +18,45 @@ impl ModuleDef {
     }
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
-        self.location = parser.consume_token(Lexem::KwModule)?.location;
+        let next = parser.peek_token();
+        self.location = next.location;
+
+        if Lexem::KwDef == next.lexem {
+            parser.consume_token(Lexem::KwDef)?;
+            self.is_external = true;
+        }
+
+        parser.consume_token(Lexem::KwModule)?;
+
         self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
         Ok(())
     }
 
     fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
-        self.body = Some(Box::new(Scope::parse_global(parser)?));
+        if self.is_external {
+            self.parse_external_body(parser)?;
+        } else {
+            self.parse_internal_body(parser)?;
+        }
 
         Ok(())
     }
 
-    pub fn parse_external(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::default();
+    fn parse_internal_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        parser.consume_token(Lexem::Lcb)?;
 
-        node.parse_header(parser)?;
-        node.parse_external_body(parser)?;
+        let scope = Scope::parse_global(parser)?;
 
-        Ok(Ast::ModuleDef { node })
+        parser.consume_token(Lexem::Rcb)?;
+
+        if let Ast::Scope { node } = scope {
+            self.body = node;
+        } else {
+            return Err(Message::unreachable(self.location));
+        }
+
+        Ok(())
     }
 
     fn parse_external_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
@@ -47,7 +67,7 @@ impl ModuleDef {
 
         let mut path = parser.get_path();
         let verbose = parser.is_token_verbose();
-        let mut body: Option<Box<Ast>> = None;
+        let mut body: Option<Scope> = None;
 
         path = path
             .chars()
@@ -91,7 +111,13 @@ impl ModuleDef {
                     }
 
                     Some(node) => {
-                        body = Some(Box::new(node));
+                        body = {
+                            if let Ast::Scope { node } = node {
+                                Some(node)
+                            } else {
+                                return Err(Message::unreachable(self.location));
+                            }
+                        }
                     }
                 }
             }
@@ -128,21 +154,27 @@ impl ModuleDef {
                     }
 
                     Some(ast) => {
-                        body = Some(Box::new(ast));
+                        body = {
+                            if let Ast::Scope { node } = ast {
+                                Some(node)
+                            } else {
+                                return Err(Message::unreachable(self.location));
+                            }
+                        };
                     }
                 }
             }
         }
 
-        if body.is_none() {
-            return Err(Message::new(
-                parser.get_location(),
+        if let Some(body) = body {
+            self.body = body;
+
+            Ok(())
+        } else {
+            Err(Message::new(
+                self.location,
                 &format!("Not found definition for module \"{}\"", identifier),
-            ));
+            ))
         }
-
-        self.body = body;
-
-        Ok(())
     }
 }

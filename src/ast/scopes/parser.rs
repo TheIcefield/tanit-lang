@@ -29,7 +29,7 @@ impl Scope {
                     continue;
                 }
 
-                Lexem::KwModule => modules::ModuleDef::parse(parser),
+                Lexem::KwDef | Lexem::KwModule => modules::ModuleDef::parse(parser),
 
                 Lexem::KwFunc => functions::FunctionDef::parse(parser),
 
@@ -38,24 +38,6 @@ impl Scope {
                 Lexem::KwVariant => variants::VariantDef::parse(parser),
 
                 Lexem::KwStatic => variables::VariableDef::parse(parser),
-
-                Lexem::KwDef => {
-                    parser.consume_token(Lexem::KwDef)?;
-
-                    let next = parser.peek_token();
-
-                    match next.lexem {
-                        Lexem::KwModule => modules::ModuleDef::parse_external(parser),
-
-                        _ => {
-                            parser.error(Message::new(
-                                next.location,
-                                &format!("Unexpected token \"{}\" during parsing define", next),
-                            ));
-                            continue;
-                        }
-                    }
-                }
 
                 Lexem::KwAlias => aliases::AliasDef::parse(parser),
 

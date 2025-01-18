@@ -78,6 +78,10 @@ impl<'a> XmlWriter<'a> {
         Ok(())
     }
 
+    pub fn close(&mut self) {
+        let _ = writeln!(self.stream);
+    }
+
     fn put_intent(&mut self) -> std::io::Result<()> {
         for _ in 0..self.intent {
             write!(self.stream, "    ")?;

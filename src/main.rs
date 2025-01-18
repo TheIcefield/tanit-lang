@@ -11,7 +11,7 @@ fn serialize_ast(output: &str, ast: &ast::Ast) {
         serializer::XmlWriter::new(&mut file).expect("Error: can't create AST serializer");
 
     match ast.serialize(&mut writer) {
-        Ok(_) => {}
+        Ok(_) => writer.close(),
         Err(err) => {
             eprintln!("Error: {}", err);
         }
@@ -30,7 +30,7 @@ fn serialize_symbol_table(output: &str, symbol_table: &SymbolTable) {
 fn generate_code(output: &str, ast: &ast::Ast) {
     let mut header_stream = std::fs::File::create(format!("{}_generated.h", output))
         .expect("Error: can't create file for header stream");
-    let mut source_stream = std::fs::File::create(format!("{}_generated.h", output))
+    let mut source_stream = std::fs::File::create(format!("{}_generated.c", output))
         .expect("Error: can't create file for source stream");
 
     let mut writer = codegen::CodeGenStream::new(&mut header_stream, &mut source_stream)
@@ -38,6 +38,15 @@ fn generate_code(output: &str, ast: &ast::Ast) {
 
     if let Err(err) = ast.codegen(&mut writer) {
         eprintln!("Error: {}", err);
+    } else {
+        use std::io::Write;
+
+        let old_mode = writer.mode;
+        writer.mode = codegen::CodeGenMode::SourceOnly;
+
+        writeln!(writer, "#include \"{output}_generated.h\"").unwrap();
+
+        writer.mode = old_mode;
     }
 }
 

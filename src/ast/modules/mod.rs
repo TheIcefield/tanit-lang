@@ -1,4 +1,4 @@
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::{identifiers::Identifier, scopes::Scope};
 use crate::parser::location::Location;
 
 pub mod analyzer;
@@ -10,7 +10,8 @@ pub mod serializer;
 pub struct ModuleDef {
     pub location: Location,
     pub identifier: Identifier,
-    pub body: Option<Box<Ast>>,
+    pub is_external: bool,
+    pub body: Scope,
 }
 
 #[cfg(test)]

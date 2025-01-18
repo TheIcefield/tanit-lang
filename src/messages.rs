@@ -83,6 +83,13 @@ impl Message {
             text: err.to_string(),
         }
     }
+
+    pub fn unreachable(location: Location) -> Self {
+        Self {
+            location,
+            text: String::from("Compiler reached unreachable code"),
+        }
+    }
 }
 
 impl Display for Message {

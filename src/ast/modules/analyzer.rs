@@ -29,9 +29,10 @@ impl Analyze for ModuleDef {
         }
 
         analyzer.scope.push(&identifier);
-        if let Some(body) = self.body.as_mut() {
-            body.analyze(analyzer)?;
-        }
+
+        let mut internal_analyzer = Analyzer::new();
+        self.body.analyze(&mut internal_analyzer)?;
+
         analyzer.scope.pop();
 
         analyzer.add_symbol(
