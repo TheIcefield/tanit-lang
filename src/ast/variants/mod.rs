@@ -8,14 +8,15 @@ pub mod codegen;
 pub mod parser;
 pub mod serializer;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub enum VariantField {
+    #[default]
+    Common,
     StructLike(BTreeMap<Identifier, Type>),
     TupleLike(Vec<Type>),
-    Common,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct VariantDef {
     pub location: Location,
     pub identifier: Identifier,
