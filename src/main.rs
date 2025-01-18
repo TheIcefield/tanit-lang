@@ -31,7 +31,7 @@ fn generate_code(output: &str, ast: &ast::Ast) {
     let mut header_stream = std::fs::File::create(format!("{}_generated.h", output))
         .expect("Error: can't create file for header stream");
     let mut source_stream = std::fs::File::create(format!("{}_generated.h", output))
-        .expect("Error: can't create file for header stream");
+        .expect("Error: can't create file for source stream");
 
     let mut writer = codegen::CodeGenStream::new(&mut header_stream, &mut source_stream)
         .expect("Error: can't create codegen writer");
