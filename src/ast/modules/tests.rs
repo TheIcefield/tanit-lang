@@ -16,7 +16,7 @@ fn module_test() {
 
     let res = if let Ast::ModuleDef { node } = &res {
         assert!(node.identifier == Identifier::from_str("M1").unwrap());
-        &node.body
+        &node.body.as_ref().unwrap()
     } else {
         panic!("res should be \'ModuleDef\'");
     };

@@ -6,11 +6,11 @@ pub mod codegen;
 pub mod parser;
 pub mod serializer;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
     pub identifier: Identifier,
-    pub body: Box<Ast>,
+    pub body: Option<Box<Ast>>,
 }
 
 #[cfg(test)]

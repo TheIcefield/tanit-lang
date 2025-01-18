@@ -9,40 +9,38 @@ use crate::parser::{lexer::Lexer, token::Lexem, Parser};
 
 impl ModuleDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::parse_header(parser)?;
+        let mut node = Self::default();
 
-        node.body = Box::new(Scope::parse_global(parser)?);
-
-        Ok(Ast::ModuleDef { node })
-    }
-
-    fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
-        let location = parser.consume_token(Lexem::KwModule)?.location;
-
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-        Ok(Self {
-            location,
-            identifier,
-            body: Box::new(Ast::Scope {
-                node: Scope {
-                    statements: Vec::new(),
-                    is_global: true,
-                },
-            }),
-        })
-    }
-
-    pub fn parse_ext_module(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::parse_header(parser)?;
-
-        node.body = Self::parse_ext_body(&node.identifier, parser)?;
+        node.parse_header(parser)?;
+        node.parse_body(parser)?;
 
         Ok(Ast::ModuleDef { node })
     }
 
-    fn parse_ext_body(identifier: &Identifier, parser: &mut Parser) -> Result<Box<Ast>, Message> {
-        let identifier = match &identifier.identifier {
+    fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        self.location = parser.consume_token(Lexem::KwModule)?.location;
+        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+
+        Ok(())
+    }
+
+    fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        self.body = Some(Box::new(Scope::parse_global(parser)?));
+
+        Ok(())
+    }
+
+    pub fn parse_external(parser: &mut Parser) -> Result<Ast, Message> {
+        let mut node = Self::default();
+
+        node.parse_header(parser)?;
+        node.parse_external_body(parser)?;
+
+        Ok(Ast::ModuleDef { node })
+    }
+
+    fn parse_external_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        let identifier = match &self.identifier.identifier {
             IdentifierType::Common(id) => id.clone(),
             IdentifierType::Complex(..) => unimplemented!(),
         };
@@ -143,6 +141,8 @@ impl ModuleDef {
             ));
         }
 
-        Ok(body.unwrap())
+        self.body = body;
+
+        Ok(())
     }
 }

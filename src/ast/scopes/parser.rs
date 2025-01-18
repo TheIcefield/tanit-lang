@@ -45,7 +45,7 @@ impl Scope {
                     let next = parser.peek_token();
 
                     match next.lexem {
-                        Lexem::KwModule => modules::ModuleDef::parse_ext_module(parser),
+                        Lexem::KwModule => modules::ModuleDef::parse_external(parser),
 
                         _ => {
                             parser.error(Message::new(
