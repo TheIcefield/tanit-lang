@@ -46,8 +46,8 @@ impl EnumDef {
                 Lexem::Identifier(id) => {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-                    let value = if Lexem::Assign == parser.peek_token().lexem {
-                        parser.consume_token(Lexem::Assign)?;
+                    let value = if Lexem::Colon == parser.peek_token().lexem {
+                        parser.consume_token(Lexem::Colon)?;
 
                         let token = parser.consume_integer()?;
                         let value = if let Lexem::Integer(value) = token.lexem {

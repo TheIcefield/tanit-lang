@@ -11,9 +11,9 @@ fn variables_test() {
     let radian_var_id = Identifier::from_str("radian").unwrap();
     let i32_type_id = Identifier::from_str("i32").unwrap();
 
-    static SRC_PATH: &str = "./examples/values.tt";
+    const SRC_PATH: &str = "./examples/values.tt";
 
-    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = Lexer::from_file(SRC_PATH).unwrap();
 
     let mut parser = Parser::new(lexer);
 

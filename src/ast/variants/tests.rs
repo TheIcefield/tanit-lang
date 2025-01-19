@@ -8,16 +8,16 @@ use std::str::FromStr;
 #[test]
 fn variant_def_test() {
     const SRC_TEXT: &str = "\nvariant MyVariant\
-                             \n{\
-                             \n    f1\
-                             \n    f2(i32, i32)\
-                             \n    f3 {\
-                             \n        f1: i32\
-                             \n        f2: f32\
-                             \n    }\
-                             \n}";
+                            \n{\
+                            \n    f1\
+                            \n    f2(i32, i32)\
+                            \n    f3 {\
+                            \n        f1: i32\
+                            \n        f2: f32\
+                            \n    }\
+                            \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let variant_node = VariantDef::parse(&mut parser).unwrap();
 

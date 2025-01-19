@@ -5,13 +5,13 @@ use crate::serializer::XmlWriter;
 
 #[test]
 fn enum_def_test() {
-    static SRC_TEXT: &str = "\nenum MyEnum {\
-                             \n    One = 1\
-                             \n    Second\
-                             \n    Max\
-                             \n}";
+    const SRC_TEXT: &str = "\nenum MyEnum {\
+                            \n    One: 1\
+                            \n    Second\
+                            \n    Max\
+                            \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let enum_node = EnumDef::parse(&mut parser).unwrap();
 
@@ -54,9 +54,9 @@ fn enum_def_test() {
 
 #[test]
 fn empty_enum_def_test() {
-    static SRC_TEXT: &str = "\nenum EmptyEnum { }";
+    const SRC_TEXT: &str = "\nenum EmptyEnum { }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let enum_node = EnumDef::parse(&mut parser).unwrap();
 
@@ -91,9 +91,9 @@ fn empty_enum_def_test() {
 
 #[test]
 fn enum_with_one_field_def_test() {
-    static SRC_TEXT: &str = "\nenum MyEnum { MinsInHour = 60\n }";
+    const SRC_TEXT: &str = "\nenum MyEnum { MinsInHour: 60\n }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let enum_node = EnumDef::parse(&mut parser).unwrap();
 

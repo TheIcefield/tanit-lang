@@ -14,7 +14,7 @@ impl Scope {
     }
 
     fn parse_global_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {
-        use crate::ast::{aliases, functions, modules, structs, variables, variants};
+        use crate::ast::{aliases, enums, functions, modules, structs, variables, variants};
 
         loop {
             let next = parser.peek_token();
@@ -32,6 +32,8 @@ impl Scope {
                 Lexem::KwDef | Lexem::KwModule => modules::ModuleDef::parse(parser),
 
                 Lexem::KwFunc => functions::FunctionDef::parse(parser),
+
+                Lexem::KwEnum => enums::EnumDef::parse(parser),
 
                 Lexem::KwStruct => structs::StructDef::parse(parser),
 
@@ -82,7 +84,7 @@ impl Scope {
     }
 
     pub fn parse_local_internal(parser: &mut Parser) -> Result<Vec<Ast>, Message> {
-        use crate::ast::{aliases, branches, expressions, structs, variables, variants};
+        use crate::ast::{aliases, branches, enums, expressions, structs, variables, variants};
 
         let mut children = Vec::<Ast>::new();
 
@@ -98,6 +100,8 @@ impl Scope {
                 }
 
                 Lexem::KwLet => variables::VariableDef::parse(parser),
+
+                Lexem::KwEnum => enums::EnumDef::parse(parser),
 
                 Lexem::KwStruct => structs::StructDef::parse(parser),
 

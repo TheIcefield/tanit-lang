@@ -11,7 +11,7 @@ pub struct ModuleDef {
     pub location: Location,
     pub identifier: Identifier,
     pub is_external: bool,
-    pub body: Scope,
+    pub body: Option<Scope>,
 }
 
 #[cfg(test)]

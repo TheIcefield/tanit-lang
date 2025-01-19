@@ -28,10 +28,6 @@ impl Parser {
         self.lexer.get_path()
     }
 
-    pub fn is_token_verbose(&self) -> bool {
-        self.lexer.verbose
-    }
-
     pub fn does_ignore_nl(&self) -> bool {
         self.lexer.ignores_nl
     }

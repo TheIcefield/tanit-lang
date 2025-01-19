@@ -5,4 +5,6 @@ module M1
     }
 
     def module branches
+
+    def module colors
 }

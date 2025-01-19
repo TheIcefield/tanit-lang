@@ -10,12 +10,11 @@ pub struct Lexer {
     next_char: Option<char>,
     input: Box<dyn std::io::Read>,
     pub ignores_nl: bool,
-    pub verbose: bool,
     is_eof: bool,
 }
 
 impl Lexer {
-    pub fn from_file(path: &str, verbose: bool) -> Result<Self, &'static str> {
+    pub fn from_file(path: &str) -> Result<Self, &'static str> {
         let file = std::fs::File::open(path);
 
         if file.is_err() {
@@ -29,12 +28,11 @@ impl Lexer {
             next_char: None,
             input: Box::new(file.unwrap()),
             ignores_nl: true,
-            verbose,
             is_eof: false,
         })
     }
 
-    pub fn from_text(src: &'static str, verbose: bool) -> Result<Self, &'static str> {
+    pub fn from_text(src: &'static str) -> Result<Self, &'static str> {
         Ok(Self {
             path: String::new(),
             location: Location::new(),
@@ -42,36 +40,16 @@ impl Lexer {
             next_char: None,
             input: Box::new(src.as_bytes()),
             ignores_nl: true,
-            verbose,
             is_eof: false,
         })
-    }
-
-    pub fn collect(&mut self) -> Vec<Token> {
-        let verbose = self.verbose;
-        self.verbose = false;
-
-        let mut tokens = Vec::<Token>::new();
-
-        while !self.is_eof {
-            let tkn = self.get();
-
-            if tkn.lexem == Lexem::Unknown {
-                break;
-            }
-
-            tokens.push(tkn);
-        }
-
-        self.verbose = verbose;
-
-        tokens
     }
 
     pub fn get(&mut self) -> Token {
         let tkn = self.get_next(false);
 
-        if self.verbose {
+        let verbose = crate::unit::get_compile_options().verbose_tokens;
+
+        if verbose {
             println!("{}", tkn);
         }
 
@@ -81,7 +59,9 @@ impl Lexer {
     pub fn get_singular(&mut self) -> Token {
         let tkn = self.get_next(true);
 
-        if self.verbose {
+        let verbose = crate::unit::get_compile_options().verbose_tokens;
+
+        if verbose {
             println!("{}", tkn);
         }
 
@@ -525,7 +505,7 @@ impl Lexer {
 fn lexer_test() {
     const SRC_TEXT: &str = "hello func let + 65 -= <<\n struct alpha";
 
-    let mut lexer = Lexer::from_text(SRC_TEXT, true).unwrap();
+    let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
     assert_eq!(
         lexer.get(),
@@ -586,7 +566,7 @@ fn lexer_test() {
 fn lexer_without_ignore_test() {
     const SRC_TEXT: &str = "hello func let + 65 -= <<\n struct alpha";
 
-    let mut lexer = Lexer::from_text(SRC_TEXT, false).unwrap();
+    let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
     lexer.ignores_nl = false;
 

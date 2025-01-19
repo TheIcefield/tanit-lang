@@ -30,8 +30,9 @@ impl Analyze for ModuleDef {
 
         analyzer.scope.push(&identifier);
 
-        let mut internal_analyzer = Analyzer::new();
-        self.body.analyze(&mut internal_analyzer)?;
+        if let Some(body) = &mut self.body {
+            body.analyze(analyzer)?;
+        }
 
         analyzer.scope.pop();
 

@@ -13,8 +13,7 @@ fn struct_def_test() {
                             \n    f2: f32\
                             \n}";
 
-    let mut parser =
-        Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Failed to create lexer"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
     let struct_node = StructDef::parse(&mut parser).unwrap();
 
