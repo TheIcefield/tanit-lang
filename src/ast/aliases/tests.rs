@@ -7,9 +7,9 @@ use std::str::FromStr;
 
 #[test]
 fn alias_def_test() {
-    static SRC_TEXT: &str = "alias MyAlias = f32";
+    const SRC_TEXT: &str = "alias MyAlias = f32";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let alias_node = AliasDef::parse(&mut parser).unwrap();
 
@@ -48,12 +48,12 @@ fn alias_def_test() {
 fn alias_in_func_test() {
     use crate::ast::functions::FunctionDef;
 
-    static SRC_TEXT: &str = "func main() -> ()\
+    const SRC_TEXT: &str = "func main() -> ()\
                             {\
                                 alias Items = Vec<Item>\
                             }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let res = if let Ast::FuncDef { node } = FunctionDef::parse(&mut parser).unwrap() {
         assert!(node.identifier == Identifier::from_str("main").unwrap());

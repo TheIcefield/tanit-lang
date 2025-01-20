@@ -7,9 +7,9 @@ fn conversion_test() {
     use crate::ast::values::{Value, ValueType};
     use crate::parser::lexer::Lexer;
 
-    static SRC_TEXT: &str = "45 as f32";
+    const SRC_TEXT: &str = "45 as f32";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, false).unwrap());
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     if let Ast::Expression { node } = Expression::parse(&mut parser).unwrap() {
         if let ExpressionType::Binary {

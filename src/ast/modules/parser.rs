@@ -4,8 +4,9 @@ use crate::ast::{
     scopes::Scope,
     Ast,
 };
-use crate::messages::{self, Message};
-use crate::parser::{lexer::Lexer, token::Lexem, Parser};
+use crate::messages::Message;
+use crate::parser::{token::Lexem, Parser};
+use crate::unit::{self, Unit};
 
 impl ModuleDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -51,7 +52,7 @@ impl ModuleDef {
         parser.consume_token(Lexem::Rcb)?;
 
         if let Ast::Scope { node } = scope {
-            self.body = node;
+            self.body = Some(node);
         } else {
             return Err(Message::unreachable(self.location));
         }
@@ -65,11 +66,8 @@ impl ModuleDef {
             IdentifierType::Complex(..) => unimplemented!(),
         };
 
-        let mut path = parser.get_path();
-        let verbose = parser.is_token_verbose();
-        let mut body: Option<Scope> = None;
-
-        path = path
+        let mut path = parser
+            .get_path()
             .chars()
             .rev()
             .collect::<String>()
@@ -82,99 +80,40 @@ impl ModuleDef {
         path.push('/');
         path.push_str(&identifier);
 
+        let name = identifier.clone();
+
+        let mut unit_exists: bool;
+
         {
             let mut path = path.clone();
             path.push_str(".tt");
 
-            let lexer = Lexer::from_file(&path, verbose);
-
-            if let Ok(lexer) = lexer {
-                let mut parser_int = Parser::new(lexer);
-
-                let parse_res = parser_int.parse();
-
-                if parser_int.has_errors() {
-                    messages::print_messages(&parser_int.get_errors());
-                } else if parser_int.has_warnings() {
-                    messages::print_messages(&parser_int.get_warnings());
-                }
-
-                match parse_res {
-                    None => {
-                        return Err(Message::new(
-                            parser.get_location(),
-                            &format!(
-                                "Error occured during parsing module \"{}\" body",
-                                identifier
-                            ),
-                        ));
-                    }
-
-                    Some(node) => {
-                        body = {
-                            if let Ast::Scope { node } = node {
-                                Some(node)
-                            } else {
-                                return Err(Message::unreachable(self.location));
-                            }
-                        }
-                    }
-                }
+            unit_exists = std::path::Path::new(&path).exists();
+            if unit_exists {
+                unit::register_unit(
+                    Unit::builder()
+                        .set_name(name.clone())
+                        .set_path(path)
+                        .build(),
+                );
             }
         }
 
-        if body.is_none() {
+        if !unit_exists {
             let mut path = path.clone();
             path.push_str("/mod.tt");
 
-            // println!("Another try parse {}", path);
-
-            let lexer = Lexer::from_file(&path, verbose);
-
-            if let Ok(lexer) = lexer {
-                let mut parser_int = Parser::new(lexer);
-
-                let parser_res = parser_int.parse();
-
-                if parser_int.has_errors() {
-                    messages::print_messages(&parser_int.get_errors());
-                } else if parser_int.has_warnings() {
-                    messages::print_messages(&parser_int.get_warnings());
-                }
-
-                match parser_res {
-                    None => {
-                        return Err(Message::new(
-                            parser.get_location(),
-                            &format!(
-                                "Error occured during parsing module \"{}\" body",
-                                identifier
-                            ),
-                        ));
-                    }
-
-                    Some(ast) => {
-                        body = {
-                            if let Ast::Scope { node } = ast {
-                                Some(node)
-                            } else {
-                                return Err(Message::unreachable(self.location));
-                            }
-                        };
-                    }
-                }
+            unit_exists = std::path::Path::new(&path).exists();
+            if unit_exists {
+                unit::register_unit(
+                    Unit::builder()
+                        .set_name(name.clone())
+                        .set_path(path)
+                        .build(),
+                );
             }
         }
 
-        if let Some(body) = body {
-            self.body = body;
-
-            Ok(())
-        } else {
-            Err(Message::new(
-                self.location,
-                &format!("Not found definition for module \"{}\"", identifier),
-            ))
-        }
+        Ok(())
     }
 }

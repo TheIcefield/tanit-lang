@@ -13,7 +13,7 @@ fn function_def_test() {
                             \n    let ret: f32 = sum(a, b)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, true).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let node = Scope::parse_global(&mut parser).unwrap();
 
@@ -93,19 +93,19 @@ fn function_def_test() {
 
 #[test]
 fn functions_test() {
-    static SRC_TEXT: &str = "\nfunc f(a: i32, b: i32) -> f32 {\
-                             \n    return a + b\
-                             \n}\
-                             \n\
-                             \nfunc main() {\
-                             \n   let res = f(a: 1, 2, c: 1 + 2)\
-                             \n}\
-                             \n\
-                             \nfunc bar () {\
-                             \n   let PI = 3.14\
-                             \n}";
+    const SRC_TEXT: &str = "\nfunc f(a: i32, b: i32) -> f32 {\
+                            \n    return a + b\
+                            \n}\
+                            \n\
+                            \nfunc main() {\
+                            \n   let res = f(a: 1, 2, c: 1 + 2)\
+                            \n}\
+                            \n\
+                            \nfunc bar () {\
+                            \n   let PI = 3.14\
+                            \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT, true).expect("Lexer creation failed"));
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     {
         let func = FunctionDef::parse(&mut parser).unwrap();

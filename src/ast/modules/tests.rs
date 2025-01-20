@@ -6,9 +6,9 @@ use std::str::FromStr;
 
 #[test]
 fn module_test() {
-    static SRC_PATH: &str = "./examples/modules.tt";
+    const SRC_PATH: &str = "./examples/modules.tt";
 
-    let lexer = Lexer::from_file(SRC_PATH, false).unwrap();
+    let lexer = Lexer::from_file(SRC_PATH).unwrap();
 
     let mut parser = Parser::new(lexer);
 
@@ -16,7 +16,7 @@ fn module_test() {
 
     let res = if let Ast::ModuleDef { node } = &res {
         assert!(node.identifier == Identifier::from_str("M1").unwrap());
-        &node.body
+        node.body.as_ref().unwrap()
     } else {
         panic!("res should be \'ModuleDef\'");
     };
