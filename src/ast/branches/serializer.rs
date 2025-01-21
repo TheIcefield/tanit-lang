@@ -1,44 +1,46 @@
-use super::{Branch, BranchType, Break, Continue, Return};
+use super::{Branch, BranchType, Interupter, InterupterType};
 use crate::serializer::{Serialize, XmlWriter};
 
 impl Serialize for Branch {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         match &self.branch {
-            BranchType::Loop { body, condition } => {
-                writer.begin_tag("loop")?;
+            BranchType::While { body, condition } => {
+                writer.begin_tag("while")?;
 
-                if let Some(cond) = condition {
-                    writer.begin_tag("condition")?;
+                writer.begin_tag("condition")?;
 
-                    cond.serialize(writer)?;
+                condition.serialize(writer)?;
 
-                    writer.end_tag()?;
-                }
+                writer.end_tag()?;
 
                 body.serialize(writer)?;
 
                 writer.end_tag()?;
             }
-            BranchType::IfElse {
-                condition,
-                main_body,
-                else_body,
-            } => {
-                writer.begin_tag("branch")?;
+            BranchType::Loop { body } => {
+                writer.begin_tag("loop")?;
+
+                body.serialize(writer)?;
+
+                writer.end_tag()?;
+            }
+            BranchType::If { condition, body } => {
+                writer.begin_tag("if")?;
 
                 writer.begin_tag("condition")?;
                 condition.serialize(writer)?;
                 writer.end_tag()?;
 
-                writer.begin_tag("true")?;
-                main_body.serialize(writer)?;
+                writer.begin_tag("than")?;
+                body.serialize(writer)?;
                 writer.end_tag()?;
 
-                if let Some(else_body) = else_body {
-                    writer.begin_tag("false")?;
-                    else_body.serialize(writer)?;
-                    writer.end_tag()?;
-                }
+                writer.end_tag()?;
+            }
+            BranchType::Else { body } => {
+                writer.begin_tag("else")?;
+
+                body.serialize(writer)?;
 
                 writer.end_tag()?;
             }
@@ -48,33 +50,17 @@ impl Serialize for Branch {
     }
 }
 
-impl Serialize for Break {
+impl Serialize for Interupter {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
-        writer.begin_tag("break-statement")?;
+        writer.begin_tag(&format!("{}-statement", self.interupter.to_str()))?;
 
-        if let Some(expr) = &self.expr {
-            expr.serialize(writer)?;
-        }
-
-        writer.end_tag()?;
-
-        Ok(())
-    }
-}
-
-impl Serialize for Continue {
-    fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
-        writer.begin_tag("continue-statement")?;
-        writer.end_tag()
-    }
-}
-
-impl Serialize for Return {
-    fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
-        writer.begin_tag("return-statement")?;
-
-        if let Some(expr) = &self.expr {
-            expr.serialize(writer)?;
+        match &self.interupter {
+            InterupterType::Break { ret } | InterupterType::Return { ret } => {
+                if let Some(expr) = ret {
+                    expr.serialize(writer)?;
+                }
+            }
+            _ => {}
         }
 
         writer.end_tag()?;

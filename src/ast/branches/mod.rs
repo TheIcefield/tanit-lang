@@ -1,4 +1,4 @@
-use crate::ast::Ast;
+use crate::ast::{expressions::Expression, Ast};
 use crate::parser::location::Location;
 
 pub mod analyzer;
@@ -8,15 +8,10 @@ pub mod serializer;
 
 #[derive(Clone, PartialEq)]
 pub enum BranchType {
-    Loop {
-        body: Box<Ast>,
-        condition: Option<Box<Ast>>,
-    },
-    IfElse {
-        condition: Box<Ast>,
-        main_body: Box<Ast>,
-        else_body: Option<Box<Ast>>,
-    },
+    Loop { body: Box<Ast> },
+    While { body: Box<Ast>, condition: Box<Ast> },
+    If { body: Box<Ast>, condition: Box<Ast> },
+    Else { body: Box<Ast> },
 }
 
 #[derive(Clone, PartialEq)]
@@ -26,18 +21,24 @@ pub struct Branch {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Break {
-    pub location: Location,
-    pub expr: Option<Box<Ast>>,
+pub enum InterupterType {
+    Return { ret: Option<Expression> },
+    Break { ret: Option<Expression> },
+    Continue,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Continue {
-    location: Location,
+pub struct Interupter {
+    pub location: Location,
+    pub interupter: InterupterType,
 }
 
-#[derive(Clone, PartialEq)]
-pub struct Return {
-    pub location: Location,
-    pub expr: Option<Box<Ast>>,
+impl InterupterType {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            InterupterType::Continue => "continue",
+            InterupterType::Break { .. } => "break",
+            InterupterType::Return { .. } => "return",
+        }
+    }
 }

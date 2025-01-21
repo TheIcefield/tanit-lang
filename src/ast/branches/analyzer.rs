@@ -1,102 +1,99 @@
-use super::{Branch, BranchType, Break, Continue, Return};
+use super::{Branch, BranchType, Interupter, InterupterType};
 use crate::analyzer::{Analyze, Analyzer};
 use crate::ast::Ast;
 use crate::messages::Message;
 
+impl Branch {
+    fn analyze_body(body: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
+        if let Ast::Scope { node } = body {
+            for stmt in node.statements.iter_mut() {
+                stmt.analyze(analyzer)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn analyze_condition(condition: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
+        if let Ast::Expression { node } = condition {
+            node.analyze(analyzer)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl Analyze for Branch {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match &mut self.branch {
-            BranchType::IfElse {
-                condition,
-                main_body,
-                else_body,
-            } => {
-                condition.analyze(analyzer)?;
-                main_body.analyze(analyzer)?;
-                if let Some(else_body) = else_body.as_mut() {
-                    else_body.analyze(analyzer)?;
-                }
-
-                Ok(())
-            }
-            BranchType::Loop { body, condition } => {
+            BranchType::While { body, condition } => {
                 let cnt = analyzer.counter();
                 analyzer.scope.push(&format!("@l.{}", cnt));
 
-                if let Some(cond) = condition {
-                    cond.analyze(analyzer)?;
-                }
+                condition.analyze(analyzer)?;
 
-                if let Ast::Scope { node } = body.as_mut() {
-                    for stmt in node.statements.iter_mut() {
-                        stmt.analyze(analyzer)?;
-                    }
-                }
+                Self::analyze_condition(condition.as_mut(), analyzer)?;
+                Self::analyze_body(body.as_mut(), analyzer)?;
 
                 analyzer.scope.pop();
 
                 Ok(())
             }
+            BranchType::Loop { body } => {
+                let cnt = analyzer.counter();
+                analyzer.scope.push(&format!("@l.{}", cnt));
+
+                Self::analyze_body(body.as_mut(), analyzer)?;
+
+                analyzer.scope.pop();
+
+                Ok(())
+            }
+            BranchType::If { body, condition } => {
+                Self::analyze_condition(condition.as_mut(), analyzer)?;
+                Self::analyze_body(body.as_mut(), analyzer)?;
+
+                Ok(())
+            }
+            BranchType::Else { body } => {
+                Self::analyze_body(body.as_mut(), analyzer)?;
+
+                Ok(())
+            }
         }
     }
 }
 
-impl Analyze for Break {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        let mut in_loop = false;
+impl Interupter {
+    fn is_in_loop(analyzer: &mut Analyzer) -> bool {
         for s in analyzer.scope.iter().rev() {
             if s.starts_with("@l.") {
-                in_loop = true;
-                break;
+                return true;
             }
         }
 
-        if let Some(expr) = &mut self.expr {
-            expr.analyze(analyzer)?
+        false
+    }
+}
+
+impl Analyze for Interupter {
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
+        let in_loop = Self::is_in_loop(analyzer);
+
+        match &mut self.interupter {
+            InterupterType::Break { ret } | InterupterType::Return { ret } => {
+                if let Some(expr) = ret {
+                    expr.analyze(analyzer)?
+                }
+            }
+            _ => {}
         }
 
         if !in_loop {
-            return Err(Message::new(self.location, "Unexpected break statement"));
-        }
-
-        Ok(())
-    }
-}
-
-impl Analyze for Continue {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        let mut in_loop = false;
-        for s in analyzer.scope.iter().rev() {
-            if s.starts_with("@l.") {
-                in_loop = true;
-                break;
-            }
-        }
-
-        if !in_loop {
-            return Err(Message::new(self.location, "Unexpected continue statement"));
-        }
-
-        Ok(())
-    }
-}
-
-impl Analyze for Return {
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
-        let mut in_func = false;
-        for s in analyzer.scope.iter().rev() {
-            if s.starts_with("@f.") {
-                in_func = true;
-                break;
-            }
-        }
-
-        if let Some(expr) = &mut self.expr {
-            expr.analyze(analyzer)?;
-        }
-
-        if !in_func {
-            return Err(Message::new(self.location, "Unexpected return statement"));
+            return Err(Message::new(
+                self.location,
+                &format!("Unexpected {} statement", self.interupter.to_str()),
+            ));
         }
 
         Ok(())

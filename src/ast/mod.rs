@@ -40,11 +40,11 @@ pub enum Ast {
 
     BranchStmt { node: branches::Branch },
 
-    BreakStmt { node: branches::Break },
+    BreakStmt { node: branches::Interupter },
 
-    ContinueStmt { node: branches::Continue },
+    ContinueStmt { node: branches::Interupter },
 
-    ReturnStmt { node: branches::Return },
+    ReturnStmt { node: branches::Interupter },
 
     Value { node: values::Value },
 
