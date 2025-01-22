@@ -1,37 +1,49 @@
-use garnet_script::lexer;
+use tanit::unit::{self, CompileOptions, Unit};
 
 fn main() {
-    let mut source_file = "".to_string();
-    let mut dump_tokens = false;
+    let mut source_file = "main.tt".to_string();
+    let mut compile_options = CompileOptions::default();
 
-    let mut argv = std::env::args();
-    argv.next();
-    for arg in argv {
-        if arg == "--dump-tokens" {
-            dump_tokens = true;
-        } else {
-            source_file = arg;
+    let argv = std::env::args().collect::<Vec<String>>();
+    #[allow(clippy::needless_range_loop)]
+    for mut i in 1..argv.len() {
+        if argv[i] == "-i" {
+            i += 1;
+            source_file = argv[i].clone();
+        } else if argv[i] == "--dump-tokens" {
+            compile_options.verbose_tokens = true;
+        } else if argv[i] == "--dump-ast" {
+            compile_options.dump_ast = true;
+        } else if argv[i] == "--dump-symtable" {
+            compile_options.dump_symbol_table = true;
         }
     }
 
-    if source_file.len() == 0 {
-        println!("Error: Source file not specified");
-        return;
+    unit::set_compile_options(compile_options);
+
+    let mut main_unit_name = source_file
+        .chars()
+        .rev()
+        .collect::<String>()
+        .splitn(2, '/')
+        .collect::<Vec<&str>>()[0]
+        .chars()
+        .rev()
+        .collect::<String>();
+
+    if main_unit_name.ends_with(".tt") {
+        for _ in 0..".tt".len() {
+            main_unit_name.pop();
+        }
     }
 
-    let mut lexer = {
-        let lexer = lexer::Lexer::from_file(&source_file, dump_tokens);
-        match lexer {
-            Err(e) => {
-                println!("Error: {}", e);
-                return;
-            },
-            Ok(lexer) => lexer,
-        }
-    };
+    let mut main_unit = Unit::builder()
+        .set_name(main_unit_name)
+        .set_path(source_file)
+        .build();
 
-    let tokens = lexer.collect();
+    main_unit.process_parsing().unwrap();
+    unit::register_unit(main_unit);
 
-    lexer::dump_tokens(&tokens);
-    
+    Unit::process().unwrap();
 }

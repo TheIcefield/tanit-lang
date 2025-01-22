@@ -1,0 +1,8 @@
+func main()
+{
+    let const PI: f32
+    let radian = PI / 2.0
+    let mut ceil = radian as i32
+    ceil <<= 3
+
+}

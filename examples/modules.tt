@@ -1,0 +1,10 @@
+module M1
+{
+    module M2
+    {
+    }
+
+    def module branches
+
+    def module colors
+}

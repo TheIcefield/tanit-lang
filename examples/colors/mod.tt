@@ -1,0 +1,8 @@
+enum Color {
+    Reg
+    Green
+    Blue
+    Yellow
+    White
+    Black
+}
