@@ -39,3 +39,9 @@ pub struct Value {
     pub location: Location,
     pub value: ValueType,
 }
+
+impl From<Value> for Ast {
+    fn from(value: Value) -> Self {
+        Self::Value { node: value }
+    }
+}

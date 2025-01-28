@@ -93,12 +93,10 @@ impl Value {
 
         parser.consume_token(Lexem::Rsb)?;
 
-        Ok(Ast::Value {
-            node: Self {
-                location,
-                value: ValueType::Array { components },
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            value: ValueType::Array { components },
+        }))
     }
 
     pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, Message> {

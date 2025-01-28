@@ -24,5 +24,11 @@ pub struct VariantDef {
     pub internals: Vec<Ast>,
 }
 
+impl From<VariantDef> for Ast {
+    fn from(value: VariantDef) -> Self {
+        Self::VariantDef { node: value }
+    }
+}
+
 #[cfg(test)]
 mod tests;

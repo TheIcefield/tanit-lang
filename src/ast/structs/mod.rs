@@ -8,12 +8,18 @@ pub mod codegen;
 pub mod parser;
 pub mod serializer;
 
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
     pub identifier: Identifier,
     pub fields: BTreeMap<Identifier, Type>,
     pub internals: Vec<Ast>,
+}
+
+impl From<StructDef> for Ast {
+    fn from(value: StructDef) -> Self {
+        Self::StructDef { node: value }
+    }
 }
 
 #[cfg(test)]

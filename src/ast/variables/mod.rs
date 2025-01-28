@@ -1,4 +1,4 @@
-use crate::ast::{identifiers::Identifier, types::Type};
+use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::parser::location::Location;
 
 pub mod analyzer;
@@ -13,6 +13,12 @@ pub struct VariableDef {
     pub var_type: Type,
     pub is_global: bool,
     pub is_mutable: bool,
+}
+
+impl From<VariableDef> for Ast {
+    fn from(value: VariableDef) -> Self {
+        Self::VariableDef { node: value }
+    }
 }
 
 #[cfg(test)]

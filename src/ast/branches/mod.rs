@@ -42,3 +42,19 @@ impl InterupterType {
         }
     }
 }
+
+impl From<Branch> for Ast {
+    fn from(value: Branch) -> Self {
+        Self::BranchStmt { node: value }
+    }
+}
+
+impl From<Interupter> for Ast {
+    fn from(value: Interupter) -> Self {
+        match &value.interupter {
+            InterupterType::Continue => Self::ContinueStmt { node: value },
+            InterupterType::Return { .. } => Self::ReturnStmt { node: value },
+            InterupterType::Break { .. } => Self::BreakStmt { node: value },
+        }
+    }
+}

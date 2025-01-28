@@ -23,12 +23,10 @@ impl Branch {
 
         let body = Self::parse_body(parser)?;
 
-        Ok(Ast::BranchStmt {
-            node: Self {
-                location,
-                branch: BranchType::Loop { body },
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            branch: BranchType::Loop { body },
+        }))
     }
 
     pub fn parse_while(parser: &mut Parser) -> Result<Ast, Message> {
@@ -37,12 +35,10 @@ impl Branch {
         let condition = Self::parse_condition(parser)?;
         let body = Self::parse_body(parser)?;
 
-        Ok(Ast::BranchStmt {
-            node: Self {
-                location,
-                branch: BranchType::While { body, condition },
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            branch: BranchType::While { body, condition },
+        }))
     }
 
     pub fn parse_if(parser: &mut Parser) -> Result<Ast, Message> {
@@ -51,12 +47,10 @@ impl Branch {
         let condition = Self::parse_condition(parser)?;
         let body = Self::parse_body(parser)?;
 
-        Ok(Ast::BranchStmt {
-            node: Self {
-                location,
-                branch: BranchType::If { condition, body },
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            branch: BranchType::If { condition, body },
+        }))
     }
 
     pub fn parse_else(parser: &mut Parser) -> Result<Ast, Message> {
@@ -68,12 +62,10 @@ impl Branch {
             Self::parse_body(parser)?
         };
 
-        Ok(Ast::BranchStmt {
-            node: Branch {
-                location,
-                branch: BranchType::Else { body },
-            },
-        })
+        Ok(Ast::from(Branch {
+            location,
+            branch: BranchType::Else { body },
+        }))
     }
 
     fn parse_condition(parser: &mut Parser) -> Result<Box<Ast>, Message> {

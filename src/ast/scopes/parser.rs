@@ -5,16 +5,16 @@ use crate::parser::{token::Lexem, Parser};
 
 impl Scope {
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Self::new();
+        let mut node = Self::default();
 
         node.parse_scope_internal(parser)?;
         node.is_global = true;
 
-        Ok(Ast::Scope { node })
+        Ok(Ast::from(node))
     }
 
     pub fn parse_local(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut node = Scope::new();
+        let mut node = Scope::default();
 
         parser.consume_token(Lexem::Lcb)?;
 
@@ -28,7 +28,7 @@ impl Scope {
 
         parser.set_ignore_nl_option(old_opt);
 
-        Ok(Ast::Scope { node })
+        Ok(Ast::from(node))
     }
 
     fn parse_scope_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {

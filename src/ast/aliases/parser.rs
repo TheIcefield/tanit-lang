@@ -13,12 +13,10 @@ impl AliasDef {
 
         let value = Type::parse(parser)?;
 
-        Ok(Ast::AliasDef {
-            node: AliasDef {
-                location,
-                identifier,
-                value,
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            identifier,
+            value,
+        }))
     }
 }

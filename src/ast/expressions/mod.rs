@@ -26,5 +26,11 @@ pub struct Expression {
     pub expr: ExpressionType,
 }
 
+impl From<Expression> for Ast {
+    fn from(value: Expression) -> Self {
+        Self::Expression { node: value }
+    }
+}
+
 #[cfg(test)]
 mod tests;
