@@ -40,25 +40,21 @@ impl Expression {
                 };
 
                 if let Some(new_op) = new_op {
-                    return Ok(Ast::Expression {
-                        node: Self {
-                            location,
-                            expr: ExpressionType::Binary {
-                                operation: Lexem::Assign,
-                                lhs: lhs.clone(),
-                                rhs: Box::new(Ast::Expression {
-                                    node: Self {
-                                        location,
-                                        expr: ExpressionType::Binary {
-                                            operation: new_op,
-                                            lhs: lhs.clone(),
-                                            rhs: rhs.clone(),
-                                        },
-                                    },
-                                }),
-                            },
+                    return Ok(Ast::from(Self {
+                        location,
+                        expr: ExpressionType::Binary {
+                            operation: Lexem::Assign,
+                            lhs: lhs.clone(),
+                            rhs: Box::new(Ast::from(Self {
+                                location,
+                                expr: ExpressionType::Binary {
+                                    operation: new_op,
+                                    lhs: lhs.clone(),
+                                    rhs: rhs.clone(),
+                                },
+                            })),
                         },
-                    });
+                    }));
                 }
             }
         }
@@ -76,38 +72,32 @@ impl Expression {
                 let operation = next.lexem;
                 let node = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Unary { operation, node },
-                    },
-                })
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Unary { operation, node },
+                }))
             }
-            Lexem::Integer(_) => Ok(Ast::Value {
-                node: Value {
-                    location,
-                    value: ValueType::Integer(
-                        parser
-                            .consume_integer()?
-                            .lexem
-                            .get_int()
-                            .unwrap_or_default(),
-                    ),
-                },
-            }),
+            Lexem::Integer(_) => Ok(Ast::from(Value {
+                location,
+                value: ValueType::Integer(
+                    parser
+                        .consume_integer()?
+                        .lexem
+                        .get_int()
+                        .unwrap_or_default(),
+                ),
+            })),
 
-            Lexem::Decimal(_) => Ok(Ast::Value {
-                node: Value {
-                    location,
-                    value: ValueType::Decimal(
-                        parser
-                            .consume_decimal()?
-                            .lexem
-                            .get_dec()
-                            .unwrap_or_default(),
-                    ),
-                },
-            }),
+            Lexem::Decimal(_) => Ok(Ast::from(Value {
+                location,
+                value: ValueType::Decimal(
+                    parser
+                        .consume_decimal()?
+                        .lexem
+                        .get_dec()
+                        .unwrap_or_default(),
+                ),
+            })),
 
             Lexem::Identifier(_) => {
                 let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
@@ -117,61 +107,51 @@ impl Expression {
                     // if call
                     let arguments = Value::parse_call_params(parser)?;
 
-                    return Ok(Ast::Value {
-                        node: Value {
-                            location,
-                            value: ValueType::Call {
-                                identifier,
-                                arguments,
-                            },
+                    return Ok(Ast::from(Value {
+                        location,
+                        value: ValueType::Call {
+                            identifier,
+                            arguments,
                         },
-                    });
+                    }));
                 } else if next.lexem == Lexem::Dcolon {
                     // if ::
                     parser.get_token();
 
                     let operation = next.lexem;
 
-                    let lhs = Box::new(Ast::Value {
-                        node: Value {
-                            location,
-                            value: ValueType::Identifier(identifier),
-                        },
-                    });
+                    let lhs = Box::new(Ast::from(Value {
+                        location,
+                        value: ValueType::Identifier(identifier),
+                    }));
 
                     let rhs = Box::new(Self::parse_factor(parser)?);
 
-                    return Ok(Ast::Expression {
-                        node: Self {
-                            location,
-                            expr: ExpressionType::Binary {
-                                operation,
-                                lhs,
-                                rhs,
-                            },
+                    return Ok(Ast::from(Self {
+                        location,
+                        expr: ExpressionType::Binary {
+                            operation,
+                            lhs,
+                            rhs,
                         },
-                    });
+                    }));
                 } else if next.lexem == Lexem::Lcb {
                     // if struct
                     let components = Value::parse_struct(parser)?;
 
-                    return Ok(Ast::Value {
-                        node: Value {
-                            location,
-                            value: ValueType::Struct {
-                                identifier,
-                                components,
-                            },
+                    return Ok(Ast::from(Value {
+                        location,
+                        value: ValueType::Struct {
+                            identifier,
+                            components,
                         },
-                    });
+                    }));
                 }
 
-                Ok(Ast::Value {
-                    node: Value {
-                        location,
-                        value: ValueType::Identifier(identifier),
-                    },
-                })
+                Ok(Ast::from(Value {
+                    location,
+                    value: ValueType::Identifier(identifier),
+                }))
             }
 
             Lexem::LParen => {
@@ -180,14 +160,12 @@ impl Expression {
                 /* If parsed `()` then we return empty tuple */
                 if parser.peek_token().lexem == Lexem::RParen {
                     parser.consume_token(Lexem::RParen)?;
-                    return Ok(Ast::Value {
-                        node: Value {
-                            location,
-                            value: ValueType::Tuple {
-                                components: Vec::new(),
-                            },
+                    return Ok(Ast::from(Value {
+                        location,
+                        value: ValueType::Tuple {
+                            components: Vec::new(),
                         },
-                    });
+                    }));
                 }
 
                 let mut components = Vec::<Ast>::new();
@@ -226,12 +204,10 @@ impl Expression {
                     }
                 }
 
-                Ok(Ast::Value {
-                    node: Value {
-                        location,
-                        value: ValueType::Tuple { components },
-                    },
-                })
+                Ok(Ast::from(Value {
+                    location,
+                    value: ValueType::Tuple { components },
+                }))
             }
 
             Lexem::Lsb => Value::parse_array(parser),
@@ -285,18 +261,16 @@ impl Expression {
                         )),
                     };
 
-                    *expr_node = Ast::Value {
-                        node: Value {
-                            location,
-                            value: ValueType::Call {
-                                identifier: func_id,
-                                arguments: vec![
-                                    CallParam::Positional(0, lhs.clone()),
-                                    CallParam::Positional(1, rhs.clone()),
-                                ],
-                            },
+                    *expr_node = Ast::from(Value {
+                        location,
+                        value: ValueType::Call {
+                            identifier: func_id,
+                            arguments: vec![
+                                CallParam::Positional(0, lhs.clone()),
+                                CallParam::Positional(1, rhs.clone()),
+                            ],
                         },
-                    };
+                    });
                 } else {
                     let rhs_type = if let Ast::Value {
                         node:
@@ -310,16 +284,14 @@ impl Expression {
                     } else {
                         Type::new()
                     };
-                    *expr_node = Ast::Expression {
-                        node: Self {
-                            location,
-                            expr: ExpressionType::Binary {
-                                operation: Lexem::KwAs,
-                                lhs: lhs.clone(),
-                                rhs: Box::new(Ast::Type { node: rhs_type }),
-                            },
+                    *expr_node = Ast::from(Self {
+                        location,
+                        expr: ExpressionType::Binary {
+                            operation: Lexem::KwAs,
+                            lhs: lhs.clone(),
+                            rhs: Box::new(Ast::Type { node: rhs_type }),
                         },
-                    };
+                    });
                 };
             }
             Ok(())
@@ -353,16 +325,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -382,16 +352,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -411,16 +379,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -440,16 +406,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -469,16 +433,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -498,16 +460,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -527,16 +487,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -556,16 +514,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -585,16 +541,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -614,16 +568,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -643,16 +595,14 @@ impl Expression {
 
                 let rhs = Box::new(Self::parse(parser)?);
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
 
             _ => Ok(lhs),
@@ -692,16 +642,14 @@ impl Expression {
                     }
                 }
 
-                Ok(Ast::Expression {
-                    node: Self {
-                        location: next.location,
-                        expr: ExpressionType::Binary {
-                            operation,
-                            lhs: Box::new(lhs),
-                            rhs,
-                        },
+                Ok(Ast::from(Self {
+                    location: next.location,
+                    expr: ExpressionType::Binary {
+                        operation,
+                        lhs: Box::new(lhs),
+                        rhs,
                     },
-                })
+                }))
             }
             _ => Ok(lhs),
         }

@@ -1,49 +1,35 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, variants::VariantDef, Ast};
 use crate::messages::Message;
-use crate::parser::{location::Location, token::Lexem, Parser};
-
-use std::collections::BTreeMap;
+use crate::parser::{token::Lexem, Parser};
 
 impl StructDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let identifier = Self::parse_header(parser)?.identifier;
+        let mut node = Self::default();
 
-        if let Ast::StructDef { mut node } = Self::parse_body_external(parser)? {
-            node.identifier = identifier;
-            return Ok(Ast::StructDef { node });
-        }
+        node.parse_header(parser)?;
+        node.parse_body(parser)?;
 
-        unreachable!()
+        Ok(Ast::from(node))
     }
 
-    pub fn parse_header(parser: &mut Parser) -> Result<Self, Message> {
-        let location = parser.consume_token(Lexem::KwStruct)?.location;
-
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
-
-        Ok(StructDef {
-            location,
-            identifier,
-            fields: BTreeMap::new(),
-            internals: Vec::new(),
-        })
+    fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
+        self.location = parser.consume_token(Lexem::KwStruct)?.location;
+        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        Ok(())
     }
 
-    pub fn parse_body_external(parser: &mut Parser) -> Result<Ast, Message> {
+    pub fn parse_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
         parser.consume_token(Lexem::Lcb)?;
 
-        let fields = Self::parse_body_internal(parser);
+        self.parse_body_internal(parser)?;
 
         parser.consume_token(Lexem::Rcb)?;
 
-        fields
+        Ok(())
     }
 
-    pub fn parse_body_internal(parser: &mut Parser) -> Result<Ast, Message> {
-        let mut fields = BTreeMap::<Identifier, Type>::new();
-        let mut internals = Vec::<Ast>::new();
-
+    fn parse_body_internal(&mut self, parser: &mut Parser) -> Result<(), Message> {
         loop {
             let next = parser.peek_token();
 
@@ -56,17 +42,17 @@ impl StructDef {
                 }
 
                 Lexem::KwStruct => {
-                    internals.push(StructDef::parse(parser)?);
+                    self.internals.push(StructDef::parse(parser)?);
                 }
 
                 Lexem::KwVariant => {
-                    internals.push(VariantDef::parse(parser)?);
+                    self.internals.push(VariantDef::parse(parser)?);
                 }
 
                 Lexem::Identifier(id) => {
                     let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
 
-                    if fields.contains_key(&identifier) {
+                    if self.fields.contains_key(&identifier) {
                         parser.error(Message::new(
                             next.location,
                             &format!("Struct has already field with identifier {}", id),
@@ -76,7 +62,7 @@ impl StructDef {
 
                     parser.consume_token(Lexem::Colon)?;
 
-                    fields.insert(identifier, Type::parse(parser)?);
+                    self.fields.insert(identifier, Type::parse(parser)?);
                 }
 
                 _ => {
@@ -88,13 +74,6 @@ impl StructDef {
             }
         }
 
-        Ok(Ast::StructDef {
-            node: Self {
-                location: Location::new(),
-                identifier: Identifier::new(),
-                fields,
-                internals,
-            },
-        })
+        Ok(())
     }
 }

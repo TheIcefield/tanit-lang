@@ -92,27 +92,23 @@ impl VariableDef {
             var_type = Some(Type::Auto);
         }
 
-        let var_node = Ast::VariableDef {
-            node: Self {
-                location,
-                identifier,
-                var_type: var_type.unwrap_or(Type::Auto),
-                is_global,
-                is_mutable,
-            },
-        };
+        let var_node = Ast::from(Self {
+            location,
+            identifier,
+            var_type: var_type.unwrap_or(Type::Auto),
+            is_global,
+            is_mutable,
+        });
 
         if let Some(rhs) = rvalue {
-            return Ok(Ast::Expression {
-                node: Expression {
-                    location,
-                    expr: ExpressionType::Binary {
-                        operation: Lexem::Assign,
-                        lhs: Box::new(var_node),
-                        rhs: Box::new(rhs),
-                    },
+            return Ok(Ast::from(Expression {
+                location,
+                expr: ExpressionType::Binary {
+                    operation: Lexem::Assign,
+                    lhs: Box::new(var_node),
+                    rhs: Box::new(rhs),
                 },
-            });
+            }));
         }
 
         Ok(var_node)

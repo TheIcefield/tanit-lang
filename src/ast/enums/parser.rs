@@ -10,7 +10,7 @@ impl EnumDef {
         node.parse_header(parser)?;
         node.parse_body(parser)?;
 
-        Ok(Ast::EnumDef { node })
+        Ok(Ast::from(node))
     }
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {

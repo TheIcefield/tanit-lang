@@ -184,3 +184,9 @@ impl std::fmt::Debug for Type {
         std::fmt::Display::fmt(&self, f)
     }
 }
+
+impl From<Type> for Ast {
+    fn from(value: Type) -> Self {
+        Self::Type { node: value }
+    }
+}

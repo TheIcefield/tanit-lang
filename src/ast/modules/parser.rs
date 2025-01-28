@@ -15,7 +15,7 @@ impl ModuleDef {
         node.parse_header(parser)?;
         node.parse_body(parser)?;
 
-        Ok(Ast::ModuleDef { node })
+        Ok(Ast::from(node))
     }
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {

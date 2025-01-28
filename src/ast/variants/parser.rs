@@ -37,19 +37,12 @@ impl VariantField {
             }
 
             Lexem::Lcb => {
-                if let Ast::StructDef { node } = StructDef::parse_body_external(parser)? {
-                    if !node.internals.is_empty() {
-                        parser.error(Message::new(
-                            next.location,
-                            "Internal structs are not allowed here",
-                        ));
-                    }
+                let mut node = StructDef::default();
+                node.parse_body(parser)?;
 
-                    *self = VariantField::StructLike(node.fields);
+                *self = VariantField::StructLike(node.fields);
 
-                    return Ok(());
-                }
-                unreachable!()
+                Ok(())
             }
 
             _ => Err(Message::new(

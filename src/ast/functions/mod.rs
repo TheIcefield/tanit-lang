@@ -15,5 +15,11 @@ pub struct FunctionDef {
     pub body: Option<Box<Ast>>,
 }
 
+impl From<FunctionDef> for Ast {
+    fn from(value: FunctionDef) -> Self {
+        Self::FuncDef { node: value }
+    }
+}
+
 #[cfg(test)]
 mod tests;
