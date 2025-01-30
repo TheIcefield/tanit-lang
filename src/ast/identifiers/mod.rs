@@ -75,12 +75,12 @@ impl Identifier {
                 ));
             }
 
-            if let Ast::Expression { node } = rhs.as_ref() {
+            if let Ast::Expression(node) = rhs.as_ref() {
                 // recursively parse expression tail
                 res.append(Self::from_expr(node)?);
             }
 
-            let rhs_id = if let Ast::Value { node } = rhs.as_ref() {
+            let rhs_id = if let Ast::Value(node) = rhs.as_ref() {
                 if let ValueType::Identifier(id) = &node.value {
                     Some(id.clone())
                 } else {
@@ -90,7 +90,7 @@ impl Identifier {
                 None
             };
 
-            let lhs_id = if let Ast::Value { node } = lhs.as_ref() {
+            let lhs_id = if let Ast::Value(node) = lhs.as_ref() {
                 if let ValueType::Identifier(id) = &node.value {
                     id.clone()
                 } else {

@@ -17,7 +17,7 @@ pub struct EnumDef {
 
 impl From<EnumDef> for Ast {
     fn from(value: EnumDef) -> Self {
-        Self::EnumDef { node: value }
+        Self::EnumDef(value)
     }
 }
 

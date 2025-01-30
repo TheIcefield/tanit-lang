@@ -26,7 +26,7 @@ pub struct VariantDef {
 
 impl From<VariantDef> for Ast {
     fn from(value: VariantDef) -> Self {
-        Self::VariantDef { node: value }
+        Self::VariantDef(value)
     }
 }
 

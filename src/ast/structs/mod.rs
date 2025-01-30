@@ -18,7 +18,7 @@ pub struct StructDef {
 
 impl From<StructDef> for Ast {
     fn from(value: StructDef) -> Self {
-        Self::StructDef { node: value }
+        Self::StructDef(value)
     }
 }
 

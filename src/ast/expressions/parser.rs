@@ -16,7 +16,7 @@ impl Expression {
         let expr = Self::parse_assign(parser)?;
         parser.set_ignore_nl_option(old_opt);
 
-        if let Ast::Expression { node } = &expr {
+        if let Ast::Expression(node) = &expr {
             let location = node.location;
 
             if let ExpressionType::Binary {
@@ -223,7 +223,7 @@ impl Expression {
         expr_node: &mut Ast,
         analyzer: &mut crate::analyzer::Analyzer,
     ) -> Result<(), Message> {
-        if let Ast::Expression { node } = expr_node {
+        if let Ast::Expression(node) = expr_node {
             let location = node.location;
             if let ExpressionType::Binary {
                 operation,
@@ -272,13 +272,10 @@ impl Expression {
                         },
                     });
                 } else {
-                    let rhs_type = if let Ast::Value {
-                        node:
-                            Value {
-                                value: ValueType::Identifier(id),
-                                ..
-                            },
-                    } = rhs.as_ref()
+                    let rhs_type = if let Ast::Value(Value {
+                        value: ValueType::Identifier(id),
+                        ..
+                    }) = rhs.as_ref()
                     {
                         Type::from_id(id)
                     } else {
@@ -289,7 +286,7 @@ impl Expression {
                         expr: ExpressionType::Binary {
                             operation: Lexem::KwAs,
                             lhs: lhs.clone(),
-                            rhs: Box::new(Ast::Type { node: rhs_type }),
+                            rhs: Box::new(Ast::Type(rhs_type)),
                         },
                     });
                 };
@@ -623,17 +620,12 @@ impl Expression {
                 let mut rhs = Box::new(Self::parse(parser)?);
 
                 if is_conversion {
-                    if let Ast::Value {
-                        node:
-                            Value {
-                                value: ValueType::Identifier(id),
-                                ..
-                            },
-                    } = rhs.clone().as_ref()
+                    if let Ast::Value(Value {
+                        value: ValueType::Identifier(id),
+                        ..
+                    }) = rhs.clone().as_ref()
                     {
-                        rhs = Box::new(Ast::Type {
-                            node: Type::from_id(id),
-                        })
+                        rhs = Box::new(Ast::Type(Type::from_id(id)))
                     } else {
                         parser.error(Message::new(
                             next.location,

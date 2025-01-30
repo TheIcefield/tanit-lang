@@ -20,7 +20,7 @@ impl Analyze for Expression {
                     let is_conversion = *operation == Lexem::KwAs;
 
                     let rhs_type = if is_conversion {
-                        if let Ast::Type { node } = rhs.as_ref() {
+                        if let Ast::Type(node) = rhs.as_ref() {
                             node.clone()
                         } else {
                             analyzer
@@ -31,7 +31,7 @@ impl Analyze for Expression {
                         rhs.get_type(analyzer)
                     };
 
-                    let mut lhs_type = if let Ast::VariableDef { node } = lhs.as_ref() {
+                    let mut lhs_type = if let Ast::VariableDef(node) = lhs.as_ref() {
                         node.var_type.clone()
                     } else {
                         lhs.get_type(analyzer)
@@ -73,7 +73,7 @@ impl Analyze for Expression {
                 let mut lhs_type = lhs.get_type(analyzer);
 
                 let rhs_type = if is_conversion {
-                    if let Ast::Type { node } = rhs.as_ref() {
+                    if let Ast::Type(node) = rhs.as_ref() {
                         node.clone()
                     } else {
                         unreachable!();
@@ -97,7 +97,7 @@ impl Analyze for Expression {
                     || is_conversion
                 {
                     let does_mutate = !is_conversion;
-                    if let Ast::VariableDef { node } = lhs.as_mut() {
+                    if let Ast::VariableDef(node) = lhs.as_mut() {
                         if analyzer
                             .check_identifier_existance(&node.identifier)
                             .is_ok()
@@ -129,7 +129,7 @@ impl Analyze for Expression {
                                 is_initialization: true,
                             }),
                         );
-                    } else if let Ast::Value { node } = lhs.as_mut() {
+                    } else if let Ast::Value(node) = lhs.as_mut() {
                         match &node.value {
                             ValueType::Identifier(id) => {
                                 if let Ok(s) = analyzer.check_identifier_existance(id) {

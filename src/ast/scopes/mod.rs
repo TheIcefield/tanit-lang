@@ -13,6 +13,6 @@ pub struct Scope {
 
 impl From<Scope> for Ast {
     fn from(value: Scope) -> Self {
-        Self::Scope { node: value }
+        Self::Scope(value)
     }
 }

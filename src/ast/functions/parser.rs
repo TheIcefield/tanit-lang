@@ -39,9 +39,8 @@ impl FunctionDef {
             let next = parser.peek_token();
 
             if next.is_identifier() {
-                self.parameters.push(Ast::VariableDef {
-                    node: Self::parse_param(parser)?,
-                });
+                self.parameters
+                    .push(Ast::VariableDef(Self::parse_param(parser)?));
 
                 let next = parser.peek_token();
                 if next.lexem == Lexem::Comma {

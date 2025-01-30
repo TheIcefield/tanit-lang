@@ -16,7 +16,7 @@ impl Analyze for FunctionDef {
 
         let mut arguments = Vec::<(String, Type)>::new();
         for p in self.parameters.iter_mut() {
-            if let Ast::VariableDef { node } = p {
+            if let Ast::VariableDef(node) = p {
                 arguments.push((node.identifier.get_string(), node.var_type.clone()));
                 p.analyze(analyzer)?;
             }
@@ -36,8 +36,8 @@ impl Analyze for FunctionDef {
         analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
         if let Some(body) = &mut self.body {
-            if let Ast::Scope { node } = body.as_mut() {
-                for stmt in node.statements.iter_mut() {
+            if let Ast::Scope(scope) = body.as_mut() {
+                for stmt in scope.statements.iter_mut() {
                     stmt.analyze(analyzer)?;
                 }
             }

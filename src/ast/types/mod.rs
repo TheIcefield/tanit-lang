@@ -187,6 +187,6 @@ impl std::fmt::Debug for Type {
 
 impl From<Type> for Ast {
     fn from(value: Type) -> Self {
-        Self::Type { node: value }
+        Self::Type(value)
     }
 }

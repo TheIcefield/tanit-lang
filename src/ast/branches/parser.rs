@@ -114,18 +114,16 @@ impl Interupter {
 
         parser.set_ignore_nl_option(old_opt);
 
-        Ok(Ast::BreakStmt { node })
+        Ok(Ast::from(node))
     }
 
     pub fn parse_continue(parser: &mut Parser) -> Result<Ast, Message> {
         let location = parser.consume_token(Lexem::KwContinue)?.location;
 
-        Ok(Ast::ContinueStmt {
-            node: Self {
-                location,
-                interupter: InterupterType::Continue,
-            },
-        })
+        Ok(Ast::from(Self {
+            location,
+            interupter: InterupterType::Continue,
+        }))
     }
 
     pub fn parse_return(parser: &mut Parser) -> Result<Ast, Message> {
@@ -151,11 +149,11 @@ impl Interupter {
 
         parser.set_ignore_nl_option(old_opt);
 
-        Ok(Ast::ReturnStmt { node })
+        Ok(Ast::from(node))
     }
 
     fn parse_ret_expr(&mut self, parser: &mut Parser) -> Result<Expression, Message> {
-        if let Ast::Expression { node } = Expression::parse(parser)? {
+        if let Ast::Expression(node) = Expression::parse(parser)? {
             Ok(node)
         } else {
             Err(Message::unreachable(self.location))

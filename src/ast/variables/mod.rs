@@ -17,7 +17,7 @@ pub struct VariableDef {
 
 impl From<VariableDef> for Ast {
     fn from(value: VariableDef) -> Self {
-        Self::VariableDef { node: value }
+        Self::VariableDef(value)
     }
 }
 

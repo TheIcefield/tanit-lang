@@ -16,7 +16,7 @@ pub struct ModuleDef {
 
 impl From<ModuleDef> for Ast {
     fn from(value: ModuleDef) -> Self {
-        Self::ModuleDef { node: value }
+        Self::ModuleDef(value)
     }
 }
 
