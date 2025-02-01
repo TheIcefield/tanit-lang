@@ -110,13 +110,13 @@ fn functions_test() {
     {
         let func = FunctionDef::parse(&mut parser).unwrap();
 
-        let scope = if let Ast::FuncDef { node } = &func {
+        let scope = if let Ast::FuncDef(node) = &func {
             node.body.as_ref()
         } else {
             panic!("node should be \'FuncDef\'");
         };
 
-        let node = if let Ast::Scope { node } = scope.unwrap().as_ref() {
+        let node = if let Ast::Scope(node) = scope.unwrap().as_ref() {
             assert_eq!(node.statements.len(), 1);
             &node.statements[0]
         } else {
@@ -129,20 +129,20 @@ fn functions_test() {
     {
         let func = FunctionDef::parse(&mut parser).unwrap();
 
-        let scope = if let Ast::FuncDef { node } = &func {
+        let scope = if let Ast::FuncDef(node) = &func {
             node.body.as_ref()
         } else {
             panic!("node should be \'FuncDef\'");
         };
 
-        let node = if let Ast::Scope { node } = scope.unwrap().as_ref() {
+        let node = if let Ast::Scope(node) = scope.unwrap().as_ref() {
             assert_eq!(node.statements.len(), 1);
             &node.statements[0]
         } else {
             panic!("node should be \'local scope\'");
         };
 
-        let (lhs, rhs) = if let Ast::Expression { node } = node {
+        let (lhs, rhs) = if let Ast::Expression(node) = node {
             if let ExpressionType::Binary {
                 operation,
                 lhs,

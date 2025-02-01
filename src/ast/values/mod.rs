@@ -42,6 +42,6 @@ pub struct Value {
 
 impl From<Value> for Ast {
     fn from(value: Value) -> Self {
-        Self::Value { node: value }
+        Self::Value(value)
     }
 }

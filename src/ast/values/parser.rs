@@ -19,13 +19,10 @@ impl Value {
 
             let expr = Expression::parse(parser)?;
 
-            let param_id = if let Ast::Value {
-                node:
-                    Value {
-                        location: _,
-                        value: ValueType::Identifier(id),
-                    },
-            } = &expr
+            let param_id = if let Ast::Value(Value {
+                location: _,
+                value: ValueType::Identifier(id),
+            }) = &expr
             {
                 if parser.peek_token().lexem == Lexem::Colon {
                     parser.consume_token(Lexem::Colon)?;

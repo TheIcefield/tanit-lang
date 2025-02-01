@@ -21,7 +21,7 @@ fn variant_def_test() {
 
     let variant_node = VariantDef::parse(&mut parser).unwrap();
 
-    if let Ast::VariantDef { node } = &variant_node {
+    if let Ast::VariantDef(node) = &variant_node {
         assert!(node.identifier == Identifier::from_str("MyVariant").unwrap());
 
         assert!(matches!(

@@ -277,12 +277,10 @@ impl Analyze for Value {
                 }
 
                 Type::Array {
-                    size: Some(Box::new(Ast::Value {
-                        node: Self {
-                            location: self.location,
-                            value: ValueType::Integer(len),
-                        },
-                    })),
+                    size: Some(Box::new(Ast::from(Self {
+                        location: self.location,
+                        value: ValueType::Integer(len),
+                    }))),
                     value_type: Box::new(components[0].get_type(analyzer)),
                 }
             }

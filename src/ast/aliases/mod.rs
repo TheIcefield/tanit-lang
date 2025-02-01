@@ -15,7 +15,7 @@ pub struct AliasDef {
 
 impl From<AliasDef> for Ast {
     fn from(value: AliasDef) -> Self {
-        Self::AliasDef { node: value }
+        Self::AliasDef(value)
     }
 }
 

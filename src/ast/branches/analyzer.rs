@@ -5,7 +5,7 @@ use crate::messages::Message;
 
 impl Branch {
     fn analyze_body(body: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ast::Scope { node } = body {
+        if let Ast::Scope(node) = body {
             for stmt in node.statements.iter_mut() {
                 stmt.analyze(analyzer)?;
             }
@@ -15,7 +15,7 @@ impl Branch {
     }
 
     fn analyze_condition(condition: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ast::Expression { node } = condition {
+        if let Ast::Expression(node) = condition {
             node.analyze(analyzer)?;
         }
 

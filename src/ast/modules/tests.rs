@@ -14,14 +14,14 @@ fn module_test() {
 
     let res = ModuleDef::parse(&mut parser).unwrap();
 
-    let res = if let Ast::ModuleDef { node } = &res {
+    let res = if let Ast::ModuleDef(node) = &res {
         assert!(node.identifier == Identifier::from_str("M1").unwrap());
         node.body.as_ref().unwrap()
     } else {
         panic!("res should be \'ModuleDef\'");
     };
 
-    if let Ast::ModuleDef { node } = &res.statements[0] {
+    if let Ast::ModuleDef(node) = &res.statements[0] {
         assert!(node.identifier == Identifier::from_str("M2").unwrap());
     } else {
         panic!("res should be \'ModuleDef\'");

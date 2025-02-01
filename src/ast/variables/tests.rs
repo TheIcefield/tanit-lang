@@ -19,7 +19,7 @@ fn variables_test() {
 
     let res = FunctionDef::parse(&mut parser).unwrap();
 
-    let res = if let Ast::FuncDef { node } = &res {
+    let res = if let Ast::FuncDef(node) = &res {
         assert!(node.identifier == Identifier::from_str("main").unwrap());
         assert!(node.parameters.is_empty());
 
@@ -34,13 +34,13 @@ fn variables_test() {
         panic!("res has to be \'FuncDef\'");
     };
 
-    let res = if let Ast::Scope { node } = res.unwrap().as_ref() {
+    let res = if let Ast::Scope(node) = res.unwrap().as_ref() {
         &node.statements
     } else {
         panic!("res has to be \'LScope\'");
     };
 
-    if let Ast::VariableDef { node } = &res[0] {
+    if let Ast::VariableDef(node) = &res[0] {
         assert!(node.identifier == Identifier::from_str("PI").unwrap());
         assert!(!node.is_mutable);
         assert!(!node.is_global);
@@ -49,7 +49,7 @@ fn variables_test() {
         panic!("first statement has to be \'variable definition\'");
     }
 
-    if let Ast::Expression { node } = &res[1] {
+    if let Ast::Expression(node) = &res[1] {
         let (lhs, rhs) = if let ExpressionType::Binary {
             operation,
             lhs,
@@ -62,7 +62,7 @@ fn variables_test() {
             panic!("Expected binary expression");
         };
 
-        if let Ast::VariableDef { node } = lhs {
+        if let Ast::VariableDef(node) = lhs {
             assert!(node.identifier == radian_var_id);
             assert!(!node.is_global);
             assert!(!node.is_mutable);
@@ -70,7 +70,7 @@ fn variables_test() {
             panic!("Expected variable definition")
         }
 
-        if let Ast::Expression { node } = rhs {
+        if let Ast::Expression(node) = rhs {
             if let ExpressionType::Binary { operation, .. } = &node.expr {
                 assert_eq!(*operation, Lexem::Slash);
             } else {
@@ -83,7 +83,7 @@ fn variables_test() {
         panic!("second statement has to be \'variable definition\'");
     }
 
-    if let Ast::Expression { node } = &res[2] {
+    if let Ast::Expression(node) = &res[2] {
         if let ExpressionType::Binary {
             operation,
             lhs,
@@ -92,7 +92,7 @@ fn variables_test() {
         {
             assert_eq!(*operation, Lexem::Assign);
 
-            if let Ast::Expression { node } = lhs.as_ref() {
+            if let Ast::Expression(node) = lhs.as_ref() {
                 let (lhs, rhs) = if let ExpressionType::Binary {
                     operation,
                     lhs,
@@ -105,7 +105,7 @@ fn variables_test() {
                     panic!("Binary expression expected")
                 };
 
-                if let Ast::VariableDef { node } = lhs {
+                if let Ast::VariableDef(node) = lhs {
                     assert!(node.identifier == Identifier::from_str("ceil").unwrap());
                     assert!(!node.is_global);
                     assert!(!node.is_mutable);
@@ -113,7 +113,7 @@ fn variables_test() {
                     panic!("Expected variable definition")
                 }
 
-                if let Ast::Value { node } = rhs {
+                if let Ast::Value(node) = rhs {
                     if let ValueType::Identifier(id) = &node.value {
                         assert!(*id == i32_type_id);
                     } else {
@@ -124,7 +124,7 @@ fn variables_test() {
                 }
             }
 
-            let expr = if let Ast::Expression { node } = rhs.as_ref() {
+            let expr = if let Ast::Expression(node) = rhs.as_ref() {
                 node
             } else {
                 panic!("rhs expected to be \'Expression\'");
@@ -138,7 +138,7 @@ fn variables_test() {
             {
                 assert_eq!(*operation, Lexem::KwAs);
 
-                if let Ast::Value { node } = lhs.as_ref() {
+                if let Ast::Value(node) = lhs.as_ref() {
                     if let ValueType::Identifier(id) = &node.value {
                         assert!(*id == Identifier::from_str("radian").unwrap())
                     }
@@ -146,7 +146,7 @@ fn variables_test() {
                     panic!("rhs has to be \'Expression\'");
                 };
 
-                assert!(matches!(rhs.as_ref(), Ast::Type { node: Type::I32 }));
+                assert!(matches!(rhs.as_ref(), Ast::Type(Type::I32)));
             } else {
                 panic!("Expected binary expression");
             }

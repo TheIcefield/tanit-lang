@@ -17,7 +17,7 @@ pub struct FunctionDef {
 
 impl From<FunctionDef> for Ast {
     fn from(value: FunctionDef) -> Self {
-        Self::FuncDef { node: value }
+        Self::FuncDef(value)
     }
 }
 

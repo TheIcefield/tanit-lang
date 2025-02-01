@@ -17,7 +17,7 @@ fn struct_def_test() {
 
     let struct_node = StructDef::parse(&mut parser).unwrap();
 
-    if let Ast::StructDef { node } = &struct_node {
+    if let Ast::StructDef(node) = &struct_node {
         assert!(node.identifier == Identifier::from_str("MyStruct").unwrap());
 
         let field_type = node

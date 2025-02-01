@@ -51,7 +51,7 @@ impl ModuleDef {
 
         parser.consume_token(Lexem::Rcb)?;
 
-        if let Ast::Scope { node } = scope {
+        if let Ast::Scope(node) = scope {
             self.body = Some(node);
         } else {
             return Err(Message::unreachable(self.location));

@@ -11,7 +11,7 @@ fn conversion_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    if let Ast::Expression { node } = Expression::parse(&mut parser).unwrap() {
+    if let Ast::Expression(node) = Expression::parse(&mut parser).unwrap() {
         if let ExpressionType::Binary {
             operation,
             lhs,
@@ -22,15 +22,13 @@ fn conversion_test() {
 
             assert!(matches!(
                 lhs.as_ref(),
-                Ast::Value {
-                    node: Value {
-                        value: ValueType::Integer(45),
-                        ..
-                    }
-                }
+                Ast::Value(Value {
+                    value: ValueType::Integer(45),
+                    ..
+                })
             ));
 
-            assert!(matches!(rhs.as_ref(), Ast::Type { node: Type::F32 }))
+            assert!(matches!(rhs.as_ref(), Ast::Type(Type::F32)))
         } else {
             panic!("Expected binary expression");
         }

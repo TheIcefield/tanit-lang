@@ -55,7 +55,7 @@ fn alias_in_func_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let res = if let Ast::FuncDef { node } = FunctionDef::parse(&mut parser).unwrap() {
+    let res = if let Ast::FuncDef(node) = FunctionDef::parse(&mut parser).unwrap() {
         assert!(node.identifier == Identifier::from_str("main").unwrap());
         assert!(node.parameters.is_empty());
 
@@ -70,13 +70,13 @@ fn alias_in_func_test() {
         panic!("res has to be \'function definition\'");
     };
 
-    let statements = if let Ast::Scope { node } = res.as_ref() {
+    let statements = if let Ast::Scope(node) = res.as_ref() {
         &node.statements
     } else {
         panic!("node has to be \'local scope\'");
     };
 
-    if let Ast::AliasDef { node } = &statements[0] {
+    if let Ast::AliasDef(node) = &statements[0] {
         assert!(node.identifier == Identifier::from_str("Items").unwrap());
 
         if let Type::Template {

@@ -28,7 +28,7 @@ pub struct Expression {
 
 impl From<Expression> for Ast {
     fn from(value: Expression) -> Self {
-        Self::Expression { node: value }
+        Self::Expression(value)
     }
 }
 

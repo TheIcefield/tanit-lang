@@ -25,41 +25,33 @@ fn expr_conversion_test() {
         location: Location::new(),
         expr: ExpressionType::Binary {
             operation: Lexem::Dcolon,
-            lhs: Box::new(Ast::Value {
-                node: Value {
+            lhs: Box::new(Ast::from(Value {
+                location: Location::new(),
+                value: ValueType::Identifier(Identifier {
                     location: Location::new(),
-                    value: ValueType::Identifier(Identifier {
+                    identifier: IdentifierType::Common("hello".to_string()),
+                }),
+            })),
+            rhs: Box::new(Ast::from(Expression {
+                location: Location::new(),
+                expr: ExpressionType::Binary {
+                    operation: Lexem::Dcolon,
+                    lhs: Box::new(Ast::from(Value {
                         location: Location::new(),
-                        identifier: IdentifierType::Common("hello".to_string()),
-                    }),
-                },
-            }),
-            rhs: Box::new(Ast::Expression {
-                node: Expression {
-                    location: Location::new(),
-                    expr: ExpressionType::Binary {
-                        operation: Lexem::Dcolon,
-                        lhs: Box::new(Ast::Value {
-                            node: Value {
-                                location: Location::new(),
-                                value: ValueType::Identifier(Identifier {
-                                    location: Location::new(),
-                                    identifier: IdentifierType::Common("my".to_string()),
-                                }),
-                            },
+                        value: ValueType::Identifier(Identifier {
+                            location: Location::new(),
+                            identifier: IdentifierType::Common("my".to_string()),
                         }),
-                        rhs: Box::new(Ast::Value {
-                            node: Value {
-                                location: Location::new(),
-                                value: ValueType::Identifier(Identifier {
-                                    location: Location::new(),
-                                    identifier: IdentifierType::Common("world".to_string()),
-                                }),
-                            },
+                    })),
+                    rhs: Box::new(Ast::from(Value {
+                        location: Location::new(),
+                        value: ValueType::Identifier(Identifier {
+                            location: Location::new(),
+                            identifier: IdentifierType::Common("world".to_string()),
                         }),
-                    },
+                    })),
                 },
-            }),
+            })),
         },
     };
 
