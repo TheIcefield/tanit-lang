@@ -1,5 +1,5 @@
 use crate::ast::{scopes, Ast};
-use crate::messages::{Errors, Message, Warnings};
+use tanitc_messages::{Errors, Message, Warnings};
 
 use tanitc_lexer::{
     location::Location,

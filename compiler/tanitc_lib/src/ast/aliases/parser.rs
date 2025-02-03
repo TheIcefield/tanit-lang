@@ -1,9 +1,9 @@
 use super::AliasDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use crate::messages::Message;
 use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
+use tanitc_messages::Message;
 
 impl AliasDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

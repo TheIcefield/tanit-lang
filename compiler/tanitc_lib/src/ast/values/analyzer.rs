@@ -1,7 +1,8 @@
 use super::{CallParam, Value, ValueType};
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::{types::Type, Ast};
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Value {
     fn check_call_args(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {

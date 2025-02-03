@@ -2,8 +2,9 @@ use super::AliasDef;
 use crate::{
     analyzer::{symbol_table::SymbolData, Analyze, Analyzer},
     ast::types::Type,
-    messages::Message,
 };
+
+use tanitc_messages::Message;
 
 impl Analyze for AliasDef {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {

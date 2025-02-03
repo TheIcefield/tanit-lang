@@ -1,7 +1,8 @@
 use super::FunctionDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::{types::Type, Ast};
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for FunctionDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {

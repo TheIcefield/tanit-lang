@@ -1,7 +1,8 @@
 use super::ModuleDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::identifiers::IdentifierType;
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for ModuleDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {

@@ -1,7 +1,8 @@
 use super::StructDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::types::Type;
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for StructDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {

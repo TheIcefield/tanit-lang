@@ -1,5 +1,5 @@
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use crate::messages::{Errors, Message, Warnings};
+use tanitc_messages::{Errors, Message, Warnings};
 
 pub mod scope;
 pub mod symbol_table;

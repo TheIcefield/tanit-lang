@@ -1,7 +1,8 @@
 use super::VariableDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::types::Type;
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for VariableDef {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {

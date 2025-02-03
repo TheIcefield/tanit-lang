@@ -1,7 +1,8 @@
 use super::{Branch, BranchType, Interupter, InterupterType};
 use crate::analyzer::{Analyze, Analyzer};
 use crate::ast::Ast;
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Branch {
     fn analyze_body(body: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {

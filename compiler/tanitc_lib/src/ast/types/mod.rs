@@ -2,7 +2,8 @@ use crate::ast::{
     identifiers::{Identifier, IdentifierType},
     Ast,
 };
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 use std::str::FromStr;
 

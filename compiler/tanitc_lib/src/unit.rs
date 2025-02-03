@@ -3,7 +3,6 @@ use std::sync::Mutex;
 use crate::analyzer::{self, symbol_table::SymbolTable};
 use crate::ast::Ast;
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::messages;
 use crate::parser;
 use crate::serializer::XmlWriter;
 
@@ -86,12 +85,12 @@ impl Unit {
         self.ast = parser.parse();
 
         if parser.has_errors() || self.ast.is_none() {
-            messages::print_messages(&parser.get_errors());
+            tanitc_messages::print_messages(&parser.get_errors());
             return Err("Parse errors occured");
         }
 
         if parser.has_warnings() {
-            messages::print_messages(&parser.get_warnings());
+            tanitc_messages::print_messages(&parser.get_warnings());
         }
 
         self.process_state = UnitProcessState::Parsed;
@@ -117,12 +116,12 @@ impl Unit {
         self.symbol_table = analyzer.analyze(self.ast.as_mut().unwrap());
 
         if analyzer.has_errors() || self.symbol_table.is_none() {
-            messages::print_messages(&analyzer.get_errors());
+            tanitc_messages::print_messages(&analyzer.get_errors());
             return Err("Analyze errors occured");
         }
 
         if analyzer.has_warnings() {
-            messages::print_messages(&analyzer.get_warnings());
+            tanitc_messages::print_messages(&analyzer.get_warnings());
         }
 
         self.process_state = UnitProcessState::Analyzed;

@@ -1,6 +1,7 @@
 use super::Scope;
 use crate::analyzer::{Analyze, Analyzer};
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for Scope {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {

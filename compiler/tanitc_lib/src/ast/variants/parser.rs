@@ -1,9 +1,9 @@
 use super::{VariantDef, VariantField};
 use crate::ast::{identifiers::Identifier, structs::StructDef, types::Type, Ast};
-use crate::messages::Message;
 use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
+use tanitc_messages::Message;
 
 impl VariantField {
     pub fn parse(parser: &mut Parser) -> Result<Self, Message> {

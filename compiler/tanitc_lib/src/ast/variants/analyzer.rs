@@ -1,6 +1,7 @@
 use super::{VariantDef, VariantField};
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::messages::Message;
+
+use tanitc_messages::Message;
 
 impl Analyze for VariantField {
     fn analyze(&mut self, _analyzer: &mut Analyzer) -> Result<(), Message> {

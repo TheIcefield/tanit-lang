@@ -1,10 +1,10 @@
 use crate::ast::{expressions::Expression, values::ValueType, Ast};
-use crate::messages::Message;
 
 use tanitc_lexer::{
     location::Location,
     token::{Lexem, Token},
 };
+use tanitc_messages::Message;
 
 pub mod analyzer;
 pub mod codegen;

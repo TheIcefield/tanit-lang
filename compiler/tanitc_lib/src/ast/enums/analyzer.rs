@@ -2,8 +2,9 @@ use super::EnumDef;
 use crate::{
     analyzer::{symbol_table::SymbolData, Analyze, Analyzer},
     ast::{identifiers::Identifier, types::Type},
-    messages::Message,
 };
+
+use tanitc_messages::Message;
 
 impl Analyze for EnumDef {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
