@@ -1,5 +1,5 @@
 use super::EnumDef;
-use crate::serializer::{Serialize, XmlWriter};
+use tanitc_serializer::{Serialize, XmlWriter};
 
 impl Serialize for EnumDef {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {

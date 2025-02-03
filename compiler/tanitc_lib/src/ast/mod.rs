@@ -1,9 +1,9 @@
 use crate::analyzer::{Analyze, Analyzer};
 use crate::codegen::{CodeGenStream, Codegen};
-use crate::serializer::{Serialize, XmlWriter};
 
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
+use tanitc_serializer::{Serialize, XmlWriter};
 
 pub mod aliases;
 pub mod branches;

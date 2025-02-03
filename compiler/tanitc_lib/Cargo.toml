@@ -10,3 +10,4 @@ lazy_static = "1.5.0"
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_parser = { path = "../tanitc_parser" }
 tanitc_messages = { path = "../tanitc_messages" }
+tanitc_serializer = { path = "../tanitc_serializer" }

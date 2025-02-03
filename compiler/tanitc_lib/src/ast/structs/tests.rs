@@ -1,7 +1,7 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::codegen::CodeGenStream;
-use crate::serializer::XmlWriter;
+use tanitc_serializer::XmlWriter;
 
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;

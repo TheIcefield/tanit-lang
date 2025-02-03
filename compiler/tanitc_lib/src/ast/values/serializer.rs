@@ -1,5 +1,5 @@
 use super::{CallParam, Value, ValueType};
-use crate::serializer::{Serialize, XmlWriter};
+use tanitc_serializer::{Serialize, XmlWriter};
 
 impl Serialize for CallParam {
     fn serialize(&self, _writer: &mut XmlWriter) -> std::io::Result<()> {

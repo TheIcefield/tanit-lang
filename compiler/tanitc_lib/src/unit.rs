@@ -3,10 +3,10 @@ use std::sync::Mutex;
 use crate::analyzer::{self, symbol_table::SymbolTable};
 use crate::ast::Ast;
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::serializer::XmlWriter;
 
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
+use tanitc_serializer::XmlWriter;
 
 use lazy_static::lazy_static;
 

@@ -1,5 +1,5 @@
 use super::{VariantDef, VariantField};
-use crate::serializer::{Serialize, XmlWriter};
+use tanitc_serializer::{Serialize, XmlWriter};
 
 impl Serialize for VariantField {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {

@@ -1,9 +1,9 @@
 use crate::ast::{aliases::AliasDef, identifiers::Identifier, types::Type, Ast};
 use crate::codegen::CodeGenStream;
-use crate::serializer::XmlWriter;
 
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
+use tanitc_serializer::XmlWriter;
 
 use std::str::FromStr;
 
