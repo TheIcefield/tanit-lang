@@ -11,11 +11,15 @@ fn variables_test() {
     let radian_var_id = Identifier::from_str("radian").unwrap();
     let i32_type_id = Identifier::from_str("i32").unwrap();
 
-    const SRC_PATH: &str = "./examples/values.tt";
+    const SRC_TEXT: &str = "\nfunc main()
+                            \n{\
+                            \n    let const PI: f32\
+                            \n    let radian = PI / 2.0\
+                            \n    let mut ceil = radian as i32\
+                            \n    ceil <<= 3\
+                            \n}";
 
-    let lexer = Lexer::from_file(SRC_PATH).unwrap();
-
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
 
     let res = FunctionDef::parse(&mut parser).unwrap();
 

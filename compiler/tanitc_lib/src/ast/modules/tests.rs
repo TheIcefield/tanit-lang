@@ -6,11 +6,14 @@ use std::str::FromStr;
 
 #[test]
 fn module_test() {
-    const SRC_PATH: &str = "./examples/modules.tt";
+    const SRC_TEXT: &str = "\nmodule M1\
+                            \n{\
+                            \n    module M2\
+                            \n    {\
+                            \n    }\
+                            \n}";
 
-    let lexer = Lexer::from_file(SRC_PATH).unwrap();
-
-    let mut parser = Parser::new(lexer);
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
 
     let res = ModuleDef::parse(&mut parser).unwrap();
 

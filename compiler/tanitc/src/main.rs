@@ -1,4 +1,4 @@
-use tanit::unit::{self, CompileOptions, Unit};
+use tanitc_lib::unit::{self, CompileOptions, Unit};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
