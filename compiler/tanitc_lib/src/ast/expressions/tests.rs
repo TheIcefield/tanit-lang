@@ -1,7 +1,8 @@
 use super::{Expression, ExpressionType};
 use crate::ast::{types::Type, Ast};
-use crate::parser::Parser;
+
 use tanitc_lexer::{token::Lexem, Lexer};
+use tanitc_parser::Parser;
 
 #[test]
 fn conversion_test() {

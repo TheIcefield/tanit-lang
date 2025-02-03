@@ -1,9 +1,9 @@
 use super::EnumDef;
 use crate::codegen::CodeGenStream;
-use crate::parser::Parser;
 use crate::serializer::XmlWriter;
 
 use tanitc_lexer::Lexer;
+use tanitc_parser::Parser;
 
 #[test]
 fn enum_def_test() {

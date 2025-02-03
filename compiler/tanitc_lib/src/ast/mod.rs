@@ -3,6 +3,7 @@ use crate::codegen::{CodeGenStream, Codegen};
 use crate::serializer::{Serialize, XmlWriter};
 
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 pub mod aliases;
 pub mod branches;
@@ -39,6 +40,20 @@ pub enum Ast {
 }
 
 impl Ast {
+    pub fn parse(parser: &mut Parser) -> Option<Self> {
+        let res = scopes::Scope::parse_global(parser);
+
+        if let Err(err) = &res {
+            parser.error(err.clone());
+        }
+
+        if parser.has_errors() {
+            None
+        } else {
+            Some(res.unwrap())
+        }
+    }
+
     pub fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         match self {
             Self::Scope(node) => node.serialize(writer),

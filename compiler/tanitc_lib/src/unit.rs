@@ -3,10 +3,10 @@ use std::sync::Mutex;
 use crate::analyzer::{self, symbol_table::SymbolTable};
 use crate::ast::Ast;
 use crate::codegen::{CodeGenMode, CodeGenStream};
-use crate::parser;
 use crate::serializer::XmlWriter;
 
 use tanitc_lexer::Lexer;
+use tanitc_parser::Parser;
 
 use lazy_static::lazy_static;
 
@@ -80,9 +80,9 @@ impl Unit {
         let mut lexer = Lexer::from_file(&self.path)?;
         lexer.verbose_tokens = get_compile_options().verbose_tokens;
 
-        let mut parser = parser::Parser::new(lexer);
+        let mut parser = Parser::new(lexer);
 
-        self.ast = parser.parse();
+        self.ast = Ast::parse(&mut parser);
 
         if parser.has_errors() || self.ast.is_none() {
             tanitc_messages::print_messages(&parser.get_errors());

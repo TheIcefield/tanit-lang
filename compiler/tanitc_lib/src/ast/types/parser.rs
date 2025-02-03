@@ -1,9 +1,9 @@
 use super::Type;
 use crate::ast::{expressions::Expression, identifiers::Identifier, Ast};
-use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl Type {
     pub fn parse(parser: &mut Parser) -> Result<Self, Message> {

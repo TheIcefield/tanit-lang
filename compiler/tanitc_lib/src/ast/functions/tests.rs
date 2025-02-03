@@ -1,10 +1,10 @@
 use super::FunctionDef;
 use crate::ast::{expressions::ExpressionType, scopes::Scope, Ast};
 use crate::codegen::CodeGenStream;
-use crate::parser::Parser;
 use crate::serializer::XmlWriter;
 
 use tanitc_lexer::{token::Lexem, Lexer};
+use tanitc_parser::Parser;
 
 #[test]
 fn function_def_test() {

@@ -1,9 +1,9 @@
 use super::EnumDef;
 use crate::ast::{identifiers::Identifier, Ast};
-use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl EnumDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

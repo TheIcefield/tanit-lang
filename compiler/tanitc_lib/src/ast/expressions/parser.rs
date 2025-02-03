@@ -5,10 +5,10 @@ use crate::ast::{
     values::{CallParam, Value, ValueType},
     Ast,
 };
-use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl Expression {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

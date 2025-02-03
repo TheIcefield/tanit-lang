@@ -1,4 +1,3 @@
-use crate::ast::{scopes, Ast};
 use tanitc_messages::{Errors, Message, Warnings};
 
 use tanitc_lexer::{
@@ -32,20 +31,6 @@ impl Parser {
 
     pub fn set_ignore_nl_option(&mut self, opt: bool) {
         self.lexer.ignores_nl = opt;
-    }
-
-    pub fn parse(&mut self) -> Option<Ast> {
-        let res = scopes::Scope::parse_global(self);
-
-        if let Err(err) = &res {
-            self.error(err.clone());
-        }
-
-        if self.has_errors() {
-            None
-        } else {
-            Some(res.unwrap())
-        }
     }
 
     pub fn get_location(&self) -> Location {

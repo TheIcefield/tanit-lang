@@ -4,11 +4,11 @@ use crate::ast::{
     scopes::Scope,
     Ast,
 };
-use crate::parser::Parser;
 use crate::unit::{self, Unit};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl ModuleDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

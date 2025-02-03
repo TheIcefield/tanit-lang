@@ -2,10 +2,10 @@ use super::FunctionDef;
 use crate::ast::{
     identifiers::Identifier, scopes::Scope, types::Type, variables::VariableDef, Ast,
 };
-use crate::parser::Parser;
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl FunctionDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
