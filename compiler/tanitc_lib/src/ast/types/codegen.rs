@@ -1,5 +1,5 @@
 use super::Type;
-use crate::codegen::{CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenStream, Codegen};
 
 impl Codegen for Type {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

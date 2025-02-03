@@ -1,5 +1,7 @@
 use super::{Identifier, IdentifierType};
-use crate::codegen::{CodeGenStream, Codegen};
+
+use tanitc_codegen::{CodeGenStream, Codegen};
+
 use std::io::Write;
 
 impl Codegen for Identifier {

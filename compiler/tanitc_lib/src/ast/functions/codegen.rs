@@ -1,5 +1,7 @@
 use super::FunctionDef;
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
+
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
+
 use std::io::Write;
 
 impl Codegen for FunctionDef {

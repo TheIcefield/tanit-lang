@@ -1,6 +1,6 @@
 use super::EnumDef;
-use crate::codegen::CodeGenStream;
 
+use tanitc_codegen::CodeGenStream;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;

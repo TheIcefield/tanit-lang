@@ -1,5 +1,5 @@
 use super::{VariantDef, VariantField};
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
 
 impl Codegen for VariantField {
     fn codegen(&self, _stream: &mut CodeGenStream) -> std::io::Result<()> {

@@ -1,5 +1,5 @@
 use super::AliasDef;
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
 
 impl Codegen for AliasDef {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

@@ -1,5 +1,5 @@
 use super::ModuleDef;
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
 
 impl Codegen for ModuleDef {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

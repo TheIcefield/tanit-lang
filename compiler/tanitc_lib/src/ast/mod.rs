@@ -1,5 +1,5 @@
 use crate::analyzer::{Analyze, Analyzer};
-use crate::codegen::{CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenStream, Codegen};
 
 use tanitc_messages::Message;
 use tanitc_parser::Parser;

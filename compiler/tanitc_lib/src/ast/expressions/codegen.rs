@@ -1,6 +1,6 @@
 use super::{Expression, ExpressionType};
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
 
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
 use tanitc_lexer::token::Lexem;
 
 impl Codegen for Expression {

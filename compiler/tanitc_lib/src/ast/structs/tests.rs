@@ -1,10 +1,10 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use crate::codegen::CodeGenStream;
-use tanitc_serializer::XmlWriter;
 
+use tanitc_codegen::CodeGenStream;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
+use tanitc_serializer::XmlWriter;
 
 use std::str::FromStr;
 

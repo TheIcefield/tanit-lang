@@ -1,6 +1,6 @@
 use super::Scope;
 use crate::ast::Ast;
-use crate::codegen::{CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenStream, Codegen};
 
 use std::io::Write;
 

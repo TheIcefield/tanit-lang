@@ -1,5 +1,6 @@
 use super::EnumDef;
-use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
+
+use tanitc_codegen::{CodeGenMode, CodeGenStream, Codegen};
 
 impl Codegen for EnumDef {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

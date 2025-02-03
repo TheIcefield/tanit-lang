@@ -1,5 +1,5 @@
 use super::VariableDef;
-use crate::codegen::{CodeGenStream, Codegen};
+use tanitc_codegen::{CodeGenStream, Codegen};
 
 impl Codegen for VariableDef {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {
