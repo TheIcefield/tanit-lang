@@ -1,5 +1,5 @@
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use crate::parser::location::Location;
+use tanitc_lexer::location::Location;
 
 use std::collections::BTreeMap;
 

@@ -1,5 +1,6 @@
 use crate::ast::{identifiers::Identifier, Ast};
-use crate::parser::location::Location;
+
+use tanitc_lexer::location::Location;
 
 pub mod analyzer;
 pub mod codegen;

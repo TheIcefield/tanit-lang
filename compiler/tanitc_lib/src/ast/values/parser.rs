@@ -1,7 +1,9 @@
 use super::{CallParam, Value, ValueType};
 use crate::ast::{expressions::Expression, identifiers::Identifier, Ast};
 use crate::messages::Message;
-use crate::parser::{token::Lexem, Parser};
+use crate::parser::Parser;
+
+use tanitc_lexer::token::Lexem;
 
 impl Value {
     pub fn parse_call_params(parser: &mut Parser) -> Result<Vec<CallParam>, Message> {

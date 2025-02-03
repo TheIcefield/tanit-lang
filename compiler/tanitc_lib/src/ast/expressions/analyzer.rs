@@ -2,7 +2,8 @@ use super::{Expression, ExpressionType};
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::{types::Type, values::ValueType, Ast};
 use crate::messages::Message;
-use crate::parser::token::Lexem;
+
+use tanitc_lexer::token::Lexem;
 
 impl Analyze for Expression {
     fn get_type(&self, analyzer: &mut Analyzer) -> Type {

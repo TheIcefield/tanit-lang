@@ -1,6 +1,7 @@
 use super::{Expression, ExpressionType};
 use crate::codegen::{CodeGenMode, CodeGenStream, Codegen};
-use crate::parser::token::Lexem;
+
+use tanitc_lexer::token::Lexem;
 
 impl Codegen for Expression {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()> {

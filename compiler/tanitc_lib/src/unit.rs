@@ -7,6 +7,8 @@ use crate::messages;
 use crate::parser;
 use crate::serializer::XmlWriter;
 
+use tanitc_lexer::Lexer;
+
 use lazy_static::lazy_static;
 
 #[derive(Clone, Copy, Default)]
@@ -76,7 +78,8 @@ impl Unit {
 
         print!("Parsing: \"{}\"... ", &self.path);
 
-        let lexer = parser::lexer::Lexer::from_file(&self.path)?;
+        let mut lexer = Lexer::from_file(&self.path)?;
+        lexer.verbose_tokens = get_compile_options().verbose_tokens;
 
         let mut parser = parser::Parser::new(lexer);
 

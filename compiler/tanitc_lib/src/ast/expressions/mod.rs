@@ -1,6 +1,6 @@
 use crate::ast::Ast;
-use crate::parser::location::Location;
-use crate::parser::token::Lexem;
+
+use tanitc_lexer::{location::Location, token::Lexem};
 
 pub mod analyzer;
 pub mod codegen;

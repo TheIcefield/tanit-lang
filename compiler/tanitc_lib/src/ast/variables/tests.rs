@@ -2,7 +2,9 @@ use crate::ast::{
     expressions::ExpressionType, functions::FunctionDef, identifiers::Identifier, types::Type,
     values::ValueType, Ast,
 };
-use crate::parser::{lexer::Lexer, token::Lexem, Parser};
+use crate::parser::Parser;
+
+use tanitc_lexer::{token::Lexem, Lexer};
 
 #[test]
 fn variables_test() {

@@ -3,7 +3,9 @@ use crate::ast::{
     identifiers::Identifier, scopes::Scope, types::Type, variables::VariableDef, Ast,
 };
 use crate::messages::Message;
-use crate::parser::{token::Lexem, Parser};
+use crate::parser::Parser;
+
+use tanitc_lexer::token::Lexem;
 
 impl FunctionDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

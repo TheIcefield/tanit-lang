@@ -5,8 +5,10 @@ use crate::ast::{
     Ast,
 };
 use crate::messages::Message;
-use crate::parser::{token::Lexem, Parser};
+use crate::parser::Parser;
 use crate::unit::{self, Unit};
+
+use tanitc_lexer::token::Lexem;
 
 impl ModuleDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {

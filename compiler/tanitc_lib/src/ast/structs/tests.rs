@@ -1,8 +1,11 @@
 use super::StructDef;
 use crate::ast::{identifiers::Identifier, types::Type, Ast};
 use crate::codegen::CodeGenStream;
-use crate::parser::{lexer::Lexer, Parser};
+use crate::parser::Parser;
 use crate::serializer::XmlWriter;
+
+use tanitc_lexer::Lexer;
+
 use std::str::FromStr;
 
 #[test]

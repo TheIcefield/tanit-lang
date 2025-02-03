@@ -1,4 +1,4 @@
-use crate::parser::{
+use tanitc_lexer::{
     location::Location,
     token::{Lexem, Token},
 };

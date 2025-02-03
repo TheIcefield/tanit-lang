@@ -1,11 +1,11 @@
 use super::{Expression, ExpressionType};
 use crate::ast::{types::Type, Ast};
-use crate::parser::{token::Lexem, Parser};
+use crate::parser::Parser;
+use tanitc_lexer::{token::Lexem, Lexer};
 
 #[test]
 fn conversion_test() {
     use crate::ast::values::{Value, ValueType};
-    use crate::parser::lexer::Lexer;
 
     const SRC_TEXT: &str = "45 as f32";
 

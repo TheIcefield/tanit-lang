@@ -1,7 +1,9 @@
 use super::Scope;
 use crate::ast::Ast;
 use crate::messages::Message;
-use crate::parser::{token::Lexem, Parser};
+use crate::parser::Parser;
+
+use tanitc_lexer::token::Lexem;
 
 impl Scope {
     pub fn parse_global(parser: &mut Parser) -> Result<Ast, Message> {

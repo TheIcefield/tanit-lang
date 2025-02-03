@@ -1,6 +1,8 @@
 use super::ModuleDef;
 use crate::ast::{identifiers::Identifier, Ast};
-use crate::parser::{lexer::Lexer, Parser};
+use crate::parser::Parser;
+
+use tanitc_lexer::Lexer;
 
 use std::str::FromStr;
 

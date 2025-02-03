@@ -1,5 +1,8 @@
-use super::location::Location;
-use super::token::{Lexem, Token};
+pub mod location;
+pub mod token;
+
+use location::Location;
+use token::{Lexem, Token};
 
 static FILE_ERROR_MSG: &str = "Cannot open file";
 
@@ -10,6 +13,7 @@ pub struct Lexer {
     next_char: Option<char>,
     input: Box<dyn std::io::Read>,
     pub ignores_nl: bool,
+    pub verbose_tokens: bool,
     is_eof: bool,
 }
 
@@ -28,6 +32,7 @@ impl Lexer {
             next_char: None,
             input: Box::new(file.unwrap()),
             ignores_nl: true,
+            verbose_tokens: false,
             is_eof: false,
         })
     }
@@ -40,6 +45,7 @@ impl Lexer {
             next_char: None,
             input: Box::new(src.as_bytes()),
             ignores_nl: true,
+            verbose_tokens: false,
             is_eof: false,
         })
     }
@@ -47,9 +53,7 @@ impl Lexer {
     pub fn get(&mut self) -> Token {
         let tkn = self.get_next(false);
 
-        let verbose = crate::unit::get_compile_options().verbose_tokens;
-
-        if verbose {
+        if self.verbose_tokens {
             println!("{}", tkn);
         }
 
@@ -59,9 +63,7 @@ impl Lexer {
     pub fn get_singular(&mut self) -> Token {
         let tkn = self.get_next(true);
 
-        let verbose = crate::unit::get_compile_options().verbose_tokens;
-
-        if verbose {
+        if self.verbose_tokens {
             println!("{}", tkn);
         }
 

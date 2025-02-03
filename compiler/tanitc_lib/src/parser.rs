@@ -1,13 +1,11 @@
 use crate::ast::{scopes, Ast};
 use crate::messages::{Errors, Message, Warnings};
 
-pub mod lexer;
-pub mod location;
-pub mod token;
-
-use lexer::Lexer;
-use location::Location;
-use token::{Lexem, Token};
+use tanitc_lexer::{
+    location::Location,
+    token::{Lexem, Token},
+    Lexer,
+};
 
 pub struct Parser {
     lexer: Lexer,

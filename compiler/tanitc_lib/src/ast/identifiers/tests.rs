@@ -4,7 +4,7 @@ use crate::ast::{
     values::{Value, ValueType},
     Ast,
 };
-use crate::parser::{location::Location, token::Lexem};
+use tanitc_lexer::{location::Location, token::Lexem};
 
 use std::str::FromStr;
 

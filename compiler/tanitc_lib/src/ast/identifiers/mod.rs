@@ -1,6 +1,7 @@
 use crate::ast::{expressions::Expression, values::ValueType, Ast};
 use crate::messages::Message;
-use crate::parser::{
+
+use tanitc_lexer::{
     location::Location,
     token::{Lexem, Token},
 };
