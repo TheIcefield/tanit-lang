@@ -1,5 +1,5 @@
 use super::AliasDef;
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::ast::{types::Type, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -7,18 +7,16 @@ use tanitc_parser::Parser;
 
 impl AliasDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
-        let location = parser.consume_token(Lexem::KwAlias)?.location;
-
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        let mut node = Self {
+            location: parser.consume_token(Lexem::KwAlias)?.location,
+            identifier: parser.consume_identifier()?,
+            ..Default::default()
+        };
 
         parser.consume_token(Lexem::Assign)?;
 
-        let value = Type::parse(parser)?;
+        node.value = Type::parse(parser)?;
 
-        Ok(Ast::from(Self {
-            location,
-            identifier,
-            value,
-        }))
+        Ok(Ast::from(node))
     }
 }

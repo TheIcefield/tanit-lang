@@ -6,14 +6,8 @@ use tanitc_messages::Message;
 
 impl Analyze for StructDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if analyzer
-            .check_identifier_existance(&self.identifier)
-            .is_ok()
-        {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
         analyzer.scope.push(&format!("@s.{}", &self.identifier));
@@ -29,7 +23,7 @@ impl Analyze for StructDef {
         analyzer.scope.pop();
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::StructDef { components }),
         );
 

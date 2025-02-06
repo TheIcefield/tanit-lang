@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 tanitc_lexer = { path = "../tanitc_lexer" }
+tanitc_ident = { path = "../tanitc_ident" }

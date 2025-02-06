@@ -7,9 +7,12 @@ impl Codegen for VariableDef {
 
         self.var_type.codegen(stream)?;
 
-        write!(stream, "{}", if self.is_mutable { " " } else { " const " })?;
-
-        self.identifier.codegen(stream)?;
+        write!(
+            stream,
+            "{}{}",
+            if self.is_mutable { " " } else { " const " },
+            self.identifier
+        )?;
 
         Ok(())
     }

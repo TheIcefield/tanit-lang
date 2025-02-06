@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct Scope(pub Vec<String>);
 
 impl Scope {
     pub fn new() -> Self {
-        Self(Vec::new())
+        Self::default()
     }
 
     pub fn push(&mut self, block: &str) {
@@ -22,12 +22,6 @@ impl Scope {
 
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, String> {
         self.0.iter_mut()
-    }
-}
-
-impl Default for Scope {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

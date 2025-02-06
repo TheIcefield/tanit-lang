@@ -4,8 +4,7 @@ use tanitc_serializer::{Serialize, XmlWriter};
 impl Serialize for FunctionDef {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         writer.begin_tag("function-definition")?;
-
-        self.identifier.serialize(writer)?;
+        writer.put_param("name", self.identifier)?;
 
         writer.begin_tag("return-type")?;
         self.return_type.serialize(writer)?;

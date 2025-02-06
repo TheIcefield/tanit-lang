@@ -10,7 +10,6 @@ pub mod branches;
 pub mod enums;
 pub mod expressions;
 pub mod functions;
-pub mod identifiers;
 pub mod modules;
 pub mod scopes;
 pub mod structs;

@@ -1,11 +1,11 @@
 use super::{Expression, ExpressionType};
 use crate::ast::{
-    identifiers::{Identifier, IdentifierType},
     types::Type,
     values::{CallParam, Value, ValueType},
     Ast,
 };
 
+use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
@@ -102,7 +102,7 @@ impl Expression {
             })),
 
             Lexem::Identifier(_) => {
-                let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+                let identifier = parser.consume_identifier()?;
 
                 let next = parser.peek_token();
                 if next.lexem == Lexem::LParen {
@@ -242,26 +242,26 @@ impl Expression {
 
                 if !is_conversion {
                     let rhs_type = rhs.get_type(analyzer);
-                    let func_id = Identifier {
-                        location,
-                        identifier: IdentifierType::Common(format!(
-                            "__tanit_compiler__{}_{}_{}",
-                            match operation {
-                                Lexem::Plus => "add",
-                                Lexem::Minus => "sub",
-                                Lexem::Star => "mul",
-                                Lexem::Slash => "div",
-                                Lexem::Percent => "mod",
-                                Lexem::LShift => "lshift",
-                                Lexem::RShift => "rshift",
-                                Lexem::Stick => "or",
-                                Lexem::Ampersand => "and",
-                                _ => return Err(Message::new(location, "Unexpected operation")),
-                            },
-                            lhs_type,
-                            rhs_type
-                        )),
-                    };
+
+                    let func_name_str = format!(
+                        "__tanit_compiler__{}_{}_{}",
+                        match operation {
+                            Lexem::Plus => "add",
+                            Lexem::Minus => "sub",
+                            Lexem::Star => "mul",
+                            Lexem::Slash => "div",
+                            Lexem::Percent => "mod",
+                            Lexem::LShift => "lshift",
+                            Lexem::RShift => "rshift",
+                            Lexem::Stick => "or",
+                            Lexem::Ampersand => "and",
+                            _ => return Err(Message::new(location, "Unexpected operation")),
+                        },
+                        lhs_type,
+                        rhs_type
+                    );
+
+                    let func_id = Ident::from(func_name_str);
 
                     *expr_node = Ast::from(Value {
                         location,
@@ -279,7 +279,7 @@ impl Expression {
                         ..
                     }) = rhs.as_ref()
                     {
-                        Type::from_id(id)
+                        Type::from(*id)
                     } else {
                         Type::new()
                     };
@@ -627,7 +627,7 @@ impl Expression {
                         ..
                     }) = rhs.clone().as_ref()
                     {
-                        rhs = Box::new(Ast::Type(Type::from_id(id)))
+                        rhs = Box::new(Ast::Type(Type::from(*id)))
                     } else {
                         parser.error(Message::new(
                             next.location,

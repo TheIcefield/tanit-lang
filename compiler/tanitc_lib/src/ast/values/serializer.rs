@@ -15,15 +15,14 @@ impl Serialize for Value {
                 arguments,
             } => {
                 writer.begin_tag("call-statement")?;
-
-                identifier.serialize(writer)?;
+                writer.put_param("name", identifier)?;
 
                 writer.begin_tag("parameters")?;
                 for arg in arguments.iter() {
                     writer.begin_tag("parameter")?;
                     match arg {
                         CallParam::Notified(id, expr) => {
-                            id.serialize(writer)?;
+                            writer.put_param("name", id)?;
                             expr.serialize(writer)?;
                         }
                         CallParam::Positional(index, expr) => {
@@ -41,13 +40,12 @@ impl Serialize for Value {
                 components,
             } => {
                 writer.begin_tag("struct-initialization")?;
-
-                identifier.serialize(writer)?;
+                writer.put_param("name", identifier)?;
 
                 for (comp_id, comp_type) in components.iter() {
                     writer.begin_tag("field")?;
+                    writer.put_param("name", comp_id)?;
 
-                    comp_id.serialize(writer)?;
                     comp_type.serialize(writer)?;
 
                     writer.end_tag()?;
@@ -75,7 +73,7 @@ impl Serialize for Value {
             }
             ValueType::Identifier(id) => {
                 writer.begin_tag("variable")?;
-                id.serialize(writer)?;
+                writer.put_param("name", id)?;
                 writer.end_tag()?;
             }
             ValueType::Text(value) => {

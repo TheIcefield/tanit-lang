@@ -11,13 +11,10 @@ impl Codegen for StructDef {
         writeln!(stream, "typedef struct {{")?;
         for (field_id, field_type) in self.fields.iter() {
             field_type.codegen(stream)?;
-            write!(stream, " ")?;
-            field_id.codegen(stream)?;
+            write!(stream, " {}", field_id)?;
             writeln!(stream, ";")?;
         }
-        write!(stream, "}} ")?;
-
-        self.identifier.codegen(stream)?;
+        write!(stream, "}} {}", self.identifier)?;
 
         writeln!(stream, ";")?;
 

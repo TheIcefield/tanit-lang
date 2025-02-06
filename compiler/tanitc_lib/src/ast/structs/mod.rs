@@ -1,4 +1,5 @@
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::ast::{types::Type, Ast};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 use std::collections::BTreeMap;
@@ -11,8 +12,8 @@ pub mod serializer;
 #[derive(Default, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
-    pub identifier: Identifier,
-    pub fields: BTreeMap<Identifier, Type>,
+    pub identifier: Ident,
+    pub fields: BTreeMap<Ident, Type>,
     pub internals: Vec<Ast>,
 }
 

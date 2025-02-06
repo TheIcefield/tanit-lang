@@ -1,12 +1,11 @@
 use super::StructDef;
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::ast::{types::Type, Ast};
 
 use tanitc_codegen::CodeGenStream;
+use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
-
-use std::str::FromStr;
 
 #[test]
 fn struct_def_test() {
@@ -16,23 +15,21 @@ fn struct_def_test() {
                             \n    f2: f32\
                             \n}";
 
+    let struct_id = Ident::from("MyStruct".to_string());
+    let f1_id = Ident::from("f1".to_string());
+    let f2_id = Ident::from("f2".to_string());
+
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
     let struct_node = StructDef::parse(&mut parser).unwrap();
 
     if let Ast::StructDef(node) = &struct_node {
-        assert!(node.identifier == Identifier::from_str("MyStruct").unwrap());
+        assert!(node.identifier == struct_id);
 
-        let field_type = node
-            .fields
-            .get(&Identifier::from_str("f1").unwrap())
-            .unwrap();
+        let field_type = node.fields.get(&f1_id).unwrap();
         assert!(matches!(field_type, Type::I32));
 
-        let field_type = node
-            .fields
-            .get(&Identifier::from_str("f2").unwrap())
-            .unwrap();
+        let field_type = node.fields.get(&f2_id).unwrap();
         assert!(matches!(field_type, Type::F32));
     } else {
         panic!("res should be \'StructDef\'");

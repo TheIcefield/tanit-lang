@@ -1,35 +1,15 @@
 use super::ModuleDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::ast::identifiers::IdentifierType;
 
 use tanitc_messages::Message;
 
 impl Analyze for ModuleDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        let identifier = match &self.identifier.identifier {
-            IdentifierType::Common(id) => id.clone(),
-            IdentifierType::Complex(..) => {
-                return Err(Message::new(
-                    self.location,
-                    &format!(
-                        "Expected common identifier, actually complex: {}",
-                        self.identifier
-                    ),
-                ));
-            }
-        };
-
-        if analyzer
-            .check_identifier_existance(&self.identifier)
-            .is_ok()
-        {
-            return Err(Message::new(
-                self.location,
-                &format!("Identifier \"{}\" defined multiple times", &self.identifier),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.scope.push(&identifier);
+        analyzer.scope.push(&self.identifier.to_string());
 
         if let Some(body) = &mut self.body {
             body.analyze(analyzer)?;
@@ -38,9 +18,9 @@ impl Analyze for ModuleDef {
         analyzer.scope.pop();
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::ModuleDef {
-                full_name: vec![identifier],
+                full_name: vec![self.identifier],
             }),
         );
 

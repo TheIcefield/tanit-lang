@@ -16,12 +16,9 @@ impl Codegen for VariantDef {
 
         writeln!(stream, "typedef enum {{")?;
         for (field_id, _) in self.fields.iter() {
-            field_id.codegen(stream)?;
-            writeln!(stream, ",")?;
+            writeln!(stream, "{},", field_id)?;
         }
-        write!(stream, "}} ")?;
-
-        self.identifier.codegen(stream)?;
+        write!(stream, "}} {}", self.identifier)?;
 
         writeln!(stream, ";")?;
 

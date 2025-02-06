@@ -1,3 +1,4 @@
+use tanitc_ident::Ident;
 use tanitc_lexer::{
     location::Location,
     token::{Lexem, Token},
@@ -49,10 +50,19 @@ impl Message {
         }
     }
 
-    pub fn multiple_ids(location: Location, id: &str) -> Self {
+    pub fn multiple_ids(location: Location, id: Ident) -> Self {
+        let id: String = id.into();
         Self {
             location,
-            text: format!("Identifier \"{}\" defined multiple times", id),
+            text: format!("Identifier \"{id}\" defined multiple times"),
+        }
+    }
+
+    pub fn undefined_id(location: Location, id: Ident) -> Self {
+        let id: String = id.into();
+        Self {
+            location,
+            text: format!("Undefined name \"{id}\""),
         }
     }
 

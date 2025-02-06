@@ -1,4 +1,5 @@
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::ast::{types::Type, Ast};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 use std::collections::BTreeMap;
@@ -12,15 +13,15 @@ pub mod serializer;
 pub enum VariantField {
     #[default]
     Common,
-    StructLike(BTreeMap<Identifier, Type>),
+    StructLike(BTreeMap<Ident, Type>),
     TupleLike(Vec<Type>),
 }
 
 #[derive(Clone, PartialEq, Default)]
 pub struct VariantDef {
     pub location: Location,
-    pub identifier: Identifier,
-    pub fields: BTreeMap<Identifier, VariantField>,
+    pub identifier: Ident,
+    pub fields: BTreeMap<Ident, VariantField>,
     pub internals: Vec<Ast>,
 }
 

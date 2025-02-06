@@ -1,9 +1,10 @@
 use super::EnumDef;
 use crate::{
     analyzer::{symbol_table::SymbolData, Analyze, Analyzer},
-    ast::{identifiers::Identifier, types::Type},
+    ast::types::Type,
 };
 
+use tanitc_ident::Ident;
 use tanitc_messages::Message;
 
 impl Analyze for EnumDef {
@@ -12,15 +13,12 @@ impl Analyze for EnumDef {
     }
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
         let mut counter = 0usize;
-        let mut components = Vec::<(Identifier, usize)>::new();
+        let mut components = Vec::<(Ident, usize)>::new();
         for field in self.fields.iter_mut() {
             if let Some(value) = field.1 {
                 counter = *value;
@@ -29,13 +27,13 @@ impl Analyze for EnumDef {
             // mark unmarked enum fields
             *field.1 = Some(counter);
 
-            components.push((field.0.clone(), counter));
+            components.push((*field.0, counter));
 
             counter += 1;
         }
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::EnumDef { components }),
         );
 

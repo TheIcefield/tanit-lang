@@ -1,17 +1,18 @@
 use crate::ast::{
-    expressions::ExpressionType, functions::FunctionDef, identifiers::Identifier, types::Type,
-    values::ValueType, Ast,
+    expressions::ExpressionType, functions::FunctionDef, types::Type, values::ValueType, Ast,
 };
 
+use tanitc_ident::Ident;
 use tanitc_lexer::{token::Lexem, Lexer};
 use tanitc_parser::Parser;
 
 #[test]
 fn variables_test() {
-    use std::str::FromStr;
-
-    let radian_var_id = Identifier::from_str("radian").unwrap();
-    let i32_type_id = Identifier::from_str("i32").unwrap();
+    let main_id = Ident::from("main".to_string());
+    let pi_id = Ident::from("PI".to_string());
+    let radian_id = Ident::from("radian".to_string());
+    let i32_type_id = Ident::from("i32".to_string());
+    let ceil_id = Ident::from("ceil".to_string());
 
     const SRC_TEXT: &str = "\nfunc main()
                             \n{\
@@ -26,7 +27,7 @@ fn variables_test() {
     let res = FunctionDef::parse(&mut parser).unwrap();
 
     let res = if let Ast::FuncDef(node) = &res {
-        assert!(node.identifier == Identifier::from_str("main").unwrap());
+        assert!(node.identifier == main_id);
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple { components } = &node.return_type {
@@ -47,7 +48,7 @@ fn variables_test() {
     };
 
     if let Ast::VariableDef(node) = &res[0] {
-        assert!(node.identifier == Identifier::from_str("PI").unwrap());
+        assert!(node.identifier == pi_id);
         assert!(!node.is_mutable);
         assert!(!node.is_global);
         assert_eq!(node.var_type, Type::F32);
@@ -69,7 +70,7 @@ fn variables_test() {
         };
 
         if let Ast::VariableDef(node) = lhs {
-            assert!(node.identifier == radian_var_id);
+            assert!(node.identifier == radian_id);
             assert!(!node.is_global);
             assert!(!node.is_mutable);
         } else {
@@ -112,7 +113,7 @@ fn variables_test() {
                 };
 
                 if let Ast::VariableDef(node) = lhs {
-                    assert!(node.identifier == Identifier::from_str("ceil").unwrap());
+                    assert!(node.identifier == ceil_id);
                     assert!(!node.is_global);
                     assert!(!node.is_mutable);
                 } else {
@@ -146,7 +147,7 @@ fn variables_test() {
 
                 if let Ast::Value(node) = lhs.as_ref() {
                     if let ValueType::Identifier(id) = &node.value {
-                        assert!(*id == Identifier::from_str("radian").unwrap())
+                        assert!(*id == radian_id)
                     }
                 } else {
                     panic!("rhs has to be \'Expression\'");

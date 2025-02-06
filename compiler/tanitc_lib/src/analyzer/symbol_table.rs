@@ -1,5 +1,7 @@
 use super::scope::Scope;
-use crate::ast::{identifiers::Identifier, types::Type, variants::VariantField};
+use crate::ast::{types::Type, variants::VariantField};
+
+use tanitc_ident::Ident;
 
 use std::collections::HashMap;
 use std::io::Write;
@@ -7,19 +9,19 @@ use std::io::Write;
 #[derive(Clone)]
 pub enum SymbolData {
     ModuleDef {
-        full_name: Vec<String>,
+        full_name: Vec<Ident>,
     },
     StructDef {
         components: Vec<Type>,
     },
     EnumDef {
-        components: Vec<(Identifier, usize)>,
+        components: Vec<(Ident, usize)>,
     },
     VariantDef {
         components: Vec<VariantField>,
     },
     FunctionDef {
-        args: Vec<(String, Type)>,
+        parameters: Vec<(Ident, Type)>,
         return_type: Type,
         is_declaration: bool,
     },
@@ -36,7 +38,7 @@ impl SymbolData {
         match self {
             Self::ModuleDef { full_name } => write!(stream, "{:?}", full_name),
             Self::FunctionDef {
-                args,
+                parameters,
                 return_type,
                 is_declaration,
             } => {
@@ -50,8 +52,8 @@ impl SymbolData {
                     }
                 )?;
 
-                for arg in args.iter() {
-                    write!(stream, "{}:{} ", arg.0, arg.1)?;
+                for param in parameters.iter() {
+                    write!(stream, "{}:{} ", param.0, param.1)?;
                 }
 
                 write!(stream, ") -> {}", return_type)
@@ -119,7 +121,7 @@ pub struct Symbol {
 
 #[derive(Clone)]
 pub struct SymbolTable {
-    table: HashMap<Identifier, Vec<Symbol>>,
+    table: HashMap<Ident, Vec<Symbol>>,
 }
 
 impl SymbolTable {
@@ -129,27 +131,26 @@ impl SymbolTable {
         }
     }
 
-    pub fn get(&self, id: &Identifier) -> Option<&Vec<Symbol>> {
+    pub fn get(&self, id: &Ident) -> Option<&Vec<Symbol>> {
         self.table.get(id)
     }
 
-    pub fn get_mut(&mut self, id: &Identifier) -> Option<&mut Vec<Symbol>> {
+    pub fn get_mut(&mut self, id: &Ident) -> Option<&mut Vec<Symbol>> {
         self.table.get_mut(id)
     }
 
-    pub fn insert(&mut self, id: &Identifier, symbol: Symbol) {
-        if !self.table.contains_key(id) {
-            self.table.insert(id.clone(), Vec::new());
-        }
+    pub fn insert(&mut self, id: Ident, symbol: Symbol) {
+        self.table.entry(id).or_default();
 
-        if let Some(ss) = self.table.get_mut(id) {
+        if let Some(ss) = self.table.get_mut(&id) {
             ss.push(symbol)
         }
     }
 
     pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
         for (identifier, ss) in self.table.iter() {
-            writeln!(stream, "Identifier: \"{}\":", identifier)?;
+            let s = identifier.to_string();
+            writeln!(stream, "Identifier: {s}#{identifier}:")?;
 
             for s in ss.iter() {
                 write!(stream, "+--- ")?;

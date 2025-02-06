@@ -1,5 +1,6 @@
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::Ast;
 
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 pub mod analyzer;
@@ -9,19 +10,19 @@ pub mod serializer;
 
 #[derive(Clone, PartialEq)]
 pub enum CallParam {
-    Notified(Identifier, Box<Ast>),
+    Notified(Ident, Box<Ast>),
     Positional(usize, Box<Ast>),
 }
 
 #[derive(Clone, PartialEq)]
 pub enum ValueType {
     Call {
-        identifier: Identifier,
+        identifier: Ident,
         arguments: Vec<CallParam>,
     },
     Struct {
-        identifier: Identifier,
-        components: Vec<(Identifier, Ast)>,
+        identifier: Ident,
+        components: Vec<(Ident, Ast)>,
     },
     Tuple {
         components: Vec<Ast>,
@@ -29,7 +30,7 @@ pub enum ValueType {
     Array {
         components: Vec<Ast>,
     },
-    Identifier(Identifier),
+    Identifier(Ident),
     Text(String),
     Integer(usize),
     Decimal(f64),

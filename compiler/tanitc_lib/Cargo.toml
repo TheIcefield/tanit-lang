@@ -12,3 +12,4 @@ tanitc_parser = { path = "../tanitc_parser" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_serializer = { path = "../tanitc_serializer" }
 tanitc_codegen = { path = "../tanitc_codegen" }
+tanitc_ident = { path = "../tanitc_ident" }

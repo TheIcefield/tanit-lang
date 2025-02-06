@@ -7,8 +7,8 @@ impl Serialize for VariantField {
             Self::StructLike(s) => {
                 for (field_id, field_type) in s.iter() {
                     writer.begin_tag("field")?;
+                    writer.put_param("name", field_id)?;
 
-                    field_id.serialize(writer)?;
                     field_type.serialize(writer)?;
 
                     writer.end_tag()?;
@@ -29,8 +29,7 @@ impl Serialize for VariantField {
 impl Serialize for VariantDef {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         writer.begin_tag("variant-definition")?;
-
-        self.identifier.serialize(writer)?;
+        writer.put_param("name", self.identifier)?;
 
         for internal in self.internals.iter() {
             internal.serialize(writer)?;
@@ -38,8 +37,7 @@ impl Serialize for VariantDef {
 
         for (field_id, field) in self.fields.iter() {
             writer.begin_tag("field")?;
-
-            field_id.serialize(writer)?;
+            writer.put_param("name", field_id)?;
 
             if VariantField::Common == *field {
                 writer.end_tag()?;

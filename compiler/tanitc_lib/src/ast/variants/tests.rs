@@ -1,11 +1,10 @@
 use super::{VariantDef, VariantField};
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
-use tanitc_serializer::XmlWriter;
+use crate::ast::{types::Type, Ast};
 
+use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
-
-use std::str::FromStr;
+use tanitc_serializer::XmlWriter;
 
 #[test]
 fn variant_def_test() {
@@ -19,23 +18,24 @@ fn variant_def_test() {
                             \n    }\
                             \n}";
 
+    let variand_id = Ident::from("MyVariant".to_string());
+    let f1_id = Ident::from("f1".to_string());
+    let f2_id = Ident::from("f2".to_string());
+    let f3_id = Ident::from("f3".to_string());
+
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let variant_node = VariantDef::parse(&mut parser).unwrap();
 
     if let Ast::VariantDef(node) = &variant_node {
-        assert!(node.identifier == Identifier::from_str("MyVariant").unwrap());
+        assert!(node.identifier == variand_id);
 
         assert!(matches!(
-            node.fields.get(&Identifier::from_str("f1").unwrap()),
+            node.fields.get(&f1_id),
             Some(&VariantField::Common)
         ));
 
-        if let VariantField::TupleLike(components) = node
-            .fields
-            .get(&Identifier::from_str("f2").unwrap())
-            .unwrap()
-        {
+        if let VariantField::TupleLike(components) = node.fields.get(&f2_id).unwrap() {
             assert_eq!(components.len(), 2);
             assert_eq!(components[0], Type::I32);
             assert_eq!(components[1], Type::I32);
@@ -43,20 +43,11 @@ fn variant_def_test() {
             panic!("wrong type");
         }
 
-        let field = node
-            .fields
-            .get(&Identifier::from_str("f3").unwrap())
-            .unwrap();
+        let field = node.fields.get(&f3_id).unwrap();
         if let VariantField::StructLike(components) = &field {
             assert_eq!(components.len(), 2);
-            assert!(matches!(
-                components.get(&Identifier::from_str("f1").unwrap()),
-                Some(&Type::I32)
-            ));
-            assert!(matches!(
-                components.get(&Identifier::from_str("f2").unwrap()),
-                Some(&Type::F32)
-            ));
+            assert!(matches!(components.get(&f1_id), Some(&Type::I32)));
+            assert!(matches!(components.get(&f2_id), Some(&Type::F32)));
         } else {
             panic!("wrong type");
         }

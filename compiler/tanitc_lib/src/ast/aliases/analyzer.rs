@@ -12,14 +12,11 @@ impl Analyze for AliasDef {
     }
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.add_symbol(&self.identifier, analyzer.create_symbol(SymbolData::Type));
+        analyzer.add_symbol(self.identifier, analyzer.create_symbol(SymbolData::Type));
 
         Ok(())
     }

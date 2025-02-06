@@ -10,18 +10,12 @@ impl Analyze for VariableDef {
     }
 
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if analyzer
-            .check_identifier_existance(&self.identifier)
-            .is_ok()
-        {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::VariableDef {
                 var_type: self.var_type.clone(),
                 is_mutable: self.is_mutable,

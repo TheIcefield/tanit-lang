@@ -1,5 +1,6 @@
-use crate::ast::{identifiers::Identifier, types::Type, Ast};
+use crate::ast::{types::Type, Ast};
 
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 pub mod analyzer;
@@ -10,7 +11,7 @@ pub mod serializer;
 #[derive(Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
-    pub identifier: Identifier,
+    pub identifier: Ident,
     pub return_type: Type,
     pub parameters: Vec<Ast>,
     pub body: Option<Box<Ast>>,

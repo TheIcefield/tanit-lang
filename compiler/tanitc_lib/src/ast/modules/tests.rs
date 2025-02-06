@@ -1,10 +1,9 @@
 use super::ModuleDef;
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::Ast;
 
+use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
-
-use std::str::FromStr;
 
 #[test]
 fn module_test() {
@@ -15,19 +14,22 @@ fn module_test() {
                             \n    }\
                             \n}";
 
+    let m1_id = Ident::from("M1".to_string());
+    let m2_id = Ident::from("M2".to_string());
+
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
 
     let res = ModuleDef::parse(&mut parser).unwrap();
 
     let res = if let Ast::ModuleDef(node) = &res {
-        assert!(node.identifier == Identifier::from_str("M1").unwrap());
+        assert!(node.identifier == m1_id);
         node.body.as_ref().unwrap()
     } else {
         panic!("res should be \'ModuleDef\'");
     };
 
     if let Ast::ModuleDef(node) = &res.statements[0] {
-        assert!(node.identifier == Identifier::from_str("M2").unwrap());
+        assert!(node.identifier == m2_id);
     } else {
         panic!("res should be \'ModuleDef\'");
     };

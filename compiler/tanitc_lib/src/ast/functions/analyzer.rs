@@ -2,23 +2,21 @@ use super::FunctionDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use crate::ast::{types::Type, Ast};
 
+use tanitc_ident::Ident;
 use tanitc_messages::Message;
 
 impl Analyze for FunctionDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
         analyzer.scope.push(&format!("@f.{}", &self.identifier));
 
-        let mut arguments = Vec::<(String, Type)>::new();
+        let mut parameters = Vec::<(Ident, Type)>::new();
         for p in self.parameters.iter_mut() {
             if let Ast::VariableDef(node) = p {
-                arguments.push((node.identifier.get_string(), node.var_type.clone()));
+                parameters.push((node.identifier, node.var_type.clone()));
                 p.analyze(analyzer)?;
             }
         }
@@ -26,9 +24,9 @@ impl Analyze for FunctionDef {
         analyzer.scope.pop();
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::FunctionDef {
-                args: arguments.clone(),
+                parameters,
                 return_type: self.return_type.clone(),
                 is_declaration: self.body.is_some(),
             }),

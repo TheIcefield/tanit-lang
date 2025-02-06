@@ -8,9 +8,12 @@ impl Codegen for AliasDef {
         let old_mode = stream.mode;
         stream.mode = CodeGenMode::HeaderOnly;
 
-        write!(stream, "typedef {} ", self.value.get_c_type())?;
-
-        self.identifier.codegen(stream)?;
+        write!(
+            stream,
+            "typedef {} {}",
+            self.value.get_c_type(),
+            self.identifier
+        )?;
 
         writeln!(stream, ";")?;
 

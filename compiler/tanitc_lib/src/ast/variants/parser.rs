@@ -1,5 +1,5 @@
 use super::{VariantDef, VariantField};
-use crate::ast::{identifiers::Identifier, structs::StructDef, types::Type, Ast};
+use crate::ast::{structs::StructDef, types::Type, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -67,7 +67,7 @@ impl VariantDef {
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
         self.location = parser.consume_token(Lexem::KwVariant)?.location;
-        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = parser.consume_identifier()?;
 
         Ok(())
     }
@@ -102,7 +102,7 @@ impl VariantDef {
                 Lexem::KwVariant => self.internals.push(VariantDef::parse(parser)?),
 
                 Lexem::Identifier(id) => {
-                    let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+                    let identifier = parser.consume_identifier()?;
 
                     if self.fields.contains_key(&identifier) {
                         parser.error(Message::new(

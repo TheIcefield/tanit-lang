@@ -11,7 +11,7 @@ impl Value {
             arguments,
         } = &mut self.value
         {
-            (identifier, arguments)
+            (*identifier, arguments)
         } else {
             return Err(Message::new(
                 self.location,
@@ -19,52 +19,51 @@ impl Value {
             ));
         };
 
-        if Analyzer::is_built_in_identifier(identifier) {
+        if identifier.is_built_in() {
             return Ok(());
         }
 
-        if let Ok(mut ss) = analyzer.check_identifier_existance(identifier) {
+        if let Some(mut ss) = analyzer.get_first_symbol(identifier) {
             match &mut ss.data {
-                SymbolData::FunctionDef { args, .. } => {
-                    if arguments.len() > args.len() {
+                SymbolData::FunctionDef { parameters, .. } => {
+                    if arguments.len() > parameters.len() {
                         return Err(Message::new(self.location, &format!(
                             "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
-                            identifier, args.len(), arguments.len())));
+                            identifier, parameters.len(), arguments.len())));
                     }
 
-                    if arguments.len() < args.len() {
+                    if arguments.len() < parameters.len() {
                         return Err(Message::new(self.location, &format!(
                             "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
-                            identifier, args.len(), arguments.len())));
+                            identifier, parameters.len(), arguments.len())));
                     }
 
                     let mut positional_skiped = false;
                     for call_arg in arguments.iter_mut() {
                         let arg_clone = call_arg.clone();
                         match arg_clone {
-                            CallParam::Notified(param_id, param_value) => {
+                            CallParam::Notified(arg_id, arg_value) => {
                                 positional_skiped = true;
 
                                 // check if such parameter declared in the function
                                 let mut param_found = false;
-                                let param_id = param_id.get_string();
-                                for (param_index, (func_param_name, func_param_type)) in
-                                    args.iter().enumerate()
+                                for (param_index, (param_name, param_type)) in
+                                    parameters.iter().enumerate()
                                 {
-                                    if *func_param_name == param_id {
+                                    if *param_name == arg_id {
                                         param_found = true;
 
-                                        let param_type = param_value.get_type(analyzer);
-                                        if *func_param_type != param_type {
+                                        let arg_type = arg_value.get_type(analyzer);
+                                        if *param_type != arg_type {
                                             analyzer.error(Message::new(
                                                 self.location, &format!(
                                                 "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
-                                                func_param_name, func_param_type, param_type))
+                                                param_name, param_type, param_type))
                                             );
                                         }
 
                                         let modified_param =
-                                            CallParam::Positional(param_index, param_value.clone());
+                                            CallParam::Positional(param_index, arg_value.clone());
                                         *call_arg = modified_param;
                                     }
                                 }
@@ -73,7 +72,7 @@ impl Value {
                                         self.location,
                                         &format!(
                                             "No parameter named \"{}\" in function \"{}\"",
-                                            param_id, identifier
+                                            arg_id, identifier
                                         ),
                                     ))
                                 }
@@ -90,7 +89,7 @@ impl Value {
                     }
 
                     /* Check parameters */
-                    for i in args.iter() {
+                    for i in parameters.iter() {
                         for j in arguments.iter() {
                             let j_type = j.get_type(analyzer);
                             if j_type != i.1 {
@@ -130,8 +129,11 @@ impl Analyze for Value {
             ValueType::Text(_) => Ok(()),
 
             ValueType::Identifier(id) => {
-                let _ = analyzer.check_identifier_existance(id)?;
-                Ok(())
+                if analyzer.has_symbol(*id) {
+                    Ok(())
+                } else {
+                    Err(Message::undefined_id(self.location, *id))
+                }
             }
 
             ValueType::Call { arguments, .. } => {
@@ -150,7 +152,11 @@ impl Analyze for Value {
                 identifier,
                 components: value_comps,
             } => {
-                let ss = analyzer.check_identifier_existance(identifier)?;
+                let ss = if let Some(symbol) = analyzer.get_first_symbol(*identifier) {
+                    symbol
+                } else {
+                    return Err(Message::undefined_id(self.location, *identifier));
+                };
 
                 if let SymbolData::StructDef {
                     components: struct_comps,
@@ -286,7 +292,7 @@ impl Analyze for Value {
                 }
             }
             ValueType::Call { identifier, .. } => {
-                if let Ok(ss) = analyzer.check_identifier_existance(identifier) {
+                if let Some(ss) = analyzer.get_first_symbol(*identifier) {
                     if let SymbolData::FunctionDef { return_type, .. } = &ss.data {
                         return return_type.clone();
                     }

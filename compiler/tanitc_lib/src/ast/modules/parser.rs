@@ -1,9 +1,5 @@
 use super::ModuleDef;
-use crate::ast::{
-    identifiers::{Identifier, IdentifierType},
-    scopes::Scope,
-    Ast,
-};
+use crate::ast::{scopes::Scope, Ast};
 use crate::unit::{self, Unit};
 
 use tanitc_lexer::token::Lexem;
@@ -31,7 +27,7 @@ impl ModuleDef {
 
         parser.consume_token(Lexem::KwModule)?;
 
-        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = parser.consume_identifier()?;
 
         Ok(())
     }
@@ -63,10 +59,7 @@ impl ModuleDef {
     }
 
     fn parse_external_body(&mut self, parser: &mut Parser) -> Result<(), Message> {
-        let identifier = match &self.identifier.identifier {
-            IdentifierType::Common(id) => id.clone(),
-            IdentifierType::Complex(..) => unimplemented!(),
-        };
+        let name: String = self.identifier.into();
 
         let mut path = parser
             .get_path()
@@ -80,9 +73,9 @@ impl ModuleDef {
             .collect::<String>();
 
         path.push('/');
-        path.push_str(&identifier);
+        path.push_str(&name);
 
-        let name = identifier.clone();
+        let path = name.clone();
 
         let mut unit_exists: bool;
 

@@ -1,11 +1,10 @@
-use crate::ast::{aliases::AliasDef, identifiers::Identifier, types::Type, Ast};
+use crate::ast::{aliases::AliasDef, types::Type, Ast};
 
 use tanitc_codegen::CodeGenStream;
+use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
-
-use std::str::FromStr;
 
 #[test]
 fn alias_def_test() {
@@ -58,7 +57,7 @@ fn alias_in_func_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let res = if let Ast::FuncDef(node) = FunctionDef::parse(&mut parser).unwrap() {
-        assert!(node.identifier == Identifier::from_str("main").unwrap());
+        assert!(node.identifier == Ident::from("main".to_string()));
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple { components } = &node.return_type {
@@ -79,14 +78,14 @@ fn alias_in_func_test() {
     };
 
     if let Ast::AliasDef(node) = &statements[0] {
-        assert!(node.identifier == Identifier::from_str("Items").unwrap());
+        assert!(node.identifier == Ident::from("Items".to_string()));
 
         if let Type::Template {
             identifier,
             arguments,
         } = &node.value
         {
-            assert!(*identifier == Identifier::from_str("Vec").unwrap());
+            assert!(*identifier == Ident::from("Vec".to_string()));
             assert_eq!(arguments.len(), 1);
             if let Type::Custom(id) = &arguments[0] {
                 assert_eq!(id, "Item");

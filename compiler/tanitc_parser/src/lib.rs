@@ -1,3 +1,4 @@
+use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 
 use tanitc_lexer::{
@@ -97,11 +98,14 @@ impl Parser {
         Err(Message::unexpected_token(tkn, &[token_type]))
     }
 
-    pub fn consume_identifier(&mut self) -> Result<Token, Message> {
+    pub fn consume_identifier(&mut self) -> Result<Ident, Message> {
         let tkn = self.peek_token();
 
         match tkn.lexem {
-            Lexem::Identifier(_) => Ok(self.get_token()),
+            Lexem::Identifier(id) => {
+                self.get_token();
+                Ok(Ident::from(id))
+            }
 
             _ => Err(Message::new(
                 tkn.location,

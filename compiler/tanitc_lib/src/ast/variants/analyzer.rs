@@ -11,11 +11,8 @@ impl Analyze for VariantField {
 
 impl Analyze for VariantDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
-        if let Ok(_ss) = analyzer.check_identifier_existance(&self.identifier) {
-            return Err(Message::multiple_ids(
-                self.location,
-                &self.identifier.get_string(),
-            ));
+        if analyzer.has_symbol(self.identifier) {
+            return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
         analyzer.scope.push(&format!("@v.{}", &self.identifier));
@@ -30,7 +27,7 @@ impl Analyze for VariantDef {
         }
 
         analyzer.add_symbol(
-            &self.identifier,
+            self.identifier,
             analyzer.create_symbol(SymbolData::VariantDef { components }),
         );
 

@@ -44,7 +44,7 @@ impl Serialize for Type {
                 arguments,
             } => {
                 writer.put_param("style", "generic")?;
-                identifier.serialize(writer)?;
+                writer.put_param("name", identifier)?;
 
                 for arg in arguments.iter() {
                     arg.serialize(writer)?;

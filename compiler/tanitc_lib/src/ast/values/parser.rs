@@ -1,6 +1,7 @@
 use super::{CallParam, Value, ValueType};
-use crate::ast::{expressions::Expression, identifiers::Identifier, Ast};
+use crate::ast::{expressions::Expression, Ast};
 
+use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
@@ -28,7 +29,7 @@ impl Value {
             {
                 if parser.peek_token().lexem == Lexem::Colon {
                     parser.consume_token(Lexem::Colon)?;
-                    Some(id.clone())
+                    Some(id)
                 } else {
                     None
                 }
@@ -37,7 +38,7 @@ impl Value {
             };
 
             let param = if let Some(id) = param_id {
-                CallParam::Notified(id, Box::new(Expression::parse(parser)?))
+                CallParam::Notified(*id, Box::new(Expression::parse(parser)?))
             } else {
                 CallParam::Positional(i, Box::new(expr))
             };
@@ -98,10 +99,10 @@ impl Value {
         }))
     }
 
-    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Identifier, Ast)>, Message> {
+    pub fn parse_struct(parser: &mut Parser) -> Result<Vec<(Ident, Ast)>, Message> {
         parser.consume_token(Lexem::Lcb)?;
 
-        let mut components = Vec::<(Identifier, Ast)>::new();
+        let mut components = Vec::<(Ident, Ast)>::new();
 
         loop {
             let next = parser.peek_token();
@@ -110,7 +111,7 @@ impl Value {
                 break;
             }
 
-            let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+            let identifier = parser.consume_identifier()?;
 
             parser.consume_token(Lexem::Colon)?;
 

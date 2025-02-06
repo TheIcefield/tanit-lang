@@ -1,5 +1,5 @@
 use super::EnumDef;
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::Ast;
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -17,7 +17,7 @@ impl EnumDef {
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
         self.location = parser.consume_token(Lexem::KwEnum)?.location;
-        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = parser.consume_identifier()?;
 
         Ok(())
     }
@@ -46,7 +46,7 @@ impl EnumDef {
                     continue;
                 }
                 Lexem::Identifier(id) => {
-                    let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+                    let identifier = parser.consume_identifier()?;
 
                     let value = if Lexem::Colon == parser.peek_token().lexem {
                         parser.consume_token(Lexem::Colon)?;

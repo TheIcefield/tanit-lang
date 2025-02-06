@@ -1,5 +1,6 @@
-use crate::ast::{identifiers::Identifier, Ast};
+use crate::ast::Ast;
 
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 use std::collections::BTreeMap;
@@ -12,8 +13,8 @@ pub mod serializer;
 #[derive(Clone, PartialEq, Default)]
 pub struct EnumDef {
     pub location: Location,
-    pub identifier: Identifier,
-    pub fields: BTreeMap<Identifier, Option<usize>>,
+    pub identifier: Ident,
+    pub fields: BTreeMap<Ident, Option<usize>>,
 }
 
 impl From<EnumDef> for Ast {

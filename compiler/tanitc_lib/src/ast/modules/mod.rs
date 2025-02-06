@@ -1,4 +1,6 @@
-use crate::ast::{identifiers::Identifier, scopes::Scope, Ast};
+use crate::ast::{scopes::Scope, Ast};
+
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 pub mod analyzer;
@@ -9,7 +11,7 @@ pub mod serializer;
 #[derive(Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
-    pub identifier: Identifier,
+    pub identifier: Ident,
     pub is_external: bool,
     pub body: Option<Scope>,
 }

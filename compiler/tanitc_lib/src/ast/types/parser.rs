@@ -1,5 +1,5 @@
 use super::Type;
-use crate::ast::{expressions::Expression, identifiers::Identifier, Ast};
+use crate::ast::{expressions::Expression, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -48,7 +48,7 @@ impl Type {
         }
 
         let identifier = parser.consume_identifier()?;
-        let id_str = identifier.lexem.get_string();
+        let id_str: String = identifier.into();
 
         match &id_str[..] {
             "bool" => return Ok(Type::Bool),
@@ -72,7 +72,7 @@ impl Type {
             let arguments = Self::parse_template_args(parser)?;
 
             return Ok(Type::Template {
-                identifier: Identifier::from_token(&identifier)?,
+                identifier,
                 arguments,
             });
         }

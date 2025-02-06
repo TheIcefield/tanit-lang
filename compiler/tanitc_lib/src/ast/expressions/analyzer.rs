@@ -99,14 +99,8 @@ impl Analyze for Expression {
                 {
                     let does_mutate = !is_conversion;
                     if let Ast::VariableDef(node) = lhs.as_mut() {
-                        if analyzer
-                            .check_identifier_existance(&node.identifier)
-                            .is_ok()
-                        {
-                            return Err(Message::multiple_ids(
-                                node.identifier.location,
-                                &node.identifier.get_string(),
-                            ));
+                        if analyzer.has_symbol(node.identifier) {
+                            return Err(Message::multiple_ids(self.location, node.identifier));
                         }
 
                         if Type::Auto == node.var_type {
@@ -123,7 +117,7 @@ impl Analyze for Expression {
                         }
 
                         analyzer.add_symbol(
-                            &node.identifier,
+                            node.identifier,
                             analyzer.create_symbol(SymbolData::VariableDef {
                                 var_type: node.var_type.clone(),
                                 is_mutable: node.is_mutable,
@@ -133,7 +127,7 @@ impl Analyze for Expression {
                     } else if let Ast::Value(node) = lhs.as_mut() {
                         match &node.value {
                             ValueType::Identifier(id) => {
-                                if let Ok(s) = analyzer.check_identifier_existance(id) {
+                                if let Some(s) = analyzer.get_first_symbol(*id) {
                                     if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
                                         if !*is_mutable && does_mutate {
                                             analyzer.error(Message::new(

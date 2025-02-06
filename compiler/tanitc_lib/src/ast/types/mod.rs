@@ -1,8 +1,6 @@
-use crate::ast::{
-    identifiers::{Identifier, IdentifierType},
-    Ast,
-};
+use crate::ast::Ast;
 
+use tanitc_ident::Ident;
 use tanitc_messages::Message;
 
 use std::str::FromStr;
@@ -30,7 +28,7 @@ pub enum Type {
         value_type: Box<Type>,
     },
     Template {
-        identifier: Identifier,
+        identifier: Ident,
         arguments: Vec<Type>,
     },
     Custom(String),
@@ -51,6 +49,13 @@ pub enum Type {
     Str,
 }
 
+impl From<Ident> for Type {
+    fn from(value: Ident) -> Self {
+        let s: String = value.into();
+        Self::from_str(&s).unwrap()
+    }
+}
+
 impl Type {
     pub fn new() -> Self {
         Self::unit()
@@ -59,13 +64,6 @@ impl Type {
     pub fn unit() -> Self {
         Self::Tuple {
             components: Vec::new(),
-        }
-    }
-
-    pub fn from_id(id: &Identifier) -> Self {
-        match &id.identifier {
-            IdentifierType::Common(id) => Self::from_str(id).unwrap(),
-            IdentifierType::Complex(..) => unimplemented!("creation type by complex id"),
         }
     }
 

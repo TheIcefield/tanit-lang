@@ -1,7 +1,5 @@
 use super::FunctionDef;
-use crate::ast::{
-    identifiers::Identifier, scopes::Scope, types::Type, variables::VariableDef, Ast,
-};
+use crate::ast::{scopes::Scope, types::Type, variables::VariableDef, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -20,7 +18,7 @@ impl FunctionDef {
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
         self.location = parser.consume_token(Lexem::KwFunc)?.location;
 
-        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = parser.consume_identifier()?;
 
         self.parse_header_params(parser)?;
 
@@ -83,14 +81,15 @@ impl FunctionDef {
 
     /* parse function param */
     fn parse_param(parser: &mut Parser) -> Result<VariableDef, Message> {
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        let location = parser.peek_token().location;
+        let identifier = parser.consume_identifier()?;
 
         parser.consume_token(Lexem::Colon)?;
 
         let var_type = Type::parse(parser)?;
 
         Ok(VariableDef {
-            location: identifier.location,
+            location,
             identifier,
             var_type,
             is_global: false,

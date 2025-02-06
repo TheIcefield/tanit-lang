@@ -15,9 +15,7 @@ impl Codegen for FunctionDef {
 
         self.return_type.codegen(stream)?;
 
-        write!(stream, " ")?;
-
-        self.identifier.codegen(stream)?;
+        write!(stream, " {}", self.identifier)?;
 
         // generate parameters
         write!(stream, "(")?;

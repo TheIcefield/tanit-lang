@@ -17,15 +17,13 @@ impl Codegen for Value {
         match &self.value {
             ValueType::Integer(val) => write!(stream, "{}", *val)?,
             ValueType::Decimal(val) => write!(stream, "{}", *val)?,
-            ValueType::Identifier(val) => val.codegen(stream)?,
+            ValueType::Identifier(val) => write!(stream, "{}", val)?,
             ValueType::Call {
                 identifier,
                 arguments,
             } => {
                 /* at this point, all arguments must be converted to positional */
-
-                identifier.codegen(stream)?;
-                write!(stream, "(")?;
+                write!(stream, "{}(", identifier)?;
 
                 if !arguments.is_empty() {
                     arguments[0].codegen(stream)?;

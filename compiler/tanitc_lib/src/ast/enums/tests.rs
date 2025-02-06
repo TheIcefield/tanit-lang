@@ -19,9 +19,9 @@ fn enum_def_test() {
 
     {
         const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
-                                \n    <field name=\"Max\"/>\
                                 \n    <field name=\"One\" value=\"1\"/>\
                                 \n    <field name=\"Second\"/>\
+                                \n    <field name=\"Max\"/>\
                                 \n</enum-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -35,9 +35,9 @@ fn enum_def_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef enum {\
-                                     \n    Max = 0,\
                                      \n    One = 1,\
                                      \n    Second = 0,\
+                                     \n    Max = 0,\
                                      \n} MyEnum;\n";
 
         let mut header_buffer = Vec::<u8>::new();

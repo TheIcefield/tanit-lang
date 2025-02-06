@@ -1,7 +1,6 @@
 use super::VariableDef;
 use crate::ast::{
     expressions::{Expression, ExpressionType},
-    identifiers::Identifier,
     types::Type,
     Ast,
 };
@@ -49,7 +48,7 @@ impl VariableDef {
             _ => false,
         };
 
-        let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        let identifier = parser.consume_identifier()?;
 
         let next = parser.peek_token();
 

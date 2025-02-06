@@ -14,8 +14,7 @@ impl Serialize for ModuleDef {
 impl ModuleDef {
     fn serialize_internal(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         writer.begin_tag("module-definition")?;
-
-        self.identifier.serialize(writer)?;
+        writer.put_param("name", self.identifier)?;
 
         if let Some(body) = &self.body {
             body.serialize(writer)?;
@@ -28,8 +27,7 @@ impl ModuleDef {
 
     fn serialize_external(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         writer.begin_tag("module-import")?;
-
-        self.identifier.serialize(writer)?;
+        writer.put_param("name", self.identifier)?;
 
         writer.end_tag()?;
 

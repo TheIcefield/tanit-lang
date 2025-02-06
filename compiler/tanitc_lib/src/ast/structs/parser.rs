@@ -1,5 +1,5 @@
 use super::StructDef;
-use crate::ast::{identifiers::Identifier, types::Type, variants::VariantDef, Ast};
+use crate::ast::{types::Type, variants::VariantDef, Ast};
 use tanitc_parser::Parser;
 
 use tanitc_lexer::token::Lexem;
@@ -17,7 +17,7 @@ impl StructDef {
 
     fn parse_header(&mut self, parser: &mut Parser) -> Result<(), Message> {
         self.location = parser.consume_token(Lexem::KwStruct)?.location;
-        self.identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+        self.identifier = parser.consume_identifier()?;
         Ok(())
     }
 
@@ -52,7 +52,7 @@ impl StructDef {
                 }
 
                 Lexem::Identifier(id) => {
-                    let identifier = Identifier::from_token(&parser.consume_identifier()?)?;
+                    let identifier = parser.consume_identifier()?;
 
                     if self.fields.contains_key(&identifier) {
                         parser.error(Message::new(
