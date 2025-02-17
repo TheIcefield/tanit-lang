@@ -1,7 +1,8 @@
 use super::scope::Scope;
-use crate::ast::{types::Type, variants::VariantField};
+use crate::ast::variants::VariantField;
 
 use tanitc_ident::Ident;
+use tanitc_ty::Type;
 
 use std::collections::HashMap;
 use std::io::Write;
@@ -77,14 +78,14 @@ impl SymbolData {
                         VariantField::TupleLike(t) => {
                             write!(stream, "( ")?;
                             for tc in t.iter() {
-                                write!(stream, "{} ", *tc)?;
+                                write!(stream, "{} ", tc.get_type())?;
                             }
                             write!(stream, ")")?;
                         }
                         VariantField::StructLike(s) => {
                             write!(stream, "{{ ")?;
                             for sc in s.iter() {
-                                write!(stream, "{} ", *sc.1)?;
+                                write!(stream, "{} ", sc.1.get_type())?;
                             }
                             write!(stream, "}}")?;
                         }

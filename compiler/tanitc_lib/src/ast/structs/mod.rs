@@ -1,8 +1,11 @@
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
+
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
 use std::collections::BTreeMap;
+
+use super::types::TypeSpec;
 
 pub mod analyzer;
 pub mod codegen;
@@ -13,7 +16,7 @@ pub mod serializer;
 pub struct StructDef {
     pub location: Location,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, Type>,
+    pub fields: BTreeMap<Ident, TypeSpec>,
     pub internals: Vec<Ast>,
 }
 

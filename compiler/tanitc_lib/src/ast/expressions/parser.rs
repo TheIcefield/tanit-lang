@@ -1,6 +1,6 @@
 use super::{Expression, ExpressionType};
 use crate::ast::{
-    types::Type,
+    types::{MetaInfo, TypeSpec},
     values::{CallParam, Value, ValueType},
     Ast,
 };
@@ -9,6 +9,7 @@ use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 impl Expression {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -276,19 +277,23 @@ impl Expression {
                 } else {
                     let rhs_type = if let Ast::Value(Value {
                         value: ValueType::Identifier(id),
-                        ..
+                        location,
                     }) = rhs.as_ref()
                     {
-                        Type::from(*id)
+                        TypeSpec {
+                            location: *location,
+                            info: MetaInfo::default(),
+                            ty: Type::from(*id),
+                        }
                     } else {
-                        Type::new()
+                        return Err(Message::unreachable(location));
                     };
                     *expr_node = Ast::from(Self {
                         location,
                         expr: ExpressionType::Binary {
                             operation: Lexem::KwAs,
                             lhs: lhs.clone(),
-                            rhs: Box::new(Ast::Type(rhs_type)),
+                            rhs: Box::new(Ast::TypeSpec(rhs_type)),
                         },
                     });
                 };
@@ -617,23 +622,17 @@ impl Expression {
             Lexem::Dot | Lexem::KwAs => {
                 parser.get_token();
                 let operation = next.lexem;
-                let is_conversion = operation == Lexem::KwAs;
-
-                let mut rhs = Box::new(Self::parse(parser)?);
+                let is_conversion = Lexem::KwAs == operation;
 
                 if is_conversion {
-                    if let Ast::Value(Value {
-                        value: ValueType::Identifier(id),
-                        ..
-                    }) = rhs.clone().as_ref()
-                    {
-                        rhs = Box::new(Ast::Type(Type::from(*id)))
-                    } else {
-                        parser.error(Message::new(
-                            next.location,
-                            "Rvalue of conversion must be a type",
-                        ));
-                    }
+                    let location = parser.peek_token().location;
+                    return Ok(Ast::from(Self {
+                        location,
+                        expr: ExpressionType::Conversion {
+                            lhs: Box::new(lhs),
+                            ty: TypeSpec::parse(parser)?,
+                        },
+                    }));
                 }
 
                 Ok(Ast::from(Self {
@@ -641,7 +640,7 @@ impl Expression {
                     expr: ExpressionType::Binary {
                         operation,
                         lhs: Box::new(lhs),
-                        rhs,
+                        rhs: Box::new(Self::parse(parser)?),
                     },
                 }))
             }

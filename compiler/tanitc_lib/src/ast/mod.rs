@@ -1,9 +1,10 @@
 use crate::analyzer::{Analyze, Analyzer};
-use tanitc_codegen::{CodeGenStream, Codegen};
 
+use tanitc_codegen::{CodeGenStream, Codegen};
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
 use tanitc_serializer::{Serialize, XmlWriter};
+use tanitc_ty::Type;
 
 pub mod aliases;
 pub mod branches;
@@ -35,7 +36,7 @@ pub enum Ast {
     ContinueStmt(branches::Interupter),
     ReturnStmt(branches::Interupter),
     Value(values::Value),
-    Type(types::Type),
+    TypeSpec(types::TypeSpec),
 }
 
 impl Ast {
@@ -63,7 +64,7 @@ impl Ast {
             Self::FuncDef(node) => node.serialize(writer),
             Self::VariableDef(node) => node.serialize(writer),
             Self::Value(node) => node.serialize(writer),
-            Self::Type(node) => node.serialize(writer),
+            Self::TypeSpec(node) => node.serialize(writer),
             Self::AliasDef(node) => node.serialize(writer),
             Self::Expression(node) => node.serialize(writer),
             Self::BranchStmt(node) => node.serialize(writer),
@@ -89,7 +90,7 @@ impl Ast {
             Self::ContinueStmt(node) => node.analyze(analyzer),
             Self::ReturnStmt(node) => node.analyze(analyzer),
             Self::BreakStmt(node) => node.analyze(analyzer),
-            Self::Type(node) => node.analyze(analyzer),
+            Self::TypeSpec(node) => node.analyze(analyzer),
         }?;
 
         // TODO: fix conversion
@@ -110,7 +111,7 @@ impl Ast {
             Self::FuncDef(node) => node.codegen(stream),
             Self::VariableDef(node) => node.codegen(stream),
             Self::Value(node) => node.codegen(stream),
-            Self::Type(node) => node.codegen(stream),
+            Self::TypeSpec(node) => node.codegen(stream),
             Self::AliasDef(node) => node.codegen(stream),
             Self::Expression(node) => node.codegen(stream),
             Self::BranchStmt(node) => node.codegen(stream),
@@ -120,7 +121,7 @@ impl Ast {
         }
     }
 
-    pub fn get_type(&self, analyzer: &mut Analyzer) -> types::Type {
+    pub fn get_type(&self, analyzer: &mut Analyzer) -> Type {
         match self {
             Self::Expression(node) => node.get_type(analyzer),
             Self::AliasDef(node) => node.get_type(analyzer),

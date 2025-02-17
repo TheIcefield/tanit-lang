@@ -1,7 +1,8 @@
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
 
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
+use tanitc_ty::Type;
 
 pub mod scope;
 pub mod symbol_table;
@@ -159,9 +160,7 @@ fn scope_test() {
         main_fn_id,
         analyzer.create_symbol(SymbolData::FunctionDef {
             parameters: Vec::new(),
-            return_type: Type::Tuple {
-                components: Vec::new(),
-            },
+            return_type: Type::unit(),
             is_declaration: true,
         }),
     );
@@ -170,9 +169,7 @@ fn scope_test() {
         bar_id,
         analyzer.create_symbol(SymbolData::FunctionDef {
             parameters: Vec::new(),
-            return_type: Type::Tuple {
-                components: Vec::new(),
-            },
+            return_type: Type::unit(),
             is_declaration: true,
         }),
     );

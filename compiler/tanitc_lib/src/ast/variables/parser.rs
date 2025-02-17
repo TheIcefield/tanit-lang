@@ -1,13 +1,14 @@
 use super::VariableDef;
 use crate::ast::{
     expressions::{Expression, ExpressionType},
-    types::Type,
+    types::{MetaInfo, TypeSpec},
     Ast,
 };
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 impl VariableDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -52,13 +53,13 @@ impl VariableDef {
 
         let next = parser.peek_token();
 
-        let mut var_type: Option<Type> = None;
+        let mut var_type: Option<TypeSpec> = None;
         let mut rvalue: Option<Ast> = None;
 
         if Lexem::Colon == next.lexem {
             parser.consume_token(Lexem::Colon)?;
 
-            var_type = Some(Type::parse(parser)?);
+            var_type = Some(TypeSpec::parse(parser)?);
         }
 
         let next = parser.peek_token();
@@ -89,14 +90,14 @@ impl VariableDef {
             ));
         }
 
-        if var_type.is_none() && rvalue.is_some() {
-            var_type = Some(Type::Auto);
-        }
-
         let var_node = Ast::from(Self {
             location,
             identifier,
-            var_type: var_type.unwrap_or(Type::Auto),
+            var_type: var_type.unwrap_or(TypeSpec {
+                location,
+                info: MetaInfo::default(),
+                ty: Type::Auto,
+            }),
             is_global,
             is_mutable,
         });

@@ -1,8 +1,9 @@
 use super::{Expression, ExpressionType};
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
 
-use tanitc_lexer::{token::Lexem, Lexer};
+use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 #[test]
 fn conversion_test() {
@@ -13,14 +14,7 @@ fn conversion_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     if let Ast::Expression(node) = Expression::parse(&mut parser).unwrap() {
-        if let ExpressionType::Binary {
-            operation,
-            lhs,
-            rhs,
-        } = &node.expr
-        {
-            assert_eq!(*operation, Lexem::KwAs);
-
+        if let ExpressionType::Conversion { lhs, ty } = &node.expr {
             assert!(matches!(
                 lhs.as_ref(),
                 Ast::Value(Value {
@@ -29,7 +23,7 @@ fn conversion_test() {
                 })
             ));
 
-            assert!(matches!(rhs.as_ref(), Ast::Type(Type::F32)))
+            assert!(matches!(ty.get_type(), Type::F32))
         } else {
             panic!("Expected binary expression");
         }

@@ -1,9 +1,9 @@
 use super::StructDef;
-use crate::ast::{types::Type, variants::VariantDef, Ast};
-use tanitc_parser::Parser;
+use crate::ast::{types::TypeSpec, variants::VariantDef, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_parser::Parser;
 
 impl StructDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -64,7 +64,7 @@ impl StructDef {
 
                     parser.consume_token(Lexem::Colon)?;
 
-                    self.fields.insert(identifier, Type::parse(parser)?);
+                    self.fields.insert(identifier, TypeSpec::parse(parser)?);
                 }
 
                 _ => {

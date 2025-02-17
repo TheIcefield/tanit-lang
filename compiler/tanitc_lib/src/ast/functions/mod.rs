@@ -1,7 +1,9 @@
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
 
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+
+use super::types::TypeSpec;
 
 pub mod analyzer;
 pub mod codegen;
@@ -12,7 +14,7 @@ pub mod serializer;
 pub struct FunctionDef {
     pub location: Location,
     pub identifier: Ident,
-    pub return_type: Type,
+    pub return_type: TypeSpec,
     pub parameters: Vec<Ast>,
     pub body: Option<Box<Ast>>,
 }

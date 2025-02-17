@@ -24,17 +24,6 @@ impl Codegen for Expression {
                 rhs.codegen(stream)?;
             }
             ExpressionType::Binary {
-                operation: Lexem::KwAs,
-                lhs,
-                rhs,
-            } => {
-                write!(stream, "((")?;
-                rhs.codegen(stream)?;
-                write!(stream, ")")?;
-                lhs.codegen(stream)?;
-                write!(stream, ")")?;
-            }
-            ExpressionType::Binary {
                 operation,
                 lhs,
                 rhs,
@@ -44,6 +33,11 @@ impl Codegen for Expression {
                 write!(stream, " {} ", operation)?;
                 rhs.codegen(stream)?;
                 // write!(stream, ")")?;
+            }
+            ExpressionType::Conversion { lhs, ty } => {
+                write!(stream, "(({})", ty.get_c_type())?;
+                lhs.codegen(stream)?;
+                write!(stream, ")")?;
             }
         }
 

@@ -1,9 +1,10 @@
 use super::{VariantDef, VariantField};
-use crate::ast::{structs::StructDef, types::Type, Ast};
+use crate::ast::{structs::StructDef, types::TypeSpec, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 impl VariantField {
     pub fn parse(parser: &mut Parser) -> Result<Self, Message> {
@@ -29,8 +30,19 @@ impl VariantField {
             }
 
             Lexem::LParen => {
-                if let Type::Tuple { components } = Type::parse_tuple_def(parser)? {
-                    *self = Self::TupleLike(components);
+                let location = parser.peek_token().location;
+                let (ty, info) = TypeSpec::parse_tuple_def(parser)?;
+
+                if let Type::Tuple(components) = &ty {
+                    let mut processed_components: Vec<TypeSpec> = vec![];
+                    for ty in components.iter() {
+                        processed_components.push(TypeSpec {
+                            location,
+                            info,
+                            ty: ty.clone(),
+                        });
+                    }
+                    *self = Self::TupleLike(processed_components);
 
                     Ok(())
                 } else {

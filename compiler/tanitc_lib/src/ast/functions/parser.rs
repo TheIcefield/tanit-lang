@@ -1,9 +1,15 @@
 use super::FunctionDef;
-use crate::ast::{scopes::Scope, types::Type, variables::VariableDef, Ast};
+use crate::ast::{
+    scopes::Scope,
+    types::{MetaInfo, TypeSpec},
+    variables::VariableDef,
+    Ast,
+};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 impl FunctionDef {
     pub fn parse(parser: &mut Parser) -> Result<Ast, Message> {
@@ -22,11 +28,16 @@ impl FunctionDef {
 
         self.parse_header_params(parser)?;
 
-        self.return_type = if Lexem::Arrow == parser.peek_token().lexem {
+        let next = parser.peek_token();
+        self.return_type = if Lexem::Arrow == next.lexem {
             parser.get_token();
-            Type::parse(parser)?
+            TypeSpec::parse(parser)?
         } else {
-            Type::unit()
+            TypeSpec {
+                location: next.location,
+                info: MetaInfo::default(),
+                ty: Type::unit(),
+            }
         };
 
         Ok(())
@@ -86,7 +97,7 @@ impl FunctionDef {
 
         parser.consume_token(Lexem::Colon)?;
 
-        let var_type = Type::parse(parser)?;
+        let var_type = TypeSpec::parse(parser)?;
 
         Ok(VariableDef {
             location,

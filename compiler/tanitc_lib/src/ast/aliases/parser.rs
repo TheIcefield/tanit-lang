@@ -1,5 +1,5 @@
 use super::AliasDef;
-use crate::ast::{types::Type, Ast};
+use crate::ast::{types::TypeSpec, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -15,7 +15,7 @@ impl AliasDef {
 
         parser.consume_token(Lexem::Assign)?;
 
-        node.value = Type::parse(parser)?;
+        node.value = TypeSpec::parse(parser)?;
 
         Ok(Ast::from(node))
     }
