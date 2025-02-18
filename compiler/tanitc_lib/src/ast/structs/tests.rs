@@ -1,11 +1,12 @@
 use super::StructDef;
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
 
 use tanitc_codegen::CodeGenStream;
 use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
+use tanitc_ty::Type;
 
 #[test]
 fn struct_def_test() {
@@ -26,10 +27,10 @@ fn struct_def_test() {
     if let Ast::StructDef(node) = &struct_node {
         assert!(node.identifier == struct_id);
 
-        let field_type = node.fields.get(&f1_id).unwrap();
+        let field_type = node.fields.get(&f1_id).unwrap().get_type();
         assert!(matches!(field_type, Type::I32));
 
-        let field_type = node.fields.get(&f2_id).unwrap();
+        let field_type = node.fields.get(&f2_id).unwrap().get_type();
         assert!(matches!(field_type, Type::F32));
     } else {
         panic!("res should be \'StructDef\'");

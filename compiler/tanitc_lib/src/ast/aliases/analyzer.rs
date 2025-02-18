@@ -1,10 +1,8 @@
 use super::AliasDef;
-use crate::{
-    analyzer::{symbol_table::SymbolData, Analyze, Analyzer},
-    ast::types::Type,
-};
+use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
 impl Analyze for AliasDef {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {

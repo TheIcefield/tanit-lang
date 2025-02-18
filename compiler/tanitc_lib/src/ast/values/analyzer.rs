@@ -1,8 +1,8 @@
 use super::{CallParam, Value, ValueType};
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::ast::{types::Type, Ast};
 
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
 impl Value {
     fn check_call_args(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
@@ -242,10 +242,7 @@ impl Analyze for Value {
 
     fn get_type(&self, analyzer: &mut Analyzer) -> Type {
         match &self.value {
-            ValueType::Text(_) => Type::Ref {
-                is_mut: false,
-                ref_to: Box::new(Type::Str),
-            },
+            ValueType::Text(_) => Type::Ref(Box::new(Type::Str)),
             ValueType::Decimal(_) => Type::F32,
             ValueType::Integer(_) => Type::I32,
             ValueType::Identifier(id) => {
@@ -270,9 +267,7 @@ impl Analyze for Value {
                 for comp in components.iter() {
                     comp_vec.push(comp.get_type(analyzer));
                 }
-                Type::Tuple {
-                    components: comp_vec,
-                }
+                Type::Tuple(comp_vec)
             }
             ValueType::Array { components } => {
                 let len = components.len();
@@ -284,10 +279,7 @@ impl Analyze for Value {
                 }
 
                 Type::Array {
-                    size: Some(Box::new(Ast::from(Self {
-                        location: self.location,
-                        value: ValueType::Integer(len),
-                    }))),
+                    size: None,
                     value_type: Box::new(components[0].get_type(analyzer)),
                 }
             }

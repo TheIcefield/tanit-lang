@@ -1,10 +1,10 @@
-use super::Type;
+use super::TypeSpec;
 use crate::analyzer::{Analyze, Analyzer};
 
 use tanitc_messages::Message;
 
-impl Analyze for Type {
+impl Analyze for TypeSpec {
     fn analyze(&mut self, _analyzer: &mut Analyzer) -> Result<(), Message> {
-        unreachable!();
+        Err(Message::unreachable(self.location))
     }
 }

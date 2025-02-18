@@ -1,4 +1,4 @@
-use crate::ast::Ast;
+use crate::ast::{types::TypeSpec, Ast};
 
 use tanitc_lexer::{location::Location, token::Lexem};
 
@@ -17,6 +17,10 @@ pub enum ExpressionType {
         operation: Lexem,
         lhs: Box<Ast>,
         rhs: Box<Ast>,
+    },
+    Conversion {
+        lhs: Box<Ast>,
+        ty: TypeSpec,
     },
 }
 

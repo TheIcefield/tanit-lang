@@ -1,4 +1,4 @@
-use crate::ast::{types::Type, Ast};
+use crate::ast::{types::TypeSpec, Ast};
 
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -12,7 +12,7 @@ pub mod serializer;
 pub struct VariableDef {
     pub location: Location,
     pub identifier: Ident,
-    pub var_type: Type,
+    pub var_type: TypeSpec,
     pub is_global: bool,
     pub is_mutable: bool,
 }

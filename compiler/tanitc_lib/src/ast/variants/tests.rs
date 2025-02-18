@@ -1,10 +1,11 @@
 use super::{VariantDef, VariantField};
-use crate::ast::{types::Type, Ast};
+use crate::ast::Ast;
 
 use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
+use tanitc_ty::Type;
 
 #[test]
 fn variant_def_test() {
@@ -37,8 +38,8 @@ fn variant_def_test() {
 
         if let VariantField::TupleLike(components) = node.fields.get(&f2_id).unwrap() {
             assert_eq!(components.len(), 2);
-            assert_eq!(components[0], Type::I32);
-            assert_eq!(components[1], Type::I32);
+            assert_eq!(components[0].get_type(), Type::I32);
+            assert_eq!(components[1].get_type(), Type::I32);
         } else {
             panic!("wrong type");
         }
@@ -46,8 +47,14 @@ fn variant_def_test() {
         let field = node.fields.get(&f3_id).unwrap();
         if let VariantField::StructLike(components) = &field {
             assert_eq!(components.len(), 2);
-            assert!(matches!(components.get(&f1_id), Some(&Type::I32)));
-            assert!(matches!(components.get(&f2_id), Some(&Type::F32)));
+            assert!(matches!(
+                components.get(&f1_id).map(|val| { val.get_type() }),
+                Some(Type::I32)
+            ));
+            assert!(matches!(
+                components.get(&f2_id).map(|val| { val.get_type() }),
+                Some(Type::F32)
+            ));
         } else {
             panic!("wrong type");
         }

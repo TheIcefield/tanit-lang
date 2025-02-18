@@ -1,10 +1,11 @@
-use crate::ast::{aliases::AliasDef, types::Type, Ast};
+use crate::ast::{aliases::AliasDef, Ast};
 
 use tanitc_codegen::CodeGenStream;
 use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
+use tanitc_ty::Type;
 
 #[test]
 fn alias_def_test() {
@@ -60,7 +61,7 @@ fn alias_in_func_test() {
         assert!(node.identifier == Ident::from("main".to_string()));
         assert!(node.parameters.is_empty());
 
-        if let Type::Tuple { components } = &node.return_type {
+        if let Type::Tuple(components) = &node.return_type.get_type() {
             assert!(components.is_empty());
         } else {
             panic!("Type expected to be an empty tuple");
@@ -82,12 +83,12 @@ fn alias_in_func_test() {
 
         if let Type::Template {
             identifier,
-            arguments,
-        } = &node.value
+            generics,
+        } = &node.value.get_type()
         {
             assert!(*identifier == Ident::from("Vec".to_string()));
-            assert_eq!(arguments.len(), 1);
-            if let Type::Custom(id) = &arguments[0] {
+            assert_eq!(generics.len(), 1);
+            if let Type::Custom(id) = &generics[0] {
                 assert_eq!(id, "Item");
             } else {
                 panic!("Type is expected to be \"Item\"")

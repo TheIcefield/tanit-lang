@@ -22,6 +22,12 @@ impl Serialize for Expression {
                 lhs.serialize(writer)?;
                 rhs.serialize(writer)?;
             }
+            ExpressionType::Conversion { lhs, ty } => {
+                writer.put_param("style", "conversion")?;
+
+                ty.serialize(writer)?;
+                lhs.serialize(writer)?;
+            }
         }
 
         writer.end_tag()?;

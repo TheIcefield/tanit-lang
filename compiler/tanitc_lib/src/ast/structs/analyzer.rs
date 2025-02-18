@@ -1,8 +1,8 @@
 use super::StructDef;
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::ast::types::Type;
 
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
 impl Analyze for StructDef {
     fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
@@ -17,7 +17,7 @@ impl Analyze for StructDef {
 
         let mut components = Vec::<Type>::new();
         for field in self.fields.iter() {
-            components.push(field.1.clone());
+            components.push(field.1.get_type());
         }
 
         analyzer.scope.pop();

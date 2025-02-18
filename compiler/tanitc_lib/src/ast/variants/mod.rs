@@ -1,4 +1,5 @@
-use crate::ast::{types::Type, Ast};
+use crate::ast::{types::TypeSpec, Ast};
+
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
@@ -13,8 +14,8 @@ pub mod serializer;
 pub enum VariantField {
     #[default]
     Common,
-    StructLike(BTreeMap<Ident, Type>),
-    TupleLike(Vec<Type>),
+    StructLike(BTreeMap<Ident, TypeSpec>),
+    TupleLike(Vec<TypeSpec>),
 }
 
 #[derive(Clone, PartialEq, Default)]

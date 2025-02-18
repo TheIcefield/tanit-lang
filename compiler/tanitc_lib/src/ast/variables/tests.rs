@@ -1,10 +1,9 @@
-use crate::ast::{
-    expressions::ExpressionType, functions::FunctionDef, types::Type, values::ValueType, Ast,
-};
+use crate::ast::{expressions::ExpressionType, functions::FunctionDef, values::ValueType, Ast};
 
 use tanitc_ident::Ident;
 use tanitc_lexer::{token::Lexem, Lexer};
 use tanitc_parser::Parser;
+use tanitc_ty::Type;
 
 #[test]
 fn variables_test() {
@@ -30,7 +29,7 @@ fn variables_test() {
         assert!(node.identifier == main_id);
         assert!(node.parameters.is_empty());
 
-        if let Type::Tuple { components } = &node.return_type {
+        if let Type::Tuple(components) = &node.return_type.get_type() {
             assert!(components.is_empty());
         } else {
             panic!("Type expected to be an empty tuple");
@@ -51,7 +50,7 @@ fn variables_test() {
         assert!(node.identifier == pi_id);
         assert!(!node.is_mutable);
         assert!(!node.is_global);
-        assert_eq!(node.var_type, Type::F32);
+        assert_eq!(node.var_type.get_type(), Type::F32);
     } else {
         panic!("first statement has to be \'variable definition\'");
     }
@@ -137,14 +136,7 @@ fn variables_test() {
                 panic!("rhs expected to be \'Expression\'");
             };
 
-            if let ExpressionType::Binary {
-                operation,
-                lhs,
-                rhs,
-            } = &expr.expr
-            {
-                assert_eq!(*operation, Lexem::KwAs);
-
+            if let ExpressionType::Conversion { lhs, ty } = &expr.expr {
                 if let Ast::Value(node) = lhs.as_ref() {
                     if let ValueType::Identifier(id) = &node.value {
                         assert!(*id == radian_id)
@@ -153,7 +145,7 @@ fn variables_test() {
                     panic!("rhs has to be \'Expression\'");
                 };
 
-                assert!(matches!(rhs.as_ref(), Ast::Type(Type::I32)));
+                assert!(matches!(ty.get_type(), Type::I32));
             } else {
                 panic!("Expected binary expression");
             }

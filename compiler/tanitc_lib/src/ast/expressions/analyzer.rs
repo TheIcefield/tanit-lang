@@ -1,9 +1,10 @@
 use super::{Expression, ExpressionType};
 use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::ast::{types::Type, values::ValueType, Ast};
+use crate::ast::{values::ValueType, Ast};
 
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
 impl Analyze for Expression {
     fn get_type(&self, analyzer: &mut Analyzer) -> Type {
@@ -18,47 +19,17 @@ impl Analyze for Expression {
                 }
 
                 _ => {
-                    let is_conversion = *operation == Lexem::KwAs;
-
-                    let rhs_type = if is_conversion {
-                        if let Ast::Type(node) = rhs.as_ref() {
-                            node.clone()
-                        } else {
-                            analyzer
-                                .error(Message::new(self.location, "rhs expected to be a type"));
-                            Type::new()
-                        }
-                    } else {
-                        rhs.get_type(analyzer)
-                    };
-
-                    let mut lhs_type = if let Ast::VariableDef(node) = lhs.as_ref() {
-                        node.var_type.clone()
-                    } else {
-                        lhs.get_type(analyzer)
-                    };
+                    let mut lhs_type = lhs.get_type(analyzer);
 
                     if let Type::Auto = &mut lhs_type {
-                        lhs_type = rhs_type.clone();
+                        lhs_type = rhs.get_type(analyzer);
                     }
 
-                    if lhs_type == rhs_type {
-                        return rhs_type;
-                    }
-
-                    if is_conversion {
-                        return rhs_type;
-                    }
-
-                    analyzer.error(Message::new(
-                        self.location,
-                        &format!("Mismatched types {:?} and {:?}", lhs_type, rhs_type),
-                    ));
-
-                    Type::new()
+                    lhs_type
                 }
             },
             ExpressionType::Unary { node, .. } => node.get_type(analyzer),
+            ExpressionType::Conversion { ty, .. } => ty.get_type(),
         }
     }
 
@@ -69,22 +40,10 @@ impl Analyze for Expression {
                 lhs,
                 rhs,
             } => {
-                let is_conversion = *operation == Lexem::KwAs;
+                rhs.analyze(analyzer)?;
+                let rhs_type = rhs.get_type(analyzer);
 
-                let mut lhs_type = lhs.get_type(analyzer);
-
-                let rhs_type = if is_conversion {
-                    if let Ast::Type(node) = rhs.as_ref() {
-                        node.clone()
-                    } else {
-                        unreachable!();
-                    }
-                } else {
-                    rhs.analyze(analyzer)?;
-                    rhs.get_type(analyzer)
-                };
-
-                if *operation == Lexem::Assign
+                let does_mutate = *operation == Lexem::Assign
                     || *operation == Lexem::SubAssign
                     || *operation == Lexem::AddAssign
                     || *operation == Lexem::DivAssign
@@ -94,90 +53,76 @@ impl Analyze for Expression {
                     || *operation == Lexem::OrAssign
                     || *operation == Lexem::XorAssign
                     || *operation == Lexem::LShiftAssign
-                    || *operation == Lexem::RShiftAssign
-                    || is_conversion
-                {
-                    let does_mutate = !is_conversion;
-                    if let Ast::VariableDef(node) = lhs.as_mut() {
-                        if analyzer.has_symbol(node.identifier) {
-                            return Err(Message::multiple_ids(self.location, node.identifier));
-                        }
+                    || *operation == Lexem::RShiftAssign;
 
-                        if Type::Auto == node.var_type {
-                            node.var_type = rhs_type.clone();
-                            lhs_type = rhs_type.clone();
-                        }
+                if let Ast::VariableDef(node) = lhs.as_mut() {
+                    if analyzer.has_symbol(node.identifier) {
+                        return Err(Message::multiple_ids(self.location, node.identifier));
+                    }
 
-                        if node.var_type != rhs_type {
-                            analyzer.error(Message::new(self.location,
-                                &format!("Variable \"{}\" defined with type \"{:?}\", but is assigned to \"{:?}\"",
-                                    node.identifier,
-                                    node.var_type,
-                                    rhs_type)));
-                        }
+                    if Type::Auto == node.var_type.get_type() {
+                        node.var_type.ty = rhs_type.clone();
+                    }
 
-                        analyzer.add_symbol(
-                            node.identifier,
-                            analyzer.create_symbol(SymbolData::VariableDef {
-                                var_type: node.var_type.clone(),
-                                is_mutable: node.is_mutable,
-                                is_initialization: true,
-                            }),
-                        );
-                    } else if let Ast::Value(node) = lhs.as_mut() {
-                        match &node.value {
-                            ValueType::Identifier(id) => {
-                                if let Some(s) = analyzer.get_first_symbol(*id) {
-                                    if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
-                                        if !*is_mutable && does_mutate {
-                                            analyzer.error(Message::new(
-                                                self.location,
-                                                &format!(
-                                                    "Variable \"{}\" is immutable in current scope",
-                                                    id
-                                                ),
-                                            ));
-                                        }
+                    if node.var_type.get_type() != rhs_type {
+                        analyzer.error(Message::new(
+                            self.location,
+                            &format!("Cannot perform operation on objects with different types: {:?} and {:?}",
+                            node.var_type.get_type(), rhs_type
+                        )));
+                    }
+
+                    analyzer.add_symbol(
+                        node.identifier,
+                        analyzer.create_symbol(SymbolData::VariableDef {
+                            var_type: node.var_type.get_type(),
+                            is_mutable: node.is_mutable,
+                            is_initialization: true,
+                        }),
+                    );
+                } else if let Ast::Value(node) = lhs.as_mut() {
+                    match &node.value {
+                        ValueType::Identifier(id) => {
+                            if let Some(s) = analyzer.get_first_symbol(*id) {
+                                if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
+                                    if !*is_mutable && does_mutate {
+                                        analyzer.error(Message::new(
+                                            self.location,
+                                            &format!(
+                                                "Variable \"{}\" is immutable in current scope",
+                                                id
+                                            ),
+                                        ));
                                     }
                                 }
                             }
-                            ValueType::Integer(..) | ValueType::Decimal(..) => {}
-                            ValueType::Text(..) => analyzer.error(Message::new(
-                                self.location,
-                                "Cannot perform operation with text in this context",
-                            )),
-                            ValueType::Array { .. } => analyzer.error(Message::new(
-                                self.location,
-                                "Cannot perform operation with array in this context",
-                            )),
-                            ValueType::Tuple { .. } => analyzer.error(Message::new(
-                                self.location,
-                                "Cannot perform operation with tuple in this context",
-                            )),
-                            _ => analyzer.error(Message::new(
-                                self.location,
-                                "Cannot perform operation with this object",
-                            )),
                         }
-                    } else {
-                        lhs.analyze(analyzer)?;
+                        ValueType::Integer(..) | ValueType::Decimal(..) => {}
+                        ValueType::Text(..) => analyzer.error(Message::new(
+                            self.location,
+                            "Cannot perform operation with text in this context",
+                        )),
+                        ValueType::Array { .. } => analyzer.error(Message::new(
+                            self.location,
+                            "Cannot perform operation with array in this context",
+                        )),
+                        ValueType::Tuple { .. } => analyzer.error(Message::new(
+                            self.location,
+                            "Cannot perform operation with tuple in this context",
+                        )),
+                        _ => analyzer.error(Message::new(
+                            self.location,
+                            "Cannot perform operation with this object",
+                        )),
                     }
                 } else {
                     lhs.analyze(analyzer)?;
-                }
+                    let lhs_type = lhs.get_type(analyzer);
 
-                if lhs_type != rhs_type {
-                    if is_conversion {
-                        if !lhs_type.is_common() || !rhs_type.is_common() {
-                            analyzer.error(Message::new(
-                                self.location,
-                                &format!("Cannot cast {:?} to {:?}", lhs_type, rhs_type),
-                            ));
-                        }
-                    } else {
+                    if lhs_type != rhs_type {
                         analyzer.error(Message::new(
                             self.location,
-                            &format!("Cannot perform operation with objects with different types: {:?} and {:?}",
+                            &format!("Cannot perform operation on objects with different types: {:?} and {:?}",
                             lhs_type, rhs_type
                         )));
                     }
@@ -186,6 +131,7 @@ impl Analyze for Expression {
                 Ok(())
             }
             ExpressionType::Unary { node, .. } => node.analyze(analyzer),
+            ExpressionType::Conversion { .. } => todo!(),
         }
     }
 }
