@@ -1,6 +1,6 @@
 use super::ModuleDef;
-use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 
+use tanitc_analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use tanitc_messages::Message;
 
 impl Analyze for ModuleDef {

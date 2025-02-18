@@ -1,0 +1,11 @@
+[package]
+name = "tanitc_analyzer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tanitc_ident = { path = "../tanitc_ident" }
+tanitc_ty = { path = "../tanitc_ty" }
+tanitc_messages = { path = "../tanitc_messages" }

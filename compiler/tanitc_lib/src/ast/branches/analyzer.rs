@@ -1,7 +1,7 @@
 use super::{Branch, BranchType, Interupter, InterupterType};
-use crate::analyzer::{Analyze, Analyzer};
 use crate::ast::Ast;
 
+use tanitc_analyzer::{Analyze, Analyzer};
 use tanitc_messages::Message;
 
 impl Branch {

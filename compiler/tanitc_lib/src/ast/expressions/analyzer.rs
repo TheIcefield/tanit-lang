@@ -1,7 +1,12 @@
 use super::{Expression, ExpressionType};
-use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
-use crate::ast::{values::ValueType, Ast};
+use crate::ast::{
+    types::{MetaInfo, TypeSpec},
+    values::{CallParam, Value, ValueType},
+    Ast,
+};
 
+use tanitc_analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
+use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -33,7 +38,7 @@ impl Analyze for Expression {
         }
     }
 
-    fn analyze(&mut self, analyzer: &mut crate::analyzer::Analyzer) -> Result<(), Message> {
+    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message> {
         match &mut self.expr {
             ExpressionType::Binary {
                 operation,
@@ -132,6 +137,87 @@ impl Analyze for Expression {
             }
             ExpressionType::Unary { node, .. } => node.analyze(analyzer),
             ExpressionType::Conversion { .. } => todo!(),
+        }
+    }
+}
+
+impl Expression {
+    pub fn convert_expr_node(expr_node: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
+        if let Ast::Expression(node) = expr_node {
+            let location = node.location;
+            if let ExpressionType::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = &mut node.expr
+            {
+                Self::convert_expr_node(lhs, analyzer)?;
+                Self::convert_expr_node(rhs, analyzer)?;
+
+                let is_conversion = *operation == Lexem::KwAs;
+
+                let lhs_type = lhs.get_type(analyzer);
+
+                if !is_conversion {
+                    let rhs_type = rhs.get_type(analyzer);
+
+                    let func_name_str = format!(
+                        "__tanit_compiler__{}_{}_{}",
+                        match operation {
+                            Lexem::Plus => "add",
+                            Lexem::Minus => "sub",
+                            Lexem::Star => "mul",
+                            Lexem::Slash => "div",
+                            Lexem::Percent => "mod",
+                            Lexem::LShift => "lshift",
+                            Lexem::RShift => "rshift",
+                            Lexem::Stick => "or",
+                            Lexem::Ampersand => "and",
+                            _ => return Err(Message::new(location, "Unexpected operation")),
+                        },
+                        lhs_type,
+                        rhs_type
+                    );
+
+                    let func_id = Ident::from(func_name_str);
+
+                    *expr_node = Ast::from(Value {
+                        location,
+                        value: ValueType::Call {
+                            identifier: func_id,
+                            arguments: vec![
+                                CallParam::Positional(0, lhs.clone()),
+                                CallParam::Positional(1, rhs.clone()),
+                            ],
+                        },
+                    });
+                } else {
+                    let rhs_type = if let Ast::Value(Value {
+                        value: ValueType::Identifier(id),
+                        location,
+                    }) = rhs.as_ref()
+                    {
+                        TypeSpec {
+                            location: *location,
+                            info: MetaInfo::default(),
+                            ty: Type::from(*id),
+                        }
+                    } else {
+                        return Err(Message::unreachable(location));
+                    };
+                    *expr_node = Ast::from(Self {
+                        location,
+                        expr: ExpressionType::Binary {
+                            operation: Lexem::KwAs,
+                            lhs: lhs.clone(),
+                            rhs: Box::new(Ast::TypeSpec(rhs_type)),
+                        },
+                    });
+                };
+            }
+            Ok(())
+        } else {
+            unreachable!()
         }
     }
 }

@@ -1,6 +1,6 @@
 use super::Scope;
-use crate::analyzer::{Analyze, Analyzer};
 
+use tanitc_analyzer::{Analyze, Analyzer};
 use tanitc_messages::Message;
 
 impl Analyze for Scope {

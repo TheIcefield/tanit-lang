@@ -1,5 +1,3 @@
-use crate::ast::Ast;
-
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_ty::Type;
@@ -19,7 +17,7 @@ pub trait Analyze {
 }
 
 pub struct Analyzer {
-    table: SymbolTable,
+    pub table: SymbolTable,
     pub scope: Scope,
     counter: usize,
     errors: Errors,
@@ -34,20 +32,6 @@ impl Analyzer {
             counter: 0,
             errors: Errors::new(),
             warnings: Warnings::new(),
-        }
-    }
-
-    pub fn analyze(&mut self, ast: &mut Ast) -> Option<SymbolTable> {
-        let res = ast.analyze(self);
-
-        if let Err(err) = &res {
-            self.error(err.clone());
-        }
-
-        if self.has_errors() {
-            None
-        } else {
-            Some(std::mem::take(&mut self.table))
         }
     }
 

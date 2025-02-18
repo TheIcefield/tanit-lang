@@ -11,6 +11,7 @@ tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_parser = { path = "../tanitc_parser" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_serializer = { path = "../tanitc_serializer" }
+tanitc_analyzer = { path = "../tanitc_analyzer" }
 tanitc_codegen = { path = "../tanitc_codegen" }
 tanitc_ident = { path = "../tanitc_ident" }
 tanitc_ty = { path = "../tanitc_ty" }

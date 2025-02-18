@@ -1,11 +1,18 @@
 use super::scope::Scope;
-use crate::ast::variants::VariantField;
 
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
+
+#[derive(Clone, PartialEq, Default)]
+pub enum VariantFieldData {
+    #[default]
+    Common,
+    StructLike(BTreeMap<Ident, Type>),
+    TupleLike(Vec<Type>),
+}
 
 #[derive(Clone)]
 pub enum SymbolData {
@@ -19,7 +26,7 @@ pub enum SymbolData {
         components: Vec<(Ident, usize)>,
     },
     VariantDef {
-        components: Vec<VariantField>,
+        components: Vec<VariantFieldData>,
     },
     FunctionDef {
         parameters: Vec<(Ident, Type)>,
@@ -74,18 +81,18 @@ impl SymbolData {
 
                 for comp in components.iter() {
                     match comp {
-                        VariantField::Common => write!(stream, "common ")?,
-                        VariantField::TupleLike(t) => {
+                        VariantFieldData::Common => write!(stream, "common ")?,
+                        VariantFieldData::TupleLike(t) => {
                             write!(stream, "( ")?;
                             for tc in t.iter() {
-                                write!(stream, "{} ", tc.get_type())?;
+                                write!(stream, "{} ", tc)?;
                             }
                             write!(stream, ")")?;
                         }
-                        VariantField::StructLike(s) => {
+                        VariantFieldData::StructLike(s) => {
                             write!(stream, "{{ ")?;
                             for sc in s.iter() {
-                                write!(stream, "{} ", sc.1.get_type())?;
+                                write!(stream, "{} ", sc.1)?;
                             }
                             write!(stream, "}}")?;
                         }

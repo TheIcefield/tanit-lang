@@ -1,8 +1,8 @@
 use std::sync::Mutex;
 
-use crate::analyzer::{self, symbol_table::SymbolTable};
-use crate::ast::Ast;
+use crate::ast::{analyze_program, parse_program, Ast};
 
+use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
 use tanitc_codegen::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
@@ -82,7 +82,7 @@ impl Unit {
 
         let mut parser = Parser::new(lexer);
 
-        self.ast = Ast::parse(&mut parser);
+        self.ast = parse_program(&mut parser);
 
         if parser.has_errors() || self.ast.is_none() {
             tanitc_messages::print_messages(&parser.get_errors());
@@ -111,9 +111,8 @@ impl Unit {
 
         print!("Analyzing: \"{}\"... ", &self.path);
 
-        let mut analyzer = analyzer::Analyzer::new();
-
-        self.symbol_table = analyzer.analyze(self.ast.as_mut().unwrap());
+        let mut analyzer = Analyzer::new();
+        self.symbol_table = analyze_program(self.ast.as_mut().unwrap(), &mut analyzer);
 
         if analyzer.has_errors() || self.symbol_table.is_none() {
             tanitc_messages::print_messages(&analyzer.get_errors());
