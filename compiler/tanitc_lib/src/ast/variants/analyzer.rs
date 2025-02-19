@@ -22,7 +22,7 @@ impl Analyze for VariantDef {
             return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.scope.push(&format!("@v.{}", &self.identifier));
+        analyzer.scope.push(format!("@v.{}", &self.identifier));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }

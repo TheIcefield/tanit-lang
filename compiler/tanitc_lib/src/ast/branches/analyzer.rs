@@ -29,7 +29,7 @@ impl Analyze for Branch {
         match &mut self.branch {
             BranchType::While { body, condition } => {
                 let cnt = analyzer.counter();
-                analyzer.scope.push(&format!("@l.{}", cnt));
+                analyzer.scope.push(format!("@l.{}", cnt));
 
                 condition.analyze(analyzer)?;
 
@@ -42,7 +42,7 @@ impl Analyze for Branch {
             }
             BranchType::Loop { body } => {
                 let cnt = analyzer.counter();
-                analyzer.scope.push(&format!("@l.{}", cnt));
+                analyzer.scope.push(format!("@l.{}", cnt));
 
                 Self::analyze_body(body.as_mut(), analyzer)?;
 

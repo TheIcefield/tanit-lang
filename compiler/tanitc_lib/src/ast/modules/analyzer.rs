@@ -9,7 +9,7 @@ impl Analyze for ModuleDef {
             return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.scope.push(&self.identifier.to_string());
+        analyzer.scope.push(self.identifier.to_string());
 
         if let Some(body) = &mut self.body {
             body.analyze(analyzer)?;

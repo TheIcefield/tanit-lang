@@ -12,7 +12,7 @@ impl Analyze for FunctionDef {
             return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.scope.push(&format!("@f.{}", &self.identifier));
+        analyzer.scope.push(format!("@f.{}", &self.identifier));
 
         let mut parameters = Vec::<(Ident, Type)>::new();
         for p in self.parameters.iter_mut() {
@@ -33,7 +33,7 @@ impl Analyze for FunctionDef {
             }),
         );
 
-        analyzer.scope.push(&format!("@f.{}", &self.identifier));
+        analyzer.scope.push(format!("@f.{}", &self.identifier));
 
         if let Some(body) = &mut self.body {
             if let Ast::Scope(scope) = body.as_mut() {

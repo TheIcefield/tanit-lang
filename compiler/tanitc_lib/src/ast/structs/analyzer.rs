@@ -10,7 +10,7 @@ impl Analyze for StructDef {
             return Err(Message::multiple_ids(self.location, self.identifier));
         }
 
-        analyzer.scope.push(&format!("@s.{}", &self.identifier));
+        analyzer.scope.push(format!("@s.{}", &self.identifier));
         for internal in self.internals.iter_mut() {
             internal.analyze(analyzer)?;
         }

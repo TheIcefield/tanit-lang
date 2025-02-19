@@ -130,7 +130,7 @@ fn scope_test() {
     let var_id = Ident::from("var".to_string());
 
     let mut analyzer = Analyzer::new();
-    analyzer.scope.push("@s"); // @s
+    analyzer.scope.push("@s".to_string()); // @s
 
     analyzer.add_symbol(
         main_mod_id,
@@ -139,7 +139,7 @@ fn scope_test() {
         }),
     );
 
-    analyzer.scope.push(&String::from(main_mod_id)); // @s/Main
+    analyzer.scope.push(String::from(main_mod_id)); // @s/Main
     analyzer.add_symbol(
         main_fn_id,
         analyzer.create_symbol(SymbolData::FunctionDef {
@@ -158,7 +158,7 @@ fn scope_test() {
         }),
     );
 
-    analyzer.scope.push(&String::from(main_fn_id)); // @s/Main/main
+    analyzer.scope.push(String::from(main_fn_id)); // @s/Main/main
     analyzer.add_symbol(
         Ident::from("var".to_string()),
         analyzer.create_symbol(SymbolData::VariableDef {
@@ -182,7 +182,7 @@ fn scope_test() {
     assert!(!analyzer.has_symbol(var_id));
 
     // check if var unaccessible in bar
-    analyzer.scope.push("bar");
+    analyzer.scope.push("bar".to_string());
     assert!(!analyzer.has_symbol(var_id));
 
     // check if bar accessible in bar
