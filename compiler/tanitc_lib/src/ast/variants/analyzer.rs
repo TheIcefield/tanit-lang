@@ -1,7 +1,14 @@
-use super::{VariantDef, VariantField};
-use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
+use std::collections::BTreeMap;
 
+use super::{VariantDef, VariantField};
+
+use tanitc_analyzer::{
+    symbol_table::{SymbolData, VariantFieldData},
+    Analyze, Analyzer,
+};
+use tanitc_ident::Ident;
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
 impl Analyze for VariantField {
     fn analyze(&mut self, _analyzer: &mut Analyzer) -> Result<(), Message> {
@@ -21,9 +28,26 @@ impl Analyze for VariantDef {
         }
         analyzer.scope.pop();
 
-        let mut components = Vec::<VariantField>::new();
+        let mut components = Vec::<VariantFieldData>::new();
         for field in self.fields.iter() {
-            components.push(field.1.clone());
+            components.push(match field.1 {
+                VariantField::Common => VariantFieldData::Common,
+                VariantField::StructLike(subfields) => {
+                    let mut processed_fields = BTreeMap::<Ident, Type>::new();
+                    for field in subfields.iter() {
+                        processed_fields.insert(*field.0, field.1.get_type());
+                    }
+
+                    VariantFieldData::StructLike(processed_fields)
+                }
+                VariantField::TupleLike(components) => {
+                    let mut processed_components = Vec::<Type>::new();
+                    for field in components.iter() {
+                        processed_components.push(field.get_type());
+                    }
+                    VariantFieldData::TupleLike(processed_components)
+                }
+            });
         }
 
         analyzer.add_symbol(

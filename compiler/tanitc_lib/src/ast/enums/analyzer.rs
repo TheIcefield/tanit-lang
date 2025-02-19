@@ -1,6 +1,6 @@
 use super::EnumDef;
-use crate::analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 
+use tanitc_analyzer::{symbol_table::SymbolData, Analyze, Analyzer};
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
 use tanitc_ty::Type;

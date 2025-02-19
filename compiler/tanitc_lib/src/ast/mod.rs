@@ -1,5 +1,4 @@
-use crate::analyzer::{Analyze, Analyzer};
-
+use tanitc_analyzer::{symbol_table::SymbolTable, Analyze, Analyzer};
 use tanitc_codegen::{CodeGenStream, Codegen};
 use tanitc_messages::Message;
 use tanitc_parser::Parser;
@@ -40,20 +39,6 @@ pub enum Ast {
 }
 
 impl Ast {
-    pub fn parse(parser: &mut Parser) -> Option<Self> {
-        let res = scopes::Scope::parse_global(parser);
-
-        if let Err(err) = &res {
-            parser.error(err.clone());
-        }
-
-        if parser.has_errors() {
-            None
-        } else {
-            Some(res.unwrap())
-        }
-    }
-
     pub fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()> {
         match self {
             Self::Scope(node) => node.serialize(writer),
@@ -129,5 +114,33 @@ impl Ast {
             Self::VariableDef(node) => node.get_type(analyzer),
             _ => todo!("GetType"),
         }
+    }
+}
+
+pub fn analyze_program(ast: &mut Ast, analyzer: &mut Analyzer) -> Option<SymbolTable> {
+    let res = ast.analyze(analyzer);
+
+    if let Err(err) = &res {
+        analyzer.error(err.clone());
+    }
+
+    if analyzer.has_errors() {
+        None
+    } else {
+        Some(std::mem::take(&mut analyzer.table))
+    }
+}
+
+pub fn parse_program(parser: &mut Parser) -> Option<Ast> {
+    let res = scopes::Scope::parse_global(parser);
+
+    if let Err(err) = &res {
+        parser.error(err.clone());
+    }
+
+    if parser.has_errors() {
+        None
+    } else {
+        Some(res.unwrap())
     }
 }
