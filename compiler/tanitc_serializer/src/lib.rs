@@ -1,3 +1,8 @@
+use tanitc_lexer::location::Location;
+use tanitc_messages::Message;
+
+pub mod ast;
+
 pub trait Serialize {
     fn serialize(&self, writer: &mut XmlWriter) -> std::io::Result<()>;
 }
@@ -28,7 +33,22 @@ impl<'a> XmlWriter<'a> {
         })
     }
 
-    pub fn begin_tag(&mut self, name: &str) -> std::io::Result<()> {
+    pub fn serialize_err(e: std::io::Error) -> Message {
+        Message {
+            location: Location::default(),
+            text: format!("Serialize error: {e}"),
+        }
+    }
+
+    pub fn begin_tag(&mut self, name: &str) -> Result<(), Message> {
+        if let Err(e) = self.begin_tag_internal(name) {
+            Err(Self::serialize_err(e))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn begin_tag_internal(&mut self, name: &str) -> std::io::Result<()> {
         if !self.cached_states.is_empty() && !self.current_state.has_internal_tags {
             /* close previous tag */
             write!(self.stream, ">")?;
@@ -51,7 +71,15 @@ impl<'a> XmlWriter<'a> {
         Ok(())
     }
 
-    pub fn end_tag(&mut self) -> std::io::Result<()> {
+    pub fn end_tag(&mut self) -> Result<(), Message> {
+        if let Err(e) = self.end_tag_internal() {
+            Err(Self::serialize_err(e))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn end_tag_internal(&mut self) -> std::io::Result<()> {
         self.decrease_intent();
         if self.current_state.has_internal_tags {
             writeln!(self.stream)?;
@@ -66,7 +94,19 @@ impl<'a> XmlWriter<'a> {
         Ok(())
     }
 
-    pub fn put_param<V: std::fmt::Display>(&mut self, key: &str, value: V) -> std::io::Result<()> {
+    pub fn put_param<V: std::fmt::Display>(&mut self, key: &str, value: V) -> Result<(), Message> {
+        if let Err(e) = self.put_param_internal(key, value) {
+            Err(Self::serialize_err(e))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn put_param_internal<V: std::fmt::Display>(
+        &mut self,
+        key: &str,
+        value: V,
+    ) -> std::io::Result<()> {
         if self.current_state.has_internal_tags {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

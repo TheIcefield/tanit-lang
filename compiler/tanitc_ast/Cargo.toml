@@ -1,12 +1,12 @@
 [package]
-name = "tanitc_serializer"
+name = "tanitc_ast"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tanitc_ast = { path = "../tanitc_ast" }
-tanitc_messages = { path = "../tanitc_messages" }
-tanitc_ty = { path = "../tanitc_ty" }
 tanitc_lexer = { path = "../tanitc_lexer" }
+tanitc_messages = { path = "../tanitc_messages" }
+tanitc_ident = { path = "../tanitc_ident" }
+tanitc_ty = { path = "../tanitc_ty" }

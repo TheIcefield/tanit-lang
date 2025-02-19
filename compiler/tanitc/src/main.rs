@@ -1,4 +1,4 @@
-use tanitc_lib::unit::{self, CompileOptions, Unit};
+use tanitc_crate::{CompileOptions, Unit};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -19,7 +19,7 @@ fn main() {
         }
     }
 
-    unit::set_compile_options(compile_options);
+    tanitc_crate::set_compile_options(compile_options);
 
     let mut main_unit_name = source_file
         .chars()
@@ -37,13 +37,14 @@ fn main() {
         }
     }
 
-    let mut main_unit = Unit::builder()
+    let main_unit = Unit::builder()
         .set_name(main_unit_name)
         .set_path(source_file)
         .build();
 
-    main_unit.process_parsing().unwrap();
-    unit::register_unit(main_unit);
+    tanitc_crate::register_unit(main_unit);
 
-    Unit::process().unwrap();
+    if let Err(e) = Unit::process() {
+        eprintln!("{e}");
+    }
 }

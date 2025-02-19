@@ -1,3 +1,5 @@
+pub mod ast;
+
 pub trait Codegen {
     fn codegen(&self, stream: &mut CodeGenStream) -> std::io::Result<()>;
 }

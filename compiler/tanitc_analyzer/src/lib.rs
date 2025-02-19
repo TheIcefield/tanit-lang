@@ -2,6 +2,7 @@ use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_ty::Type;
 
+pub mod ast;
 pub mod scope;
 pub mod symbol_table;
 
