@@ -8,8 +8,8 @@ impl Scope {
         Self::default()
     }
 
-    pub fn push(&mut self, block: &str) {
-        self.0.push(block.to_string());
+    pub fn push(&mut self, block: String) {
+        self.0.push(block);
     }
 
     pub fn pop(&mut self) {

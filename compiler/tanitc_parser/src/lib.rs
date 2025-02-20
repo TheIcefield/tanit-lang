@@ -1,6 +1,8 @@
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 
+pub mod ast;
+
 use tanitc_lexer::{
     location::Location,
     token::{Lexem, Token},
