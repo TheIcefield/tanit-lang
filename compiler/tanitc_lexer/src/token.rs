@@ -241,3 +241,59 @@ impl std::fmt::Display for Token {
         write!(f, "[{}]: \"{}\"", self.location, self.lexem)
     }
 }
+
+#[test]
+fn lexem_test() {
+    {
+        const ID_STR: &str = "Hello";
+        let lexem = Lexem::Identifier(ID_STR.to_string());
+        assert_eq!(lexem.get_str(), Some(ID_STR));
+        assert_eq!(lexem.get_dec(), None);
+        assert_eq!(lexem.get_int(), None);
+
+        let token = Token::new(lexem, Location::new());
+        assert_eq!(token.is_identifier(), true);
+        assert_eq!(token.is_decimal(), false);
+        assert_eq!(token.is_integer(), false);
+    }
+
+    {
+        const INT_STR: &str = "314";
+        const INT_VAL: usize = 314;
+        let lexem = Lexem::Integer(INT_STR.to_string());
+        assert_eq!(lexem.get_str(), Some(INT_STR));
+        assert_eq!(lexem.get_dec(), None);
+        assert_eq!(lexem.get_int(), Some(INT_VAL));
+
+        let token = Token::new(lexem, Location::new());
+        assert_eq!(token.is_identifier(), false);
+        assert_eq!(token.is_decimal(), false);
+        assert_eq!(token.is_integer(), true);
+    }
+
+    {
+        const DEC_STR: &str = "3.14";
+        const DEC_VAL: f64 = 3.14;
+        let lexem = Lexem::Decimal(DEC_STR.to_string());
+        assert_eq!(lexem.get_str(), Some(DEC_STR));
+        assert_eq!(lexem.get_dec(), Some(DEC_VAL));
+        assert_eq!(lexem.get_int(), None);
+
+        let token = Token::new(lexem, Location::new());
+        assert_eq!(token.is_identifier(), false);
+        assert_eq!(token.is_decimal(), true);
+        assert_eq!(token.is_integer(), false);
+    }
+
+    {
+        let lexem = Lexem::Unknown;
+        assert_eq!(lexem.get_str(), None);
+        assert_eq!(lexem.get_dec(), None);
+        assert_eq!(lexem.get_int(), None);
+
+        let token = Token::new(lexem, Location::new());
+        assert_eq!(token.is_identifier(), false);
+        assert_eq!(token.is_decimal(), false);
+        assert_eq!(token.is_integer(), false);
+    }
+}
