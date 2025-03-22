@@ -130,7 +130,7 @@ impl Unit {
     }
 
     fn analyze_program(ast: &mut Ast, analyzer: &mut Analyzer) -> Option<SymbolTable> {
-        let res = ast.accept(analyzer);
+        let res = ast.accept_mut(analyzer);
 
         if let Err(err) = &res {
             analyzer.error(err.clone());

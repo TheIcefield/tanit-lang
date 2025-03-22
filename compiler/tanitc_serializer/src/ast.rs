@@ -1,15 +1,15 @@
 use tanitc_ast::{
-    AliasDef, AstVisitor, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec,
-    Value, ValueKind, VariableDef, VariantDef, VariantField,
+    AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
+    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec, Value,
+    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
 use super::XmlWriter;
 
-impl AstVisitor for XmlWriter<'_> {
-    fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
+impl Visitor for XmlWriter<'_> {
+    fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         if module_def.body.is_some() {
             self.serializer_module_def_internal(module_def)
         } else {
@@ -17,15 +17,15 @@ impl AstVisitor for XmlWriter<'_> {
         }
     }
 
-    fn visit_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
+    fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
         self.begin_tag("struct-definition")?;
         self.put_param("name", struct_def.identifier)?;
 
-        for internal in struct_def.internals.iter_mut() {
-            self.visit(internal)?;
+        for internal in struct_def.internals.iter() {
+            internal.accept(self)?;
         }
 
-        for (field_id, field_type) in struct_def.fields.iter_mut() {
+        for (field_id, field_type) in struct_def.fields.iter() {
             self.begin_tag("field")?;
             self.put_param("name", field_id)?;
 
@@ -39,15 +39,15 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
+    fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
         self.begin_tag("variant-definition")?;
         self.put_param("name", variant_def.identifier)?;
 
-        for internal in variant_def.internals.iter_mut() {
-            self.visit(internal)?;
+        for internal in variant_def.internals.iter() {
+            internal.accept(self)?;
         }
 
-        for (field_id, field) in variant_def.fields.iter_mut() {
+        for (field_id, field) in variant_def.fields.iter() {
             self.begin_tag("field")?;
             self.put_param("name", field_id)?;
 
@@ -66,7 +66,7 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
+    fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message> {
         self.begin_tag("enum-definition")?;
         self.put_param("name", enum_def.identifier)?;
 
@@ -86,24 +86,24 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
+    fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
         self.begin_tag("function-definition")?;
         self.put_param("name", func_def.identifier)?;
 
         self.begin_tag("return-type")?;
-        self.visit_type_spec(&mut func_def.return_type)?;
+        self.visit_type_spec(&func_def.return_type)?;
         self.end_tag()?;
 
         if !func_def.parameters.is_empty() {
             self.begin_tag("parameters")?;
-            for param in func_def.parameters.iter_mut() {
-                self.visit(param)?;
+            for param in func_def.parameters.iter() {
+                param.accept(self)?;
             }
             self.end_tag()?;
         }
 
-        if let Some(body) = &mut func_def.body {
-            self.visit(body)?;
+        if let Some(body) = &func_def.body {
+            body.accept(self)?;
         }
 
         self.end_tag()?;
@@ -111,38 +111,38 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_variable_def(&mut self, var_def: &mut VariableDef) -> Result<(), Message> {
+    fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message> {
         self.begin_tag("variable-definition")?;
         self.put_param("name", var_def.identifier)?;
         self.put_param("is-global", var_def.is_global)?;
         self.put_param("is-mutable", var_def.is_mutable)?;
 
-        self.visit_type_spec(&mut var_def.var_type)?;
+        self.visit_type_spec(&var_def.var_type)?;
 
         self.end_tag()?;
 
         Ok(())
     }
 
-    fn visit_alias_def(&mut self, alias_def: &mut AliasDef) -> Result<(), Message> {
+    fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message> {
         self.begin_tag("alias-definition")?;
         self.put_param("name", alias_def.identifier)?;
 
-        self.visit_type_spec(&mut alias_def.value)?;
+        self.visit_type_spec(&alias_def.value)?;
 
         self.end_tag()?;
 
         Ok(())
     }
 
-    fn visit_expression(&mut self, expr: &mut Expression) -> Result<(), Message> {
+    fn visit_expression(&mut self, expr: &Expression) -> Result<(), Message> {
         self.begin_tag("operation")?;
 
-        match &mut expr.kind {
+        match &expr.kind {
             ExpressionKind::Unary { operation, node } => {
                 self.put_param("style", "unary")?;
                 self.put_param("operation", operation)?;
-                self.visit(node)?;
+                node.accept(self)?;
             }
             ExpressionKind::Binary {
                 operation,
@@ -152,14 +152,14 @@ impl AstVisitor for XmlWriter<'_> {
                 self.put_param("style", "binary")?;
                 self.put_param("operation", operation)?;
 
-                self.visit(lhs)?;
-                self.visit(rhs)?;
+                lhs.accept(self)?;
+                rhs.accept(self)?;
             }
             ExpressionKind::Conversion { lhs, ty } => {
                 self.put_param("style", "conversion")?;
 
                 self.visit_type_spec(ty)?;
-                self.visit(lhs)?;
+                lhs.accept(self)?;
             }
         }
 
@@ -168,23 +168,23 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
-        match &mut branch.kind {
+    fn visit_branch(&mut self, branch: &Branch) -> Result<(), Message> {
+        match &branch.kind {
             BranchKind::While { body, condition } => {
                 self.begin_tag("while")?;
 
                 self.begin_tag("condition")?;
-                self.visit(condition)?;
+                condition.accept(self)?;
                 self.end_tag()?;
 
-                self.visit(body)?;
+                body.accept(self)?;
 
                 self.end_tag()?;
             }
             BranchKind::Loop { body } => {
                 self.begin_tag("loop")?;
 
-                self.visit(body)?;
+                body.accept(self)?;
 
                 self.end_tag()?;
             }
@@ -192,18 +192,18 @@ impl AstVisitor for XmlWriter<'_> {
                 self.begin_tag("if")?;
 
                 self.begin_tag("condition")?;
-                self.visit(condition)?;
+                condition.accept(self)?;
                 self.end_tag()?;
 
                 self.begin_tag("than")?;
-                self.visit(body)?;
+                body.accept(self)?;
                 self.end_tag()?;
 
                 self.end_tag()?;
             }
             BranchKind::Else { body } => {
                 self.begin_tag("else")?;
-                self.visit(body)?;
+                body.accept(self)?;
                 self.end_tag()?;
             }
         }
@@ -211,13 +211,13 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_control_flow(&mut self, cf: &mut ControlFlow) -> Result<(), Message> {
+    fn visit_control_flow(&mut self, cf: &ControlFlow) -> Result<(), Message> {
         self.begin_tag(&format!("{}-statement", cf.kind.to_str()))?;
 
-        match &mut cf.kind {
+        match &cf.kind {
             ControlFlowKind::Break { ret } | ControlFlowKind::Return { ret } => {
                 if let Some(expr) = ret {
-                    self.visit(expr)?;
+                    expr.accept(self)?;
                 }
             }
             _ => {}
@@ -228,7 +228,7 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_type_spec(&mut self, type_spec: &mut TypeSpec) -> Result<(), Message> {
+    fn visit_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), Message> {
         self.begin_tag("type")?;
 
         self.serialize_type(&type_spec.ty, type_spec.info)?;
@@ -238,16 +238,16 @@ impl AstVisitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_block(&mut self, block: &mut Block) -> Result<(), Message> {
-        for stmt in block.statements.iter_mut() {
-            self.visit(stmt)?;
+    fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
+        for stmt in block.statements.iter() {
+            stmt.accept(self)?;
         }
 
         Ok(())
     }
 
-    fn visit_value(&mut self, val: &mut Value) -> Result<(), Message> {
-        match &mut val.kind {
+    fn visit_value(&mut self, val: &Value) -> Result<(), Message> {
+        match &val.kind {
             ValueKind::Call {
                 identifier,
                 arguments,
@@ -256,16 +256,16 @@ impl AstVisitor for XmlWriter<'_> {
                 self.put_param("name", identifier)?;
 
                 self.begin_tag("parameters")?;
-                for arg in arguments.iter_mut() {
+                for arg in arguments.iter() {
                     self.begin_tag("parameter")?;
                     match arg {
                         CallParam::Notified(id, expr) => {
                             self.put_param("name", id)?;
-                            self.visit(expr.as_mut())?;
+                            expr.accept(self)?;
                         }
                         CallParam::Positional(index, expr) => {
                             self.put_param("index", index)?;
-                            self.visit(expr.as_mut())?;
+                            expr.accept(self)?;
                         }
                     }
                     self.end_tag()?; //parameter
@@ -280,11 +280,11 @@ impl AstVisitor for XmlWriter<'_> {
                 self.begin_tag("struct-initialization")?;
                 self.put_param("name", identifier)?;
 
-                for (comp_id, comp_type) in components.iter_mut() {
+                for (comp_id, comp_type) in components.iter() {
                     self.begin_tag("field")?;
                     self.put_param("name", comp_id)?;
 
-                    self.visit(comp_type)?;
+                    comp_type.accept(self)?;
 
                     self.end_tag()?;
                 }
@@ -294,8 +294,8 @@ impl AstVisitor for XmlWriter<'_> {
             ValueKind::Tuple { components } => {
                 self.begin_tag("tuple-initialization")?;
 
-                for component in components.iter_mut() {
-                    self.visit(component)?
+                for component in components.iter() {
+                    component.accept(self)?;
                 }
 
                 self.end_tag()?;
@@ -303,8 +303,8 @@ impl AstVisitor for XmlWriter<'_> {
             ValueKind::Array { components } => {
                 self.begin_tag("array-initialization")?;
 
-                for component in components.iter_mut() {
-                    self.visit(component)?
+                for component in components.iter() {
+                    component.accept(self)?;
                 }
 
                 self.end_tag()?;
@@ -339,14 +339,11 @@ impl AstVisitor for XmlWriter<'_> {
 }
 
 impl XmlWriter<'_> {
-    fn serializer_module_def_internal(
-        &mut self,
-        module_def: &mut ModuleDef,
-    ) -> Result<(), Message> {
+    fn serializer_module_def_internal(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         self.begin_tag("module-definition")?;
         self.put_param("name", module_def.identifier)?;
 
-        if let Some(body) = &mut module_def.body {
+        if let Some(body) = &module_def.body {
             self.visit_block(body)?;
         }
 
@@ -355,10 +352,7 @@ impl XmlWriter<'_> {
         Ok(())
     }
 
-    fn serializer_module_def_external(
-        &mut self,
-        module_def: &mut ModuleDef,
-    ) -> Result<(), Message> {
+    fn serializer_module_def_external(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         self.begin_tag("module-import")?;
         self.put_param("name", module_def.identifier)?;
 
@@ -369,10 +363,10 @@ impl XmlWriter<'_> {
 }
 
 impl XmlWriter<'_> {
-    fn serialize_variant_field(&mut self, field: &mut VariantField) -> Result<(), Message> {
+    fn serialize_variant_field(&mut self, field: &VariantField) -> Result<(), Message> {
         match field {
             VariantField::StructLike(s) => {
-                for (field_id, field_type) in s.iter_mut() {
+                for (field_id, field_type) in s.iter() {
                     self.begin_tag("field")?;
                     self.put_param("name", field_id)?;
 
@@ -382,7 +376,7 @@ impl XmlWriter<'_> {
                 }
             }
             VariantField::TupleLike(tuple_field) => {
-                for tuple_component in tuple_field.iter_mut() {
+                for tuple_component in tuple_field.iter() {
                     self.visit_type_spec(tuple_component)?;
                 }
             }

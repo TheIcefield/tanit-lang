@@ -13,7 +13,7 @@ fn enum_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let mut enum_node = parser.parse_enum_def().unwrap();
+    let enum_node = parser.parse_enum_def().unwrap();
 
     {
         const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
@@ -58,7 +58,7 @@ fn empty_enum_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let mut enum_node = parser.parse_enum_def().unwrap();
+    let enum_node = parser.parse_enum_def().unwrap();
 
     {
         const EXPECTED: &str = "\n<enum-definition name=\"EmptyEnum\"/>";
@@ -95,7 +95,7 @@ fn enum_with_one_field_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let mut enum_node = parser.parse_enum_def().unwrap();
+    let enum_node = parser.parse_enum_def().unwrap();
 
     {
         const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\

@@ -286,25 +286,23 @@ pub enum Ast {
     Value(Value),
 }
 
-pub trait AstVisitor {
-    fn visit(&mut self, node: &mut Ast) -> Result<(), Message> {
-        match node {
-            Ast::ModuleDef(node) => self.visit_module_def(node),
-            Ast::StructDef(node) => self.visit_struct_def(node),
-            Ast::VariantDef(node) => self.visit_variant_def(node),
-            Ast::EnumDef(node) => self.visit_enum_def(node),
-            Ast::FuncDef(node) => self.visit_func_def(node),
-            Ast::VariableDef(node) => self.visit_variable_def(node),
-            Ast::AliasDef(node) => self.visit_alias_def(node),
-            Ast::Expression(node) => self.visit_expression(node),
-            Ast::BranchStmt(node) => self.visit_branch(node),
-            Ast::ControlFlow(node) => self.visit_control_flow(node),
-            Ast::TypeSpec(node) => self.visit_type_spec(node),
-            Ast::Block(node) => self.visit_block(node),
-            Ast::Value(node) => self.visit_value(node),
-        }
-    }
+pub trait Visitor {
+    fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message>;
+    fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message>;
+    fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message>;
+    fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message>;
+    fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message>;
+    fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message>;
+    fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message>;
+    fn visit_expression(&mut self, expr: &Expression) -> Result<(), Message>;
+    fn visit_branch(&mut self, branch: &Branch) -> Result<(), Message>;
+    fn visit_control_flow(&mut self, cf: &ControlFlow) -> Result<(), Message>;
+    fn visit_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), Message>;
+    fn visit_block(&mut self, block: &Block) -> Result<(), Message>;
+    fn visit_value(&mut self, val: &Value) -> Result<(), Message>;
+}
 
+pub trait VisitorMut {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message>;
     fn visit_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message>;
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message>;
@@ -321,7 +319,39 @@ pub trait AstVisitor {
 }
 
 impl Ast {
-    pub fn accept(&mut self, visitor: &mut dyn AstVisitor) -> Result<(), Message> {
-        visitor.visit(self)
+    pub fn accept(&self, visitor: &mut dyn Visitor) -> Result<(), Message> {
+        match self {
+            Ast::ModuleDef(node) => visitor.visit_module_def(node),
+            Ast::StructDef(node) => visitor.visit_struct_def(node),
+            Ast::VariantDef(node) => visitor.visit_variant_def(node),
+            Ast::EnumDef(node) => visitor.visit_enum_def(node),
+            Ast::FuncDef(node) => visitor.visit_func_def(node),
+            Ast::VariableDef(node) => visitor.visit_variable_def(node),
+            Ast::AliasDef(node) => visitor.visit_alias_def(node),
+            Ast::Expression(node) => visitor.visit_expression(node),
+            Ast::BranchStmt(node) => visitor.visit_branch(node),
+            Ast::ControlFlow(node) => visitor.visit_control_flow(node),
+            Ast::TypeSpec(node) => visitor.visit_type_spec(node),
+            Ast::Block(node) => visitor.visit_block(node),
+            Ast::Value(node) => visitor.visit_value(node),
+        }
+    }
+
+    pub fn accept_mut(&mut self, visitor: &mut dyn VisitorMut) -> Result<(), Message> {
+        match self {
+            Ast::ModuleDef(node) => visitor.visit_module_def(node),
+            Ast::StructDef(node) => visitor.visit_struct_def(node),
+            Ast::VariantDef(node) => visitor.visit_variant_def(node),
+            Ast::EnumDef(node) => visitor.visit_enum_def(node),
+            Ast::FuncDef(node) => visitor.visit_func_def(node),
+            Ast::VariableDef(node) => visitor.visit_variable_def(node),
+            Ast::AliasDef(node) => visitor.visit_alias_def(node),
+            Ast::Expression(node) => visitor.visit_expression(node),
+            Ast::BranchStmt(node) => visitor.visit_branch(node),
+            Ast::ControlFlow(node) => visitor.visit_control_flow(node),
+            Ast::TypeSpec(node) => visitor.visit_type_spec(node),
+            Ast::Block(node) => visitor.visit_block(node),
+            Ast::Value(node) => visitor.visit_value(node),
+        }
     }
 }

@@ -20,7 +20,7 @@ fn struct_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
-    let mut struct_node = parser.parse_struct_def().unwrap();
+    let struct_node = parser.parse_struct_def().unwrap();
 
     if let Ast::StructDef(node) = &struct_node {
         assert!(node.identifier == struct_id);

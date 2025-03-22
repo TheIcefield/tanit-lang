@@ -13,7 +13,7 @@ fn alias_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let mut alias_node = parser.parse_alias_def().unwrap();
+    let alias_node = parser.parse_alias_def().unwrap();
 
     {
         const EXPECTED: &str = "\n<alias-definition name=\"MyAlias\">\
