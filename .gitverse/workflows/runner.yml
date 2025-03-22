@@ -1,0 +1,38 @@
+name: Облачная сборка tanitc
+
+on:
+  push:
+
+jobs:
+  build-test:
+    name: Cloud tanitc build
+    runs-on: ubuntu-cloud-runner
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install rust
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly -y
+          . "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
+
+      - name: Build
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build
+
+      - name: Build tests
+        run: |
+          . "$HOME/.cargo/env"
+          cargo test
+
+      - name: Check formatting
+        run: |
+          . "$HOME/.cargo/env"
+          cargo fmt -- --check
+
+      - name: Check code
+        run: |
+          . "$HOME/.cargo/env"
+          cargo clippy -- -D warnings
