@@ -15,7 +15,7 @@ fn function_def_test() {
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    let mut node = parser.parse_global_block().unwrap();
+    let node = parser.parse_global_block().unwrap();
 
     {
         const EXPECTED: &str = "\n<function-definition name=\"sum\">\

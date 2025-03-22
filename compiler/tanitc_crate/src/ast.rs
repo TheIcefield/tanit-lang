@@ -1,6 +1,6 @@
 use tanitc_ast::{
-    AliasDef, AstVisitor, Block, Branch, ControlFlow, EnumDef, Expression, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, Value, VariableDef, VariantDef,
+    AliasDef, Block, Branch, ControlFlow, EnumDef, Expression, FunctionDef, ModuleDef, StructDef,
+    TypeSpec, Value, VariableDef, VariantDef, Visitor,
 };
 use tanitc_messages::Message;
 
@@ -17,8 +17,8 @@ impl ModuleSearcher {
     }
 }
 
-impl AstVisitor for ModuleSearcher {
-    fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
+impl Visitor for ModuleSearcher {
+    fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         if module_def.is_external {
             let name: String = module_def.identifier.into();
 
@@ -76,62 +76,62 @@ impl AstVisitor for ModuleSearcher {
             }
 
             return Ok(());
-        } else if let Some(body) = &mut module_def.body {
+        } else if let Some(body) = &module_def.body {
             self.visit_block(body)?;
         }
 
         Ok(())
     }
 
-    fn visit_struct_def(&mut self, _struct_def: &mut StructDef) -> Result<(), Message> {
+    fn visit_struct_def(&mut self, _struct_def: &StructDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_variant_def(&mut self, _variant_def: &mut VariantDef) -> Result<(), Message> {
+    fn visit_variant_def(&mut self, _variant_def: &VariantDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_enum_def(&mut self, _enum_def: &mut EnumDef) -> Result<(), Message> {
+    fn visit_enum_def(&mut self, _enum_def: &EnumDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_func_def(&mut self, _func_def: &mut FunctionDef) -> Result<(), Message> {
+    fn visit_func_def(&mut self, _func_def: &FunctionDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_variable_def(&mut self, _var_def: &mut VariableDef) -> Result<(), Message> {
+    fn visit_variable_def(&mut self, _var_def: &VariableDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_alias_def(&mut self, _alias_def: &mut AliasDef) -> Result<(), Message> {
+    fn visit_alias_def(&mut self, _alias_def: &AliasDef) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_expression(&mut self, _expr: &mut Expression) -> Result<(), Message> {
+    fn visit_expression(&mut self, _expr: &Expression) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_branch(&mut self, _branch: &mut Branch) -> Result<(), Message> {
+    fn visit_branch(&mut self, _branch: &Branch) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_control_flow(&mut self, _cf: &mut ControlFlow) -> Result<(), Message> {
+    fn visit_control_flow(&mut self, _cf: &ControlFlow) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_type_spec(&mut self, _type_spec: &mut TypeSpec) -> Result<(), Message> {
+    fn visit_type_spec(&mut self, _type_spec: &TypeSpec) -> Result<(), Message> {
         Ok(())
     }
 
-    fn visit_block(&mut self, block: &mut Block) -> Result<(), Message> {
-        for stmt in block.statements.iter_mut() {
-            self.visit(stmt)?;
+    fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
+        for stmt in block.statements.iter() {
+            stmt.accept(self)?;
         }
 
         Ok(())
     }
 
-    fn visit_value(&mut self, _val: &mut Value) -> Result<(), Message> {
+    fn visit_value(&mut self, _val: &Value) -> Result<(), Message> {
         Ok(())
     }
 }

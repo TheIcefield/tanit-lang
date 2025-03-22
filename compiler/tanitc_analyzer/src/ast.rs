@@ -1,9 +1,9 @@
 use super::{symbol_table::SymbolData, Analyzer};
 
 use tanitc_ast::{
-    self, AliasDef, Ast, AstVisitor, Block, Branch, BranchKind, CallParam, ControlFlow,
-    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
-    TypeSpec, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    self, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
+    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, Value,
+    ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -12,7 +12,7 @@ use tanitc_ty::Type;
 
 use std::collections::BTreeMap;
 
-impl AstVisitor for Analyzer {
+impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
         if self.has_symbol(module_def.identifier) {
             return Err(Message::multiple_ids(
@@ -49,7 +49,7 @@ impl AstVisitor for Analyzer {
 
         self.scope.push(format!("@s.{}", &struct_def.identifier));
         for internal in struct_def.internals.iter_mut() {
-            self.visit(internal)?;
+            internal.accept_mut(self)?;
         }
 
         let mut components = Vec::<Type>::new();
@@ -79,7 +79,7 @@ impl AstVisitor for Analyzer {
 
         self.scope.push(format!("@v.{}", &variant_def.identifier));
         for internal in variant_def.internals.iter_mut() {
-            self.visit(internal)?;
+            internal.accept_mut(self)?;
         }
         self.scope.pop();
 
@@ -158,7 +158,7 @@ impl AstVisitor for Analyzer {
         for p in func_def.parameters.iter_mut() {
             if let Ast::VariableDef(node) = p {
                 parameters.push((node.identifier, node.var_type.get_type()));
-                self.visit(p)?;
+                p.accept_mut(self)?;
             }
         }
 
@@ -178,7 +178,7 @@ impl AstVisitor for Analyzer {
         if let Some(body) = &mut func_def.body {
             if let Ast::Block(block) = body.as_mut() {
                 for stmt in block.statements.iter_mut() {
-                    self.visit(stmt)?
+                    stmt.accept_mut(self)?;
                 }
             }
         }
@@ -225,7 +225,7 @@ impl AstVisitor for Analyzer {
                 lhs,
                 rhs,
             } => {
-                self.visit(rhs)?;
+                rhs.accept_mut(self)?;
                 let rhs_type = self.get_type(rhs);
 
                 let does_mutate = *operation == Lexem::Assign
@@ -301,7 +301,7 @@ impl AstVisitor for Analyzer {
                         )),
                     }
                 } else {
-                    self.visit(lhs)?;
+                    lhs.accept_mut(self)?;
                     let lhs_type = self.get_type(lhs);
 
                     if lhs_type != rhs_type {
@@ -315,7 +315,7 @@ impl AstVisitor for Analyzer {
 
                 Ok(())
             }
-            ExpressionKind::Unary { node, .. } => self.visit(node),
+            ExpressionKind::Unary { node, .. } => node.accept_mut(self),
             ExpressionKind::Conversion { .. } => todo!(),
         }
     }
@@ -324,7 +324,7 @@ impl AstVisitor for Analyzer {
         fn analyze_body(body: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
             if let Ast::Block(node) = body {
                 for stmt in node.statements.iter_mut() {
-                    analyzer.visit(stmt)?;
+                    stmt.accept_mut(analyzer)?;
                 }
             }
 
@@ -344,7 +344,7 @@ impl AstVisitor for Analyzer {
                 let cnt = self.counter();
                 self.scope.push(format!("@l.{}", cnt));
 
-                self.visit(condition)?;
+                condition.accept_mut(self)?;
 
                 analyze_condition(condition.as_mut(), self)?;
                 analyze_body(body.as_mut(), self)?;
@@ -393,7 +393,7 @@ impl AstVisitor for Analyzer {
         match &mut cf.kind {
             ControlFlowKind::Break { ret } | ControlFlowKind::Return { ret } => {
                 if let Some(expr) = ret {
-                    self.visit(expr.as_mut())?;
+                    expr.accept_mut(self)?;
                 }
             }
             _ => {}
@@ -424,7 +424,7 @@ impl AstVisitor for Analyzer {
 
         self.scope.push(format!("@s.{}", cnt));
         for n in block.statements.iter_mut() {
-            if let Err(err) = self.visit(n) {
+            if let Err(err) = n.accept_mut(self) {
                 self.error(err);
             }
         }
@@ -514,7 +514,7 @@ impl AstVisitor for Analyzer {
 
             ValueKind::Tuple { components } => {
                 for comp in components.iter_mut() {
-                    self.visit(comp)?;
+                    comp.accept_mut(self)?;
                 }
 
                 Ok(())
