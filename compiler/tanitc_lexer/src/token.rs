@@ -105,20 +105,14 @@ impl Lexem {
 
     pub fn get_int(&self) -> Option<usize> {
         match self {
-            Self::Integer(val) => match val.parse() {
-                Ok(val) => Some(val),
-                Err(_) => None,
-            },
+            Self::Integer(val) => val.parse().ok(),
             _ => None,
         }
     }
 
     pub fn get_dec(&self) -> Option<f64> {
         match self {
-            Self::Decimal(val) => match val.parse() {
-                Ok(val) => Some(val),
-                Err(_) => None,
-            },
+            Self::Decimal(val) => val.parse().ok(),
             _ => None,
         }
     }
