@@ -768,6 +768,7 @@ impl Analyzer {
         }
     }
 
+    #[allow(dead_code)]
     fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
         if let Ast::Expression(node) = expr_node {
             let location = node.location;
