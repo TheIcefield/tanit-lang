@@ -1055,7 +1055,7 @@ impl Parser {
 
                 Lexem::KwVariant => self.parse_variant_def(),
 
-                Lexem::KwLet | Lexem::KwStatic => self.parse_variable_def(),
+                Lexem::KwVar | Lexem::KwStatic => self.parse_variable_def(),
 
                 Lexem::KwAlias => self.parse_alias_def(),
 
@@ -1461,7 +1461,7 @@ impl Parser {
         let location = next.location;
 
         let is_global = match next.lexem {
-            Lexem::KwLet => {
+            Lexem::KwVar => {
                 self.get_token();
                 false
             }
@@ -1474,7 +1474,7 @@ impl Parser {
             _ => {
                 return Err(Message::unexpected_token(
                     next,
-                    &[Lexem::KwLet, Lexem::KwStatic],
+                    &[Lexem::KwVar, Lexem::KwStatic],
                 ));
             }
         };
