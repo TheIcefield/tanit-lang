@@ -1,7 +1,7 @@
 use tanitc_ast::{
     AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec, Value,
-    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec, UnionDef,
+    Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -19,6 +19,28 @@ impl Visitor for XmlWriter<'_> {
 
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
         self.begin_tag("struct-definition")?;
+        self.put_param("name", struct_def.identifier)?;
+
+        for internal in struct_def.internals.iter() {
+            internal.accept(self)?;
+        }
+
+        for (field_id, field_type) in struct_def.fields.iter() {
+            self.begin_tag("field")?;
+            self.put_param("name", field_id)?;
+
+            self.visit_type_spec(field_type)?;
+
+            self.end_tag()?;
+        }
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn visit_union_def(&mut self, struct_def: &UnionDef) -> Result<(), Message> {
+        self.begin_tag("union-definition")?;
         self.put_param("name", struct_def.identifier)?;
 
         for internal in struct_def.internals.iter() {

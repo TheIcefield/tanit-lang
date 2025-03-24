@@ -1,7 +1,7 @@
 use tanitc_ast::{
     AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, Value, ValueKind,
-    VariableDef, VariantDef, Visitor,
+    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Value,
+    ValueKind, VariableDef, VariantDef, Visitor,
 };
 use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
@@ -20,6 +20,13 @@ impl Visitor for CodeGenStream<'_> {
 
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
         match self.generate_struct_def(struct_def) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Self::codegen_err(e)),
+        }
+    }
+
+    fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message> {
+        match self.generate_union_def(union_def) {
             Ok(_) => Ok(()),
             Err(e) => Err(Self::codegen_err(e)),
         }
@@ -108,6 +115,7 @@ impl CodeGenStream<'_> {
         match node {
             Ast::ModuleDef(node) => self.generate_module_def(node),
             Ast::StructDef(node) => self.generate_struct_def(node),
+            Ast::UnionDef(node) => self.generate_union_def(node),
             Ast::VariantDef(node) => self.generate_variant_def(node),
             Ast::EnumDef(node) => self.generate_enum_def(node),
             Ast::FuncDef(node) => self.generate_func_def(node),
@@ -141,6 +149,24 @@ impl CodeGenStream<'_> {
             writeln!(self, ";")?;
         }
         write!(self, "}} {}", struct_def.identifier)?;
+
+        writeln!(self, ";")?;
+
+        self.mode = old_mode;
+        Ok(())
+    }
+
+    fn generate_union_def(&mut self, union_def: &UnionDef) -> Result<(), std::io::Error> {
+        let old_mode = self.mode;
+        self.mode = CodeGenMode::HeaderOnly;
+
+        writeln!(self, "typedef union {{")?;
+        for (field_id, field_type) in union_def.fields.iter() {
+            self.generate_type_spec(field_type)?;
+            write!(self, " {}", field_id)?;
+            writeln!(self, ";")?;
+        }
+        write!(self, "}} {}", union_def.identifier)?;
 
         writeln!(self, ";")?;
 
