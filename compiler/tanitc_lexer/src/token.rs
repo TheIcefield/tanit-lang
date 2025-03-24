@@ -47,7 +47,7 @@ pub enum Lexem {
     Dcolon,       // ::
     Arrow,        // ->
 
-    KwLet,
+    KwVar,
     KwFunc,
     KwIf,
     KwElse,
@@ -173,7 +173,7 @@ impl std::fmt::Display for Lexem {
             Self::Neq => write!(f, "!="),
             Self::Not => write!(f, "!"),
 
-            Self::KwLet => write!(f, "let"),
+            Self::KwVar => write!(f, "var"),
             Self::KwFunc => write!(f, "func"),
             Self::KwIf => write!(f, "if"),
             Self::KwElse => write!(f, "else"),

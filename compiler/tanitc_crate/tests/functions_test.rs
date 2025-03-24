@@ -10,7 +10,7 @@ fn function_def_test() {
                             \n    return a + b\
                             \n}\
                             \nfunc main() {\
-                            \n    let ret: f32 = sum(a, b)\
+                            \n    var ret: f32 = sum(a, b)\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
@@ -98,11 +98,11 @@ fn functions_test() {
                             \n}\
                             \n\
                             \nfunc main() {\
-                            \n   let res = f(a: 1, 2, c: 1 + 2)\
+                            \n   var res = f(a: 1, 2, c: 1 + 2)\
                             \n}\
                             \n\
                             \nfunc bar () {\
-                            \n   let PI = 3.14\
+                            \n   var PI = 3.14\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));

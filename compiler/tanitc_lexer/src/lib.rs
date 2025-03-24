@@ -480,7 +480,7 @@ impl Lexer {
             "struct" => Token::new(Lexem::KwStruct, location),
             "variant" => Token::new(Lexem::KwVariant, location),
             "enum" => Token::new(Lexem::KwEnum, location),
-            "let" => Token::new(Lexem::KwLet, location),
+            "var" => Token::new(Lexem::KwVar, location),
             "mut" => Token::new(Lexem::KwMut, location),
             "const" => Token::new(Lexem::KwConst, location),
             "alias" => Token::new(Lexem::KwAlias, location),
@@ -505,7 +505,7 @@ impl Lexer {
 
 #[test]
 fn lexer_test() {
-    const SRC_TEXT: &str = "hello func let + 65 -= <<\n struct alpha";
+    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
@@ -524,7 +524,7 @@ fn lexer_test() {
 
     assert_eq!(
         lexer.get(),
-        Token::new(Lexem::KwLet, Location { row: 1, col: 13 })
+        Token::new(Lexem::KwVar, Location { row: 1, col: 13 })
     );
 
     assert_eq!(
@@ -566,7 +566,7 @@ fn lexer_test() {
 
 #[test]
 fn lexer_without_ignore_test() {
-    const SRC_TEXT: &str = "hello func let + 65 -= <<\n struct alpha";
+    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
@@ -587,7 +587,7 @@ fn lexer_without_ignore_test() {
 
     assert_eq!(
         lexer.get(),
-        Token::new(Lexem::KwLet, Location { row: 1, col: 13 })
+        Token::new(Lexem::KwVar, Location { row: 1, col: 13 })
     );
 
     assert_eq!(

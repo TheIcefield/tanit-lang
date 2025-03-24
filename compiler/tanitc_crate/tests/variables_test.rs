@@ -15,9 +15,9 @@ fn variables_test() {
 
     const SRC_TEXT: &str = "\nfunc main()
                             \n{\
-                            \n    let const PI: f32\
-                            \n    let radian = PI / 2.0\
-                            \n    let mut ceil = radian as i32\
+                            \n    var const PI: f32\
+                            \n    var radian = PI / 2.0\
+                            \n    var mut ceil = radian as i32\
                             \n    ceil <<= 3\
                             \n}";
 

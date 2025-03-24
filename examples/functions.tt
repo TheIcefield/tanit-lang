@@ -12,7 +12,7 @@ f32
 
 func
 main() {
-   let res = f(a: 1, 2, c: 1 + 2)
+   var res = f(a: 1, 2, c: 1 + 2)
 }
 
 func
@@ -22,5 +22,5 @@ bar
 ()
 
 {
-    let PI = 3.14
+    var PI = 3.14
 }
