@@ -1,6 +1,6 @@
 use tanitc_ast::{
-    Ast, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec, Value,
-    ValueKind, VariableDef, VariantDef, VariantField,
+    Ast, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
+    UnionDef, Value, ValueKind, VariableDef, VariantDef, VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -1099,16 +1099,13 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
-    fn parse_struct_header(
-        &mut self,
-        struct_def: &mut tanitc_ast::StructDef,
-    ) -> Result<(), Message> {
+    fn parse_struct_header(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         struct_def.location = self.consume_token(Lexem::KwStruct)?.location;
         struct_def.identifier = self.consume_identifier()?;
         Ok(())
     }
 
-    fn parse_struct_body(&mut self, struct_def: &mut tanitc_ast::StructDef) -> Result<(), Message> {
+    fn parse_struct_body(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         self.consume_token(Lexem::Lcb)?;
 
         self.parse_struct_body_internal(struct_def)?;
@@ -1118,10 +1115,7 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_struct_body_internal(
-        &mut self,
-        struct_def: &mut tanitc_ast::StructDef,
-    ) -> Result<(), Message> {
+    fn parse_struct_body_internal(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         loop {
             let next = self.peek_token();
 
@@ -1133,13 +1127,11 @@ impl Parser {
                     continue;
                 }
 
-                Lexem::KwStruct => {
-                    struct_def.internals.push(self.parse_struct_def()?);
-                }
+                Lexem::KwStruct => struct_def.internals.push(self.parse_struct_def()?),
 
-                Lexem::KwVariant => {
-                    struct_def.internals.push(self.parse_variant_def()?);
-                }
+                Lexem::KwUnion => struct_def.internals.push(self.parse_union_def()?),
+
+                Lexem::KwVariant => struct_def.internals.push(self.parse_variant_def()?),
 
                 Lexem::Identifier(id) => {
                     let identifier = self.consume_identifier()?;
@@ -1157,6 +1149,80 @@ impl Parser {
                     struct_def
                         .fields
                         .insert(identifier, self.parse_type_spec()?);
+                }
+
+                _ => {
+                    return Err(Message::new(
+                        next.location,
+                        "Unexpected token when parsing struct fields",
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+// Union definition
+impl Parser {
+    pub fn parse_union_def(&mut self) -> Result<Ast, Message> {
+        let mut node = UnionDef::default();
+
+        self.parse_union_header(&mut node)?;
+        self.parse_union_body(&mut node)?;
+
+        Ok(Ast::from(node))
+    }
+
+    fn parse_union_header(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
+        union_def.location = self.consume_token(Lexem::KwUnion)?.location;
+        union_def.identifier = self.consume_identifier()?;
+        Ok(())
+    }
+
+    fn parse_union_body(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
+        self.consume_token(Lexem::Lcb)?;
+
+        self.parse_union_body_internal(union_def)?;
+
+        self.consume_token(Lexem::Rcb)?;
+
+        Ok(())
+    }
+
+    fn parse_union_body_internal(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
+        loop {
+            let next = self.peek_token();
+
+            match &next.lexem {
+                Lexem::Rcb => break,
+
+                Lexem::EndOfLine => {
+                    self.get_token();
+                    continue;
+                }
+
+                Lexem::KwStruct => union_def.internals.push(self.parse_struct_def()?),
+
+                Lexem::KwUnion => union_def.internals.push(self.parse_union_def()?),
+
+                Lexem::KwVariant => union_def.internals.push(self.parse_variant_def()?),
+
+                Lexem::Identifier(id) => {
+                    let identifier = self.consume_identifier()?;
+
+                    if union_def.fields.contains_key(&identifier) {
+                        self.error(Message::new(
+                            next.location,
+                            &format!("Struct has already field with identifier {}", id),
+                        ));
+                        continue;
+                    }
+
+                    self.consume_token(Lexem::Colon)?;
+
+                    union_def.fields.insert(identifier, self.parse_type_spec()?);
                 }
 
                 _ => {
@@ -1606,6 +1672,8 @@ impl Parser {
                 }
 
                 Lexem::KwStruct => variant_def.internals.push(self.parse_struct_def()?),
+
+                Lexem::KwUnion => variant_def.internals.push(self.parse_union_def()?),
 
                 Lexem::KwVariant => variant_def.internals.push(self.parse_variant_def()?),
 

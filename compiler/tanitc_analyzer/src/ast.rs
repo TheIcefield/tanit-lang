@@ -2,8 +2,8 @@ use super::{symbol_table::SymbolData, Analyzer};
 
 use tanitc_ast::{
     self, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, Value,
-    ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
+    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef,
+    Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -61,6 +61,34 @@ impl VisitorMut for Analyzer {
 
         self.add_symbol(
             struct_def.identifier,
+            self.create_symbol(SymbolData::StructDef { components }),
+        );
+
+        Ok(())
+    }
+
+    fn visit_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
+        if self.has_symbol(union_def.identifier) {
+            return Err(Message::multiple_ids(
+                union_def.location,
+                union_def.identifier,
+            ));
+        }
+
+        self.scope.push(format!("@u.{}", &union_def.identifier));
+        for internal in union_def.internals.iter_mut() {
+            internal.accept_mut(self)?;
+        }
+
+        let mut components = Vec::<Type>::new();
+        for field in union_def.fields.iter() {
+            components.push(field.1.get_type());
+        }
+
+        self.scope.pop();
+
+        self.add_symbol(
+            union_def.identifier,
             self.create_symbol(SymbolData::StructDef { components }),
         );
 

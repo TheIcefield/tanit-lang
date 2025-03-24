@@ -164,6 +164,20 @@ impl From<StructDef> for Ast {
     }
 }
 
+#[derive(Default, Clone, PartialEq)]
+pub struct UnionDef {
+    pub location: Location,
+    pub identifier: Ident,
+    pub fields: BTreeMap<Ident, TypeSpec>,
+    pub internals: Vec<Ast>,
+}
+
+impl From<UnionDef> for Ast {
+    fn from(value: UnionDef) -> Self {
+        Self::UnionDef(value)
+    }
+}
+
 #[derive(Default, Clone, Copy, PartialEq)]
 pub struct TypeInfo {
     pub is_mut: bool,
@@ -273,6 +287,7 @@ impl From<VariantDef> for Ast {
 pub enum Ast {
     ModuleDef(ModuleDef),
     StructDef(StructDef),
+    UnionDef(UnionDef),
     VariantDef(VariantDef),
     EnumDef(EnumDef),
     FuncDef(FunctionDef),
@@ -289,6 +304,7 @@ pub enum Ast {
 pub trait Visitor {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message>;
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message>;
+    fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message>;
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message>;
@@ -305,6 +321,7 @@ pub trait Visitor {
 pub trait VisitorMut {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message>;
     fn visit_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message>;
+    fn visit_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message>;
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message>;
@@ -323,6 +340,7 @@ impl Ast {
         match self {
             Ast::ModuleDef(node) => visitor.visit_module_def(node),
             Ast::StructDef(node) => visitor.visit_struct_def(node),
+            Ast::UnionDef(node) => visitor.visit_union_def(node),
             Ast::VariantDef(node) => visitor.visit_variant_def(node),
             Ast::EnumDef(node) => visitor.visit_enum_def(node),
             Ast::FuncDef(node) => visitor.visit_func_def(node),
@@ -341,6 +359,7 @@ impl Ast {
         match self {
             Ast::ModuleDef(node) => visitor.visit_module_def(node),
             Ast::StructDef(node) => visitor.visit_struct_def(node),
+            Ast::UnionDef(node) => visitor.visit_union_def(node),
             Ast::VariantDef(node) => visitor.visit_variant_def(node),
             Ast::EnumDef(node) => visitor.visit_enum_def(node),
             Ast::FuncDef(node) => visitor.visit_func_def(node),
