@@ -283,6 +283,28 @@ impl From<VariantDef> for Ast {
     }
 }
 
+#[derive(Default, Clone, PartialEq)]
+pub enum UseIdentifier {
+    #[default]
+    BuiltInSelf,
+    BuiltInCrate,
+    BuiltInSuper,
+    BuiltInAll,
+    Identifier(Ident),
+}
+
+#[derive(Default, Clone, PartialEq)]
+pub struct Use {
+    pub location: Location,
+    pub identifier: Vec<UseIdentifier>,
+}
+
+impl From<Use> for Ast {
+    fn from(value: Use) -> Self {
+        Self::Use(value)
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub enum Ast {
     ModuleDef(ModuleDef),
@@ -297,6 +319,7 @@ pub enum Ast {
     BranchStmt(Branch),
     ControlFlow(ControlFlow),
     TypeSpec(TypeSpec),
+    Use(Use),
     Block(Block),
     Value(Value),
 }
@@ -314,6 +337,7 @@ pub trait Visitor {
     fn visit_branch(&mut self, branch: &Branch) -> Result<(), Message>;
     fn visit_control_flow(&mut self, cf: &ControlFlow) -> Result<(), Message>;
     fn visit_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), Message>;
+    fn visit_use(&mut self, u: &Use) -> Result<(), Message>;
     fn visit_block(&mut self, block: &Block) -> Result<(), Message>;
     fn visit_value(&mut self, val: &Value) -> Result<(), Message>;
 }
@@ -331,6 +355,7 @@ pub trait VisitorMut {
     fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message>;
     fn visit_control_flow(&mut self, cf: &mut ControlFlow) -> Result<(), Message>;
     fn visit_type_spec(&mut self, type_spec: &mut TypeSpec) -> Result<(), Message>;
+    fn visit_use(&mut self, u: &mut Use) -> Result<(), Message>;
     fn visit_block(&mut self, block: &mut Block) -> Result<(), Message>;
     fn visit_value(&mut self, val: &mut Value) -> Result<(), Message>;
 }
@@ -350,6 +375,7 @@ impl Ast {
             Ast::BranchStmt(node) => visitor.visit_branch(node),
             Ast::ControlFlow(node) => visitor.visit_control_flow(node),
             Ast::TypeSpec(node) => visitor.visit_type_spec(node),
+            Ast::Use(node) => visitor.visit_use(node),
             Ast::Block(node) => visitor.visit_block(node),
             Ast::Value(node) => visitor.visit_value(node),
         }
@@ -369,6 +395,7 @@ impl Ast {
             Ast::BranchStmt(node) => visitor.visit_branch(node),
             Ast::ControlFlow(node) => visitor.visit_control_flow(node),
             Ast::TypeSpec(node) => visitor.visit_type_spec(node),
+            Ast::Use(node) => visitor.visit_use(node),
             Ast::Block(node) => visitor.visit_block(node),
             Ast::Value(node) => visitor.visit_value(node),
         }

@@ -1,6 +1,6 @@
 use tanitc_ast::{
     AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Value,
+    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value,
     ValueKind, VariableDef, VariantDef, Visitor,
 };
 use tanitc_lexer::{location::Location, token::Lexem};
@@ -95,6 +95,13 @@ impl Visitor for CodeGenStream<'_> {
         }
     }
 
+    fn visit_use(&mut self, u: &Use) -> Result<(), Message> {
+        match self.generate_use(u) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Self::codegen_err(e)),
+        }
+    }
+
     fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
         match self.generate_block(block) {
             Ok(_) => Ok(()),
@@ -125,6 +132,7 @@ impl CodeGenStream<'_> {
             Ast::BranchStmt(node) => self.generate_branch(node),
             Ast::ControlFlow(node) => self.generate_control_flow(node),
             Ast::TypeSpec(node) => self.generate_type_spec(node),
+            Ast::Use(node) => self.generate_use(node),
             Ast::Block(node) => self.generate_block(node),
             Ast::Value(node) => self.generate_value(node),
         }
@@ -367,6 +375,10 @@ impl CodeGenStream<'_> {
 
     fn generate_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), std::io::Error> {
         write!(self, "{}", type_spec.get_c_type())
+    }
+
+    fn generate_use(&mut self, _u: &Use) -> Result<(), std::io::Error> {
+        Ok(())
     }
 
     fn generate_block(&mut self, block: &Block) -> Result<(), std::io::Error> {
