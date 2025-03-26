@@ -3,7 +3,7 @@ use super::{symbol_table::SymbolData, Analyzer};
 use tanitc_ast::{
     self, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
     EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef,
-    Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
+    Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -444,6 +444,10 @@ impl VisitorMut for Analyzer {
         //         type_spec..get_type(),
         //     ));
         // }
+        Ok(())
+    }
+
+    fn visit_use(&mut self, _u: &mut Use) -> Result<(), Message> {
         Ok(())
     }
 

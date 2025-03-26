@@ -1,7 +1,7 @@
 use tanitc_ast::{
     AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
     Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec, UnionDef,
-    Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -254,6 +254,22 @@ impl Visitor for XmlWriter<'_> {
         self.begin_tag("type")?;
 
         self.serialize_type(&type_spec.ty, type_spec.info)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn visit_use(&mut self, u: &Use) -> Result<(), Message> {
+        self.begin_tag("use")?;
+
+        let mut param = use_identifier_to_str(&u.identifier[0])?;
+        for i in u.identifier.iter().skip(1) {
+            param.push_str("::");
+            param.push_str(use_identifier_to_str(i)?.as_str());
+        }
+
+        self.put_param("name", param)?;
 
         self.end_tag()?;
 
@@ -518,5 +534,15 @@ impl XmlWriter<'_> {
         }
 
         Ok(())
+    }
+}
+
+fn use_identifier_to_str(id: &UseIdentifier) -> Result<String, Message> {
+    match id {
+        UseIdentifier::BuiltInSelf => Ok(String::from("Self")),
+        UseIdentifier::BuiltInSuper => Ok(String::from("Super")),
+        UseIdentifier::BuiltInCrate => Ok(String::from("Crate")),
+        UseIdentifier::BuiltInAll => Ok(String::from("*")),
+        UseIdentifier::Identifier(id) => Ok(String::from(*id)),
     }
 }

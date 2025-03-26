@@ -498,6 +498,9 @@ impl Lexer {
             "extern" => Token::new(Lexem::KwExtern, location),
             "static" => Token::new(Lexem::KwStatic, location),
             "use" => Token::new(Lexem::KwUse, location),
+            "super" => Token::new(Lexem::KwSuper, location),
+            "self" => Token::new(Lexem::KwSelf, location),
+            "crate" => Token::new(Lexem::KwCrate, location),
             "as" => Token::new(Lexem::KwAs, location),
             _ => Token::new(Lexem::Identifier(text), location),
         }
