@@ -1,8 +1,14 @@
 enum Color {
-    Reg
+    Red
     Green
     Blue
     Yellow
     White
     Black
+}
+
+func get_red() -> Color
+{
+    var c = Color::Red
+    return c
 }

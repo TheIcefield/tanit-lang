@@ -396,8 +396,6 @@ impl Parser {
                     // if ::
                     self.get_token();
 
-                    let operation = next.lexem;
-
                     let lhs = Box::new(Ast::from(Value {
                         location,
                         kind: ValueKind::Identifier(identifier),
@@ -407,11 +405,7 @@ impl Parser {
 
                     return Ok(Ast::from(Expression {
                         location,
-                        kind: ExpressionKind::Binary {
-                            operation,
-                            lhs,
-                            rhs,
-                        },
+                        kind: ExpressionKind::Access { lhs, rhs },
                     }));
                 } else if next.lexem == Lexem::Lcb {
                     // if struct

@@ -183,6 +183,15 @@ impl Visitor for XmlWriter<'_> {
                 self.visit_type_spec(ty)?;
                 lhs.accept(self)?;
             }
+            ExpressionKind::Access { lhs, rhs } => {
+                self.put_param("style", "access")?;
+
+                lhs.accept(self)?;
+                rhs.accept(self)?;
+            }
+            ExpressionKind::Term { node } => {
+                node.accept(self)?;
+            }
         }
 
         self.end_tag()?;
@@ -348,7 +357,7 @@ impl Visitor for XmlWriter<'_> {
                 self.end_tag()?;
             }
             ValueKind::Identifier(id) => {
-                self.begin_tag("variable")?;
+                self.begin_tag("identifier")?;
                 self.put_param("name", id)?;
                 self.end_tag()?;
             }
