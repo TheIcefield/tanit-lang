@@ -193,7 +193,7 @@ fn enum_use_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                         \nsigned int const a = 2;\
+                                         \nMyEnum const a = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

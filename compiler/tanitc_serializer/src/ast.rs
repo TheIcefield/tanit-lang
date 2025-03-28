@@ -189,7 +189,7 @@ impl Visitor for XmlWriter<'_> {
                 lhs.accept(self)?;
                 rhs.accept(self)?;
             }
-            ExpressionKind::Term { node } => {
+            ExpressionKind::Term { node, .. } => {
                 node.accept(self)?;
             }
         }
