@@ -382,6 +382,7 @@ impl VisitorMut for Analyzer {
                                                                 location: rhs_location,
                                                                 kind: ValueKind::Integer(c.1),
                                                             })),
+                                                            ty: Type::Custom(String::from(*lhs_id)),
                                                         },
                                                     });
 
@@ -412,7 +413,7 @@ impl VisitorMut for Analyzer {
             }
             ExpressionKind::Unary { node, .. } => node.accept_mut(self),
             ExpressionKind::Conversion { .. } => todo!(),
-            ExpressionKind::Term { node } => node.accept_mut(self),
+            ExpressionKind::Term { node, .. } => node.accept_mut(self),
         };
 
         if ret.is_ok() {
@@ -830,7 +831,7 @@ impl Analyzer {
             ExpressionKind::Unary { node, .. } => self.get_type(node),
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
             ExpressionKind::Access { .. } => todo!(),
-            ExpressionKind::Term { node } => self.get_type(node),
+            ExpressionKind::Term { ty, .. } => ty.clone(),
         }
     }
 

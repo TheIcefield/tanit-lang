@@ -113,6 +113,7 @@ pub enum ExpressionKind {
     },
     Term {
         node: Box<Ast>,
+        ty: Type,
     },
 }
 

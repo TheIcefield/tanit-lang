@@ -321,7 +321,7 @@ impl CodeGenStream<'_> {
                 write!(self, ".")?;
                 self.generate(rhs)?;
             }
-            ExpressionKind::Term { node } => {
+            ExpressionKind::Term { node, .. } => {
                 self.generate(node)?;
             }
         }
