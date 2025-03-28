@@ -482,6 +482,18 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_control_flow(&mut self, cf: &mut ControlFlow) -> Result<(), Message> {
+        let is_in_func = {
+            let mut flag = false;
+            for s in self.scope.iter().rev() {
+                if s.starts_with("@f.") {
+                    flag = true;
+                    break;
+                }
+            }
+
+            flag
+        };
+
         let is_in_loop = {
             let mut flag = false;
             for s in self.scope.iter().rev() {
@@ -503,7 +515,9 @@ impl VisitorMut for Analyzer {
             _ => {}
         }
 
-        if !is_in_loop {
+        let is_ret = matches!(cf.kind, ControlFlowKind::Return { .. });
+
+        if (!is_ret && !is_in_loop) || (is_ret && !is_in_func) {
             return Err(Message::new(
                 cf.location,
                 &format!("Unexpected {} statement", cf.kind.to_str()),

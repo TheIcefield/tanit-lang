@@ -9,6 +9,6 @@ enum Color {
 
 func get_red() -> Color
 {
-    var c = Color::Red
+    var c = Color::Yellow
     return c
 }
