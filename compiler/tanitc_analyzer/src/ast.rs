@@ -247,7 +247,9 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_expression(&mut self, expr: &mut Expression) -> Result<(), Message> {
-        match &mut expr.kind {
+        let mut processed_node: Option<Expression> = None;
+
+        let ret = match &mut expr.kind {
             ExpressionKind::Binary {
                 operation,
                 lhs,
@@ -343,9 +345,83 @@ impl VisitorMut for Analyzer {
 
                 Ok(())
             }
+            ExpressionKind::Access { lhs, rhs } => {
+                match lhs.as_mut() {
+                    Ast::Expression(Expression { .. }) => todo!("1"),
+                    Ast::Value(Value {
+                        location,
+                        kind: ValueKind::Identifier(lhs_id),
+                    }) => {
+                        let lhs_location = *location;
+                        match rhs.as_mut() {
+                            Ast::Value(Value {
+                                location,
+                                kind: ValueKind::Identifier(rhs_id),
+                            }) => {
+                                let rhs_location = *location;
+
+                                let ss = self.get_symbols(lhs_id);
+                                if ss.is_none() {
+                                    return Err(Message::undefined_id(lhs_location, *lhs_id));
+                                }
+
+                                let mut found = false;
+                                for s in ss.unwrap().iter() {
+                                    if found {
+                                        break;
+                                    }
+
+                                    match &s.data {
+                                        SymbolData::EnumDef { components } => {
+                                            for c in components.iter() {
+                                                if c.0 == *rhs_id {
+                                                    processed_node = Some(Expression {
+                                                        location: lhs_location,
+                                                        kind: ExpressionKind::Term {
+                                                            node: Box::new(Ast::Value(Value {
+                                                                location: rhs_location,
+                                                                kind: ValueKind::Integer(c.1),
+                                                            })),
+                                                        },
+                                                    });
+
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        _ => todo!("3"),
+                                    }
+                                }
+
+                                if !found {
+                                    return Err(Message::no_id_in_namespace(
+                                        rhs_location,
+                                        *lhs_id,
+                                        *rhs_id,
+                                    ));
+                                }
+                            }
+                            _ => todo!("4"),
+                        }
+                    }
+                    _ => todo!("5"),
+                }
+
+                Ok(())
+            }
             ExpressionKind::Unary { node, .. } => node.accept_mut(self),
             ExpressionKind::Conversion { .. } => todo!(),
+            ExpressionKind::Term { node } => node.accept_mut(self),
+        };
+
+        if ret.is_ok() {
+            if let Some(processed_node) = processed_node {
+                *expr = processed_node;
+            }
         }
+
+        ret
     }
 
     fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
@@ -739,6 +815,8 @@ impl Analyzer {
             },
             ExpressionKind::Unary { node, .. } => self.get_type(node),
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
+            ExpressionKind::Access { .. } => todo!(),
+            ExpressionKind::Term { node } => self.get_type(node),
         }
     }
 

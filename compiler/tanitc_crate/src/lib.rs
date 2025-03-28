@@ -25,6 +25,7 @@ enum UnitProcessState {
     Parsed,
     Analyzed,
     Processed,
+    Failed,
 }
 
 #[derive(Clone)]
@@ -114,7 +115,9 @@ impl Unit {
         self.ast = Self::parse_program(&mut parser);
 
         if parser.has_errors() || self.ast.is_none() {
+            println!("FAIL!");
             tanitc_messages::print_messages(&parser.get_errors());
+            self.process_state = UnitProcessState::Failed;
             return Err("Parse errors occured");
         }
 
@@ -158,7 +161,9 @@ impl Unit {
         self.symbol_table = Self::analyze_program(self.ast.as_mut().unwrap(), &mut analyzer);
 
         if analyzer.has_errors() || self.symbol_table.is_none() {
+            println!("FAIL!");
             tanitc_messages::print_messages(&analyzer.get_errors());
+            self.process_state = UnitProcessState::Failed;
             return Err("Analyze errors occured");
         }
 
@@ -231,6 +236,7 @@ impl Unit {
 
     pub fn process() -> Result<(), &'static str> {
         loop {
+            let mut failed = false;
             let mut is_all_processed = true;
             let mut sub_units: Vec<Unit> = Vec::new();
 
@@ -254,6 +260,9 @@ impl Unit {
                             eprintln!("{e}");
                         }
                     }
+                    UnitProcessState::Failed => {
+                        failed = true;
+                    }
 
                     _ => {}
                 }
@@ -263,7 +272,7 @@ impl Unit {
                 register_unit(sub_unit.clone());
             }
 
-            if is_all_processed {
+            if is_all_processed || failed {
                 break;
             }
         }

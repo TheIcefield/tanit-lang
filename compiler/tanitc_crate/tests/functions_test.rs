@@ -32,8 +32,8 @@ fn function_def_test() {
                                 \n    </parameters>\
                                 \n    <return-statement>\
                                 \n        <operation style=\"binary\" operation=\"+\">\
-                                \n            <variable name=\"a\"/>\
-                                \n            <variable name=\"b\"/>\
+                                \n            <identifier name=\"a\"/>\
+                                \n            <identifier name=\"b\"/>\
                                 \n        </operation>\
                                 \n    </return-statement>\
                                 \n</function-definition>\
@@ -48,10 +48,10 @@ fn function_def_test() {
                                 \n        <call-statement name=\"sum\">\
                                 \n            <parameters>\
                                 \n                <parameter index=\"0\">\
-                                \n                    <variable name=\"a\"/>\
+                                \n                    <identifier name=\"a\"/>\
                                 \n                </parameter>\
                                 \n                <parameter index=\"1\">\
-                                \n                    <variable name=\"b\"/>\
+                                \n                    <identifier name=\"b\"/>\
                                 \n                </parameter>\
                                 \n            </parameters>\
                                 \n        </call-statement>\

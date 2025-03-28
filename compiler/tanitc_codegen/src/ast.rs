@@ -316,6 +316,14 @@ impl CodeGenStream<'_> {
                 self.generate(lhs)?;
                 write!(self, ")")?;
             }
+            ExpressionKind::Access { lhs, rhs } => {
+                self.generate(lhs)?;
+                write!(self, ".")?;
+                self.generate(rhs)?;
+            }
+            ExpressionKind::Term { node } => {
+                self.generate(node)?;
+            }
         }
 
         self.mode = old_mode;

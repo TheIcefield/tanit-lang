@@ -66,6 +66,14 @@ impl Message {
         }
     }
 
+    pub fn no_id_in_namespace(location: Location, namespace: Ident, id: Ident) -> Self {
+        let id: String = id.into();
+        Self {
+            location,
+            text: format!("No object named \"{id}\" in namespace {namespace}"),
+        }
+    }
+
     pub fn parse_int_error(location: Location, err: ParseIntError) -> Self {
         Self {
             location,

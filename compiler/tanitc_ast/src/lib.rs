@@ -107,6 +107,13 @@ pub enum ExpressionKind {
         lhs: Box<Ast>,
         ty: TypeSpec,
     },
+    Access {
+        lhs: Box<Ast>,
+        rhs: Box<Ast>,
+    },
+    Term {
+        node: Box<Ast>,
+    },
 }
 
 #[derive(Clone, PartialEq)]
