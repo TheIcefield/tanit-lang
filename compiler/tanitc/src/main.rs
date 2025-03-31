@@ -6,10 +6,9 @@ fn main() {
 
     let argv = std::env::args().collect::<Vec<String>>();
     #[allow(clippy::needless_range_loop)]
-    for mut i in 1..argv.len() {
-        if argv[i] == "-i" {
-            i += 1;
-            source_file = argv[i].clone();
+    for i in 1..argv.len() {
+        if argv[i] == "-i" || argv[i] == "--input" {
+            source_file = argv[i + 1].clone();
         } else if argv[i] == "--dump-tokens" {
             compile_options.verbose_tokens = true;
         } else if argv[i] == "--dump-ast" {

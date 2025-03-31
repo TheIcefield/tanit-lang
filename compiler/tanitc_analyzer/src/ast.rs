@@ -1,3 +1,5 @@
+use crate::scope::ScopeUnit;
+
 use super::{symbol_table::SymbolData, Analyzer};
 
 use tanitc_ast::{
@@ -21,7 +23,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(module_def.identifier.to_string());
+        self.scope.push(ScopeUnit::Module(module_def.identifier));
 
         if let Some(body) = &mut module_def.body {
             self.visit_block(body)?;
@@ -47,7 +49,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(format!("@s.{}", &struct_def.identifier));
+        self.scope.push(ScopeUnit::Struct(struct_def.identifier));
         for internal in struct_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
@@ -75,7 +77,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(format!("@u.{}", &union_def.identifier));
+        self.scope.push(ScopeUnit::Union(union_def.identifier));
         for internal in union_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
@@ -105,7 +107,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(format!("@v.{}", &variant_def.identifier));
+        self.scope.push(ScopeUnit::Variant(variant_def.identifier));
         for internal in variant_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
@@ -180,7 +182,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(format!("@f.{}", &func_def.identifier));
+        self.scope.push(ScopeUnit::Func(func_def.identifier));
 
         let mut parameters = Vec::<(Ident, Type)>::new();
         for p in func_def.parameters.iter_mut() {
@@ -201,7 +203,7 @@ impl VisitorMut for Analyzer {
             }),
         );
 
-        self.scope.push(format!("@f.{}", &func_def.identifier));
+        self.scope.push(ScopeUnit::Func(func_def.identifier));
 
         if let Some(body) = &mut func_def.body {
             if let Ast::Block(block) = body.as_mut() {
@@ -447,7 +449,7 @@ impl VisitorMut for Analyzer {
         match &mut branch.kind {
             BranchKind::While { body, condition } => {
                 let cnt = self.counter();
-                self.scope.push(format!("@l.{}", cnt));
+                self.scope.push(ScopeUnit::Loop(cnt));
 
                 condition.accept_mut(self)?;
 
@@ -460,7 +462,7 @@ impl VisitorMut for Analyzer {
             }
             BranchKind::Loop { body } => {
                 let cnt = self.counter();
-                self.scope.push(format!("@l.{}", cnt));
+                self.scope.push(ScopeUnit::Loop(cnt));
 
                 analyze_body(body.as_mut(), self)?;
 
@@ -486,7 +488,7 @@ impl VisitorMut for Analyzer {
         let is_in_func = {
             let mut flag = false;
             for s in self.scope.iter().rev() {
-                if s.starts_with("@f.") {
+                if matches!(s, ScopeUnit::Func(_)) {
                     flag = true;
                     break;
                 }
@@ -498,7 +500,7 @@ impl VisitorMut for Analyzer {
         let is_in_loop = {
             let mut flag = false;
             for s in self.scope.iter().rev() {
-                if s.starts_with("@l.") {
+                if matches!(s, ScopeUnit::Loop(_)) {
                     flag = true;
                     break;
                 }
@@ -545,7 +547,7 @@ impl VisitorMut for Analyzer {
     fn visit_block(&mut self, block: &mut Block) -> Result<(), Message> {
         let cnt = self.counter();
 
-        self.scope.push(format!("@s.{}", cnt));
+        self.scope.push(ScopeUnit::Block(cnt));
         for n in block.statements.iter_mut() {
             if let Err(err) = n.accept_mut(self) {
                 self.error(err);
