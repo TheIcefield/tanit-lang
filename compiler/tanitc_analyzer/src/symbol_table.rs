@@ -42,7 +42,7 @@ pub enum SymbolData {
 }
 
 impl SymbolData {
-    pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
+    pub fn traverse(&self, stream: &mut dyn std::io::Write) -> std::io::Result<()> {
         match self {
             Self::ModuleDef { full_name } => write!(stream, "{:?}", full_name),
             Self::FunctionDef {

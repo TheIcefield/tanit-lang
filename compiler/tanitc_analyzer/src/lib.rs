@@ -6,7 +6,7 @@ pub mod ast;
 pub mod scope;
 pub mod symbol_table;
 
-use scope::Scope;
+use scope::{Counter, Scope};
 use symbol_table::{Symbol, SymbolData, SymbolTable};
 
 pub trait Analyze {
@@ -20,7 +20,7 @@ pub trait Analyze {
 pub struct Analyzer {
     pub table: SymbolTable,
     pub scope: Scope,
-    counter: usize,
+    counter: Counter,
     errors: Errors,
     warnings: Warnings,
 }
@@ -36,7 +36,7 @@ impl Analyzer {
         }
     }
 
-    pub fn counter(&mut self) -> usize {
+    pub fn counter(&mut self) -> Counter {
         let old = self.counter;
         self.counter += 1;
         old
@@ -125,13 +125,15 @@ fn scope_test() {
      * }
      */
 
+    use scope::ScopeUnit;
+
     let main_mod_id = Ident::from("Main".to_string());
     let bar_id = Ident::from("bar".to_string());
     let main_fn_id = Ident::from("main".to_string());
     let var_id = Ident::from("var".to_string());
 
     let mut analyzer = Analyzer::new();
-    analyzer.scope.push("@s".to_string()); // @s
+    analyzer.scope.push(ScopeUnit::Block(0)); // block-0
 
     analyzer.add_symbol(
         main_mod_id,
@@ -140,7 +142,7 @@ fn scope_test() {
         }),
     );
 
-    analyzer.scope.push(String::from(main_mod_id)); // @s/Main
+    analyzer.scope.push(ScopeUnit::Module(main_mod_id)); // block-0/Main
     analyzer.add_symbol(
         main_fn_id,
         analyzer.create_symbol(SymbolData::FunctionDef {
@@ -159,7 +161,7 @@ fn scope_test() {
         }),
     );
 
-    analyzer.scope.push(String::from(main_fn_id)); // @s/Main/main
+    analyzer.scope.push(ScopeUnit::Func(main_fn_id)); // block-0/Main/main
     analyzer.add_symbol(
         Ident::from("var".to_string()),
         analyzer.create_symbol(SymbolData::VariableDef {
@@ -183,7 +185,7 @@ fn scope_test() {
     assert!(!analyzer.has_symbol(var_id));
 
     // check if var unaccessible in bar
-    analyzer.scope.push("bar".to_string());
+    analyzer.scope.push(ScopeUnit::Func(bar_id));
     assert!(!analyzer.has_symbol(var_id));
 
     // check if bar accessible in bar
