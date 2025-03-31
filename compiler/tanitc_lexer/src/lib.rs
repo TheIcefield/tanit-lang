@@ -290,12 +290,6 @@ impl Lexer {
                     return Token::new(Lexem::SubAssign, self.location);
                 }
 
-                if self.peek_char() == '>' && !singular {
-                    self.get_char();
-
-                    return Token::new(Lexem::Arrow, self.location);
-                }
-
                 Token::new(Lexem::Minus, self.location)
             }
 

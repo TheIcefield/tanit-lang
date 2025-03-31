@@ -45,7 +45,6 @@ pub enum Lexem {
     Dot,          // .
     Colon,        // :
     Dcolon,       // ::
-    Arrow,        // ->
 
     KwVar,
     KwFunc,
@@ -163,7 +162,6 @@ impl std::fmt::Display for Lexem {
             Self::Dot => write!(f, "."),
             Self::Colon => write!(f, ":"),
             Self::Dcolon => write!(f, "::"),
-            Self::Arrow => write!(f, "->"),
 
             Self::Lt => write!(f, "<"),
             Self::Lte => write!(f, "<="),

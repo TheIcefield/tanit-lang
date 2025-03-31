@@ -48,7 +48,7 @@ fn alias_def_test() {
 
 #[test]
 fn alias_in_func_test() {
-    const SRC_TEXT: &str = "func main() -> ()\
+    const SRC_TEXT: &str = "func main() : ()\
                             {\
                                 alias Items = Vec<Item>\
                             }";

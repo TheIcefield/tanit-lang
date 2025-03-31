@@ -855,7 +855,7 @@ impl Parser {
         self.parse_func_header_params(func_def)?;
 
         let next = self.peek_token();
-        func_def.return_type = if Lexem::Arrow == next.lexem {
+        func_def.return_type = if Lexem::Colon == next.lexem {
             self.get_token();
             self.parse_type_spec()?
         } else {
