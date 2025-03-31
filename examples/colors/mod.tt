@@ -7,8 +7,14 @@ enum Color {
     Black
 }
 
-func get_red() -> Color
+func get_color(x: u16) : Color
 {
-    var c: Color = Color::Yellow
-    return c
+    var c_yellow: Color = Color::Yellow
+    var c_black: Color = Color::Black
+
+    if x > 10 {
+        return c_yellow
+    }
+
+    return c_black
 }

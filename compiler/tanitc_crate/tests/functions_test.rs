@@ -6,7 +6,7 @@ use tanitc_serializer::XmlWriter;
 
 #[test]
 fn function_def_test() {
-    const SRC_TEXT: &str = "\nfunc sum(a: f32, b: f32) -> f32 {\
+    const SRC_TEXT: &str = "\nfunc sum(a: f32, b: f32): f32 {\
                             \n    return a + b\
                             \n}\
                             \nfunc main() {\
@@ -93,7 +93,7 @@ fn function_def_test() {
 
 #[test]
 fn functions_test() {
-    const SRC_TEXT: &str = "\nfunc f(a: i32, b: i32) -> f32 {\
+    const SRC_TEXT: &str = "\nfunc f(a: i32, b: i32): f32 {\
                             \n    return a + b\
                             \n}\
                             \n\
