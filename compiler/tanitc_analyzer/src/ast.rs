@@ -8,7 +8,7 @@ use tanitc_ast::{
     Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::token::Lexem;
+use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
@@ -249,182 +249,28 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_expression(&mut self, expr: &mut Expression) -> Result<(), Message> {
-        let mut processed_node: Option<Expression> = None;
-
         let ret = match &mut expr.kind {
             ExpressionKind::Binary {
                 operation,
                 lhs,
                 rhs,
-            } => {
-                rhs.accept_mut(self)?;
-                let rhs_type = self.get_type(rhs);
-
-                let does_mutate = *operation == Lexem::Assign
-                    || *operation == Lexem::SubAssign
-                    || *operation == Lexem::AddAssign
-                    || *operation == Lexem::DivAssign
-                    || *operation == Lexem::ModAssign
-                    || *operation == Lexem::MulAssign
-                    || *operation == Lexem::AndAssign
-                    || *operation == Lexem::OrAssign
-                    || *operation == Lexem::XorAssign
-                    || *operation == Lexem::LShiftAssign
-                    || *operation == Lexem::RShiftAssign;
-
-                if let Ast::VariableDef(node) = lhs.as_mut() {
-                    if self.has_symbol(node.identifier) {
-                        return Err(Message::multiple_ids(expr.location, node.identifier));
-                    }
-
-                    if Type::Auto == node.var_type.get_type() {
-                        node.var_type.ty = rhs_type.clone();
-                    }
-
-                    if node.var_type.get_type() != rhs_type {
-                        self.error(Message::new(
-                            expr.location,
-                            &format!("Cannot perform operation on objects with different types: {:?} and {:?}",
-                            node.var_type.get_type(), rhs_type
-                        )));
-                    }
-
-                    self.add_symbol(
-                        node.identifier,
-                        self.create_symbol(SymbolData::VariableDef {
-                            var_type: node.var_type.get_type(),
-                            is_mutable: node.is_mutable,
-                            is_initialization: true,
-                        }),
-                    );
-                } else if let Ast::Value(node) = lhs.as_mut() {
-                    match &node.kind {
-                        ValueKind::Identifier(id) => {
-                            if let Some(s) = self.get_first_symbol(*id) {
-                                if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
-                                    if !*is_mutable && does_mutate {
-                                        self.error(Message::new(
-                                            expr.location,
-                                            &format!(
-                                                "Variable \"{}\" is immutable in current scope",
-                                                id
-                                            ),
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                        ValueKind::Integer(..) | ValueKind::Decimal(..) => {}
-                        ValueKind::Text(..) => self.error(Message::new(
-                            expr.location,
-                            "Cannot perform operation with text in this context",
-                        )),
-                        ValueKind::Array { .. } => self.error(Message::new(
-                            expr.location,
-                            "Cannot perform operation with array in this context",
-                        )),
-                        ValueKind::Tuple { .. } => self.error(Message::new(
-                            expr.location,
-                            "Cannot perform operation with tuple in this context",
-                        )),
-                        _ => self.error(Message::new(
-                            expr.location,
-                            "Cannot perform operation with this object",
-                        )),
-                    }
-                } else {
-                    lhs.accept_mut(self)?;
-                    let lhs_type = self.get_type(lhs);
-
-                    if lhs_type != rhs_type {
-                        self.error(Message::new(
-                            expr.location,
-                            &format!("Cannot perform operation on objects with different types: {:?} and {:?}",
-                            lhs_type, rhs_type
-                        )));
-                    }
-                }
-
-                Ok(())
-            }
-            ExpressionKind::Access { lhs, rhs } => {
-                match lhs.as_mut() {
-                    Ast::Expression(Expression { .. }) => todo!("1"),
-                    Ast::Value(Value {
-                        location,
-                        kind: ValueKind::Identifier(lhs_id),
-                    }) => {
-                        let lhs_location = *location;
-                        match rhs.as_mut() {
-                            Ast::Value(Value {
-                                location,
-                                kind: ValueKind::Identifier(rhs_id),
-                            }) => {
-                                let rhs_location = *location;
-
-                                let ss = self.get_symbols(lhs_id);
-                                if ss.is_none() {
-                                    return Err(Message::undefined_id(lhs_location, *lhs_id));
-                                }
-
-                                let mut found = false;
-                                for s in ss.unwrap().iter() {
-                                    if found {
-                                        break;
-                                    }
-
-                                    match &s.data {
-                                        SymbolData::EnumDef { components } => {
-                                            for c in components.iter() {
-                                                if c.0 == *rhs_id {
-                                                    processed_node = Some(Expression {
-                                                        location: lhs_location,
-                                                        kind: ExpressionKind::Term {
-                                                            node: Box::new(Ast::Value(Value {
-                                                                location: rhs_location,
-                                                                kind: ValueKind::Integer(c.1),
-                                                            })),
-                                                            ty: Type::Custom(String::from(*lhs_id)),
-                                                        },
-                                                    });
-
-                                                    found = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        _ => todo!("3"),
-                                    }
-                                }
-
-                                if !found {
-                                    return Err(Message::no_id_in_namespace(
-                                        rhs_location,
-                                        *lhs_id,
-                                        *rhs_id,
-                                    ));
-                                }
-                            }
-                            _ => todo!("4"),
-                        }
-                    }
-                    _ => todo!("5"),
-                }
-
-                Ok(())
-            }
-            ExpressionKind::Unary { node, .. } => node.accept_mut(self),
-            ExpressionKind::Conversion { .. } => todo!(),
-            ExpressionKind::Term { node, .. } => node.accept_mut(self),
+            } => self.analyze_binary_expr(operation, lhs.as_mut(), rhs.as_mut()),
+            ExpressionKind::Unary { node, .. } => self.analyze_unary_expr(node),
+            ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
+            ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),
+            ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
         };
 
-        if ret.is_ok() {
-            if let Some(processed_node) = processed_node {
-                *expr = processed_node;
+        match ret {
+            Ok(Some(processed_node)) => *expr = processed_node,
+            Err(mut msg) => {
+                msg.location = expr.location;
+                return Err(msg);
             }
+            _ => {}
         }
 
-        ret
+        Ok(())
     }
 
     fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
@@ -973,5 +819,193 @@ impl Analyzer {
         } else {
             unreachable!()
         }
+    }
+}
+
+impl Analyzer {
+    fn analyze_unary_expr(&mut self, node: &mut Box<Ast>) -> Result<Option<Expression>, Message> {
+        node.accept_mut(self)?;
+        Ok(None)
+    }
+
+    fn analyze_binary_expr(
+        &mut self,
+        operation: &Lexem,
+        lhs: &mut Ast,
+        rhs: &mut Ast,
+    ) -> Result<Option<Expression>, Message> {
+        rhs.accept_mut(self)?;
+        let rhs_type = self.get_type(rhs);
+
+        let does_mutate = *operation == Lexem::Assign
+            || *operation == Lexem::SubAssign
+            || *operation == Lexem::AddAssign
+            || *operation == Lexem::DivAssign
+            || *operation == Lexem::ModAssign
+            || *operation == Lexem::MulAssign
+            || *operation == Lexem::AndAssign
+            || *operation == Lexem::OrAssign
+            || *operation == Lexem::XorAssign
+            || *operation == Lexem::LShiftAssign
+            || *operation == Lexem::RShiftAssign;
+
+        if let Ast::VariableDef(node) = lhs {
+            if self.has_symbol(node.identifier) {
+                return Err(Message::multiple_ids(Location::new(), node.identifier));
+            }
+
+            if Type::Auto == node.var_type.get_type() {
+                node.var_type.ty = rhs_type.clone();
+            }
+
+            if node.var_type.get_type() != rhs_type {
+                self.error(Message::new(
+                    Location::new(),
+                    &format!(
+                        "Cannot perform operation on objects with different types: {:?} and {:?}",
+                        node.var_type.get_type(),
+                        rhs_type
+                    ),
+                ));
+            }
+
+            self.add_symbol(
+                node.identifier,
+                self.create_symbol(SymbolData::VariableDef {
+                    var_type: node.var_type.get_type(),
+                    is_mutable: node.is_mutable,
+                    is_initialization: true,
+                }),
+            );
+        } else if let Ast::Value(node) = lhs {
+            match &node.kind {
+                ValueKind::Identifier(id) => {
+                    if let Some(s) = self.get_first_symbol(*id) {
+                        if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
+                            if !*is_mutable && does_mutate {
+                                self.error(Message::new(
+                                    Location::new(),
+                                    &format!("Variable \"{}\" is immutable in current scope", id),
+                                ));
+                            }
+                        }
+                    }
+                }
+                ValueKind::Integer(..) | ValueKind::Decimal(..) => {}
+                ValueKind::Text(..) => self.error(Message::new(
+                    Location::new(),
+                    "Cannot perform operation with text in this context",
+                )),
+                ValueKind::Array { .. } => self.error(Message::new(
+                    Location::new(),
+                    "Cannot perform operation with array in this context",
+                )),
+                ValueKind::Tuple { .. } => self.error(Message::new(
+                    Location::new(),
+                    "Cannot perform operation with tuple in this context",
+                )),
+                _ => self.error(Message::new(
+                    Location::new(),
+                    "Cannot perform operation with this object",
+                )),
+            }
+        } else {
+            lhs.accept_mut(self)?;
+            let lhs_type = self.get_type(lhs);
+
+            if lhs_type != rhs_type {
+                self.error(Message::new(
+                    Location::new(),
+                    &format!(
+                        "Cannot perform operation on objects with different types: {:?} and {:?}",
+                        lhs_type, rhs_type
+                    ),
+                ));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn analyze_access_expr(
+        &mut self,
+        lhs: &mut Ast,
+        rhs: &mut Ast,
+    ) -> Result<Option<Expression>, Message> {
+        let mut processed_node: Option<Expression> = None;
+
+        match lhs {
+            Ast::Expression(Expression { .. }) => todo!("1"),
+            Ast::Value(Value {
+                location,
+                kind: ValueKind::Identifier(lhs_id),
+            }) => {
+                let lhs_location = *location;
+                match rhs {
+                    Ast::Value(Value {
+                        location,
+                        kind: ValueKind::Identifier(rhs_id),
+                    }) => {
+                        let rhs_location = *location;
+
+                        let ss = self.get_symbols(lhs_id);
+                        if ss.is_none() {
+                            return Err(Message::undefined_id(lhs_location, *lhs_id));
+                        }
+
+                        let mut found = false;
+                        for s in ss.unwrap().iter() {
+                            if found {
+                                break;
+                            }
+
+                            match &s.data {
+                                SymbolData::EnumDef { components } => {
+                                    for c in components.iter() {
+                                        if c.0 == *rhs_id {
+                                            processed_node = Some(Expression {
+                                                location: lhs_location,
+                                                kind: ExpressionKind::Term {
+                                                    node: Box::new(Ast::Value(Value {
+                                                        location: rhs_location,
+                                                        kind: ValueKind::Integer(c.1),
+                                                    })),
+                                                    ty: Type::Custom(String::from(*lhs_id)),
+                                                },
+                                            });
+
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                _ => todo!("3"),
+                            }
+                        }
+
+                        if !found {
+                            return Err(Message::no_id_in_namespace(
+                                rhs_location,
+                                *lhs_id,
+                                *rhs_id,
+                            ));
+                        }
+                    }
+                    _ => todo!("4"),
+                }
+            }
+            _ => todo!("5"),
+        }
+
+        Ok(processed_node)
+    }
+
+    fn analyze_conversion_expr(&mut self) -> Result<Option<Expression>, Message> {
+        todo!()
+    }
+
+    fn analyze_term_expr(&mut self, node: &mut Box<Ast>) -> Result<Option<Expression>, Message> {
+        node.accept_mut(self)?;
+        Ok(None)
     }
 }
