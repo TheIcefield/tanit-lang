@@ -209,3 +209,85 @@ fn enum_use_test() {
         assert_eq!(SOURCE_EXPECTED, res);
     }
 }
+
+#[test]
+fn enum_in_module_use_test() {
+    const SRC_TEXT: &str = "\nmodule color {\
+                            \n    enum Color {\
+                            \n        Red\
+                            \n        Green\
+                            \n        Blue\
+                            \n    }\
+                            \n}\
+                            \nfunc main() {\
+                            \n    var a = color::Color::Red\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+
+    {
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<module-definition name=\"color\">\
+                                \n    <enum-definition name=\"Color\">\
+                                \n        <field name=\"Red\" value=\"0\"/>\
+                                \n        <field name=\"Green\" value=\"1\"/>\
+                                \n        <field name=\"Blue\" value=\"2\"/>\
+                                \n    </enum-definition>\
+                                \n</module-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"Color\"/>\
+                                \n        </variable-definition>\
+                                \n        <operation>\
+                                \n            <literal style=\"integer-number\" value=\"0\"/>\
+                                \n        </operation>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef enum {\
+                                     \n    Red = 0,\
+                                     \n    Green = 1,\
+                                     \n    Blue = 2,\
+                                     \n} Color;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                     \nColor const a = 0;\
+                                     \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let mut res = String::from_utf8(header_buffer).unwrap();
+        assert_eq!(HEADER_EXPECTED, res);
+
+        res = String::from_utf8(source_buffer).unwrap();
+        assert_eq!(SOURCE_EXPECTED, res);
+    }
+}

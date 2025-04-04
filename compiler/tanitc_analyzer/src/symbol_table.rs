@@ -1,131 +1,8 @@
-use super::scope::Scope;
-
 use tanitc_ident::Ident;
-use tanitc_ty::Type;
 
-use std::collections::{BTreeMap, HashMap};
-use std::io::Write;
+use std::collections::HashMap;
 
-#[derive(Clone, PartialEq, Default)]
-pub enum VariantFieldData {
-    #[default]
-    Common,
-    StructLike(BTreeMap<Ident, Type>),
-    TupleLike(Vec<Type>),
-}
-
-#[derive(Clone)]
-pub enum SymbolData {
-    ModuleDef {
-        full_name: Vec<Ident>,
-    },
-    StructDef {
-        components: Vec<Type>,
-    },
-    EnumDef {
-        components: Vec<(Ident, usize)>,
-    },
-    VariantDef {
-        components: Vec<VariantFieldData>,
-    },
-    FunctionDef {
-        parameters: Vec<(Ident, Type)>,
-        return_type: Type,
-        is_declaration: bool,
-    },
-    VariableDef {
-        var_type: Type,
-        is_mutable: bool,
-        is_initialization: bool,
-    },
-    Type,
-}
-
-impl SymbolData {
-    pub fn traverse(&self, stream: &mut dyn std::io::Write) -> std::io::Result<()> {
-        match self {
-            Self::ModuleDef { full_name } => write!(stream, "{:?}", full_name),
-            Self::FunctionDef {
-                parameters,
-                return_type,
-                is_declaration,
-            } => {
-                write!(
-                    stream,
-                    "Function {}: ( ",
-                    if *is_declaration {
-                        "declaration"
-                    } else {
-                        "definition"
-                    }
-                )?;
-
-                for param in parameters.iter() {
-                    write!(stream, "{}:{} ", param.0, param.1)?;
-                }
-
-                write!(stream, ") -> {}", return_type)
-            }
-            Self::StructDef { components } => {
-                write!(stream, "Struct definition: {{{:?}}}", components)
-            }
-            Self::EnumDef { components } => {
-                write!(stream, "Enum definition: ")?;
-                for comp in components.iter() {
-                    write!(stream, "{}:{} ", comp.0, comp.1)?;
-                }
-                Ok(())
-            }
-            Self::VariantDef { components } => {
-                write!(stream, "Enum definition: <")?;
-
-                for comp in components.iter() {
-                    match comp {
-                        VariantFieldData::Common => write!(stream, "common ")?,
-                        VariantFieldData::TupleLike(t) => {
-                            write!(stream, "( ")?;
-                            for tc in t.iter() {
-                                write!(stream, "{} ", tc)?;
-                            }
-                            write!(stream, ")")?;
-                        }
-                        VariantFieldData::StructLike(s) => {
-                            write!(stream, "{{ ")?;
-                            for sc in s.iter() {
-                                write!(stream, "{} ", sc.1)?;
-                            }
-                            write!(stream, "}}")?;
-                        }
-                    }
-                }
-
-                write!(stream, ">")
-            }
-            Self::VariableDef {
-                var_type,
-                is_mutable,
-                is_initialization,
-            } => write!(
-                stream,
-                "Variable {}: {} {}",
-                if *is_initialization {
-                    "initialization"
-                } else {
-                    "definition"
-                },
-                if *is_mutable { "mut" } else { "" },
-                var_type
-            ),
-            Self::Type => write!(stream, "type"),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct Symbol {
-    pub scope: Scope,
-    pub data: SymbolData,
-}
+use crate::symbol::Symbol;
 
 #[derive(Clone)]
 pub struct SymbolTable {
@@ -147,6 +24,44 @@ impl SymbolTable {
         self.table.get_mut(id)
     }
 
+    pub fn get_symbols(&self) -> Vec<&Symbol> {
+        let mut res: Vec<&Symbol> = vec![];
+        for ss in self.table.iter() {
+            for s in ss.1.iter() {
+                res.push(s);
+            }
+        }
+        res
+    }
+
+    pub fn access_symbol(&self, ids: &[Ident]) -> Vec<&Symbol> {
+        let mut ret = self.get_symbols();
+
+        for (iter, id) in ids.iter().enumerate() {
+            if ret.is_empty() {
+                break;
+            }
+
+            if (iter + 1) >= ids.len() {
+                // the last iter, check id
+                ret.retain(|s| s.id == *id);
+                break;
+            }
+
+            ret.retain(|s| {
+                if s.scope.0.len() <= (iter) {
+                    return false;
+                }
+
+                let scope_unit = &s.scope.0[iter];
+                let scope_unit_name = scope_unit.get_id();
+                scope_unit_name == Some(*id)
+            });
+        }
+
+        ret
+    }
+
     pub fn insert(&mut self, id: Ident, symbol: Symbol) {
         self.table.entry(id).or_default();
 
@@ -155,15 +70,14 @@ impl SymbolTable {
         }
     }
 
-    pub fn traverse(&self, stream: &mut std::fs::File) -> std::io::Result<()> {
+    pub fn traverse(&self, stream: &mut dyn std::io::Write) -> std::io::Result<()> {
         for (identifier, ss) in self.table.iter() {
-            let s = identifier.to_string();
-            writeln!(stream, "Identifier: {s}#{identifier}:")?;
+            writeln!(stream, "Identifier: {identifier}#{}:", identifier.index())?;
 
             for s in ss.iter() {
                 write!(stream, "+--- ")?;
 
-                s.data.traverse(stream)?;
+                s.traverse(stream)?;
 
                 writeln!(stream, " at {:?}", s.scope)?;
             }

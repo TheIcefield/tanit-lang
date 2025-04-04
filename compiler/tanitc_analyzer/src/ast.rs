@@ -1,6 +1,4 @@
-use crate::scope::ScopeUnit;
-
-use super::{symbol_table::SymbolData, Analyzer};
+use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
 
 use tanitc_ast::{
     self, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
@@ -12,7 +10,7 @@ use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
@@ -23,6 +21,8 @@ impl VisitorMut for Analyzer {
             ));
         }
 
+        self.add_symbol(self.create_symbol(module_def.identifier, SymbolData::ModuleDef));
+
         self.scope.push(ScopeUnit::Module(module_def.identifier));
 
         if let Some(body) = &mut module_def.body {
@@ -30,13 +30,6 @@ impl VisitorMut for Analyzer {
         }
 
         self.scope.pop();
-
-        self.add_symbol(
-            module_def.identifier,
-            self.create_symbol(SymbolData::ModuleDef {
-                full_name: vec![module_def.identifier],
-            }),
-        );
 
         Ok(())
     }
@@ -54,17 +47,19 @@ impl VisitorMut for Analyzer {
             internal.accept_mut(self)?;
         }
 
-        let mut components = Vec::<Type>::new();
-        for field in struct_def.fields.iter() {
-            components.push(field.1.get_type());
+        for (field_id, field_ty) in struct_def.fields.iter() {
+            self.add_symbol(self.create_symbol(
+                *field_id,
+                SymbolData::StructField {
+                    struct_id: struct_def.identifier,
+                    ty: field_ty.get_type(),
+                },
+            ));
         }
 
         self.scope.pop();
 
-        self.add_symbol(
-            struct_def.identifier,
-            self.create_symbol(SymbolData::StructDef { components }),
-        );
+        self.add_symbol(self.create_symbol(struct_def.identifier, SymbolData::StructDef));
 
         Ok(())
     }
@@ -82,23 +77,25 @@ impl VisitorMut for Analyzer {
             internal.accept_mut(self)?;
         }
 
-        let mut components = Vec::<Type>::new();
-        for field in union_def.fields.iter() {
-            components.push(field.1.get_type());
+        for (field_id, field_ty) in union_def.fields.iter() {
+            self.add_symbol(self.create_symbol(
+                *field_id,
+                SymbolData::UnionField {
+                    union_id: union_def.identifier,
+                    ty: field_ty.get_type(),
+                },
+            ));
         }
 
         self.scope.pop();
 
-        self.add_symbol(
-            union_def.identifier,
-            self.create_symbol(SymbolData::StructDef { components }),
-        );
+        self.add_symbol(self.create_symbol(union_def.identifier, SymbolData::UnionDef));
 
         Ok(())
     }
 
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        use crate::symbol_table::VariantFieldData;
+        use crate::symbol::VariantFieldKind;
 
         if self.has_symbol(variant_def.identifier) {
             return Err(Message::multiple_ids(
@@ -113,32 +110,42 @@ impl VisitorMut for Analyzer {
         }
         self.scope.pop();
 
-        let mut components = Vec::<VariantFieldData>::new();
-        for field in variant_def.fields.iter() {
-            components.push(match field.1 {
-                VariantField::Common => VariantFieldData::Common,
-                VariantField::StructLike(subfields) => {
-                    let mut processed_fields = BTreeMap::<Ident, Type>::new();
-                    for field in subfields.iter() {
-                        processed_fields.insert(*field.0, field.1.get_type());
-                    }
+        let mut components = HashMap::<Ident, VariantFieldKind>::new();
+        for (field_id, field_data) in variant_def.fields.iter() {
+            components.insert(
+                *field_id,
+                match field_data {
+                    VariantField::Common => VariantFieldKind::Common,
+                    VariantField::StructLike(subfields) => {
+                        let mut processed_fields = BTreeMap::<Ident, Type>::new();
+                        for field in subfields.iter() {
+                            processed_fields.insert(*field.0, field.1.get_type());
+                        }
 
-                    VariantFieldData::StructLike(processed_fields)
-                }
-                VariantField::TupleLike(components) => {
-                    let mut processed_components = Vec::<Type>::new();
-                    for field in components.iter() {
-                        processed_components.push(field.get_type());
+                        VariantFieldKind::StructLike(processed_fields)
                     }
-                    VariantFieldData::TupleLike(processed_components)
-                }
-            });
+                    VariantField::TupleLike(components) => {
+                        let mut processed_components = Vec::<Type>::new();
+                        for field in components.iter() {
+                            processed_components.push(field.get_type());
+                        }
+                        VariantFieldKind::TupleLike(processed_components)
+                    }
+                },
+            );
         }
 
-        self.add_symbol(
-            variant_def.identifier,
-            self.create_symbol(SymbolData::VariantDef { components }),
-        );
+        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::VariantDef));
+
+        for (comp_id, comp_data) in components.iter() {
+            self.add_symbol(self.create_symbol(
+                *comp_id,
+                SymbolData::VariantComponent {
+                    variant_id: variant_def.identifier,
+                    kind: comp_data.clone(),
+                },
+            ));
+        }
 
         Ok(())
     }
@@ -166,10 +173,18 @@ impl VisitorMut for Analyzer {
             counter += 1;
         }
 
-        self.add_symbol(
-            enum_def.identifier,
-            self.create_symbol(SymbolData::EnumDef { components }),
-        );
+        self.add_symbol(self.create_symbol(enum_def.identifier, SymbolData::EnumDef));
+
+        self.scope.push(ScopeUnit::Enum(enum_def.identifier));
+        for comp in components.iter() {
+            self.add_symbol(self.create_symbol(
+                comp.0,
+                SymbolData::EnumComponent {
+                    enum_id: enum_def.identifier,
+                    val: comp.1,
+                },
+            ));
+        }
 
         Ok(())
     }
@@ -194,14 +209,14 @@ impl VisitorMut for Analyzer {
 
         self.scope.pop();
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             func_def.identifier,
-            self.create_symbol(SymbolData::FunctionDef {
+            SymbolData::FunctionDef {
                 parameters,
                 return_type: func_def.return_type.get_type(),
                 is_declaration: func_def.body.is_some(),
-            }),
-        );
+            },
+        ));
 
         self.scope.push(ScopeUnit::Func(func_def.identifier));
 
@@ -223,14 +238,14 @@ impl VisitorMut for Analyzer {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));
         }
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             var_def.identifier,
-            self.create_symbol(SymbolData::VariableDef {
+            SymbolData::VariableDef {
                 var_type: var_def.var_type.get_type(),
                 is_mutable: var_def.is_mutable,
                 is_initialization: false,
-            }),
-        );
+            },
+        ));
 
         Ok(())
     }
@@ -243,7 +258,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.add_symbol(alias_def.identifier, self.create_symbol(SymbolData::Type));
+        self.add_symbol(self.create_symbol(alias_def.identifier, SymbolData::Type));
 
         Ok(())
     }
@@ -391,15 +406,11 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_block(&mut self, block: &mut Block) -> Result<(), Message> {
-        let cnt = self.counter();
-
-        self.scope.push(ScopeUnit::Block(cnt));
-        for n in block.statements.iter_mut() {
-            if let Err(err) = n.accept_mut(self) {
-                self.error(err);
-            }
+        if block.is_global {
+            self.analyze_global_block(block)?;
+        } else {
+            self.analyze_local_block(block)?;
         }
-        self.scope.pop();
 
         Ok(())
     }
@@ -436,16 +447,25 @@ impl VisitorMut for Analyzer {
                 identifier,
                 components: value_comps,
             } => {
-                let ss = if let Some(symbol) = self.get_first_symbol(*identifier) {
+                let first = if let Some(symbol) = self.get_first_symbol(*identifier) {
                     symbol
                 } else {
                     return Err(Message::undefined_id(val.location, *identifier));
                 };
 
-                if let SymbolData::StructDef {
-                    components: struct_comps,
-                } = &ss.data
-                {
+                if matches!(first.data, SymbolData::StructDef) {
+                    let mut struct_comps = HashMap::<Ident, Type>::new();
+                    let mut ss = self.table.get_symbols();
+
+                    ss.retain(|s| s.scope.0.starts_with(&self.scope.0));
+                    for s in ss.iter() {
+                        if let SymbolData::StructField { struct_id, ty } = &s.data {
+                            if *struct_id == first.id {
+                                struct_comps.insert(s.id, ty.clone());
+                            }
+                        }
+                    }
+
                     if value_comps.len() != struct_comps.len() {
                         return Err(Message::new(
                             val.location,
@@ -461,7 +481,7 @@ impl VisitorMut for Analyzer {
                     for comp_id in 0..value_comps.len() {
                         let value_comp = value_comps.get(comp_id).unwrap();
                         let value_comp_type = self.get_type(&value_comp.1);
-                        let struct_comp_type = struct_comps.get(comp_id).unwrap();
+                        let struct_comp_type = struct_comps.get(&value_comp.0).unwrap();
 
                         if value_comp_type != *struct_comp_type {
                             return Err(Message::new(
@@ -678,7 +698,7 @@ impl Analyzer {
             },
             ExpressionKind::Unary { node, .. } => self.get_type(node),
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
-            ExpressionKind::Access { .. } => todo!(),
+            ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Term { ty, .. } => ty.clone(),
         }
     }
@@ -851,7 +871,7 @@ impl Analyzer {
 
         if let Ast::VariableDef(node) = lhs {
             if self.has_symbol(node.identifier) {
-                return Err(Message::multiple_ids(Location::new(), node.identifier));
+                return Err(Message::multiple_ids(rhs.location(), node.identifier));
             }
 
             if Type::Auto == node.var_type.get_type() {
@@ -860,7 +880,7 @@ impl Analyzer {
 
             if node.var_type.get_type() != rhs_type {
                 self.error(Message::new(
-                    Location::new(),
+                    rhs.location(),
                     &format!(
                         "Cannot perform operation on objects with different types: {:?} and {:?}",
                         node.var_type.get_type(),
@@ -869,14 +889,14 @@ impl Analyzer {
                 ));
             }
 
-            self.add_symbol(
+            self.add_symbol(self.create_symbol(
                 node.identifier,
-                self.create_symbol(SymbolData::VariableDef {
+                SymbolData::VariableDef {
                     var_type: node.var_type.get_type(),
                     is_mutable: node.is_mutable,
                     is_initialization: true,
-                }),
-            );
+                },
+            ));
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
@@ -915,7 +935,7 @@ impl Analyzer {
 
             if lhs_type != rhs_type {
                 self.error(Message::new(
-                    Location::new(),
+                    rhs.location(),
                     &format!(
                         "Cannot perform operation on objects with different types: {:?} and {:?}",
                         lhs_type, rhs_type
@@ -932,72 +952,71 @@ impl Analyzer {
         lhs: &mut Ast,
         rhs: &mut Ast,
     ) -> Result<Option<Expression>, Message> {
-        let mut processed_node: Option<Expression> = None;
+        let mut ids = Vec::<Ident>::new();
 
-        match lhs {
-            Ast::Expression(Expression { .. }) => todo!("1"),
-            Ast::Value(Value {
-                location,
-                kind: ValueKind::Identifier(lhs_id),
-            }) => {
-                let lhs_location = *location;
-                match rhs {
-                    Ast::Value(Value {
-                        location,
-                        kind: ValueKind::Identifier(rhs_id),
-                    }) => {
-                        let rhs_location = *location;
+        Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
 
-                        let ss = self.get_symbols(lhs_id);
-                        if ss.is_none() {
-                            return Err(Message::undefined_id(lhs_location, *lhs_id));
-                        }
+        let ss = self.table.access_symbol(&ids);
 
-                        let mut found = false;
-                        for s in ss.unwrap().iter() {
-                            if found {
-                                break;
-                            }
-
-                            match &s.data {
-                                SymbolData::EnumDef { components } => {
-                                    for c in components.iter() {
-                                        if c.0 == *rhs_id {
-                                            processed_node = Some(Expression {
-                                                location: lhs_location,
-                                                kind: ExpressionKind::Term {
-                                                    node: Box::new(Ast::Value(Value {
-                                                        location: rhs_location,
-                                                        kind: ValueKind::Integer(c.1),
-                                                    })),
-                                                    ty: Type::Custom(String::from(*lhs_id)),
-                                                },
-                                            });
-
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                _ => todo!("3"),
-                            }
-                        }
-
-                        if !found {
-                            return Err(Message::no_id_in_namespace(
-                                rhs_location,
-                                *lhs_id,
-                                *rhs_id,
-                            ));
-                        }
-                    }
-                    _ => todo!("4"),
-                }
-            }
-            _ => todo!("5"),
+        if ss.is_empty() {
+            return Err(Message::undefined_id(lhs.location(), *ids.last().unwrap()));
         }
 
+        let s = ss[0];
+        let processed_node: Option<Expression> = match s.data {
+            SymbolData::EnumComponent { enum_id, val } => Some(Expression {
+                location: lhs.location(),
+                kind: ExpressionKind::Term {
+                    node: Box::new(Ast::Value(Value {
+                        location: lhs.location(),
+                        kind: ValueKind::Integer(val),
+                    })),
+                    ty: Type::Custom(enum_id.to_string()),
+                },
+            }),
+            _ => todo!("Unaccessible"),
+        };
+
         Ok(processed_node)
+    }
+
+    fn preprocess_access_tree(
+        ids: &mut Vec<Ident>,
+        lhs: &mut Ast,
+        rhs: &mut Ast,
+    ) -> Result<(), Message> {
+        let mut loc = Location::new();
+
+        let lhs_id = match lhs {
+            Ast::Value(Value {
+                location,
+                kind: ValueKind::Identifier(id),
+            }) => {
+                loc = *location;
+                *id
+            }
+            _ => Ident::default(),
+        };
+
+        ids.push(lhs_id);
+
+        match rhs {
+            Ast::Expression(Expression {
+                kind: ExpressionKind::Access { lhs, rhs },
+                ..
+            }) => {
+                Self::preprocess_access_tree(ids, lhs, rhs)?;
+            }
+            Ast::Value(Value {
+                kind: ValueKind::Identifier(rhs_id),
+                ..
+            }) => {
+                ids.push(*rhs_id);
+            }
+            _ => return Err(Message::unreachable(loc)),
+        }
+
+        Ok(())
     }
 
     fn analyze_conversion_expr(&mut self) -> Result<Option<Expression>, Message> {
@@ -1007,5 +1026,33 @@ impl Analyzer {
     fn analyze_term_expr(&mut self, node: &mut Box<Ast>) -> Result<Option<Expression>, Message> {
         node.accept_mut(self)?;
         Ok(None)
+    }
+}
+
+impl Analyzer {
+    fn analyze_global_block(&mut self, block: &mut Block) -> Result<(), Message> {
+        for n in block.statements.iter_mut() {
+            if let Err(err) = n.accept_mut(self) {
+                self.error(err);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn analyze_local_block(&mut self, block: &mut Block) -> Result<(), Message> {
+        let cnt = self.counter();
+
+        self.scope.push(ScopeUnit::Block(cnt));
+
+        for n in block.statements.iter_mut() {
+            if let Err(err) = n.accept_mut(self) {
+                self.error(err);
+            }
+        }
+
+        self.scope.pop();
+
+        Ok(())
     }
 }
