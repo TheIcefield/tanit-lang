@@ -38,6 +38,10 @@ impl Ident {
     pub fn is_built_in(&self) -> bool {
         String::from(*self).starts_with("__tanit_compiler__")
     }
+
+    pub fn index(&self) -> usize {
+        self.0
+    }
 }
 
 impl Display for Ident {

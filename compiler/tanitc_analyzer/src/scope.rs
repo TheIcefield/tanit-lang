@@ -12,10 +12,32 @@ pub enum ScopeUnit {
     Struct(Ident),
     Union(Ident),
     Variant(Ident),
+    Enum(Ident),
     Func(Ident),
 }
 
-#[derive(Default, Clone)]
+impl ScopeUnit {
+    pub fn can_fold_symbols(&self) -> bool {
+        matches!(
+            self,
+            Self::Module(_) | Self::Struct(_) | Self::Union(_) | Self::Variant(_) | Self::Enum(_)
+        )
+    }
+
+    pub fn get_id(&self) -> Option<Ident> {
+        match self {
+            Self::Module(id)
+            | Self::Struct(id)
+            | Self::Union(id)
+            | Self::Variant(id)
+            | Self::Enum(id)
+            | Self::Func(id) => Some(*id),
+            Self::Block(_) | Self::Loop(_) => None,
+        }
+    }
+}
+
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct Scope(pub Vec<ScopeUnit>);
 
 impl Scope {

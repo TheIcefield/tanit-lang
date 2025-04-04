@@ -4,10 +4,12 @@ use tanitc_ty::Type;
 
 pub mod ast;
 pub mod scope;
+pub mod symbol;
 pub mod symbol_table;
 
 use scope::{Counter, Scope};
-use symbol_table::{Symbol, SymbolData, SymbolTable};
+use symbol::{Symbol, SymbolData};
+use symbol_table::SymbolTable;
 
 pub trait Analyze {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
@@ -46,8 +48,8 @@ impl Analyzer {
         &self.table
     }
 
-    pub fn add_symbol(&mut self, id: Ident, symbol: Symbol) {
-        self.table.insert(id, symbol);
+    pub fn add_symbol(&mut self, symbol: Symbol) {
+        self.table.insert(symbol.id, symbol);
     }
 
     pub fn get_symbols(&self, id: &Ident) -> Option<&Vec<Symbol>> {
@@ -58,8 +60,9 @@ impl Analyzer {
         self.table.get_mut(id)
     }
 
-    pub fn create_symbol(&self, data: SymbolData) -> Symbol {
+    pub fn create_symbol(&self, id: Ident, data: SymbolData) -> Symbol {
         Symbol {
+            id,
             scope: self.scope.clone(),
             data,
         }
@@ -131,45 +134,41 @@ fn scope_test() {
     let bar_id = Ident::from("bar".to_string());
     let main_fn_id = Ident::from("main".to_string());
     let var_id = Ident::from("var".to_string());
+    let baz_id = Ident::from("baz".to_string());
 
     let mut analyzer = Analyzer::new();
     analyzer.scope.push(ScopeUnit::Block(0)); // block-0
 
-    analyzer.add_symbol(
-        main_mod_id,
-        analyzer.create_symbol(SymbolData::ModuleDef {
-            full_name: vec![main_mod_id],
-        }),
-    );
+    analyzer.add_symbol(analyzer.create_symbol(main_mod_id, SymbolData::ModuleDef));
 
     analyzer.scope.push(ScopeUnit::Module(main_mod_id)); // block-0/Main
-    analyzer.add_symbol(
+    analyzer.add_symbol(analyzer.create_symbol(
         main_fn_id,
-        analyzer.create_symbol(SymbolData::FunctionDef {
+        SymbolData::FunctionDef {
             parameters: Vec::new(),
             return_type: Type::unit(),
             is_declaration: true,
-        }),
-    );
+        },
+    ));
 
-    analyzer.add_symbol(
+    analyzer.add_symbol(analyzer.create_symbol(
         bar_id,
-        analyzer.create_symbol(SymbolData::FunctionDef {
+        SymbolData::FunctionDef {
             parameters: Vec::new(),
             return_type: Type::unit(),
             is_declaration: true,
-        }),
-    );
+        },
+    ));
 
     analyzer.scope.push(ScopeUnit::Func(main_fn_id)); // block-0/Main/main
-    analyzer.add_symbol(
-        Ident::from("var".to_string()),
-        analyzer.create_symbol(SymbolData::VariableDef {
+    analyzer.add_symbol(analyzer.create_symbol(
+        var_id,
+        SymbolData::VariableDef {
             var_type: Type::I32,
             is_mutable: false,
             is_initialization: true,
-        }),
-    );
+        },
+    ));
 
     // check if var defined in main
     assert!(analyzer.has_symbol(var_id));
@@ -179,7 +178,7 @@ fn scope_test() {
     assert!(analyzer.has_symbol(main_fn_id));
 
     // check if baz not defined in Main
-    assert!(!analyzer.has_symbol(Ident::from("baz".to_string())));
+    assert!(!analyzer.has_symbol(baz_id));
 
     // check if var unaccessible in Main
     assert!(!analyzer.has_symbol(var_id));
@@ -190,4 +189,67 @@ fn scope_test() {
 
     // check if bar accessible in bar
     assert!(analyzer.has_symbol(bar_id));
+}
+
+#[test]
+fn symbol_access_test() {
+    /* example:
+     * Module M1 {       # M1
+     *     func f1() { } # M1/f1
+     *     func f2() { } # M1/f2
+     * }
+     * Module M2 {       # M2
+     *     func f2() { } # M2/f2
+     * }
+     */
+
+    use scope::ScopeUnit;
+
+    let m1_id = Ident::from("M1".to_string());
+    let m2_id = Ident::from("M2".to_string());
+    let f1_id = Ident::from("f1".to_string());
+    let f2_id = Ident::from("f2".to_string());
+
+    let mut analyzer = Analyzer::new();
+
+    analyzer.add_symbol(analyzer.create_symbol(m1_id, SymbolData::ModuleDef));
+
+    analyzer.add_symbol(analyzer.create_symbol(m2_id, SymbolData::ModuleDef));
+
+    analyzer.scope.push(ScopeUnit::Module(m1_id)); // /M1
+    analyzer.add_symbol(analyzer.create_symbol(
+        f1_id,
+        SymbolData::FunctionDef {
+            parameters: Vec::new(),
+            return_type: Type::unit(),
+            is_declaration: true,
+        },
+    ));
+
+    analyzer.add_symbol(analyzer.create_symbol(
+        f2_id,
+        SymbolData::FunctionDef {
+            parameters: Vec::new(),
+            return_type: Type::unit(),
+            is_declaration: true,
+        },
+    ));
+
+    analyzer.scope.pop(); // /
+    analyzer.scope.push(ScopeUnit::Module(m2_id)); // /M2
+
+    analyzer.add_symbol(analyzer.create_symbol(
+        f2_id,
+        SymbolData::FunctionDef {
+            parameters: Vec::new(),
+            return_type: Type::unit(),
+            is_declaration: true,
+        },
+    ));
+
+    let res = analyzer.table.access_symbol(&[m1_id, f2_id]);
+    assert_eq!(res.len(), 1);
+
+    let res = analyzer.table.access_symbol(&[m2_id, f1_id]);
+    assert_eq!(res.len(), 0);
 }

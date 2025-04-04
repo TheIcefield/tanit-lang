@@ -1,5 +1,5 @@
 use tanitc_ast::{
-    Ast, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
+    Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
     UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
 };
 use tanitc_ident::Ident;
@@ -328,18 +328,14 @@ impl Parser {
                 if let Some(new_op) = new_op {
                     return Ok(Ast::from(Expression {
                         location,
-                        kind: ExpressionKind::Binary {
-                            operation: Lexem::Assign,
-                            lhs: lhs.clone(),
-                            rhs: Box::new(Ast::from(Expression {
+                        kind: ExpressionKind::new_binary(
+                            Lexem::Assign,
+                            lhs.clone(),
+                            Box::new(Ast::from(Expression {
                                 location,
-                                kind: ExpressionKind::Binary {
-                                    operation: new_op,
-                                    lhs: lhs.clone(),
-                                    rhs: rhs.clone(),
-                                },
+                                kind: ExpressionKind::new_binary(new_op, lhs.clone(), rhs.clone()),
                             })),
-                        },
+                        ),
                     }));
                 }
             }
@@ -519,11 +515,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -546,11 +538,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -573,11 +561,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -600,11 +584,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -627,11 +607,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -654,11 +630,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -681,11 +653,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -708,11 +676,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -735,11 +699,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -762,11 +722,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -789,11 +745,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Binary {
-                        operation,
-                        lhs: Box::new(lhs),
-                        rhs,
-                    },
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
                 }))
             }
 
@@ -825,11 +777,11 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location: next.location,
-                    kind: ExpressionKind::Binary {
+                    kind: ExpressionKind::new_binary(
                         operation,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(self.parse_expression()?),
-                    },
+                        Box::new(lhs),
+                        Box::new(self.parse_expression()?),
+                    ),
                 }))
             }
             _ => Ok(lhs),
@@ -995,8 +947,6 @@ impl Parser {
 // Block
 impl Parser {
     pub fn parse_global_block(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::Block;
-
         let mut node = Block::default();
 
         self.parse_block_internal(&mut node)?;
@@ -1006,8 +956,6 @@ impl Parser {
     }
 
     pub fn parse_local_block(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::Block;
-
         let mut node = Block::default();
 
         self.consume_token(Lexem::Lcb)?;
@@ -1025,7 +973,9 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
-    fn parse_block_internal(&mut self, block: &mut tanitc_ast::Block) -> Result<(), Message> {
+    fn parse_block_internal(&mut self, block: &mut Block) -> Result<(), Message> {
+        block.location = self.get_location();
+
         loop {
             let next = self.peek_token();
 
@@ -1614,11 +1564,7 @@ impl Parser {
         if let Some(rhs) = rvalue {
             return Ok(Ast::from(Expression {
                 location,
-                kind: ExpressionKind::Binary {
-                    operation: Lexem::Assign,
-                    lhs: Box::new(var_node),
-                    rhs: Box::new(rhs),
-                },
+                kind: ExpressionKind::new_binary(Lexem::Assign, Box::new(var_node), Box::new(rhs)),
             }));
         }
 
