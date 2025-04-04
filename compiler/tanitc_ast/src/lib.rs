@@ -20,6 +20,7 @@ impl From<AliasDef> for Ast {
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Block {
+    pub location: Location,
     pub statements: Vec<Ast>,
     pub is_global: bool,
 }
@@ -406,6 +407,39 @@ impl Ast {
             Ast::Use(node) => visitor.visit_use(node),
             Ast::Block(node) => visitor.visit_block(node),
             Ast::Value(node) => visitor.visit_value(node),
+        }
+    }
+
+    pub fn location(&self) -> Location {
+        match self {
+            Self::ModuleDef(node) => node.location,
+            Self::StructDef(node) => node.location,
+            Self::UnionDef(node) => node.location,
+            Self::VariantDef(node) => node.location,
+            Self::EnumDef(node) => node.location,
+            Self::FuncDef(node) => node.location,
+            Self::VariableDef(node) => node.location,
+            Self::AliasDef(node) => node.location,
+            Self::Expression(node) => node.location,
+            Self::BranchStmt(node) => node.location,
+            Self::ControlFlow(node) => node.location,
+            Self::TypeSpec(node) => node.location,
+            Self::Use(node) => node.location,
+            Self::Block(node) => node.location,
+            Self::Value(node) => node.location,
+        }
+    }
+}
+
+impl ExpressionKind {
+    pub fn new_binary(operation: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Self {
+        match operation {
+            Lexem::Dcolon => Self::Access { lhs, rhs },
+            _ => Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            },
         }
     }
 }
