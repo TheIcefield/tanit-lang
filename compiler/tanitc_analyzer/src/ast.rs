@@ -1,6 +1,8 @@
-use crate::scope::ScopeUnit;
-
-use super::{symbol_table::SymbolData, Analyzer};
+use super::{
+    scope::ScopeUnit,
+    symbol::{Symbol, SymbolData},
+    Analyzer,
+};
 
 use tanitc_ast::{
     self, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
@@ -31,12 +33,12 @@ impl VisitorMut for Analyzer {
 
         self.scope.pop();
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             module_def.identifier,
-            self.create_symbol(SymbolData::ModuleDef {
+            SymbolData::ModuleDef {
                 full_name: vec![module_def.identifier],
-            }),
-        );
+            },
+        ));
 
         Ok(())
     }
@@ -62,8 +64,7 @@ impl VisitorMut for Analyzer {
         self.scope.pop();
 
         self.add_symbol(
-            struct_def.identifier,
-            self.create_symbol(SymbolData::StructDef { components }),
+            self.create_symbol(struct_def.identifier, SymbolData::StructDef { components }),
         );
 
         Ok(())
@@ -90,15 +91,14 @@ impl VisitorMut for Analyzer {
         self.scope.pop();
 
         self.add_symbol(
-            union_def.identifier,
-            self.create_symbol(SymbolData::StructDef { components }),
+            self.create_symbol(union_def.identifier, SymbolData::StructDef { components }),
         );
 
         Ok(())
     }
 
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        use crate::symbol_table::VariantFieldData;
+        use crate::symbol::VariantFieldData;
 
         if self.has_symbol(variant_def.identifier) {
             return Err(Message::multiple_ids(
@@ -135,10 +135,10 @@ impl VisitorMut for Analyzer {
             });
         }
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             variant_def.identifier,
-            self.create_symbol(SymbolData::VariantDef { components }),
-        );
+            SymbolData::VariantDef { components },
+        ));
 
         Ok(())
     }
@@ -166,10 +166,18 @@ impl VisitorMut for Analyzer {
             counter += 1;
         }
 
-        self.add_symbol(
-            enum_def.identifier,
-            self.create_symbol(SymbolData::EnumDef { components }),
-        );
+        self.add_symbol(self.create_symbol(enum_def.identifier, SymbolData::EnumDef));
+
+        self.scope.push(ScopeUnit::Enum(enum_def.identifier));
+        for comp in components.iter() {
+            self.add_symbol(self.create_symbol(
+                comp.0,
+                SymbolData::EnumComponent {
+                    enum_id: enum_def.identifier,
+                    val: comp.1,
+                },
+            ));
+        }
 
         Ok(())
     }
@@ -194,14 +202,14 @@ impl VisitorMut for Analyzer {
 
         self.scope.pop();
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             func_def.identifier,
-            self.create_symbol(SymbolData::FunctionDef {
+            SymbolData::FunctionDef {
                 parameters,
                 return_type: func_def.return_type.get_type(),
                 is_declaration: func_def.body.is_some(),
-            }),
-        );
+            },
+        ));
 
         self.scope.push(ScopeUnit::Func(func_def.identifier));
 
@@ -223,14 +231,14 @@ impl VisitorMut for Analyzer {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));
         }
 
-        self.add_symbol(
+        self.add_symbol(self.create_symbol(
             var_def.identifier,
-            self.create_symbol(SymbolData::VariableDef {
+            SymbolData::VariableDef {
                 var_type: var_def.var_type.get_type(),
                 is_mutable: var_def.is_mutable,
                 is_initialization: false,
-            }),
-        );
+            },
+        ));
 
         Ok(())
     }
@@ -243,7 +251,7 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.add_symbol(alias_def.identifier, self.create_symbol(SymbolData::Type));
+        self.add_symbol(self.create_symbol(alias_def.identifier, SymbolData::Type));
 
         Ok(())
     }
@@ -869,14 +877,14 @@ impl Analyzer {
                 ));
             }
 
-            self.add_symbol(
+            self.add_symbol(self.create_symbol(
                 node.identifier,
-                self.create_symbol(SymbolData::VariableDef {
+                SymbolData::VariableDef {
                     var_type: node.var_type.get_type(),
                     is_mutable: node.is_mutable,
                     is_initialization: true,
-                }),
-            );
+                },
+            ));
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
@@ -948,42 +956,65 @@ impl Analyzer {
                     }) => {
                         let rhs_location = *location;
 
-                        let ss = self.get_symbols(lhs_id);
-                        if ss.is_none() {
+                        let all_ss = self.table.get_symbols();
+
+                        let mut ss_with_lhs_id = all_ss.clone();
+                        ss_with_lhs_id.retain(|s| s.id == *lhs_id);
+
+                        if ss_with_lhs_id.is_empty() {
                             return Err(Message::undefined_id(lhs_location, *lhs_id));
                         }
 
-                        let mut found = false;
-                        for s in ss.unwrap().iter() {
-                            if found {
+                        let mut ret: Option<&Symbol> = None;
+
+                        for s in ss_with_lhs_id.iter() {
+                            if ret.is_some() {
                                 break;
                             }
 
                             match &s.data {
-                                SymbolData::EnumDef { components } => {
-                                    for c in components.iter() {
-                                        if c.0 == *rhs_id {
-                                            processed_node = Some(Expression {
-                                                location: lhs_location,
-                                                kind: ExpressionKind::Term {
-                                                    node: Box::new(Ast::Value(Value {
-                                                        location: rhs_location,
-                                                        kind: ValueKind::Integer(c.1),
-                                                    })),
-                                                    ty: Type::Custom(String::from(*lhs_id)),
-                                                },
-                                            });
+                                SymbolData::EnumDef => {
+                                    let mut ss_with_rhs_id = all_ss.clone();
+                                    ss_with_rhs_id.retain(|s| {
+                                        s.id == *rhs_id
+                                            && s.scope.0.contains(&ScopeUnit::Enum(*lhs_id))
+                                            && matches!(
+                                                s.data,
+                                                SymbolData::EnumComponent {
+                                                    enum_id: lhs_id,
+                                                    ..
+                                                }
+                                            )
+                                    });
 
-                                            found = true;
-                                            break;
-                                        }
+                                    for c in ss_with_rhs_id.iter() {
+                                        let c_val =
+                                            if let SymbolData::EnumComponent { val, .. } = c.data {
+                                                val
+                                            } else {
+                                                continue;
+                                            };
+
+                                        processed_node = Some(Expression {
+                                            location: lhs_location,
+                                            kind: ExpressionKind::Term {
+                                                node: Box::new(Ast::Value(Value {
+                                                    location: rhs_location,
+                                                    kind: ValueKind::Integer(c_val),
+                                                })),
+                                                ty: Type::Custom(String::from(*lhs_id)),
+                                            },
+                                        });
+
+                                        ret = Some(c);
+                                        break;
                                     }
                                 }
                                 _ => todo!("3"),
                             }
                         }
 
-                        if !found {
+                        if ret.is_none() {
                             return Err(Message::no_id_in_namespace(
                                 rhs_location,
                                 *lhs_id,

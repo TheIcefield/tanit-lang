@@ -12,6 +12,7 @@ pub enum ScopeUnit {
     Struct(Ident),
     Union(Ident),
     Variant(Ident),
+    Enum(Ident),
     Func(Ident),
 }
 
