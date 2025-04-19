@@ -436,7 +436,25 @@ impl CodeGenStream<'_> {
 
                 write!(self, ")")?;
             }
-            _ => unimplemented!(),
+            ValueKind::Struct {
+                identifier,
+                components,
+            } => {
+                // create anonimous variable
+                writeln!(self, "(struct {identifier}){{")?;
+
+                for (i, (field_name, field_val)) in components.iter().enumerate() {
+                    write!(self, ".{field_name}=")?;
+                    self.generate(field_val)?;
+
+                    if i < components.len() {
+                        writeln!(self, ",")?;
+                    }
+                }
+
+                write!(self, "}}")?;
+            }
+            _ => todo!("Unimplemented for ({:?})", val.kind),
         }
 
         Ok(())

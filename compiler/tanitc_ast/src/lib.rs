@@ -5,7 +5,7 @@ use tanitc_ty::Type;
 
 use std::collections::BTreeMap;
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct AliasDef {
     pub location: Location,
     pub identifier: Ident,
@@ -18,7 +18,7 @@ impl From<AliasDef> for Ast {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Block {
     pub location: Location,
     pub statements: Vec<Ast>,
@@ -31,7 +31,7 @@ impl From<Block> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BranchKind {
     Loop { body: Box<Ast> },
     While { body: Box<Ast>, condition: Box<Ast> },
@@ -39,7 +39,7 @@ pub enum BranchKind {
     Else { body: Box<Ast> },
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Branch {
     pub location: Location,
     pub kind: BranchKind,
@@ -51,7 +51,7 @@ impl From<Branch> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ControlFlowKind {
     Return { ret: Option<Box<Ast>> },
     Break { ret: Option<Box<Ast>> },
@@ -68,7 +68,7 @@ impl ControlFlowKind {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ControlFlow {
     pub location: Location,
     pub kind: ControlFlowKind,
@@ -80,7 +80,7 @@ impl From<ControlFlow> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct EnumDef {
     pub location: Location,
     pub identifier: Ident,
@@ -93,7 +93,7 @@ impl From<EnumDef> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExpressionKind {
     Unary {
         operation: Lexem,
@@ -118,7 +118,7 @@ pub enum ExpressionKind {
     },
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Expression {
     pub location: Location,
     pub kind: ExpressionKind,
@@ -130,7 +130,7 @@ impl From<Expression> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
     pub identifier: Ident,
@@ -145,7 +145,7 @@ impl From<FunctionDef> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
     pub identifier: Ident,
@@ -159,7 +159,7 @@ impl From<ModuleDef> for Ast {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
     pub identifier: Ident,
@@ -173,7 +173,7 @@ impl From<StructDef> for Ast {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct UnionDef {
     pub location: Location,
     pub identifier: Ident,
@@ -187,12 +187,12 @@ impl From<UnionDef> for Ast {
     }
 }
 
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct TypeInfo {
     pub is_mut: bool,
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct TypeSpec {
     pub location: Location,
     pub info: TypeInfo,
@@ -215,13 +215,13 @@ impl From<TypeSpec> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CallParam {
     Notified(Ident, Box<Ast>),
     Positional(usize, Box<Ast>),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValueKind {
     Call {
         identifier: Ident,
@@ -243,7 +243,7 @@ pub enum ValueKind {
     Decimal(f64),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Value {
     pub location: Location,
     pub kind: ValueKind,
@@ -255,7 +255,7 @@ impl From<Value> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct VariableDef {
     pub location: Location,
     pub identifier: Ident,
@@ -270,7 +270,7 @@ impl From<VariableDef> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum VariantField {
     #[default]
     Common,
@@ -278,7 +278,7 @@ pub enum VariantField {
     TupleLike(Vec<TypeSpec>),
 }
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct VariantDef {
     pub location: Location,
     pub identifier: Ident,
@@ -292,7 +292,7 @@ impl From<VariantDef> for Ast {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub enum UseIdentifier {
     #[default]
     BuiltInSelf,
@@ -302,7 +302,7 @@ pub enum UseIdentifier {
     Identifier(Ident),
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Use {
     pub location: Location,
     pub identifier: Vec<UseIdentifier>,
@@ -314,7 +314,7 @@ impl From<Use> for Ast {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Ast {
     ModuleDef(ModuleDef),
     StructDef(StructDef),
