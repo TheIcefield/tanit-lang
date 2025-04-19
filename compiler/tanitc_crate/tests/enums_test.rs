@@ -132,7 +132,7 @@ fn enum_with_one_field_def_test() {
 }
 
 #[test]
-fn enum_use_test() {
+fn enum_work_test() {
     const SRC_TEXT: &str = "\nenum MyEnum {\
                             \n    One: 1\
                             \n    Second\
@@ -211,7 +211,7 @@ fn enum_use_test() {
 }
 
 #[test]
-fn enum_in_module_use_test() {
+fn enum_in_module_work_test() {
     const SRC_TEXT: &str = "\nmodule color {\
                             \n    enum Color {\
                             \n        Red\
