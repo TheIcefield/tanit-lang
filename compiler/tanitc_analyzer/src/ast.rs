@@ -458,7 +458,7 @@ impl VisitorMut for Analyzer {
                     let mut struct_comps = HashMap::<Ident, Type>::new();
                     let mut ss = self.table.get_symbols();
 
-                    ss.retain(|s| s.scope.0.starts_with(&self.scope.0));
+                    ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
                     for s in ss.iter() {
                         if let SymbolData::StructField { struct_id, ty } = &s.data {
                             if *struct_id == first.id {
