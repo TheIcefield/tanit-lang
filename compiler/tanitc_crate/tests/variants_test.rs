@@ -25,6 +25,11 @@ fn variant_def_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let variant_node = parser.parse_variant_def().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     if let Ast::VariantDef(node) = &variant_node {
         assert!(node.identifier == variand_id);

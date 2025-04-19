@@ -18,6 +18,11 @@ fn module_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
 
     let res = parser.parse_module_def().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     let res = if let Ast::ModuleDef(node) = &res {
         assert!(node.identifier == m1_id);
