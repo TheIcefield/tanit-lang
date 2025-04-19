@@ -102,10 +102,10 @@ impl Message {
         }
     }
 
-    pub fn unreachable(location: Location) -> Self {
+    pub fn unreachable(location: Location, msg: &str) -> Self {
         Self {
             location,
-            text: String::from("Compiler reached unreachable code"),
+            text: format!("Compiler reached unreachable code: {msg}"),
         }
     }
 }

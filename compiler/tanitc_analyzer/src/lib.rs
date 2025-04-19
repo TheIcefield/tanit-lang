@@ -247,9 +247,15 @@ fn symbol_access_test() {
         },
     ));
 
-    let res = analyzer.table.access_symbol(&[m1_id, f2_id]);
+    analyzer.scope.pop(); // /
+
+    let res = analyzer
+        .table
+        .access_symbol(&[m1_id, f2_id], &analyzer.scope);
     assert_eq!(res.len(), 1);
 
-    let res = analyzer.table.access_symbol(&[m2_id, f1_id]);
+    let res = analyzer
+        .table
+        .access_symbol(&[m2_id, f1_id], &analyzer.scope);
     assert_eq!(res.len(), 0);
 }

@@ -2,7 +2,10 @@ use tanitc_ident::Ident;
 
 use std::collections::HashMap;
 
-use crate::symbol::Symbol;
+use crate::{
+    scope::{Scope, ScopeUnit},
+    symbol::Symbol,
+};
 
 #[derive(Clone)]
 pub struct SymbolTable {
@@ -34,15 +37,31 @@ impl SymbolTable {
         res
     }
 
-    pub fn access_symbol(&self, ids: &[Ident]) -> Vec<&Symbol> {
+    pub fn access_symbol(&self, ids: &[Ident], scope: &Scope) -> Vec<&Symbol> {
         let mut ret = self.get_symbols();
+        let mut ids_full: Vec<Ident> = vec![];
 
-        for (iter, id) in ids.iter().enumerate() {
+        for scope_unit in scope.0.iter() {
+            if let ScopeUnit::Func(_) = scope_unit {
+                continue;
+            }
+
+            let id = scope_unit.get_id();
+            if let Some(id) = id {
+                ids_full.push(id);
+            }
+        }
+
+        for id in ids.iter() {
+            ids_full.push(*id);
+        }
+
+        for (iter, id) in ids_full.iter().enumerate() {
             if ret.is_empty() {
                 break;
             }
 
-            if (iter + 1) >= ids.len() {
+            if (iter + 1) >= ids_full.len() {
                 // the last iter, check id
                 ret.retain(|s| s.id == *id);
                 break;

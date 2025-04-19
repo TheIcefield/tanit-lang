@@ -185,6 +185,7 @@ impl VisitorMut for Analyzer {
                 },
             ));
         }
+        self.scope.pop();
 
         Ok(())
     }
@@ -823,7 +824,7 @@ impl Analyzer {
                             ty: Type::from(*id),
                         }
                     } else {
-                        return Err(Message::unreachable(location));
+                        return Err(Message::unreachable(location, "expected type-spec"));
                     };
                     *expr_node = Ast::from(Expression {
                         location,
@@ -956,7 +957,7 @@ impl Analyzer {
 
         Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
 
-        let ss = self.table.access_symbol(&ids);
+        let ss = self.table.access_symbol(&ids, &self.scope);
 
         if ss.is_empty() {
             return Err(Message::undefined_id(lhs.location(), *ids.last().unwrap()));
@@ -974,7 +975,8 @@ impl Analyzer {
                     ty: Type::Custom(enum_id.to_string()),
                 },
             }),
-            _ => todo!("Unaccessible"),
+            SymbolData::FunctionDef { .. } => None,
+            _ => todo!("Unaccessible: {:?}", s.data),
         };
 
         Ok(processed_node)
@@ -1013,7 +1015,18 @@ impl Analyzer {
             }) => {
                 ids.push(*rhs_id);
             }
-            _ => return Err(Message::unreachable(loc)),
+            Ast::Value(Value {
+                kind: ValueKind::Call { identifier, .. },
+                ..
+            }) => {
+                ids.push(*identifier);
+            }
+            _ => {
+                return Err(Message::unreachable(
+                    loc,
+                    "expected ExpressionKind::Access or Value::Identifier",
+                ))
+            }
         }
 
         Ok(())
