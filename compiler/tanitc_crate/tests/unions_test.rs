@@ -21,6 +21,11 @@ fn union_def_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
     let union_node = parser.parse_union_def().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     if let Ast::UnionDef(node) = &union_node {
         assert!(node.identifier == union_id);

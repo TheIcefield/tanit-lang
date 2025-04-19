@@ -24,6 +24,11 @@ fn variables_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
 
     let res = parser.parse_func_def().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     let res = if let Ast::FuncDef(node) = &res {
         assert!(node.identifier == main_id);

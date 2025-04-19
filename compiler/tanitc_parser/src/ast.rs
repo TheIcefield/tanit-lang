@@ -376,11 +376,15 @@ impl Parser {
             Lexem::Identifier(_) => {
                 let identifier = self.consume_identifier()?;
 
+                let old_opt = self.does_ignore_nl();
+                self.set_ignore_nl_option(true);
+
                 let next = self.peek_token();
                 if next.lexem == Lexem::LParen {
                     // if call
                     let arguments = self.parse_call_params()?;
 
+                    self.set_ignore_nl_option(old_opt);
                     return Ok(Ast::from(Value {
                         location,
                         kind: ValueKind::Call {
@@ -391,6 +395,7 @@ impl Parser {
                 } else if next.lexem == Lexem::Dcolon {
                     // if ::
                     self.get_token();
+                    self.set_ignore_nl_option(old_opt);
 
                     let lhs = Box::new(Ast::from(Value {
                         location,
@@ -407,6 +412,7 @@ impl Parser {
                     // if struct
                     let components = self.parse_struct_value()?;
 
+                    self.set_ignore_nl_option(old_opt);
                     return Ok(Ast::from(Value {
                         location,
                         kind: ValueKind::Struct {
@@ -1055,8 +1061,11 @@ impl Parser {
 
     fn parse_struct_body(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         self.consume_token(Lexem::Lcb)?;
+        let old_opt = self.does_ignore_nl();
 
+        self.set_ignore_nl_option(true);
         self.parse_struct_body_internal(struct_def)?;
+        self.set_ignore_nl_option(old_opt);
 
         self.consume_token(Lexem::Rcb)?;
 
@@ -1434,6 +1443,18 @@ impl Parser {
     fn parse_struct_value(&mut self) -> Result<Vec<(Ident, Ast)>, Message> {
         self.consume_token(Lexem::Lcb)?;
 
+        let old_opt = self.does_ignore_nl();
+        self.set_ignore_nl_option(true);
+
+        let components = self.parse_struct_value_internal()?;
+
+        self.set_ignore_nl_option(old_opt);
+        self.consume_token(Lexem::Rcb)?;
+
+        Ok(components)
+    }
+
+    fn parse_struct_value_internal(&mut self) -> Result<Vec<(Ident, Ast)>, Message> {
         let mut components = Vec::<(Ident, Ast)>::new();
 
         loop {
@@ -1450,7 +1471,7 @@ impl Parser {
             components.push((identifier, self.parse_expression()?));
 
             let next = self.peek_token();
-            if next.lexem == Lexem::Comma {
+            if next.lexem == Lexem::Comma || next.lexem == Lexem::EndOfLine {
                 // continue parsing if ','
                 self.get_token();
                 continue;
@@ -1461,8 +1482,6 @@ impl Parser {
                 return Err(Message::unexpected_token(next, &[]));
             }
         }
-
-        self.consume_token(Lexem::Rcb)?;
 
         Ok(components)
     }

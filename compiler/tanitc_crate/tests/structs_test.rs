@@ -12,12 +12,20 @@ fn struct_def_test() {
                             \n    f2: f32\
                             \n}\
                             \nfunc main() {\
-                            \n    var s = MyStruct { f1: 1, f2: 2.0 }\
+                            \n    var s = MyStruct { \
+                            \n              f1: 1, f2: 2.0\
+                            \n
+                            \n            }\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
     let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     {
         let mut analyzer = Analyzer::new();

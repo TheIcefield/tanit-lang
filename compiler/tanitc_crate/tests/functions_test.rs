@@ -168,6 +168,12 @@ fn functions_test() {
         assert!(matches!(lhs, Ast::VariableDef { .. }));
         assert!(matches!(rhs, Ast::Value { .. }));
     }
+
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 }
 
 #[test]
@@ -190,6 +196,11 @@ fn function_in_module_work_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     {
         let mut analyzer = Analyzer::new();

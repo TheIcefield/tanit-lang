@@ -9,6 +9,11 @@ fn use_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let use_node = parser.parse_use().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     {
         const EXPECTED: &str = "\n<use name=\"hello::world\"/>";
@@ -30,6 +35,11 @@ fn use_all_test() {
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
     let use_node = parser.parse_use().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
 
     {
         const EXPECTED: &str = "\n<use name=\"Self::mod::*\"/>";
