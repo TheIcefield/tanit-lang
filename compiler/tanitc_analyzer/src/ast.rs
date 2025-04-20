@@ -444,65 +444,7 @@ impl VisitorMut for Analyzer {
                 Ok(())
             }
 
-            ValueKind::Struct {
-                identifier,
-                components: value_comps,
-            } => {
-                let first = if let Some(symbol) = self.get_first_symbol(*identifier) {
-                    symbol
-                } else {
-                    return Err(Message::undefined_id(val.location, *identifier));
-                };
-
-                if matches!(first.data, SymbolData::StructDef) {
-                    let mut struct_comps = HashMap::<Ident, Type>::new();
-                    let mut ss = self.table.get_symbols();
-
-                    ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
-                    for s in ss.iter() {
-                        if let SymbolData::StructField { struct_id, ty } = &s.data {
-                            if *struct_id == first.id {
-                                struct_comps.insert(s.id, ty.clone());
-                            }
-                        }
-                    }
-
-                    if value_comps.len() != struct_comps.len() {
-                        return Err(Message::new(
-                            val.location,
-                            &format!(
-                                "Struct \"{}\" consists of {} fields, but {} were supplied",
-                                identifier,
-                                struct_comps.len(),
-                                value_comps.len()
-                            ),
-                        ));
-                    }
-
-                    for comp_id in 0..value_comps.len() {
-                        let value_comp = value_comps.get(comp_id).unwrap();
-                        let value_comp_type = self.get_type(&value_comp.1);
-                        let struct_comp_type = struct_comps.get(&value_comp.0).unwrap();
-
-                        if value_comp_type != *struct_comp_type {
-                            return Err(Message::new(
-                                val.location,
-                                &format!(
-                                    "Field named \"{}\" is {}, but initialized like {}",
-                                    value_comp.0, struct_comp_type, value_comp_type
-                                ),
-                            ));
-                        }
-                    }
-                } else {
-                    return Err(Message::new(
-                        val.location,
-                        &format!("Cannot find struct named \"{}\" in this scope", identifier),
-                    ));
-                }
-
-                Ok(())
-            }
+            ValueKind::Struct { .. } => self.analyze_struct_value(val),
 
             ValueKind::Tuple { components } => {
                 for comp in components.iter_mut() {
@@ -957,13 +899,17 @@ impl Analyzer {
 
         Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
 
-        let ss = self.table.access_symbol(&ids, &self.scope);
+        let scope = self.scope.clone();
+        let s = {
+            let ss = self.table.access_symbol(&ids, &scope);
 
-        if ss.is_empty() {
-            return Err(Message::undefined_id(lhs.location(), *ids.last().unwrap()));
-        }
+            if ss.is_empty() {
+                return Err(Message::undefined_id(lhs.location(), *ids.last().unwrap()));
+            }
 
-        let s = ss[0];
+            ss[0].clone()
+        };
+
         let processed_node: Option<Expression> = match s.data {
             SymbolData::EnumComponent { enum_id, val } => Some(Expression {
                 location: lhs.location(),
@@ -976,6 +922,56 @@ impl Analyzer {
                 },
             }),
             SymbolData::FunctionDef { .. } => None,
+            SymbolData::StructDef => {
+                let mut value = Box::new(rhs.clone());
+
+                let struct_name = s.id;
+                let struct_comps = {
+                    let mut struct_comps = HashMap::<Ident, Type>::new();
+                    let mut ss = self.table.get_symbols();
+                    ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
+                    for s in ss.iter() {
+                        if let SymbolData::StructField { struct_id, ty } = &s.data {
+                            if struct_name == *struct_id {
+                                struct_comps.insert(s.id, ty.clone());
+                            }
+                        }
+                    }
+                    struct_comps
+                };
+
+                if let Ast::Value(Value {
+                    kind:
+                        ValueKind::Struct {
+                            components: value_comps,
+                            ..
+                        },
+                    ..
+                }) = value.as_mut()
+                {
+                    if let Err(mut msg) =
+                        self.check_struct_components(value_comps, s.id, &struct_comps)
+                    {
+                        msg.location = rhs.location();
+                        return Err(msg);
+                    }
+                } else {
+                    return Err(Message::unreachable(
+                        rhs.location(),
+                        "expected ValueKind::Struct, actually: {rhs:?}",
+                    ));
+                }
+
+                let node = Expression {
+                    location: lhs.location(),
+                    kind: ExpressionKind::Term {
+                        node: value,
+                        ty: Type::Custom(s.id.to_string()),
+                    },
+                };
+
+                Some(node)
+            }
             _ => todo!("Unaccessible: {:?}", s.data),
         };
 
@@ -1021,10 +1017,18 @@ impl Analyzer {
             }) => {
                 ids.push(*identifier);
             }
+            Ast::Value(Value {
+                kind: ValueKind::Struct { identifier, .. },
+                ..
+            }) => {
+                ids.push(*identifier);
+            }
             _ => {
                 return Err(Message::unreachable(
                     loc,
-                    "expected ExpressionKind::Access or Value::Identifier",
+                    &format!(
+                        "expected ExpressionKind::Access or Value::Identifier, actually: {rhs:?}"
+                    ),
                 ))
             }
         }
@@ -1065,6 +1069,94 @@ impl Analyzer {
         }
 
         self.scope.pop();
+
+        Ok(())
+    }
+}
+
+impl Analyzer {
+    fn analyze_struct_value(&mut self, value: &mut Value) -> Result<(), Message> {
+        let (struct_name, value_comps) = if let ValueKind::Struct {
+            identifier,
+            components,
+        } = &mut value.kind
+        {
+            (identifier, components)
+        } else {
+            return Err(Message::unreachable(
+                value.location,
+                "expected ValueKind::Struct",
+            ));
+        };
+
+        let first = if let Some(symbol) = self.get_first_symbol(*struct_name) {
+            symbol
+        } else {
+            return Err(Message::undefined_id(value.location, *struct_name));
+        };
+
+        if matches!(first.data, SymbolData::StructDef) {
+            let mut struct_comps = HashMap::<Ident, Type>::new();
+            let mut ss = self.table.get_symbols();
+
+            ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
+            for s in ss.iter() {
+                if let SymbolData::StructField { struct_id, ty } = &s.data {
+                    if *struct_id == first.id {
+                        struct_comps.insert(s.id, ty.clone());
+                    }
+                }
+            }
+
+            if let Err(mut msg) =
+                self.check_struct_components(value_comps, *struct_name, &struct_comps)
+            {
+                msg.location = value.location;
+                return Err(msg);
+            }
+        } else {
+            return Err(Message::new(
+                value.location,
+                &format!("Cannot find struct named \"{}\" in this scope", struct_name),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn check_struct_components(
+        &mut self,
+        value_comps: &[(Ident, Ast)],
+        struct_name: Ident,
+        struct_comps: &HashMap<Ident, Type>,
+    ) -> Result<(), Message> {
+        if value_comps.len() != struct_comps.len() {
+            return Err(Message::new(
+                Location::new(),
+                &format!(
+                    "Struct \"{}\" consists of {} fields, but {} were supplied",
+                    struct_name,
+                    struct_comps.len(),
+                    value_comps.len()
+                ),
+            ));
+        }
+
+        for comp_id in 0..value_comps.len() {
+            let value_comp = value_comps.get(comp_id).unwrap();
+            let value_comp_type = self.get_type(&value_comp.1);
+            let struct_comp_type = struct_comps.get(&value_comp.0).unwrap();
+
+            if value_comp_type != *struct_comp_type {
+                return Err(Message::new(
+                    Location::new(),
+                    &format!(
+                        "Field named \"{}\" is {}, but initialized like {}",
+                        value_comp.0, struct_comp_type, value_comp_type
+                    ),
+                ));
+            }
+        }
 
         Ok(())
     }
