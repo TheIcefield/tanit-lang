@@ -231,6 +231,10 @@ pub enum ValueKind {
         identifier: Ident,
         components: Vec<(Ident, Ast)>,
     },
+    Union {
+        identifier: Ident,
+        components: Vec<(Ident, Ast)>,
+    },
     Tuple {
         components: Vec<Ast>,
     },

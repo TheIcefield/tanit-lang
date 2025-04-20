@@ -1,43 +1,38 @@
-use tanitc_ast::Ast;
+use tanitc_analyzer::Analyzer;
 use tanitc_codegen::CodeGenStream;
-use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
-use tanitc_ty::Type;
 
 #[test]
-fn union_def_test() {
+fn union_work_test() {
     const SRC_TEXT: &str = "\nunion MyUnion\
                             \n{\
                             \n    f1: i32\
                             \n    f2: f32\
+                            \n}\
+                            \nfunc main() {\
+                            \n    var s = MyUnion { \
+                            \n              f2: 2.0\
+                            \n            }\
                             \n}";
-
-    let union_id = Ident::from("MyUnion".to_string());
-    let f1_id = Ident::from("f1".to_string());
-    let f2_id = Ident::from("f2".to_string());
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
 
-    let union_node = parser.parse_union_def().unwrap();
+    let mut program = parser.parse_global_block().unwrap();
     {
         if parser.has_errors() {
             panic!("{:?}", parser.get_errors());
         }
     }
 
-    if let Ast::UnionDef(node) = &union_node {
-        assert!(node.identifier == union_id);
-
-        let field_type = node.fields.get(&f1_id).unwrap().get_type();
-        assert!(matches!(field_type, Type::I32));
-
-        let field_type = node.fields.get(&f2_id).unwrap().get_type();
-        assert!(matches!(field_type, Type::F32));
-    } else {
-        panic!("res should be \'UnionDef\'");
-    };
+    {
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:?}", analyzer.get_errors());
+        }
+    }
 
     {
         const EXPECTED: &str = "\n<union-definition name=\"MyUnion\">\
@@ -47,12 +42,27 @@ fn union_def_test() {
                                 \n    <field name=\"f2\">\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </field>\
-                                \n</union-definition>";
+                                \n</union-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"MyUnion\"/>\
+                                \n        </variable-definition>\
+                                \n        <union-initialization name=\"MyUnion\">\
+                                \n            <field name=\"f2\">\
+                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n            </field>\
+                                \n        </union-initialization>\
+                                \n    </operation>\
+                                \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
         let mut writer = XmlWriter::new(&mut buffer).unwrap();
 
-        union_node.accept(&mut writer).unwrap();
+        program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
         assert_eq!(EXPECTED, res);
@@ -62,18 +72,25 @@ fn union_def_test() {
         const HEADER_EXPECTED: &str = "typedef union {\
                                      \nsigned int f1;\
                                      \nfloat f2;\
-                                     \n} MyUnion;\n";
+                                     \n} MyUnion;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                     \nMyUnion const s = (union MyUnion){\
+                                     \n.f2=2,\
+                                     \n};\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
 
-        union_node.accept(&mut writer).unwrap();
+        program.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         let source_res = String::from_utf8(source_buffer).unwrap();
 
         assert_eq!(HEADER_EXPECTED, header_res);
-        assert!(source_res.is_empty());
+        assert_eq!(SOURCE_EXPECTED, source_res);
     }
 }

@@ -454,6 +454,24 @@ impl CodeGenStream<'_> {
 
                 write!(self, "}}")?;
             }
+            ValueKind::Union {
+                identifier,
+                components,
+            } => {
+                // create anonimous variable
+                writeln!(self, "(union {identifier}){{")?;
+
+                for (i, (field_name, field_val)) in components.iter().enumerate() {
+                    write!(self, ".{field_name}=")?;
+                    self.generate(field_val)?;
+
+                    if i < components.len() {
+                        writeln!(self, ",")?;
+                    }
+                }
+
+                write!(self, "}}")?;
+            }
             _ => todo!("Unimplemented for ({:?})", val.kind),
         }
 

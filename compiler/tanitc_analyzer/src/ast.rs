@@ -446,6 +446,11 @@ impl VisitorMut for Analyzer {
 
             ValueKind::Struct { .. } => self.analyze_struct_value(val),
 
+            ValueKind::Union { .. } => Err(Message::unreachable(
+                val.location,
+                "ValueKind::Union is not expected here",
+            )),
+
             ValueKind::Tuple { components } => {
                 for comp in components.iter_mut() {
                     comp.accept_mut(self)?;
@@ -664,6 +669,7 @@ impl Analyzer {
                 Type::new()
             }
             ValueKind::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
+            ValueKind::Union { identifier, .. } => Type::Custom(identifier.to_string()),
             ValueKind::Tuple { components } => {
                 let mut comp_vec = Vec::<Type>::new();
                 for comp in components.iter() {
@@ -1076,7 +1082,7 @@ impl Analyzer {
 
 impl Analyzer {
     fn analyze_struct_value(&mut self, value: &mut Value) -> Result<(), Message> {
-        let (struct_name, value_comps) = if let ValueKind::Struct {
+        let (object_name, value_comps) = if let ValueKind::Struct {
             identifier,
             components,
         } = &mut value.kind
@@ -1089,10 +1095,10 @@ impl Analyzer {
             ));
         };
 
-        let first = if let Some(symbol) = self.get_first_symbol(*struct_name) {
+        let first = if let Some(symbol) = self.get_first_symbol(*object_name) {
             symbol
         } else {
-            return Err(Message::undefined_id(value.location, *struct_name));
+            return Err(Message::undefined_id(value.location, *object_name));
         };
 
         if matches!(first.data, SymbolData::StructDef) {
@@ -1109,15 +1115,39 @@ impl Analyzer {
             }
 
             if let Err(mut msg) =
-                self.check_struct_components(value_comps, *struct_name, &struct_comps)
+                self.check_struct_components(value_comps, *object_name, &struct_comps)
             {
                 msg.location = value.location;
                 return Err(msg);
             }
+        } else if matches!(first.data, SymbolData::UnionDef) {
+            let mut union_comps = HashMap::<Ident, Type>::new();
+            let mut ss = self.table.get_symbols();
+
+            ss.retain(|s| matches!(s.data, SymbolData::UnionField { .. }));
+            for s in ss.iter() {
+                if let SymbolData::UnionField { union_id, ty } = &s.data {
+                    if *union_id == first.id {
+                        union_comps.insert(s.id, ty.clone());
+                    }
+                }
+            }
+
+            if let Err(mut msg) =
+                self.check_union_components(value_comps, *object_name, &union_comps)
+            {
+                msg.location = value.location;
+                return Err(msg);
+            }
+
+            value.kind = ValueKind::Union {
+                identifier: *object_name,
+                components: std::mem::take(value_comps),
+            };
         } else {
             return Err(Message::new(
                 value.location,
-                &format!("Cannot find struct named \"{}\" in this scope", struct_name),
+                &format!("Cannot find struct or union named \"{object_name}\" in this scope"),
             ));
         }
 
@@ -1153,6 +1183,52 @@ impl Analyzer {
                     &format!(
                         "Field named \"{}\" is {}, but initialized like {}",
                         value_comp.0, struct_comp_type, value_comp_type
+                    ),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_union_components(
+        &mut self,
+        value_comps: &[(Ident, Ast)],
+        union_name: Ident,
+        union_comps: &HashMap<Ident, Type>,
+    ) -> Result<(), Message> {
+        let union_comp_size = union_comps.len();
+        let initialized_comp_size = value_comps.len();
+
+        if union_comp_size == 0 && initialized_comp_size > 0 {
+            return Err(Message::new(
+                Location::new(),
+                &format!(
+                    "Union \"{union_name}\" has no fields, but were supplied {initialized_comp_size} fields",
+                ),
+            ));
+        }
+
+        if union_comp_size > 0 && initialized_comp_size > 1 {
+            return Err(Message::new(
+                Location::new(),
+                &format!(
+                    "Only one union field must be initialized, but {initialized_comp_size} were initialized",
+                ),
+            ));
+        }
+
+        for comp_id in 0..initialized_comp_size {
+            let value_comp = value_comps.get(comp_id).unwrap();
+            let value_comp_name = value_comp.0;
+            let value_comp_type = self.get_type(&value_comp.1);
+            let union_comp_type = union_comps.get(&value_comp.0).unwrap();
+
+            if value_comp_type != *union_comp_type {
+                return Err(Message::new(
+                    Location::new(),
+                    &format!(
+                        "Field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
                     ),
                 ));
             }
