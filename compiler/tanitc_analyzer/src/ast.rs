@@ -978,6 +978,66 @@ impl Analyzer {
 
                 Some(node)
             }
+            SymbolData::UnionDef => {
+                let mut value = Box::new(rhs.clone());
+
+                let union_name = s.id;
+                let union_comps = {
+                    let mut union_comps = HashMap::<Ident, Type>::new();
+                    let mut ss = self.table.get_symbols();
+                    ss.retain(|s| matches!(s.data, SymbolData::UnionField { .. }));
+                    for s in ss.iter() {
+                        if let SymbolData::UnionField { union_id, ty } = &s.data {
+                            if union_name == *union_id {
+                                union_comps.insert(s.id, ty.clone());
+                            }
+                        }
+                    }
+                    union_comps
+                };
+
+                if let Ast::Value(value) = value.as_mut() {
+                    let (union_id, value_comps) = if let ValueKind::Struct {
+                        identifier,
+                        components,
+                    } = &mut value.kind
+                    {
+                        (*identifier, std::mem::take(components))
+                    } else {
+                        return Err(Message::unreachable(
+                            value.location,
+                            "expected ValueKind::Struct",
+                        ));
+                    };
+
+                    if let Err(mut msg) =
+                        self.check_union_components(&value_comps, s.id, &union_comps)
+                    {
+                        msg.location = rhs.location();
+                        return Err(msg);
+                    }
+
+                    value.kind = ValueKind::Union {
+                        identifier: union_id,
+                        components: value_comps,
+                    }
+                } else {
+                    return Err(Message::unreachable(
+                        rhs.location(),
+                        "expected ValueKind::Struct, actually: {rhs:?}",
+                    ));
+                }
+
+                let node = Expression {
+                    location: lhs.location(),
+                    kind: ExpressionKind::Term {
+                        node: value,
+                        ty: Type::Custom(s.id.to_string()),
+                    },
+                };
+
+                Some(node)
+            }
             _ => todo!("Unaccessible: {:?}", s.data),
         };
 
