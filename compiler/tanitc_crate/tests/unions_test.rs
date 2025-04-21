@@ -51,11 +51,11 @@ fn union_work_test() {
                                 \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
                                 \n            <type style=\"named\" name=\"MyUnion\"/>\
                                 \n        </variable-definition>\
-                                \n        <union-initialization name=\"MyUnion\">\
+                                \n        <struct-initialization name=\"MyUnion\">\
                                 \n            <field name=\"f2\">\
                                 \n                <literal style=\"decimal-number\" value=\"2\"/>\
                                 \n            </field>\
-                                \n        </union-initialization>\
+                                \n        </struct-initialization>\
                                 \n    </operation>\
                                 \n</function-definition>";
 
@@ -76,7 +76,7 @@ fn union_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyUnion const s = (union MyUnion){\
+                                     \nMyUnion const s = (MyUnion){\
                                      \n.f2=2,\
                                      \n};\
                                      \n}\n";
@@ -146,11 +146,11 @@ fn union_in_module_work_test() {
                                 \n            <type style=\"named\" name=\"MyUnion\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
-                                \n            <union-initialization name=\"MyUnion\">\
+                                \n            <struct-initialization name=\"MyUnion\">\
                                 \n                <field name=\"y\">\
                                 \n                    <literal style=\"decimal-number\" value=\"2\"/>\
                                 \n                </field>\
-                                \n            </union-initialization>\
+                                \n            </struct-initialization>\
                                 \n        </operation>\
                                 \n    </operation>\
                                 \n</function-definition>";
@@ -172,7 +172,7 @@ fn union_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyUnion const u = (union MyUnion){\
+                                     \nMyUnion const u = (MyUnion){\
                                      \n.y=2,\
                                      \n};\
                                      \n}\n";
