@@ -338,24 +338,6 @@ impl Visitor for XmlWriter<'_> {
 
                 self.end_tag()?;
             }
-            ValueKind::Union {
-                identifier,
-                components,
-            } => {
-                self.begin_tag("union-initialization")?;
-                self.put_param("name", identifier)?;
-
-                for (comp_id, comp_type) in components.iter() {
-                    self.begin_tag("field")?;
-                    self.put_param("name", comp_id)?;
-
-                    comp_type.accept(self)?;
-
-                    self.end_tag()?;
-                }
-
-                self.end_tag()?;
-            }
             ValueKind::Tuple { components } => {
                 self.begin_tag("tuple-initialization")?;
 

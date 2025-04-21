@@ -1,14 +1,15 @@
 use tanitc_ast::{
     AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
     Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value,
-    ValueKind, VariableDef, VariantDef, Visitor,
+    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
+use tanitc_ident::Ident;
 use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
 
 use crate::{CodeGenMode, CodeGenStream};
 
-use std::io::Write;
+use std::{collections::BTreeMap, io::Write};
 
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
@@ -186,10 +187,11 @@ impl CodeGenStream<'_> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
 
-        writeln!(self, "typedef enum {{")?;
-        for (field_id, _) in variant_def.fields.iter() {
-            writeln!(self, "{},", field_id)?;
-        }
+        writeln!(self, "typedef struct {{")?;
+
+        self.generate_variant_enum(variant_def.identifier, &variant_def.fields)?;
+        self.generate_variant_data(variant_def.identifier, &variant_def.fields)?;
+
         write!(self, "}} {}", variant_def.identifier)?;
 
         writeln!(self, ";")?;
@@ -441,25 +443,7 @@ impl CodeGenStream<'_> {
                 components,
             } => {
                 // create anonimous variable
-                writeln!(self, "(struct {identifier}){{")?;
-
-                for (i, (field_name, field_val)) in components.iter().enumerate() {
-                    write!(self, ".{field_name}=")?;
-                    self.generate(field_val)?;
-
-                    if i < components.len() {
-                        writeln!(self, ",")?;
-                    }
-                }
-
-                write!(self, "}}")?;
-            }
-            ValueKind::Union {
-                identifier,
-                components,
-            } => {
-                // create anonimous variable
-                writeln!(self, "(union {identifier}){{")?;
+                writeln!(self, "({identifier}){{")?;
 
                 for (i, (field_name, field_val)) in components.iter().enumerate() {
                     write!(self, ".{field_name}=")?;
@@ -513,5 +497,97 @@ impl CodeGenStream<'_> {
             CallParam::Positional(_, node) => self.generate(node.as_ref()),
             CallParam::Notified(..) => unreachable!("Notified CallParam is not allowed in codegen"),
         }
+    }
+}
+
+impl CodeGenStream<'_> {
+    fn generate_variant_enum(
+        &mut self,
+        variant_id: Ident,
+        fields: &BTreeMap<Ident, VariantField>,
+    ) -> Result<(), std::io::Error> {
+        let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
+        let field_id = tanitc_ast::variant_utils::get_variant_data_kind_field_id();
+
+        writeln!(self, "typedef enum {enum_id} {{")?;
+
+        for (field_id, _) in fields.iter() {
+            writeln!(self, "    {field_id},")?;
+        }
+
+        writeln!(self, "}} {field_id};")?;
+
+        Ok(())
+    }
+
+    fn generate_variant_common_field(
+        &mut self,
+        variant_id: Ident,
+        field_id: Ident,
+    ) -> Result<(), std::io::Error> {
+        writeln!(self, "typedef struct __{variant_id}__{field_id}__ {{")?;
+        writeln!(self, "}} __{variant_id}__{field_id}__ {field_id}")?;
+        Ok(())
+    }
+
+    fn generate_variant_struct_field(
+        &mut self,
+        variant_id: Ident,
+        field_id: Ident,
+        subfields: &BTreeMap<Ident, TypeSpec>,
+    ) -> Result<(), std::io::Error> {
+        writeln!(self, "typedef struct __{variant_id}__{field_id}__ {{")?;
+        for (subfield_id, subfield_type) in subfields.iter() {
+            let subfield_type = subfield_type.get_type();
+            writeln!(self, "    {subfield_type} {subfield_id};")?;
+        }
+        writeln!(self, "}} __{variant_id}__{field_id}__ {field_id}")?;
+
+        Ok(())
+    }
+
+    fn generate_variant_tuple_field(
+        &mut self,
+        variant_id: Ident,
+        field_id: Ident,
+        components: &[TypeSpec],
+    ) -> Result<(), std::io::Error> {
+        writeln!(self, "typedef struct __{variant_id}__{field_id}__ {{")?;
+        for (field_num, field_type) in components.iter().enumerate() {
+            let field_type = field_type.get_type();
+            writeln!(self, "    {field_type} _{field_num};")?;
+        }
+        writeln!(self, "}} __{variant_id}__{field_id}__ {field_id}")?;
+
+        Ok(())
+    }
+
+    fn generate_variant_data(
+        &mut self,
+        variant_id: Ident,
+        fields: &BTreeMap<Ident, VariantField>,
+    ) -> Result<(), std::io::Error> {
+        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
+        let field_id = tanitc_ast::variant_utils::get_variant_data_field_id();
+
+        writeln!(self, "typedef union {union_id} {{")?;
+
+        for (field_id, field_data) in fields.iter() {
+            match field_data {
+                VariantField::Common => {
+                    self.generate_variant_common_field(variant_id, *field_id)?
+                }
+                VariantField::StructLike(subfields) => {
+                    self.generate_variant_struct_field(variant_id, *field_id, subfields)?
+                }
+                VariantField::TupleLike(components) => {
+                    self.generate_variant_tuple_field(variant_id, *field_id, components)?
+                }
+            }
+        }
+
+        writeln!(self, "}} {field_id};")?;
+
+        Ok(())
     }
 }

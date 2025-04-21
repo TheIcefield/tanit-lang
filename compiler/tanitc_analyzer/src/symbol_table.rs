@@ -68,7 +68,7 @@ impl SymbolTable {
             }
 
             ret.retain(|s| {
-                if s.scope.0.len() <= (iter) {
+                if s.scope.0.len() <= iter {
                     return false;
                 }
 

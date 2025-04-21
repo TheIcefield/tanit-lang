@@ -6,7 +6,15 @@ variant V1
     f2(i32, i32)
 
     f3 {
-        f1: i32
-        f2: f32
+        x: i32
+        y: f32
+    }
+}
+
+func main() {
+    var v1 = V1::f1
+    var v3 = V1::f3 {
+        x: 4,
+        y: 30.5
     }
 }
