@@ -5,6 +5,8 @@ use tanitc_ty::Type;
 
 use std::collections::BTreeMap;
 
+pub mod variant_utils;
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct AliasDef {
     pub location: Location,
@@ -228,10 +230,6 @@ pub enum ValueKind {
         arguments: Vec<CallParam>,
     },
     Struct {
-        identifier: Ident,
-        components: Vec<(Ident, Ast)>,
-    },
-    Union {
         identifier: Ident,
         components: Vec<(Ident, Ast)>,
     },

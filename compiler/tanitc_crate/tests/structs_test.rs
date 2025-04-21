@@ -79,7 +79,7 @@ fn struct_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyStruct const s = (struct MyStruct){\
+                                     \nMyStruct const s = (MyStruct){\
                                      \n.f1=1,\
                                      \n.f2=2,\
                                      \n};\
@@ -179,7 +179,7 @@ fn struct_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nVector2 const vec = (struct Vector2){\
+                                     \nVector2 const vec = (Vector2){\
                                      \n.x=0,\
                                      \n.y=2,\
                                      \n};\

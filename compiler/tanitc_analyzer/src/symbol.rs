@@ -1,17 +1,7 @@
-use std::collections::BTreeMap;
-
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
 use crate::scope::Scope;
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub enum VariantFieldKind {
-    #[default]
-    Common,
-    StructLike(BTreeMap<Ident, Type>),
-    TupleLike(Vec<Type>),
-}
 
 #[derive(Debug, Clone)]
 pub enum SymbolData {
@@ -30,11 +20,6 @@ pub enum SymbolData {
     EnumComponent {
         enum_id: Ident,
         val: usize,
-    },
-    VariantDef,
-    VariantComponent {
-        variant_id: Ident,
-        kind: VariantFieldKind,
     },
     FunctionDef {
         parameters: Vec<(Ident, Type)>,
@@ -85,10 +70,6 @@ impl Symbol {
             SymbolData::EnumDef => write!(stream, "Enum definition."),
             SymbolData::EnumComponent { enum_id, val } => {
                 write!(stream, "{enum_id}::{} = {val}", self.id)
-            }
-            SymbolData::VariantDef => write!(stream, "Variant definition"),
-            SymbolData::VariantComponent { variant_id, kind } => {
-                write!(stream, "component of variant {variant_id}, kind: {kind:?}")
             }
 
             SymbolData::VariableDef {

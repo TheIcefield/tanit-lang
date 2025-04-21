@@ -95,8 +95,6 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        use crate::symbol::VariantFieldKind;
-
         if self.has_symbol(variant_def.identifier) {
             return Err(Message::multiple_ids(
                 variant_def.location,
@@ -108,44 +106,12 @@ impl VisitorMut for Analyzer {
         for internal in variant_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
+
+        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields)?;
+        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields)?;
+
         self.scope.pop();
-
-        let mut components = HashMap::<Ident, VariantFieldKind>::new();
-        for (field_id, field_data) in variant_def.fields.iter() {
-            components.insert(
-                *field_id,
-                match field_data {
-                    VariantField::Common => VariantFieldKind::Common,
-                    VariantField::StructLike(subfields) => {
-                        let mut processed_fields = BTreeMap::<Ident, Type>::new();
-                        for field in subfields.iter() {
-                            processed_fields.insert(*field.0, field.1.get_type());
-                        }
-
-                        VariantFieldKind::StructLike(processed_fields)
-                    }
-                    VariantField::TupleLike(components) => {
-                        let mut processed_components = Vec::<Type>::new();
-                        for field in components.iter() {
-                            processed_components.push(field.get_type());
-                        }
-                        VariantFieldKind::TupleLike(processed_components)
-                    }
-                },
-            );
-        }
-
-        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::VariantDef));
-
-        for (comp_id, comp_data) in components.iter() {
-            self.add_symbol(self.create_symbol(
-                *comp_id,
-                SymbolData::VariantComponent {
-                    variant_id: variant_def.identifier,
-                    kind: comp_data.clone(),
-                },
-            ));
-        }
+        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::StructDef));
 
         Ok(())
     }
@@ -446,11 +412,6 @@ impl VisitorMut for Analyzer {
 
             ValueKind::Struct { .. } => self.analyze_struct_value(val),
 
-            ValueKind::Union { .. } => Err(Message::unreachable(
-                val.location,
-                "ValueKind::Union is not expected here",
-            )),
-
             ValueKind::Tuple { components } => {
                 for comp in components.iter_mut() {
                     comp.accept_mut(self)?;
@@ -669,7 +630,6 @@ impl Analyzer {
                 Type::new()
             }
             ValueKind::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
-            ValueKind::Union { identifier, .. } => Type::Custom(identifier.to_string()),
             ValueKind::Tuple { components } => {
                 let mut comp_vec = Vec::<Type>::new();
                 for comp in components.iter() {
@@ -917,16 +877,71 @@ impl Analyzer {
         };
 
         let processed_node: Option<Expression> = match s.data {
-            SymbolData::EnumComponent { enum_id, val } => Some(Expression {
-                location: lhs.location(),
-                kind: ExpressionKind::Term {
-                    node: Box::new(Ast::Value(Value {
+            SymbolData::EnumComponent { enum_id, val } => {
+                let is_in_variant = {
+                    if s.scope.0.len() < 2 {
+                        None
+                    } else if let Some(ScopeUnit::Variant(variant_id)) =
+                        s.scope.0.get(s.scope.0.len() - 2)
+                    {
+                        Some(*variant_id)
+                    } else {
+                        None
+                    }
+                };
+
+                // println!("is_in_variant: {is_in_variant:?}");
+                if let Some(variant_id) = is_in_variant {
+                    Some(Expression {
                         location: lhs.location(),
-                        kind: ValueKind::Integer(val),
-                    })),
-                    ty: Type::Custom(enum_id.to_string()),
-                },
-            }),
+                        kind: ExpressionKind::Term {
+                            node: Box::new(Ast::Value(Value {
+                                location: lhs.location(),
+                                kind: ValueKind::Struct {
+                                    identifier: variant_id,
+                                    components: vec![
+                                        (
+                                            tanitc_ast::variant_utils::get_variant_data_kind_field_id(),
+                                            Ast::Value(Value {
+                                                location: lhs.location(),
+                                                kind: ValueKind::Integer(val),
+                                            }),
+                                        ),
+                                        (
+                                            tanitc_ast::variant_utils::get_variant_data_field_id(),
+                                            Ast::Value(Value {
+                                                location: lhs.location(),
+                                                kind: ValueKind::Struct {
+                                                    identifier: tanitc_ast::variant_utils::get_variant_data_type_id(variant_id),
+                                                    components: vec![(
+                                                        s.id,
+                                                        Ast::Value(Value {
+                                                            location: lhs.location(),
+                                                            kind: ValueKind::Integer(0),
+                                                        }),
+                                                    )],
+                                                },
+                                            }),
+                                        ),
+                                    ],
+                                },
+                            })),
+                            ty: Type::Custom(variant_id.to_string()),
+                        },
+                    })
+                } else {
+                    Some(Expression {
+                        location: lhs.location(),
+                        kind: ExpressionKind::Term {
+                            node: Box::new(Ast::Value(Value {
+                                location: lhs.location(),
+                                kind: ValueKind::Integer(val),
+                            })),
+                            ty: Type::Custom(enum_id.to_string()),
+                        },
+                    })
+                }
+            }
             SymbolData::FunctionDef { .. } => None,
             SymbolData::StructDef => {
                 let mut value = Box::new(rhs.clone());
@@ -1017,7 +1032,7 @@ impl Analyzer {
                         return Err(msg);
                     }
 
-                    value.kind = ValueKind::Union {
+                    value.kind = ValueKind::Struct {
                         identifier: union_id,
                         components: value_comps,
                     }
@@ -1200,7 +1215,7 @@ impl Analyzer {
                 return Err(msg);
             }
 
-            value.kind = ValueKind::Union {
+            value.kind = ValueKind::Struct {
                 identifier: *object_name,
                 components: std::mem::take(value_comps),
             };
@@ -1293,6 +1308,116 @@ impl Analyzer {
                 ));
             }
         }
+
+        Ok(())
+    }
+}
+
+impl Analyzer {
+    fn create_variant_data_kind_symbol(
+        &mut self,
+        variant_id: Ident,
+        fields: &BTreeMap<Ident, VariantField>,
+    ) -> Result<(), Message> {
+        let data_kind_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
+
+        self.scope.push(ScopeUnit::Enum(data_kind_id));
+
+        for (field_num, (field_id, _)) in fields.iter().enumerate() {
+            self.add_symbol(self.create_symbol(
+                *field_id,
+                SymbolData::EnumComponent {
+                    enum_id: data_kind_id,
+                    val: field_num,
+                },
+            ));
+        }
+
+        self.scope.pop();
+
+        Ok(())
+    }
+
+    fn create_variant_common_field_symbol(&mut self, field_id: Ident) -> Result<(), Message> {
+        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
+        Ok(())
+    }
+
+    fn create_variant_struct_field_symbol(
+        &mut self,
+        field_id: Ident,
+        subfields: &BTreeMap<Ident, TypeSpec>,
+    ) -> Result<(), Message> {
+        self.scope.push(ScopeUnit::Struct(field_id));
+
+        for (subfield_id, subfield_type) in subfields.iter() {
+            self.add_symbol(self.create_symbol(
+                *subfield_id,
+                SymbolData::StructField {
+                    struct_id: field_id,
+                    ty: subfield_type.get_type(),
+                },
+            ));
+        }
+
+        self.scope.pop();
+        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
+
+        Ok(())
+    }
+
+    fn create_variant_tuple_field_symbol(
+        &mut self,
+        field_id: Ident,
+        components: &[TypeSpec],
+    ) -> Result<(), Message> {
+        self.scope.push(ScopeUnit::Struct(field_id));
+
+        for (field_num, field_type) in components.iter().enumerate() {
+            let subfield_id = Ident::from(format!("_{field_num}"));
+            self.add_symbol(self.create_symbol(
+                subfield_id,
+                SymbolData::StructField {
+                    struct_id: field_id,
+                    ty: field_type.get_type(),
+                },
+            ));
+        }
+
+        self.scope.pop();
+        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
+
+        Ok(())
+    }
+
+    fn create_variant_fields_symbols(
+        &mut self,
+        fields: &BTreeMap<Ident, VariantField>,
+    ) -> Result<(), Message> {
+        for (field_id, field_data) in fields.iter() {
+            match field_data {
+                VariantField::Common => self.create_variant_common_field_symbol(*field_id)?,
+                VariantField::StructLike(subfields) => {
+                    self.create_variant_struct_field_symbol(*field_id, subfields)?
+                }
+                VariantField::TupleLike(components) => {
+                    self.create_variant_tuple_field_symbol(*field_id, components)?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn create_variant_data_symbols(
+        &mut self,
+        variant_id: Ident,
+        fields: &BTreeMap<Ident, VariantField>,
+    ) -> Result<(), Message> {
+        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
+
+        self.scope.push(ScopeUnit::Union(union_id));
+        self.create_variant_fields_symbols(fields)?;
+        self.scope.pop();
 
         Ok(())
     }
