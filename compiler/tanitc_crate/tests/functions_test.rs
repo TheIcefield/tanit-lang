@@ -5,6 +5,8 @@ use tanitc_lexer::{token::Lexem, Lexer};
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
 
+use pretty_assertions::assert_str_eq;
+
 #[test]
 fn function_def_test() {
     const SRC_TEXT: &str = "\nfunc sum(a: f32, b: f32): f32 {\
@@ -65,7 +67,7 @@ fn function_def_test() {
         node.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -85,10 +87,10 @@ fn function_def_test() {
         node.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
-        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, header_res);
 
-        assert_eq!(HEADER_EXPECTED, header_res);
-        assert_eq!(SOURCE_EXPECTED, source_res);
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }
 
@@ -244,9 +246,7 @@ fn function_in_module_work_test() {
                                 \n        </variable-definition>\
                                 \n        <operation style=\"access\">\
                                 \n            <identifier name=\"color\"/>\
-                                \n            <call-statement name=\"get_green\">\
-                                \n                <parameters/>\
-                                \n            </call-statement>\
+                                \n            <call-statement name=\"get_green\"/>\
                                 \n        </operation>\
                                 \n    </operation>\
                                 \n</function-definition>";
@@ -257,7 +257,7 @@ fn function_in_module_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -284,9 +284,9 @@ fn function_in_module_work_test() {
         program.accept(&mut writer).unwrap();
 
         let mut res = String::from_utf8(header_buffer).unwrap();
-        assert_eq!(HEADER_EXPECTED, res);
+        assert_str_eq!(HEADER_EXPECTED, res);
 
         res = String::from_utf8(source_buffer).unwrap();
-        assert_eq!(SOURCE_EXPECTED, res);
+        assert_str_eq!(SOURCE_EXPECTED, res);
     }
 }
