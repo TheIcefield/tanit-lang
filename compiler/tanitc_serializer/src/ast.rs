@@ -302,22 +302,25 @@ impl Visitor for XmlWriter<'_> {
                 self.begin_tag("call-statement")?;
                 self.put_param("name", identifier)?;
 
-                self.begin_tag("parameters")?;
-                for arg in arguments.iter() {
-                    self.begin_tag("parameter")?;
-                    match arg {
-                        CallParam::Notified(id, expr) => {
-                            self.put_param("name", id)?;
-                            expr.accept(self)?;
+                if !arguments.is_empty() {
+                    self.begin_tag("parameters")?;
+                    for arg in arguments.iter() {
+                        self.begin_tag("parameter")?;
+                        match arg {
+                            CallParam::Notified(id, expr) => {
+                                self.put_param("name", id)?;
+                                expr.accept(self)?;
+                            }
+                            CallParam::Positional(index, expr) => {
+                                self.put_param("index", index)?;
+                                expr.accept(self)?;
+                            }
                         }
-                        CallParam::Positional(index, expr) => {
-                            self.put_param("index", index)?;
-                            expr.accept(self)?;
-                        }
+                        self.end_tag()?; //parameter
                     }
-                    self.end_tag()?; //parameter
+                    self.end_tag()?; // parameters
                 }
-                self.end_tag()?; // parameters
+
                 self.end_tag()?; // call-statement
             }
             ValueKind::Struct {
