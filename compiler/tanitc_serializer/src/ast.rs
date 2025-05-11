@@ -1,7 +1,7 @@
 use tanitc_ast::{
-    AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec, UnionDef,
-    Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    attributes, AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
+    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec,
+    UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -112,6 +112,8 @@ impl Visitor for XmlWriter<'_> {
         self.begin_tag("function-definition")?;
         self.put_param("name", func_def.identifier)?;
 
+        self.serialize_attributes(&func_def.attrs)?;
+
         self.begin_tag("return-type")?;
         self.visit_type_spec(&func_def.return_type)?;
         self.end_tag()?;
@@ -204,6 +206,8 @@ impl Visitor for XmlWriter<'_> {
             BranchKind::While { body, condition } => {
                 self.begin_tag("while")?;
 
+                self.serialize_attributes(&branch.attrs)?;
+
                 self.begin_tag("condition")?;
                 condition.accept(self)?;
                 self.end_tag()?;
@@ -215,12 +219,16 @@ impl Visitor for XmlWriter<'_> {
             BranchKind::Loop { body } => {
                 self.begin_tag("loop")?;
 
+                self.serialize_attributes(&branch.attrs)?;
+
                 body.accept(self)?;
 
                 self.end_tag()?;
             }
             BranchKind::If { condition, body } => {
                 self.begin_tag("if")?;
+
+                self.serialize_attributes(&branch.attrs)?;
 
                 self.begin_tag("condition")?;
                 condition.accept(self)?;
@@ -234,7 +242,10 @@ impl Visitor for XmlWriter<'_> {
             }
             BranchKind::Else { body } => {
                 self.begin_tag("else")?;
+
+                self.serialize_attributes(&branch.attrs)?;
                 body.accept(self)?;
+
                 self.end_tag()?;
             }
         }
@@ -286,8 +297,19 @@ impl Visitor for XmlWriter<'_> {
     }
 
     fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
+        let is_default = block.attrs == attributes::Attributes::default();
+
+        if !is_default {
+            self.begin_tag("block")?;
+            self.serialize_attributes(&block.attrs)?;
+        }
+
         for stmt in block.statements.iter() {
             stmt.accept(self)?;
+        }
+
+        if !is_default {
+            self.end_tag()?;
         }
 
         Ok(())
@@ -393,6 +415,8 @@ impl XmlWriter<'_> {
         self.begin_tag("module-definition")?;
         self.put_param("name", module_def.identifier)?;
 
+        self.serialize_attributes(&module_def.attrs)?;
+
         if let Some(body) = &module_def.body {
             self.visit_block(body)?;
         }
@@ -405,6 +429,8 @@ impl XmlWriter<'_> {
     fn serializer_module_def_external(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         self.begin_tag("module-import")?;
         self.put_param("name", module_def.identifier)?;
+
+        self.serialize_attributes(&module_def.attrs)?;
 
         self.end_tag()?;
 
@@ -544,6 +570,24 @@ impl XmlWriter<'_> {
                 self.put_param("name", "str")?;
             }
         }
+
+        Ok(())
+    }
+}
+
+impl XmlWriter<'_> {
+    fn serialize_attributes(&mut self, attrs: &attributes::Attributes) -> Result<(), Message> {
+        if *attrs == attributes::Attributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        if let Some(safety) = attrs.safety {
+            self.put_param("safety", safety)?;
+        }
+
+        self.end_tag()?;
 
         Ok(())
     }
