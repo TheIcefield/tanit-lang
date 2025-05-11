@@ -7,7 +7,7 @@ use tanitc_parser::Parser;
 fn module_test() {
     const SRC_TEXT: &str = "\nmodule M1\
                             \n{\
-                            \n    module M2\
+                            \n    unsafe module M2\
                             \n    {\
                             \n    }\
                             \n}";

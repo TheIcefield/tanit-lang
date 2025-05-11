@@ -4,6 +4,8 @@ use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
 
+use pretty_assertions::assert_str_eq;
+
 #[test]
 fn union_work_test() {
     const SRC_TEXT: &str = "\nunion MyUnion\
@@ -12,9 +14,11 @@ fn union_work_test() {
                             \n    f2: f32\
                             \n}\
                             \nfunc main() {\
-                            \n    var s = MyUnion { \
-                            \n              f2: 2.0\
-                            \n            }\
+                            \n    unsafe {\
+                            \n        var s = MyUnion { \
+                            \n                  f2: 2.0\
+                            \n                }\
+                            \n    }\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
@@ -47,16 +51,19 @@ fn union_work_test() {
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"named\" name=\"MyUnion\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"MyUnion\">\
-                                \n            <field name=\"f2\">\
-                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n            </field>\
-                                \n        </struct-initialization>\
-                                \n    </operation>\
+                                \n    <block>\
+                                \n        <attributes safety=\"unsafe\"/>\
+                                \n        <operation style=\"binary\" operation=\"=\">\
+                                \n            <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
+                                \n                <type style=\"named\" name=\"MyUnion\"/>\
+                                \n            </variable-definition>\
+                                \n            <struct-initialization name=\"MyUnion\">\
+                                \n                <field name=\"f2\">\
+                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n                </field>\
+                                \n            </struct-initialization>\
+                                \n        </operation>\
+                                \n    </block>\
                                 \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -65,7 +72,7 @@ fn union_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -76,10 +83,13 @@ fn union_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyUnion const s = (MyUnion){\
-                                     \n.f2=2,\
-                                     \n};\
-                                     \n}\n";
+                                            \n{\
+                                                \nMyUnion const s = (MyUnion){\
+                                                    \n.f2=2,\
+                                                \n};\
+                                            \n}\
+                                            \n\
+                                        \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -88,10 +98,10 @@ fn union_work_test() {
         program.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
-        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, header_res);
 
-        assert_eq!(HEADER_EXPECTED, header_res);
-        assert_eq!(SOURCE_EXPECTED, source_res);
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }
 
