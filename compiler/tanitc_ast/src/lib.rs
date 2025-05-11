@@ -1,3 +1,4 @@
+use attributes::Attributes;
 use tanitc_ident::Ident;
 use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
@@ -5,6 +6,7 @@ use tanitc_ty::Type;
 
 use std::collections::BTreeMap;
 
+pub mod attributes;
 pub mod variant_utils;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -23,6 +25,7 @@ impl From<AliasDef> for Ast {
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Block {
     pub location: Location,
+    pub attrs: Attributes,
     pub statements: Vec<Ast>,
     pub is_global: bool,
 }
@@ -44,6 +47,7 @@ pub enum BranchKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Branch {
     pub location: Location,
+    pub attrs: Attributes,
     pub kind: BranchKind,
 }
 
@@ -135,6 +139,7 @@ impl From<Expression> for Ast {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
+    pub attrs: Attributes,
     pub identifier: Ident,
     pub return_type: TypeSpec,
     pub parameters: Vec<Ast>,
@@ -150,6 +155,7 @@ impl From<FunctionDef> for Ast {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
+    pub attrs: Attributes,
     pub identifier: Ident,
     pub is_external: bool,
     pub body: Option<Block>,
@@ -430,6 +436,11 @@ impl Ast {
             Self::Block(node) => node.location,
             Self::Value(node) => node.location,
         }
+    }
+
+    pub fn apply_attributes(&mut self, attrs: attributes::Attributes) -> Result<(), Message> {
+        let mut visitor = attributes::AttributesApply { attrs };
+        self.accept_mut(&mut visitor)
     }
 }
 

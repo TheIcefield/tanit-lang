@@ -1,4 +1,5 @@
 use tanitc_ast::{
+    attributes::{self, Attributes},
     Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
     UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
 };
@@ -52,6 +53,7 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
+            attrs: Attributes::default(),
             kind: BranchKind::Loop { body },
         }))
     }
@@ -66,6 +68,7 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
+            attrs: Attributes::default(),
             kind: BranchKind::While { body, condition },
         }))
     }
@@ -80,6 +83,7 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
+            attrs: Attributes::default(),
             kind: BranchKind::If { condition, body },
         }))
     }
@@ -97,6 +101,7 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
+            attrs: Attributes::default(),
             kind: BranchKind::Else { body },
         }))
     }
@@ -979,22 +984,45 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
+    fn parse_attributes(&mut self) -> Result<Attributes, Message> {
+        let mut attrs = Attributes::default();
+        let next = self.peek_token();
+
+        match next.lexem {
+            Lexem::KwSafe => {
+                self.get_token();
+                attrs.safety = Some(attributes::Safety::Safe);
+            }
+            Lexem::KwUnsafe => {
+                self.get_token();
+                attrs.safety = Some(attributes::Safety::Unsafe);
+            }
+            _ => {}
+        }
+
+        Ok(attrs)
+    }
+
     fn parse_block_internal(&mut self, block: &mut Block) -> Result<(), Message> {
         block.location = self.get_location();
 
         loop {
             let next = self.peek_token();
 
+            if matches!(next.lexem, Lexem::Rcb | Lexem::EndOfFile) {
+                break;
+            }
+
+            if next.lexem == Lexem::EndOfLine {
+                self.get_token();
+                continue;
+            }
+
+            let attrs = self.parse_attributes()?;
+
+            let next = self.peek_token();
+
             let statement = match next.lexem {
-                Lexem::Rcb | Lexem::EndOfFile => {
-                    break;
-                }
-
-                Lexem::EndOfLine => {
-                    self.get_token();
-                    continue;
-                }
-
                 Lexem::KwDef | Lexem::KwModule => self.parse_module_def(),
 
                 Lexem::KwFunc => self.parse_func_def(),
@@ -1033,7 +1061,10 @@ impl Parser {
             };
 
             match statement {
-                Ok(child) => block.statements.push(child),
+                Ok(mut child) => {
+                    child.apply_attributes(attrs)?;
+                    block.statements.push(child);
+                }
                 Err(err) => self.error(err),
             }
         }

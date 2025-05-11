@@ -73,6 +73,8 @@ pub enum Lexem {
     KwMut,
     KwConst,
     KwAs,
+    KwSafe,
+    KwUnsafe,
 
     Identifier(String),
     Integer(String),
@@ -202,6 +204,8 @@ impl std::fmt::Display for Lexem {
             Self::KwMut => write!(f, "mut"),
             Self::KwConst => write!(f, "const"),
             Self::KwAs => write!(f, "as"),
+            Self::KwSafe => write!(f, "safe"),
+            Self::KwUnsafe => write!(f, "unsafe"),
 
             Self::Identifier(val) => write!(f, "{}", val),
             Self::Integer(val) => write!(f, "{}", val),

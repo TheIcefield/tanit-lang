@@ -468,42 +468,46 @@ impl Lexer {
             text.push(self.get_char());
         }
 
-        match &text[..] {
-            "def" => Token::new(Lexem::KwDef, location),
-            "module" => Token::new(Lexem::KwModule, location),
-            "struct" => Token::new(Lexem::KwStruct, location),
-            "union" => Token::new(Lexem::KwUnion, location),
-            "variant" => Token::new(Lexem::KwVariant, location),
-            "enum" => Token::new(Lexem::KwEnum, location),
-            "var" => Token::new(Lexem::KwVar, location),
-            "mut" => Token::new(Lexem::KwMut, location),
-            "const" => Token::new(Lexem::KwConst, location),
-            "alias" => Token::new(Lexem::KwAlias, location),
-            "func" => Token::new(Lexem::KwFunc, location),
-            "if" => Token::new(Lexem::KwIf, location),
-            "else" => Token::new(Lexem::KwElse, location),
-            "loop" => Token::new(Lexem::KwLoop, location),
-            "do" => Token::new(Lexem::KwDo, location),
-            "while" => Token::new(Lexem::KwWhile, location),
-            "for" => Token::new(Lexem::KwFor, location),
-            "continue" => Token::new(Lexem::KwContinue, location),
-            "break" => Token::new(Lexem::KwBreak, location),
-            "return" => Token::new(Lexem::KwReturn, location),
-            "extern" => Token::new(Lexem::KwExtern, location),
-            "static" => Token::new(Lexem::KwStatic, location),
-            "use" => Token::new(Lexem::KwUse, location),
-            "super" => Token::new(Lexem::KwSuper, location),
-            "self" => Token::new(Lexem::KwSelf, location),
-            "crate" => Token::new(Lexem::KwCrate, location),
-            "as" => Token::new(Lexem::KwAs, location),
-            _ => Token::new(Lexem::Identifier(text), location),
-        }
+        let lexem = match &text[..] {
+            "def" => Lexem::KwDef,
+            "module" => Lexem::KwModule,
+            "struct" => Lexem::KwStruct,
+            "union" => Lexem::KwUnion,
+            "variant" => Lexem::KwVariant,
+            "enum" => Lexem::KwEnum,
+            "var" => Lexem::KwVar,
+            "mut" => Lexem::KwMut,
+            "const" => Lexem::KwConst,
+            "alias" => Lexem::KwAlias,
+            "func" => Lexem::KwFunc,
+            "if" => Lexem::KwIf,
+            "else" => Lexem::KwElse,
+            "loop" => Lexem::KwLoop,
+            "do" => Lexem::KwDo,
+            "while" => Lexem::KwWhile,
+            "for" => Lexem::KwFor,
+            "continue" => Lexem::KwContinue,
+            "break" => Lexem::KwBreak,
+            "return" => Lexem::KwReturn,
+            "extern" => Lexem::KwExtern,
+            "static" => Lexem::KwStatic,
+            "use" => Lexem::KwUse,
+            "super" => Lexem::KwSuper,
+            "self" => Lexem::KwSelf,
+            "crate" => Lexem::KwCrate,
+            "as" => Lexem::KwAs,
+            "safe" => Lexem::KwSafe,
+            "unsafe" => Lexem::KwUnsafe,
+            _ => Lexem::Identifier(text),
+        };
+
+        Token::new(lexem, location)
     }
 }
 
 #[test]
 fn lexer_test() {
-    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha";
+    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha safe unsafe";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
@@ -559,6 +563,16 @@ fn lexer_test() {
             Lexem::Identifier("alpha".to_string()),
             Location { row: 2, col: 10 }
         )
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwSafe, Location { row: 2, col: 16 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwUnsafe, Location { row: 2, col: 21 })
     );
 }
 
