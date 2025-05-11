@@ -1,0 +1,10 @@
+union U1 {
+    f1: i32
+    f2: f32
+}
+
+func main() {
+    unsafe {
+        var u = U1 { f1: 0 }
+    }
+}
