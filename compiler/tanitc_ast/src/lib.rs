@@ -438,6 +438,26 @@ impl Ast {
         }
     }
 
+    pub fn name(&self) -> &'static str {
+        match self {
+            Ast::ModuleDef(_) => "module definition",
+            Ast::StructDef(_) => "struct definition",
+            Ast::UnionDef(_) => "union definition",
+            Ast::VariantDef(_) => "variant definition",
+            Ast::EnumDef(_) => "enum definition",
+            Ast::FuncDef(_) => "function definition",
+            Ast::VariableDef(_) => "variable definition",
+            Ast::AliasDef(_) => "alias definition",
+            Ast::Expression(_) => "expression",
+            Ast::BranchStmt(_) => "branching",
+            Ast::ControlFlow(cf) => cf.kind.to_str(),
+            Ast::TypeSpec(_) => "type specification",
+            Ast::Use(_) => "using",
+            Ast::Block(_) => "block",
+            Ast::Value(_) => "value",
+        }
+    }
+
     pub fn apply_attributes(&mut self, attrs: attributes::Attributes) -> Result<(), Message> {
         let mut visitor = attributes::AttributesApply { attrs };
         self.accept_mut(&mut visitor)

@@ -178,11 +178,7 @@ impl VisitorMut for Analyzer {
         self.scope.push(ScopeUnit::Func(func_def.identifier));
 
         if let Some(body) = &mut func_def.body {
-            if let Ast::Block(block) = body.as_mut() {
-                for stmt in block.statements.iter_mut() {
-                    stmt.accept_mut(self)?;
-                }
-            }
+            body.accept_mut(self)?;
         }
 
         self.scope.pop();
@@ -1190,6 +1186,25 @@ impl Analyzer {
 impl Analyzer {
     fn analyze_global_block(&mut self, block: &mut Block) -> Result<(), Message> {
         for n in block.statements.iter_mut() {
+            let is_denied = matches!(
+                n,
+                Ast::ControlFlow(_)
+                    | Ast::Block(_)
+                    | Ast::Value(_)
+                    | Ast::BranchStmt(_)
+                    | Ast::Expression(_)
+                    | Ast::TypeSpec(_)
+            );
+
+            if is_denied {
+                self.scope.pop();
+
+                return Err(Message {
+                    location: n.location(),
+                    text: format!("Node \"{}\" is not allowed in global scope", n.name()),
+                });
+            }
+
             if let Err(err) = n.accept_mut(self) {
                 self.error(err);
             }
@@ -1204,6 +1219,25 @@ impl Analyzer {
         self.scope.push(ScopeUnit::Block(cnt));
 
         for n in block.statements.iter_mut() {
+            let is_denied = matches!(
+                n,
+                Ast::StructDef(_)
+                    | Ast::UnionDef(_)
+                    | Ast::VariantDef(_)
+                    | Ast::FuncDef(_)
+                    | Ast::AliasDef(_)
+                    | Ast::EnumDef(_)
+            );
+
+            if is_denied {
+                self.scope.pop();
+
+                return Err(Message {
+                    location: n.location(),
+                    text: format!("Node \"{}\" is not allowed in local scope", n.name()),
+                });
+            }
+
             if let Err(err) = n.accept_mut(self) {
                 self.error(err);
             }
