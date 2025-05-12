@@ -4,19 +4,13 @@ use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
 use tanitc_ast::Ast;
 use tanitc_codegen::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
+use tanitc_options::CompileOptions;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
 
 use lazy_static::lazy_static;
 
 pub mod ast;
-
-#[derive(Clone, Copy, Default)]
-pub struct CompileOptions {
-    pub verbose_tokens: bool,
-    pub dump_ast: bool,
-    pub dump_symbol_table: bool,
-}
 
 #[derive(Default, Clone)]
 enum UnitProcessState {
@@ -157,7 +151,7 @@ impl Unit {
 
         print!("Analyzing: \"{}\"... ", &self.path);
 
-        let mut analyzer = Analyzer::new();
+        let mut analyzer = Analyzer::with_options(get_compile_options());
         self.symbol_table = Self::analyze_program(self.ast.as_mut().unwrap(), &mut analyzer);
 
         if analyzer.has_errors() || self.symbol_table.is_none() {

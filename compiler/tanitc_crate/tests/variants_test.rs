@@ -1,6 +1,7 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::CodeGenStream;
 use tanitc_lexer::Lexer;
+use tanitc_options::CompileOptions;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
 
@@ -35,7 +36,12 @@ fn variant_work_test() {
     }
 
     {
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions {
+            allow_variants: true,
+            ..Default::default()
+        };
+
+        let mut analyzer = Analyzer::with_options(compile_options);
         program.accept_mut(&mut analyzer).unwrap();
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
@@ -204,7 +210,12 @@ fn variant_in_module_work_test() {
     }
 
     {
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions {
+            allow_variants: true,
+            ..Default::default()
+        };
+
+        let mut analyzer = Analyzer::with_options(compile_options);
         program.accept_mut(&mut analyzer).unwrap();
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
@@ -331,5 +342,40 @@ fn variant_in_module_work_test() {
 
         let source_res = String::from_utf8(source_buffer).unwrap();
         assert_str_eq!(SOURCE_EXPECTED, source_res);
+    }
+}
+
+#[test]
+fn denied_variants_test() {
+    const SRC_TEXT: &str = "\nvariant MyVariant\
+                            \n{\
+                            \n    f1\
+                            \n    f2(i32, i32)\
+                            \n    f3 {\
+                            \n        x: i32\
+                            \n        y: f32\
+                            \n    }\
+                            \n}\
+                            \nfunc main() {\
+                            \n    var v1 = MyVariant::f1\
+                            \n    var v3 = MyVariant::f3 {\
+                            \n                 x: 4,\
+                            \n                 y: 7.5\
+                            \n             }\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
+
+    {
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        assert!(analyzer.has_errors());
     }
 }

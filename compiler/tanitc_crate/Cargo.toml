@@ -17,3 +17,4 @@ tanitc_serializer = { path = "../tanitc_serializer" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_ident = { path = "../tanitc_ident" }
 tanitc_ty = { path = "../tanitc_ty" }
+tanitc_options = { path = "../tanitc_options" }
