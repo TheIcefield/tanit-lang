@@ -47,7 +47,6 @@ pub enum BranchKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Branch {
     pub location: Location,
-    pub attrs: Attributes,
     pub kind: BranchKind,
 }
 

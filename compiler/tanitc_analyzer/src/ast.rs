@@ -1,9 +1,12 @@
+use crate::scope::ScopeUnitKind;
+
 use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
 
 use tanitc_ast::{
-    self, variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow,
-    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
-    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
+    self, attributes::Safety, variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam,
+    ControlFlow, ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef,
+    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::{location::Location, token::Lexem};
@@ -23,7 +26,12 @@ impl VisitorMut for Analyzer {
 
         self.add_symbol(self.create_symbol(module_def.identifier, SymbolData::ModuleDef));
 
-        self.scope.push(ScopeUnit::Module(module_def.identifier));
+        let safety = self.get_current_safety();
+
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Module(module_def.identifier),
+            safety: module_def.attrs.safety.unwrap_or(safety),
+        });
 
         if let Some(body) = &mut module_def.body {
             self.visit_block(body)?;
@@ -42,7 +50,10 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit::Struct(struct_def.identifier));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Struct(struct_def.identifier),
+            safety: self.get_current_safety(),
+        });
         for internal in struct_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
@@ -72,7 +83,10 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit::Union(union_def.identifier));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Union(union_def.identifier),
+            safety: self.get_current_safety(),
+        });
         for internal in union_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
@@ -131,7 +145,11 @@ impl VisitorMut for Analyzer {
 
         self.add_symbol(self.create_symbol(enum_def.identifier, SymbolData::EnumDef));
 
-        self.scope.push(ScopeUnit::Enum(enum_def.identifier));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Enum(enum_def.identifier),
+            safety: self.get_current_safety(),
+        });
+
         for comp in components.iter() {
             self.add_symbol(self.create_symbol(
                 comp.0,
@@ -154,7 +172,12 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit::Func(func_def.identifier));
+        let safety = self.get_current_safety();
+
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Func(func_def.identifier),
+            safety,
+        });
 
         let mut parameters = Vec::<(Ident, Type)>::new();
         for p in func_def.parameters.iter_mut() {
@@ -175,7 +198,10 @@ impl VisitorMut for Analyzer {
             },
         ));
 
-        self.scope.push(ScopeUnit::Func(func_def.identifier));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Func(func_def.identifier),
+            safety,
+        });
 
         if let Some(body) = &mut func_def.body {
             body.accept_mut(self)?;
@@ -242,7 +268,9 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
-        fn analyze_body(body: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
+        let safety = self.get_current_safety();
+
+        let analyze_body = |body: &mut Ast, analyzer: &mut Analyzer| -> Result<(), Message> {
             if let Ast::Block(node) = body {
                 for stmt in node.statements.iter_mut() {
                     stmt.accept_mut(analyzer)?;
@@ -250,20 +278,24 @@ impl VisitorMut for Analyzer {
             }
 
             Ok(())
-        }
+        };
 
-        fn analyze_condition(condition: &mut Ast, analyzer: &mut Analyzer) -> Result<(), Message> {
-            if let Ast::Expression(node) = condition {
-                analyzer.visit_expression(node)?;
-            }
+        let analyze_condition =
+            |condition: &mut Ast, analyzer: &mut Analyzer| -> Result<(), Message> {
+                if let Ast::Expression(node) = condition {
+                    analyzer.visit_expression(node)?;
+                }
 
-            Ok(())
-        }
+                Ok(())
+            };
 
         match &mut branch.kind {
             BranchKind::While { body, condition } => {
                 let cnt = self.counter();
-                self.scope.push(ScopeUnit::Loop(cnt));
+                self.scope.push(ScopeUnit {
+                    kind: ScopeUnitKind::Loop(cnt),
+                    safety,
+                });
 
                 condition.accept_mut(self)?;
 
@@ -276,7 +308,10 @@ impl VisitorMut for Analyzer {
             }
             BranchKind::Loop { body } => {
                 let cnt = self.counter();
-                self.scope.push(ScopeUnit::Loop(cnt));
+                self.scope.push(ScopeUnit {
+                    kind: ScopeUnitKind::Loop(cnt),
+                    safety,
+                });
 
                 analyze_body(body.as_mut(), self)?;
 
@@ -302,7 +337,7 @@ impl VisitorMut for Analyzer {
         let is_in_func = {
             let mut flag = false;
             for s in self.scope.iter().rev() {
-                if matches!(s, ScopeUnit::Func(_)) {
+                if matches!(s.kind, ScopeUnitKind::Func(_)) {
                     flag = true;
                     break;
                 }
@@ -314,7 +349,7 @@ impl VisitorMut for Analyzer {
         let is_in_loop = {
             let mut flag = false;
             for s in self.scope.iter().rev() {
-                if matches!(s, ScopeUnit::Loop(_)) {
+                if matches!(s.kind, ScopeUnitKind::Loop(_)) {
                     flag = true;
                     break;
                 }
@@ -865,7 +900,10 @@ impl Analyzer {
 
             if s.scope.0.len() < 2 {
                 variant_ident = None;
-            } else if let Some(ScopeUnit::Variant(variant_id)) = s.scope.0.get(s.scope.0.len() - 2)
+            } else if let Some(ScopeUnit {
+                kind: ScopeUnitKind::Variant(variant_id),
+                ..
+            }) = s.scope.0.get(s.scope.0.len() - 2)
             {
                 variant_ident = Some(*variant_id);
             }
@@ -1216,7 +1254,12 @@ impl Analyzer {
     fn analyze_local_block(&mut self, block: &mut Block) -> Result<(), Message> {
         let cnt = self.counter();
 
-        self.scope.push(ScopeUnit::Block(cnt));
+        let safety = self.get_current_safety();
+
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Block(cnt),
+            safety: block.attrs.safety.unwrap_or(safety),
+        });
 
         for n in block.statements.iter_mut() {
             let is_denied = matches!(
@@ -1416,13 +1459,20 @@ impl Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit::Variant(variant_def.identifier));
+        let safety = self.get_current_safety();
+
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Variant(variant_def.identifier),
+            safety,
+        });
+
         for internal in variant_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
 
-        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields)?;
-        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields)?;
+        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields, safety)?;
+
+        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields, safety)?;
 
         self.scope.pop();
         self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::StructDef));
@@ -1434,10 +1484,14 @@ impl Analyzer {
         &mut self,
         variant_id: Ident,
         fields: &BTreeMap<Ident, VariantField>,
+        safety: Safety,
     ) -> Result<(), Message> {
         let data_kind_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
 
-        self.scope.push(ScopeUnit::Enum(data_kind_id));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Enum(data_kind_id),
+            safety,
+        });
 
         for (field_num, (field_id, _)) in fields.iter().enumerate() {
             self.add_symbol(self.create_symbol(
@@ -1463,8 +1517,12 @@ impl Analyzer {
         &mut self,
         field_id: Ident,
         subfields: &BTreeMap<Ident, TypeSpec>,
+        safety: Safety,
     ) -> Result<(), Message> {
-        self.scope.push(ScopeUnit::Struct(field_id));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Struct(field_id),
+            safety,
+        });
 
         for (subfield_id, subfield_type) in subfields.iter() {
             self.add_symbol(self.create_symbol(
@@ -1486,8 +1544,12 @@ impl Analyzer {
         &mut self,
         field_id: Ident,
         components: &[TypeSpec],
+        safety: Safety,
     ) -> Result<(), Message> {
-        self.scope.push(ScopeUnit::Struct(field_id));
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Struct(field_id),
+            safety,
+        });
 
         for (field_num, field_type) in components.iter().enumerate() {
             let subfield_id = Ident::from(format!("_{field_num}"));
@@ -1509,15 +1571,16 @@ impl Analyzer {
     fn create_variant_fields_symbols(
         &mut self,
         fields: &BTreeMap<Ident, VariantField>,
+        safety: Safety,
     ) -> Result<(), Message> {
         for (field_id, field_data) in fields.iter() {
             match field_data {
                 VariantField::Common => self.create_variant_common_field_symbol(*field_id)?,
                 VariantField::StructLike(subfields) => {
-                    self.create_variant_struct_field_symbol(*field_id, subfields)?
+                    self.create_variant_struct_field_symbol(*field_id, subfields, safety)?
                 }
                 VariantField::TupleLike(components) => {
-                    self.create_variant_tuple_field_symbol(*field_id, components)?
+                    self.create_variant_tuple_field_symbol(*field_id, components, safety)?
                 }
             }
         }
@@ -1528,11 +1591,15 @@ impl Analyzer {
         &mut self,
         variant_id: Ident,
         fields: &BTreeMap<Ident, VariantField>,
+        safety: Safety,
     ) -> Result<(), Message> {
         let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
 
-        self.scope.push(ScopeUnit::Union(union_id));
-        self.create_variant_fields_symbols(fields)?;
+        self.scope.push(ScopeUnit {
+            kind: ScopeUnitKind::Union(union_id),
+            safety,
+        });
+        self.create_variant_fields_symbols(fields, safety)?;
         self.scope.pop();
 
         Ok(())
