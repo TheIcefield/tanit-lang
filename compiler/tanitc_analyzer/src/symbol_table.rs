@@ -3,7 +3,7 @@ use tanitc_ident::Ident;
 use std::collections::HashMap;
 
 use crate::{
-    scope::{Scope, ScopeUnit},
+    scope::{Scope, ScopeUnitKind},
     symbol::Symbol,
 };
 
@@ -42,11 +42,11 @@ impl SymbolTable {
         let mut ids_full: Vec<Ident> = vec![];
 
         for scope_unit in scope.0.iter() {
-            if let ScopeUnit::Func(_) = scope_unit {
+            if let ScopeUnitKind::Func(_) = scope_unit.kind {
                 continue;
             }
 
-            let id = scope_unit.get_id();
+            let id = scope_unit.kind.get_id();
             if let Some(id) = id {
                 ids_full.push(id);
             }
@@ -73,7 +73,7 @@ impl SymbolTable {
                 }
 
                 let scope_unit = &s.scope.0[iter];
-                let scope_unit_name = scope_unit.get_id();
+                let scope_unit_name = scope_unit.kind.get_id();
                 scope_unit_name == Some(*id)
             });
         }

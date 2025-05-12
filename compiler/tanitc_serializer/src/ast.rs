@@ -206,8 +206,6 @@ impl Visitor for XmlWriter<'_> {
             BranchKind::While { body, condition } => {
                 self.begin_tag("while")?;
 
-                self.serialize_attributes(&branch.attrs)?;
-
                 self.begin_tag("condition")?;
                 condition.accept(self)?;
                 self.end_tag()?;
@@ -219,16 +217,12 @@ impl Visitor for XmlWriter<'_> {
             BranchKind::Loop { body } => {
                 self.begin_tag("loop")?;
 
-                self.serialize_attributes(&branch.attrs)?;
-
                 body.accept(self)?;
 
                 self.end_tag()?;
             }
             BranchKind::If { condition, body } => {
                 self.begin_tag("if")?;
-
-                self.serialize_attributes(&branch.attrs)?;
 
                 self.begin_tag("condition")?;
                 condition.accept(self)?;
@@ -243,7 +237,6 @@ impl Visitor for XmlWriter<'_> {
             BranchKind::Else { body } => {
                 self.begin_tag("else")?;
 
-                self.serialize_attributes(&branch.attrs)?;
                 body.accept(self)?;
 
                 self.end_tag()?;

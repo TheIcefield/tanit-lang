@@ -1,11 +1,12 @@
 use std::fmt::Debug;
 
+use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
 
 pub type Counter = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScopeUnit {
+pub enum ScopeUnitKind {
     Block(Counter),
     Loop(Counter),
     Module(Ident),
@@ -16,7 +17,7 @@ pub enum ScopeUnit {
     Func(Ident),
 }
 
-impl ScopeUnit {
+impl ScopeUnitKind {
     pub fn can_fold_symbols(&self) -> bool {
         matches!(
             self,
@@ -35,6 +36,12 @@ impl ScopeUnit {
             Self::Block(_) | Self::Loop(_) => None,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScopeUnit {
+    pub kind: ScopeUnitKind,
+    pub safety: Safety,
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]

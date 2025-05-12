@@ -53,7 +53,6 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
-            attrs: Attributes::default(),
             kind: BranchKind::Loop { body },
         }))
     }
@@ -68,7 +67,6 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
-            attrs: Attributes::default(),
             kind: BranchKind::While { body, condition },
         }))
     }
@@ -83,7 +81,6 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
-            attrs: Attributes::default(),
             kind: BranchKind::If { condition, body },
         }))
     }
@@ -101,7 +98,6 @@ impl Parser {
 
         Ok(Ast::from(Branch {
             location,
-            attrs: Attributes::default(),
             kind: BranchKind::Else { body },
         }))
     }

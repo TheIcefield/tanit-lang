@@ -1,3 +1,4 @@
+use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
@@ -56,6 +57,14 @@ impl Analyzer {
         let old = self.counter;
         self.counter += 1;
         old
+    }
+
+    pub fn get_current_safety(&self) -> Safety {
+        if let Some(unit) = self.scope.0.last() {
+            unit.safety
+        } else {
+            Safety::default()
+        }
     }
 
     pub fn get_table(&self) -> &SymbolTable {
@@ -142,7 +151,7 @@ fn scope_test() {
      * }
      */
 
-    use scope::ScopeUnit;
+    use scope::{ScopeUnit, ScopeUnitKind};
 
     let main_mod_id = Ident::from("Main".to_string());
     let bar_id = Ident::from("bar".to_string());
@@ -151,11 +160,18 @@ fn scope_test() {
     let baz_id = Ident::from("baz".to_string());
 
     let mut analyzer = Analyzer::new();
-    analyzer.scope.push(ScopeUnit::Block(0)); // block-0
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Block(0),
+        safety: Safety::Safe,
+    }); // block-0
 
     analyzer.add_symbol(analyzer.create_symbol(main_mod_id, SymbolData::ModuleDef));
 
-    analyzer.scope.push(ScopeUnit::Module(main_mod_id)); // block-0/Main
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Module(main_mod_id),
+        safety: Safety::Safe,
+    }); // block-0/Main
+
     analyzer.add_symbol(analyzer.create_symbol(
         main_fn_id,
         SymbolData::FunctionDef {
@@ -174,7 +190,10 @@ fn scope_test() {
         },
     ));
 
-    analyzer.scope.push(ScopeUnit::Func(main_fn_id)); // block-0/Main/main
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Func(main_fn_id),
+        safety: Safety::Safe,
+    }); // block-0/Main/main
     analyzer.add_symbol(analyzer.create_symbol(
         var_id,
         SymbolData::VariableDef {
@@ -198,7 +217,10 @@ fn scope_test() {
     assert!(!analyzer.has_symbol(var_id));
 
     // check if var unaccessible in bar
-    analyzer.scope.push(ScopeUnit::Func(bar_id));
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Func(bar_id),
+        safety: Safety::Safe,
+    });
     assert!(!analyzer.has_symbol(var_id));
 
     // check if bar accessible in bar
@@ -217,7 +239,7 @@ fn symbol_access_test() {
      * }
      */
 
-    use scope::ScopeUnit;
+    use scope::{ScopeUnit, ScopeUnitKind};
 
     let m1_id = Ident::from("M1".to_string());
     let m2_id = Ident::from("M2".to_string());
@@ -230,7 +252,10 @@ fn symbol_access_test() {
 
     analyzer.add_symbol(analyzer.create_symbol(m2_id, SymbolData::ModuleDef));
 
-    analyzer.scope.push(ScopeUnit::Module(m1_id)); // /M1
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Module(m1_id),
+        safety: Safety::Safe,
+    }); // /M1
     analyzer.add_symbol(analyzer.create_symbol(
         f1_id,
         SymbolData::FunctionDef {
@@ -250,7 +275,10 @@ fn symbol_access_test() {
     ));
 
     analyzer.scope.pop(); // /
-    analyzer.scope.push(ScopeUnit::Module(m2_id)); // /M2
+    analyzer.scope.push(ScopeUnit {
+        kind: ScopeUnitKind::Module(m2_id),
+        safety: Safety::Safe,
+    }); // /M2
 
     analyzer.add_symbol(analyzer.create_symbol(
         f2_id,

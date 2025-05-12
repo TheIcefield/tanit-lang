@@ -10,7 +10,6 @@ pub struct Attributes {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Safety {
     #[default]
-    Inherited,
     Safe,
     Unsafe,
 }
@@ -20,7 +19,6 @@ impl Display for Safety {
         match self {
             Self::Safe => write!(f, "safe")?,
             Self::Unsafe => write!(f, "unsafe")?,
-            Self::Inherited => write!(f, "inherited")?,
         }
 
         Ok(())
@@ -44,8 +42,7 @@ impl super::VisitorMut for AttributesApply {
         Ok(())
     }
 
-    fn visit_branch(&mut self, branch: &mut crate::Branch) -> Result<(), Message> {
-        branch.attrs = self.attrs;
+    fn visit_branch(&mut self, _branch: &mut crate::Branch) -> Result<(), Message> {
         Ok(())
     }
 
