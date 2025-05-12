@@ -1,5 +1,6 @@
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
+use tanitc_options::CompileOptions;
 use tanitc_ty::Type;
 
 pub mod ast;
@@ -22,6 +23,7 @@ pub trait Analyze {
 pub struct Analyzer {
     pub table: SymbolTable,
     pub scope: Scope,
+    compile_options: CompileOptions,
     counter: Counter,
     errors: Errors,
     warnings: Warnings,
@@ -35,6 +37,18 @@ impl Analyzer {
             counter: 0,
             errors: Errors::new(),
             warnings: Warnings::new(),
+            compile_options: CompileOptions::default(),
+        }
+    }
+
+    pub fn with_options(compile_options: CompileOptions) -> Self {
+        Self {
+            table: SymbolTable::new(),
+            scope: Scope::new(),
+            counter: 0,
+            errors: Errors::new(),
+            warnings: Warnings::new(),
+            compile_options,
         }
     }
 

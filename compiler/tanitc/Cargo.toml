@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 tanitc_ast = { path = "../tanitc_ast" }
 tanitc_crate = { path = "../tanitc_crate" }
+tanitc_options = { path = "../tanitc_options" }

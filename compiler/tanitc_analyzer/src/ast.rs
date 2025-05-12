@@ -95,25 +95,15 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        if self.has_symbol(variant_def.identifier) {
-            return Err(Message::multiple_ids(
+        // TODO: variants #8
+        if self.compile_options.allow_variants {
+            self.analyze_variant_def(variant_def)
+        } else {
+            Err(Message::new(
                 variant_def.location,
-                variant_def.identifier,
-            ));
+                "Variants not supported in 0.1.0",
+            ))
         }
-
-        self.scope.push(ScopeUnit::Variant(variant_def.identifier));
-        for internal in variant_def.internals.iter_mut() {
-            internal.accept_mut(self)?;
-        }
-
-        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields)?;
-        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields)?;
-
-        self.scope.pop();
-        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::StructDef));
-
-        Ok(())
     }
 
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
@@ -923,7 +913,6 @@ impl Analyzer {
         let location = rhs.location();
 
         if let Some(variant_name) = variant_kind {
-            println!("enum_component_id: {enum_component_id}");
             Ok(Some(Expression {
                 location: rhs.location(),
                 kind: ExpressionKind::Term {
@@ -1385,6 +1374,28 @@ impl Analyzer {
 }
 
 impl Analyzer {
+    fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
+        if self.has_symbol(variant_def.identifier) {
+            return Err(Message::multiple_ids(
+                variant_def.location,
+                variant_def.identifier,
+            ));
+        }
+
+        self.scope.push(ScopeUnit::Variant(variant_def.identifier));
+        for internal in variant_def.internals.iter_mut() {
+            internal.accept_mut(self)?;
+        }
+
+        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields)?;
+        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields)?;
+
+        self.scope.pop();
+        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::StructDef));
+
+        Ok(())
+    }
+
     fn create_variant_data_kind_symbol(
         &mut self,
         variant_id: Ident,

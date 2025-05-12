@@ -1,4 +1,5 @@
-use tanitc_crate::{CompileOptions, Unit};
+use tanitc_crate::Unit;
+use tanitc_options::CompileOptions;
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -15,6 +16,8 @@ fn main() {
             compile_options.dump_ast = true;
         } else if argv[i] == "--dump-symtable" {
             compile_options.dump_symbol_table = true;
+        } else if argv[i] == "--allow-variants" {
+            compile_options.allow_variants = true;
         }
     }
 
