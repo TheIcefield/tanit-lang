@@ -3,13 +3,13 @@ use crate::scope::ScopeUnitKind;
 use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
 
 use tanitc_ast::{
-    self, attributes::Safety, variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam,
-    ControlFlow, ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
-    VisitorMut,
+    self, attributes::Safety, expression_utils::BinaryOperation, variant_utils, AliasDef, Ast,
+    Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef, Expression,
+    ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, ValueKind,
+    VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::{location::Location, token::Lexem};
+use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
@@ -612,9 +612,12 @@ impl Analyzer {
                 lhs,
                 rhs,
             } => match operation {
-                Lexem::Neq | Lexem::Eq | Lexem::Lt | Lexem::Lte | Lexem::Gt | Lexem::Gte => {
-                    Type::Bool
-                }
+                BinaryOperation::LogicalNe
+                | BinaryOperation::LogicalEq
+                | BinaryOperation::LogicalLt
+                | BinaryOperation::LogicalLe
+                | BinaryOperation::LogicalGt
+                | BinaryOperation::LogicalGe => Type::Bool,
 
                 _ => {
                     let lhs_type = self.get_type(lhs);
@@ -695,6 +698,7 @@ impl Analyzer {
     fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
         if let Ast::Expression(node) = expr_node {
             let location = node.location;
+
             if let ExpressionKind::Binary {
                 operation,
                 lhs,
@@ -704,67 +708,42 @@ impl Analyzer {
                 self.convert_expr_node(lhs)?;
                 self.convert_expr_node(rhs)?;
 
-                let is_conversion = *operation == Lexem::KwAs;
-
                 let lhs_type = self.get_type(lhs);
 
-                if !is_conversion {
-                    let rhs_type = self.get_type(rhs);
+                let rhs_type = self.get_type(rhs);
 
-                    let func_name_str = format!(
-                        "__tanit_compiler__{}_{}_{}",
-                        match operation {
-                            Lexem::Plus => "add",
-                            Lexem::Minus => "sub",
-                            Lexem::Star => "mul",
-                            Lexem::Slash => "div",
-                            Lexem::Percent => "mod",
-                            Lexem::LShift => "lshift",
-                            Lexem::RShift => "rshift",
-                            Lexem::Stick => "or",
-                            Lexem::Ampersand => "and",
-                            _ => return Err(Message::new(location, "Unexpected operation")),
-                        },
-                        lhs_type,
-                        rhs_type
-                    );
+                let func_name_str = format!(
+                    "__tanit_compiler__{}_{}_{}",
+                    match operation {
+                        BinaryOperation::Add => "add",
+                        BinaryOperation::Sub => "sub",
+                        BinaryOperation::Mul => "mul",
+                        BinaryOperation::Div => "div",
+                        BinaryOperation::Mod => "mod",
+                        BinaryOperation::ShiftL => "lshift",
+                        BinaryOperation::ShiftR => "rshift",
+                        BinaryOperation::BitwiseOr => "or",
+                        BinaryOperation::BitwiseAnd => "and",
+                        _ => return Err(Message::new(location, "Unexpected operation")),
+                    },
+                    lhs_type,
+                    rhs_type
+                );
 
-                    let func_id = Ident::from(func_name_str);
+                let func_id = Ident::from(func_name_str);
 
-                    *expr_node = Ast::from(Value {
-                        location,
-                        kind: ValueKind::Call {
-                            identifier: func_id,
-                            arguments: vec![
-                                CallParam::Positional(0, lhs.clone()),
-                                CallParam::Positional(1, rhs.clone()),
-                            ],
-                        },
-                    });
-                } else {
-                    let rhs_type = if let Ast::Value(Value {
-                        kind: ValueKind::Identifier(id),
-                        location,
-                    }) = rhs.as_ref()
-                    {
-                        TypeSpec {
-                            location: *location,
-                            info: tanitc_ast::TypeInfo::default(),
-                            ty: Type::from(*id),
-                        }
-                    } else {
-                        return Err(Message::unreachable(location, "expected type-spec"));
-                    };
-                    *expr_node = Ast::from(Expression {
-                        location,
-                        kind: ExpressionKind::Binary {
-                            operation: Lexem::KwAs,
-                            lhs: lhs.clone(),
-                            rhs: Box::new(Ast::TypeSpec(rhs_type)),
-                        },
-                    });
-                };
+                *expr_node = Ast::from(Value {
+                    location,
+                    kind: ValueKind::Call {
+                        identifier: func_id,
+                        arguments: vec![
+                            CallParam::Positional(0, lhs.clone()),
+                            CallParam::Positional(1, rhs.clone()),
+                        ],
+                    },
+                });
             }
+
             Ok(())
         } else {
             unreachable!()
@@ -780,24 +759,24 @@ impl Analyzer {
 
     fn analyze_binary_expr(
         &mut self,
-        operation: &Lexem,
+        operation: &BinaryOperation,
         lhs: &mut Ast,
         rhs: &mut Ast,
     ) -> Result<Option<Expression>, Message> {
         rhs.accept_mut(self)?;
         let rhs_type = self.get_type(rhs);
 
-        let does_mutate = *operation == Lexem::Assign
-            || *operation == Lexem::SubAssign
-            || *operation == Lexem::AddAssign
-            || *operation == Lexem::DivAssign
-            || *operation == Lexem::ModAssign
-            || *operation == Lexem::MulAssign
-            || *operation == Lexem::AndAssign
-            || *operation == Lexem::OrAssign
-            || *operation == Lexem::XorAssign
-            || *operation == Lexem::LShiftAssign
-            || *operation == Lexem::RShiftAssign;
+        let does_mutate = *operation == BinaryOperation::Assign
+            || *operation == BinaryOperation::SubAssign
+            || *operation == BinaryOperation::AddAssign
+            || *operation == BinaryOperation::DivAssign
+            || *operation == BinaryOperation::ModAssign
+            || *operation == BinaryOperation::MulAssign
+            || *operation == BinaryOperation::BitwiseAndAssign
+            || *operation == BinaryOperation::BitwiseOrAssign
+            || *operation == BinaryOperation::BitwiseXorAssign
+            || *operation == BinaryOperation::BitwiseShiftLAssign
+            || *operation == BinaryOperation::BitwiseShiftRAssign;
 
         if let Ast::VariableDef(node) = lhs {
             if self.has_symbol(node.identifier) {

@@ -1,7 +1,9 @@
 use tanitc_analyzer::Analyzer;
-use tanitc_ast::{Ast, ControlFlow, ControlFlowKind, ExpressionKind};
+use tanitc_ast::{
+    expression_utils::BinaryOperation, Ast, ControlFlow, ControlFlowKind, ExpressionKind,
+};
 use tanitc_codegen::CodeGenStream;
-use tanitc_lexer::{token::Lexem, Lexer};
+use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::XmlWriter;
 
@@ -160,7 +162,7 @@ fn functions_test() {
                 rhs,
             } = &node.kind
             {
-                assert_eq!(*operation, Lexem::Assign);
+                assert_eq!(*operation, BinaryOperation::Assign);
                 (lhs.as_ref(), rhs.as_ref())
             } else {
                 panic!("Expression expected to be binary");
