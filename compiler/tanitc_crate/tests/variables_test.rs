@@ -1,7 +1,7 @@
-use tanitc_ast::{Ast, ExpressionKind, ValueKind};
+use tanitc_ast::{expression_utils::BinaryOperation, Ast, ExpressionKind, ValueKind};
 
 use tanitc_ident::Ident;
-use tanitc_lexer::{token::Lexem, Lexer};
+use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_ty::Type;
 
@@ -10,7 +10,6 @@ fn variables_test() {
     let main_id = Ident::from("main".to_string());
     let pi_id = Ident::from("PI".to_string());
     let radian_id = Ident::from("radian".to_string());
-    let i32_type_id = Ident::from("i32".to_string());
     let ceil_id = Ident::from("ceil".to_string());
 
     const SRC_TEXT: &str = "\nfunc main()
@@ -67,7 +66,7 @@ fn variables_test() {
             rhs,
         } = &node.kind
         {
-            assert_eq!(*operation, Lexem::Assign);
+            assert_eq!(*operation, BinaryOperation::Assign);
             (lhs.as_ref(), rhs.as_ref())
         } else {
             panic!("Expected binary expression");
@@ -83,7 +82,7 @@ fn variables_test() {
 
         if let Ast::Expression(node) = rhs {
             if let ExpressionKind::Binary { operation, .. } = &node.kind {
-                assert_eq!(*operation, Lexem::Slash);
+                assert_eq!(*operation, BinaryOperation::Div);
             } else {
                 panic!("expected binary expression")
             }
@@ -101,22 +100,14 @@ fn variables_test() {
             rhs,
         } = &node.kind
         {
-            assert_eq!(*operation, Lexem::Assign);
+            assert_eq!(*operation, BinaryOperation::Assign);
 
             if let Ast::Expression(node) = lhs.as_ref() {
-                let (lhs, rhs) = if let ExpressionKind::Binary {
-                    operation,
-                    lhs,
-                    rhs,
-                } = &node.kind
-                {
-                    assert_eq!(*operation, Lexem::KwAs);
-                    (lhs.as_ref(), rhs.as_ref())
-                } else {
-                    panic!("Binary expression expected")
+                let ExpressionKind::Conversion { lhs, ty } = &node.kind else {
+                    panic!("Expected conversion, actually: {:#?}", node.kind);
                 };
 
-                if let Ast::VariableDef(node) = lhs {
+                if let Ast::VariableDef(node) = lhs.as_ref() {
                     assert!(node.identifier == ceil_id);
                     assert!(!node.is_global);
                     assert!(!node.is_mutable);
@@ -124,15 +115,7 @@ fn variables_test() {
                     panic!("Expected variable definition")
                 }
 
-                if let Ast::Value(node) = rhs {
-                    if let ValueKind::Identifier(id) = &node.kind {
-                        assert!(*id == i32_type_id);
-                    } else {
-                        panic!("Expected identifier")
-                    }
-                } else {
-                    panic!("Expected value")
-                }
+                assert!(ty.get_type() == Type::I32);
             }
 
             let expr = if let Ast::Expression(node) = rhs.as_ref() {

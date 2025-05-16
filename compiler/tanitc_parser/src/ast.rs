@@ -1,5 +1,6 @@
 use tanitc_ast::{
     attributes::{self, Attributes},
+    expression_utils::BinaryOperation,
     Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
     UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
 };
@@ -313,16 +314,16 @@ impl Parser {
             } = &node.kind
             {
                 let new_op = match operation {
-                    Lexem::AddAssign => Some(Lexem::Plus),
-                    Lexem::SubAssign => Some(Lexem::Minus),
-                    Lexem::MulAssign => Some(Lexem::Star),
-                    Lexem::DivAssign => Some(Lexem::Slash),
-                    Lexem::ModAssign => Some(Lexem::Percent),
-                    Lexem::XorAssign => Some(Lexem::Xor),
-                    Lexem::AndAssign => Some(Lexem::Ampersand),
-                    Lexem::OrAssign => Some(Lexem::Stick),
-                    Lexem::LShiftAssign => Some(Lexem::LShift),
-                    Lexem::RShiftAssign => Some(Lexem::RShift),
+                    BinaryOperation::AddAssign => Some(Lexem::Plus),
+                    BinaryOperation::SubAssign => Some(Lexem::Minus),
+                    BinaryOperation::MulAssign => Some(Lexem::Star),
+                    BinaryOperation::DivAssign => Some(Lexem::Slash),
+                    BinaryOperation::ModAssign => Some(Lexem::Percent),
+                    BinaryOperation::BitwiseXorAssign => Some(Lexem::Xor),
+                    BinaryOperation::BitwiseAndAssign => Some(Lexem::Ampersand),
+                    BinaryOperation::BitwiseOrAssign => Some(Lexem::Stick),
+                    BinaryOperation::BitwiseShiftLAssign => Some(Lexem::LShift),
+                    BinaryOperation::BitwiseShiftRAssign => Some(Lexem::RShift),
                     _ => None,
                 };
 
@@ -334,9 +335,9 @@ impl Parser {
                             lhs.clone(),
                             Box::new(Ast::from(Expression {
                                 location,
-                                kind: ExpressionKind::new_binary(new_op, lhs.clone(), rhs.clone()),
+                                kind: ExpressionKind::new_binary(new_op, lhs.clone(), rhs.clone())?,
                             })),
-                        ),
+                        )?,
                     }));
                 }
             }
@@ -357,7 +358,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::Unary { operation, node },
+                    kind: ExpressionKind::new_unary(operation, node)?,
                 }))
             }
             Lexem::Integer(_) => Ok(Ast::from(Value {
@@ -522,7 +523,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -545,7 +546,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -568,7 +569,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -591,7 +592,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -614,7 +615,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -637,7 +638,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -660,7 +661,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -683,7 +684,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -706,7 +707,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -729,7 +730,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -752,7 +753,7 @@ impl Parser {
 
                 Ok(Ast::from(Expression {
                     location,
-                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs),
+                    kind: ExpressionKind::new_binary(operation, Box::new(lhs), rhs)?,
                 }))
             }
 
@@ -788,7 +789,7 @@ impl Parser {
                         operation,
                         Box::new(lhs),
                         Box::new(self.parse_expression()?),
-                    ),
+                    )?,
                 }))
             }
             _ => Ok(lhs),
@@ -1610,7 +1611,7 @@ impl Parser {
         if let Some(rhs) = rvalue {
             return Ok(Ast::from(Expression {
                 location,
-                kind: ExpressionKind::new_binary(Lexem::Assign, Box::new(var_node), Box::new(rhs)),
+                kind: ExpressionKind::new_binary(Lexem::Assign, Box::new(var_node), Box::new(rhs))?,
             }));
         }
 

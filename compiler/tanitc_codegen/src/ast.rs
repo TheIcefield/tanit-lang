@@ -1,10 +1,11 @@
 use tanitc_ast::{
-    AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value,
-    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    expression_utils::BinaryOperation, AliasDef, Ast, Block, Branch, BranchKind, CallParam,
+    ControlFlow, ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef,
+    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    Visitor,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::{location::Location, token::Lexem};
+use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
 use crate::{CodeGenMode, CodeGenStream};
@@ -294,7 +295,7 @@ impl CodeGenStream<'_> {
                 self.generate(node)?;
             }
             ExpressionKind::Binary {
-                operation: Lexem::Assign,
+                operation: BinaryOperation::Assign,
                 lhs,
                 rhs,
             } => {

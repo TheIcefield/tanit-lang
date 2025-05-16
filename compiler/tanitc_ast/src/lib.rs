@@ -1,4 +1,5 @@
 use attributes::Attributes;
+use expression_utils::{BinaryOperation, UnaryOperation};
 use tanitc_ident::Ident;
 use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
@@ -7,6 +8,7 @@ use tanitc_ty::Type;
 use std::collections::BTreeMap;
 
 pub mod attributes;
+pub mod expression_utils;
 pub mod variant_utils;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -101,11 +103,11 @@ impl From<EnumDef> for Ast {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExpressionKind {
     Unary {
-        operation: Lexem,
+        operation: UnaryOperation,
         node: Box<Ast>,
     },
     Binary {
-        operation: Lexem,
+        operation: BinaryOperation,
         lhs: Box<Ast>,
         rhs: Box<Ast>,
     },
@@ -464,14 +466,32 @@ impl Ast {
 }
 
 impl ExpressionKind {
-    pub fn new_binary(operation: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Self {
-        match operation {
-            Lexem::Dcolon => Self::Access { lhs, rhs },
+    pub fn new_unary(operator: Lexem, operand: Box<Ast>) -> Result<Self, Message> {
+        let operation = match UnaryOperation::try_from(operator) {
+            Ok(operation) => operation,
+            Err(err) => return Err(Message::new(operand.location(), &err)),
+        };
+
+        Ok(Self::Unary {
+            operation,
+            node: operand,
+        })
+    }
+
+    pub fn new_binary(operator: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Result<Self, Message> {
+        let operation = match BinaryOperation::try_from(operator) {
+            Ok(operation) => operation,
+            Err(err) => return Err(Message::new(lhs.location(), &err)),
+        };
+
+        Ok(match operation {
+            BinaryOperation::Access => Self::Access { lhs, rhs },
+            // BinaryOperation::Get => Self::Get { lhs, rhs },
             _ => Self::Binary {
                 operation,
                 lhs,
                 rhs,
             },
-        }
+        })
     }
 }
