@@ -44,7 +44,7 @@ fn if_in_global_scope_test() {
     let mut program = parser.parse_global_block().unwrap();
     {
         if parser.has_errors() {
-            panic!("{:?}", parser.get_errors());
+            panic!("{:#?}", parser.get_errors());
         }
     }
 

@@ -3,10 +3,12 @@ use crate::scope::ScopeUnitKind;
 use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
 
 use tanitc_ast::{
-    self, attributes::Safety, expression_utils::BinaryOperation, variant_utils, AliasDef, Ast,
-    Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef, Expression,
-    ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, ValueKind,
-    VariableDef, VariantDef, VariantField, VisitorMut,
+    self,
+    attributes::Safety,
+    expression_utils::{BinaryOperation, UnaryOperation},
+    variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow,
+    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
+    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -249,7 +251,7 @@ impl VisitorMut for Analyzer {
                 lhs,
                 rhs,
             } => self.analyze_binary_expr(operation, lhs.as_mut(), rhs.as_mut()),
-            ExpressionKind::Unary { node, .. } => self.analyze_unary_expr(node),
+            ExpressionKind::Unary { operation, node } => self.analyze_unary_expr(operation, node),
             ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
             ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),
             ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
@@ -629,7 +631,26 @@ impl Analyzer {
                     lhs_type
                 }
             },
-            ExpressionKind::Unary { node, .. } => self.get_type(node),
+            ExpressionKind::Unary { operation, node } => {
+                let node_type = self.get_type(node);
+
+                let (is_ref, is_mutable) = if *operation == UnaryOperation::Ref {
+                    (true, false)
+                } else if *operation == UnaryOperation::RefMut {
+                    (true, true)
+                } else {
+                    (false, false)
+                };
+
+                if is_ref {
+                    return Type::Ref {
+                        ref_to: Box::new(node_type),
+                        is_mutable,
+                    };
+                }
+
+                node_type
+            }
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Term { ty, .. } => ty.clone(),
@@ -638,7 +659,10 @@ impl Analyzer {
 
     fn get_value_type(&self, val: &Value) -> Type {
         match &val.kind {
-            ValueKind::Text(_) => Type::Ref(Box::new(Type::Str)),
+            ValueKind::Text(_) => Type::Ref {
+                ref_to: Box::new(Type::Str),
+                is_mutable: false,
+            },
             ValueKind::Decimal(_) => Type::F32,
             ValueKind::Integer(_) => Type::I32,
             ValueKind::Identifier(id) => {
@@ -752,8 +776,36 @@ impl Analyzer {
 }
 
 impl Analyzer {
-    fn analyze_unary_expr(&mut self, node: &mut Box<Ast>) -> Result<Option<Expression>, Message> {
+    fn analyze_unary_expr(
+        &mut self,
+        operation: &UnaryOperation,
+        node: &mut Box<Ast>,
+    ) -> Result<Option<Expression>, Message> {
         node.accept_mut(self)?;
+
+        let does_mutate = *operation == UnaryOperation::RefMut;
+
+        if let Ast::Value(Value {
+            location,
+            kind: ValueKind::Identifier(id),
+        }) = node.as_ref()
+        {
+            let Some(ss) = self.get_symbols(id) else {
+                return Err(Message::undefined_id(*location, *id));
+            };
+
+            let first = &ss[0];
+
+            if let SymbolData::VariableDef { is_mutable, .. } = &first.data {
+                if !*is_mutable && does_mutate {
+                    return Err(Message {
+                        location: *location,
+                        text: format!("Mutable reference to immutable variable \"{id}\""),
+                    });
+                }
+            }
+        }
+
         Ok(None)
     }
 
@@ -810,11 +862,25 @@ impl Analyzer {
             match &node.kind {
                 ValueKind::Identifier(id) => {
                     if let Some(s) = self.get_first_symbol(*id) {
-                        if let SymbolData::VariableDef { is_mutable, .. } = &s.data {
-                            if !*is_mutable && does_mutate {
+                        if let SymbolData::VariableDef {
+                            is_mutable,
+                            var_type,
+                            ..
+                        } = &s.data
+                        {
+                            if let Type::Ref { is_mutable, .. } = var_type {
+                                if !*is_mutable && does_mutate {
+                                    self.error(Message::new(
+                                        Location::new(),
+                                        &format!(
+                                            "Reference \"{id}\" is immutable in current scope",
+                                        ),
+                                    ));
+                                }
+                            } else if !*is_mutable && does_mutate {
                                 self.error(Message::new(
                                     Location::new(),
-                                    &format!("Variable \"{}\" is immutable in current scope", id),
+                                    &format!("Variable \"{id}\" is immutable in current scope",),
                                 ));
                             }
                         }

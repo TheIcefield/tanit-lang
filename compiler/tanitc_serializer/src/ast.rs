@@ -459,9 +459,9 @@ impl XmlWriter<'_> {
 impl XmlWriter<'_> {
     fn serialize_type(&mut self, ty: &Type, info: TypeInfo) -> Result<(), Message> {
         match ty {
-            Type::Ref(ref_to) => {
+            Type::Ref { ref_to, is_mutable } => {
                 self.put_param("style", "reference")?;
-                self.put_param("is-mutable", info.is_mut)?;
+                self.put_param("is-mutable", is_mutable)?;
 
                 self.serialize_type(ref_to, info)?;
             }

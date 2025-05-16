@@ -4,9 +4,10 @@ use tanitc_lexer::token::Lexem;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperation {
-    Ref,   // &
-    Deref, // *
-    Not,   // !
+    Ref,    // &
+    RefMut, // &mut
+    Deref,  // *
+    Not,    // !
 }
 
 impl TryFrom<Lexem> for UnaryOperation {
@@ -28,6 +29,7 @@ impl Display for UnaryOperation {
             "{}",
             match self {
                 Self::Ref => "&",
+                Self::RefMut => "&mut",
                 Self::Deref => "*",
                 Self::Not => "!",
             }

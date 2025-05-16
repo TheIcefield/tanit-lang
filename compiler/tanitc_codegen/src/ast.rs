@@ -1,8 +1,8 @@
 use tanitc_ast::{
-    expression_utils::BinaryOperation, AliasDef, Ast, Block, Branch, BranchKind, CallParam,
-    ControlFlow, ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
-    Visitor,
+    expression_utils::{BinaryOperation, UnaryOperation},
+    AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
+    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value,
+    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -291,7 +291,12 @@ impl CodeGenStream<'_> {
 
         match &expr.kind {
             ExpressionKind::Unary { operation, node } => {
-                write!(self, "{}", operation)?;
+                let keep_space = if *operation == UnaryOperation::RefMut {
+                    " "
+                } else {
+                    ""
+                };
+                write!(self, "{}{}", operation, keep_space)?;
                 self.generate(node)?;
             }
             ExpressionKind::Binary {

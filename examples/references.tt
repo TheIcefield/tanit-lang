@@ -1,0 +1,7 @@
+func main() {
+    var mut value = 50
+    var ref = &mut value
+    if 1 {
+        *ref = 10
+    }
+}
