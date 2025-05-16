@@ -4,7 +4,10 @@ use std::str::FromStr;
 
 #[derive(Clone, PartialEq)]
 pub enum Type {
-    Ref(Box<Type>),
+    Ref {
+        ref_to: Box<Type>,
+        is_mutable: bool,
+    },
     Ptr(Box<Type>),
     Tuple(Vec<Type>),
     Array {
@@ -72,29 +75,33 @@ impl Type {
     pub fn get_c_type(&self) -> String {
         match self {
             Self::Auto => unreachable!("automatic type is not eliminated"),
-            Self::Bool | Self::U8 => "unsigned char",
-            Self::U16 => "unsigned short",
-            Self::U32 => "unsigned int",
-            Self::U64 => "unsigned long",
-            Self::U128 => "unsigned long long",
-            Self::I8 => "unsigned int",
-            Self::I16 => "signed short",
-            Self::I32 => "signed int",
-            Self::I64 => "signed long",
-            Self::I128 => "signed long long",
-            Self::F32 => "float",
-            Self::F64 => "double",
-            Self::Custom(id) => id,
+            Self::Bool | Self::U8 => "unsigned char".to_string(),
+            Self::U16 => "unsigned short".to_string(),
+            Self::U32 => "unsigned int".to_string(),
+            Self::U64 => "unsigned long".to_string(),
+            Self::U128 => "unsigned long long".to_string(),
+            Self::I8 => "unsigned int".to_string(),
+            Self::I16 => "signed short".to_string(),
+            Self::I32 => "signed int".to_string(),
+            Self::I64 => "signed long".to_string(),
+            Self::I128 => "signed long long".to_string(),
+            Self::F32 => "float".to_string(),
+            Self::F64 => "double".to_string(),
+            Self::Custom(id) => id.clone(),
+            Self::Ref { ref_to, is_mutable } => format!(
+                "{}{}*",
+                ref_to.get_c_type(),
+                if *is_mutable { " const " } else { " " }
+            ),
             Self::Tuple(components) => {
                 if components.is_empty() {
-                    "void"
+                    "void".to_string()
                 } else {
                     unimplemented!()
                 }
             }
             _ => unimplemented!(),
         }
-        .to_string()
     }
 }
 
@@ -131,8 +138,8 @@ impl Default for Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ref(ref_to) => {
-                write!(f, "&")?;
+            Self::Ref { ref_to, is_mutable } => {
+                write!(f, "&{}", if *is_mutable { "mut " } else { "" })?;
 
                 write!(f, "{}", ref_to)
             }

@@ -1,6 +1,6 @@
 use tanitc_ast::{
     attributes::{self, Attributes},
-    expression_utils::BinaryOperation,
+    expression_utils::{BinaryOperation, UnaryOperation},
     Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
     UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
 };
@@ -301,7 +301,18 @@ impl Parser {
         let old_opt = self.does_ignore_nl();
 
         self.set_ignore_nl_option(false);
-        let expr = self.parse_assign()?;
+
+        let next = self.peek_token();
+        let expr = match next.lexem {
+            Lexem::Plus
+            | Lexem::Minus
+            | Lexem::Ampersand
+            | Lexem::Star
+            | Lexem::Not
+            | Lexem::LParen => self.parse_factor()?,
+            _ => self.parse_assign()?,
+        };
+
         self.set_ignore_nl_option(old_opt);
 
         if let Ast::Expression(node) = &expr {
@@ -351,7 +362,27 @@ impl Parser {
         let location = next.location;
 
         match &next.lexem {
-            Lexem::Plus | Lexem::Minus | Lexem::Ampersand | Lexem::Star | Lexem::Not => {
+            Lexem::Ampersand => {
+                self.get_token();
+
+                let operation = {
+                    let next = self.peek_token();
+                    if next.lexem == Lexem::KwMut {
+                        self.get_token();
+                        UnaryOperation::RefMut
+                    } else {
+                        UnaryOperation::Ref
+                    }
+                };
+
+                let node = Box::new(self.parse_expression()?);
+
+                Ok(Ast::from(Expression {
+                    location,
+                    kind: ExpressionKind::Unary { operation, node },
+                }))
+            }
+            Lexem::Plus | Lexem::Minus | Lexem::Star | Lexem::Not => {
                 self.get_token();
                 let operation = next.lexem;
                 let node = Box::new(self.parse_expression()?);
@@ -1036,9 +1067,15 @@ impl Parser {
 
                 Lexem::KwAlias => self.parse_alias_def(),
 
-                Lexem::Identifier(_) | Lexem::Integer(_) | Lexem::Decimal(_) => {
-                    self.parse_expression()
-                }
+                Lexem::Identifier(_)
+                | Lexem::Integer(_)
+                | Lexem::Decimal(_)
+                | Lexem::Ampersand
+                | Lexem::Plus
+                | Lexem::Minus
+                | Lexem::Star
+                | Lexem::Not
+                | Lexem::LParen => self.parse_expression(),
 
                 Lexem::KwLoop | Lexem::KwWhile | Lexem::KwIf | Lexem::KwElse => self.parse_branch(),
 
@@ -1245,9 +1282,15 @@ impl Parser {
                 self.get_token();
             }
 
-            let (ref_to, _) = self.parse_type()?;
+            let (ref_to, type_info) = self.parse_type()?;
 
-            return Ok((Type::Ref(Box::new(ref_to)), info));
+            return Ok((
+                Type::Ref {
+                    ref_to: Box::new(ref_to),
+                    is_mutable: type_info.is_mut,
+                },
+                info,
+            ));
         }
 
         if next.lexem == Lexem::Star {
