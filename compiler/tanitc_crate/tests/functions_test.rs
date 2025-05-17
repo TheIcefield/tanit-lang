@@ -1,7 +1,4 @@
 use tanitc_analyzer::Analyzer;
-use tanitc_ast::{
-    expression_utils::BinaryOperation, Ast, ControlFlow, ControlFlowKind, ExpressionKind,
-};
 use tanitc_codegen::CodeGenStream;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
@@ -105,80 +102,106 @@ fn functions_test() {
                             \n}\
                             \n\
                             \nfunc main() {\
-                            \n   var res = f(a: 1, 2, c: 1 + 2)\
-                            \n}\
-                            \n\
-                            \nfunc bar () {\
-                            \n   var PI = 3.14\
+                            \n   var param = 34
+                            \n   var res = f(56, a: param)\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
 
-    {
-        let func = parser.parse_func_def().unwrap();
-
-        let scope = if let Ast::FuncDef(node) = &func {
-            node.body.as_ref()
-        } else {
-            panic!("node should be \'FuncDef\'");
-        };
-
-        let node = if let Ast::Block(node) = scope.unwrap().as_ref() {
-            assert_eq!(node.statements.len(), 1);
-            &node.statements[0]
-        } else {
-            panic!("node should be \'local scope\'");
-        };
-
-        assert!(matches!(
-            node,
-            Ast::ControlFlow(ControlFlow {
-                kind: ControlFlowKind::Return { .. },
-                ..
-            })
-        ));
-    }
-
-    {
-        let func = parser.parse_func_def().unwrap();
-
-        let scope = if let Ast::FuncDef(node) = &func {
-            node.body.as_ref()
-        } else {
-            panic!("node should be \'FuncDef\'");
-        };
-
-        let node = if let Ast::Block(node) = scope.unwrap().as_ref() {
-            assert_eq!(node.statements.len(), 1);
-            &node.statements[0]
-        } else {
-            panic!("node should be \'local scope\'");
-        };
-
-        let (lhs, rhs) = if let Ast::Expression(node) = node {
-            if let ExpressionKind::Binary {
-                operation,
-                lhs,
-                rhs,
-            } = &node.kind
-            {
-                assert_eq!(*operation, BinaryOperation::Assign);
-                (lhs.as_ref(), rhs.as_ref())
-            } else {
-                panic!("Expression expected to be binary");
-            }
-        } else {
-            panic!("Expected expression");
-        };
-
-        assert!(matches!(lhs, Ast::VariableDef { .. }));
-        assert!(matches!(rhs, Ast::Value { .. }));
-    }
-
+    let mut program = parser.parse_global_block().unwrap();
     {
         if parser.has_errors() {
-            panic!("{:?}", parser.get_errors());
+            panic!("{:#?}", parser.get_errors());
         }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:#?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<function-definition name=\"f\">\
+                                \n    <return-type>\
+                                \n        <type style=\"primitive\" name=\"f32\"/>\
+                                \n    </return-type>\
+                                \n    <parameters>\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"true\">\
+                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n        </variable-definition>\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"true\">\
+                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n        </variable-definition>\
+                                \n    </parameters>\
+                                \n    <return-statement>\
+                                \n        <operation style=\"binary\" operation=\"+\">\
+                                \n            <identifier name=\"a\"/>\
+                                \n            <identifier name=\"b\"/>\
+                                \n        </operation>\
+                                \n    </return-statement>\
+                                \n</function-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"param\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"primitive\" name=\"i32\"/>\
+                                \n        </variable-definition>\
+                                \n        <literal style=\"integer-number\" value=\"34\"/>\
+                                \n    </operation>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"res\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </variable-definition>\
+                                \n        <call-statement name=\"f\">\
+                                \n            <parameters>\
+                                \n                <parameter index=\"0\">\
+                                \n                    <literal style=\"integer-number\" value=\"56\"/>\
+                                \n                </parameter>\
+                                \n                <parameter index=\"0\">\
+                                \n                    <identifier name=\"param\"/>\
+                                \n                </parameter>\
+                                \n            </parameters>\
+                                \n        </call-statement>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_str_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "float f(signed int a, signed int b);\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "float f(signed int a, signed int b){\
+                                        \nreturn a + b;\
+                                      \n}\
+                                      \nvoid main(){\
+                                        \nsigned int const param = 34;\
+                                        \nfloat const res = f(56, param);\
+                                      \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let mut res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, res);
+
+        res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, res);
     }
 }
 

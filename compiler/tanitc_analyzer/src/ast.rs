@@ -426,9 +426,7 @@ impl VisitorMut for Analyzer {
                     self.analyze_call_param(arg)?;
                 }
 
-                if self.check_call_args(val).is_err() {
-                    return Err(Message::new(val.location, "Wrong call arguments"));
-                }
+                self.check_call_args(val)?;
 
                 Ok(())
             }
