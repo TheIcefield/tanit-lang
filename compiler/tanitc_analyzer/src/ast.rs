@@ -480,119 +480,8 @@ impl VisitorMut for Analyzer {
     }
 }
 
+// Type
 impl Analyzer {
-    fn check_call_args(&mut self, val: &mut Value) -> Result<(), Message> {
-        let (identifier, arguments) = if let ValueKind::Call {
-            identifier,
-            arguments,
-        } = &mut val.kind
-        {
-            (*identifier, arguments)
-        } else {
-            return Err(Message::new(
-                val.location,
-                "Expected call node, but provided another",
-            ));
-        };
-
-        if identifier.is_built_in() {
-            return Ok(());
-        }
-
-        if let Some(mut ss) = self.get_first_symbol(identifier) {
-            match &mut ss.data {
-                SymbolData::FunctionDef { parameters, .. } => {
-                    if arguments.len() > parameters.len() {
-                        return Err(Message::new(
-                            val.location,
-                            &format!(
-                        "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
-                        identifier, parameters.len(), arguments.len()),
-                        ));
-                    }
-
-                    if arguments.len() < parameters.len() {
-                        return Err(Message::new(
-                            val.location,
-                            &format!(
-                        "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
-                        identifier, parameters.len(), arguments.len()),
-                        ));
-                    }
-
-                    let mut positional_skiped = false;
-                    for call_arg in arguments.iter_mut() {
-                        let arg_clone = call_arg.clone();
-                        match arg_clone {
-                            CallParam::Notified(arg_id, arg_value) => {
-                                positional_skiped = true;
-
-                                // check if such parameter declared in the function
-                                let mut param_found = false;
-                                for (param_index, (param_name, param_type)) in
-                                    parameters.iter().enumerate()
-                                {
-                                    if *param_name == arg_id {
-                                        param_found = true;
-
-                                        let arg_type = self.get_type(&arg_value);
-                                        if *param_type != arg_type {
-                                            self.error(Message::new(
-                                            val.location, &format!(
-                                            "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
-                                            param_name, param_type, param_type))
-                                        );
-                                        }
-
-                                        let modified_param =
-                                            CallParam::Positional(param_index, arg_value.clone());
-                                        *call_arg = modified_param;
-                                    }
-                                }
-                                if !param_found {
-                                    self.error(Message::new(
-                                        val.location,
-                                        &format!(
-                                            "No parameter named \"{}\" in function \"{}\"",
-                                            arg_id, identifier
-                                        ),
-                                    ))
-                                }
-                            }
-                            CallParam::Positional(..) => {
-                                if positional_skiped {
-                                    return Err(Message::new(
-                                        val.location,
-                                        "Positional parameters must be passed before notified",
-                                    ));
-                                }
-                            }
-                        }
-                    }
-
-                    /* Check parameters */
-                    for i in parameters.iter() {
-                        for j in arguments.iter() {
-                            let j_type = self.get_call_param_type(j);
-                            if j_type != i.1 {
-                                return Err(Message::new(val.location, "Mismatched types"));
-                            }
-                        }
-                    }
-                    Ok(())
-                }
-                _ => Err(Message::new(val.location, "No such function found")),
-            }
-        } else {
-            Err(Message::new(val.location, "No such identifier found"))
-        }
-    }
-
-    fn analyze_call_param(&self, _cp: &CallParam) -> Result<(), Message> {
-        // TODO: #58
-        Ok(())
-    }
-
     fn get_type(&self, node: &Ast) -> Type {
         match node {
             Ast::AliasDef(node) => self.get_alias_def_type(node),
@@ -721,64 +610,147 @@ impl Analyzer {
             }
         }
     }
+}
 
-    #[allow(dead_code)]
-    fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
-        if let Ast::Expression(node) = expr_node {
-            let location = node.location;
-
-            if let ExpressionKind::Binary {
-                operation,
-                lhs,
-                rhs,
-            } = &mut node.kind
-            {
-                self.convert_expr_node(lhs)?;
-                self.convert_expr_node(rhs)?;
-
-                let lhs_type = self.get_type(lhs);
-
-                let rhs_type = self.get_type(rhs);
-
-                let func_name_str = format!(
-                    "__tanit_compiler__{}_{}_{}",
-                    match operation {
-                        BinaryOperation::Add => "add",
-                        BinaryOperation::Sub => "sub",
-                        BinaryOperation::Mul => "mul",
-                        BinaryOperation::Div => "div",
-                        BinaryOperation::Mod => "mod",
-                        BinaryOperation::ShiftL => "lshift",
-                        BinaryOperation::ShiftR => "rshift",
-                        BinaryOperation::BitwiseOr => "or",
-                        BinaryOperation::BitwiseAnd => "and",
-                        _ => return Err(Message::new(location, "Unexpected operation")),
-                    },
-                    lhs_type,
-                    rhs_type
-                );
-
-                let func_id = Ident::from(func_name_str);
-
-                *expr_node = Ast::from(Value {
-                    location,
-                    kind: ValueKind::Call {
-                        identifier: func_id,
-                        arguments: vec![
-                            CallParam::Positional(0, lhs.clone()),
-                            CallParam::Positional(1, rhs.clone()),
-                        ],
-                    },
-                });
-            }
-
-            Ok(())
+// Call
+impl Analyzer {
+    fn check_call_args(&mut self, val: &mut Value) -> Result<(), Message> {
+        let (identifier, arguments) = if let ValueKind::Call {
+            identifier,
+            arguments,
+        } = &mut val.kind
+        {
+            (*identifier, arguments)
         } else {
-            unreachable!()
+            return Err(Message::new(
+                val.location,
+                "Expected call node, but provided another",
+            ));
+        };
+
+        if identifier.is_built_in() {
+            return Ok(());
+        }
+
+        if let Some(mut ss) = self.get_first_symbol(identifier) {
+            match &mut ss.data {
+                SymbolData::FunctionDef { parameters, .. } => {
+                    if arguments.len() > parameters.len() {
+                        return Err(Message::new(
+                            val.location,
+                            &format!(
+                        "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
+                        identifier, parameters.len(), arguments.len()),
+                        ));
+                    }
+
+                    if arguments.len() < parameters.len() {
+                        return Err(Message::new(
+                            val.location,
+                            &format!(
+                        "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
+                        identifier, parameters.len(), arguments.len()),
+                        ));
+                    }
+
+                    let mut positional_skiped = false;
+                    for call_arg in arguments.iter_mut() {
+                        let arg_clone = call_arg.clone();
+                        match arg_clone {
+                            CallParam::Notified(arg_id, arg_value) => {
+                                positional_skiped = true;
+
+                                // check if such parameter declared in the function
+                                let mut param_found = false;
+                                for (param_index, (param_name, param_type)) in
+                                    parameters.iter().enumerate()
+                                {
+                                    if *param_name == arg_id {
+                                        param_found = true;
+
+                                        let arg_type = self.get_type(&arg_value);
+                                        if *param_type != arg_type {
+                                            self.error(Message::new(
+                                            val.location, &format!(
+                                            "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
+                                            param_name, param_type, param_type))
+                                        );
+                                        }
+
+                                        let modified_param =
+                                            CallParam::Positional(param_index, arg_value.clone());
+                                        *call_arg = modified_param;
+                                    }
+                                }
+                                if !param_found {
+                                    self.error(Message::new(
+                                        val.location,
+                                        &format!(
+                                            "No parameter named \"{}\" in function \"{}\"",
+                                            arg_id, identifier
+                                        ),
+                                    ))
+                                }
+                            }
+                            CallParam::Positional(..) => {
+                                if positional_skiped {
+                                    return Err(Message::new(
+                                        val.location,
+                                        "Positional parameters must be passed before notified",
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
+                    /* Check parameters */
+                    for i in parameters.iter() {
+                        for j in arguments.iter() {
+                            let j_type = self.get_call_param_type(j);
+                            if j_type != i.1 {
+                                return Err(Message::new(val.location, "Mismatched types"));
+                            }
+                        }
+                    }
+                    Ok(())
+                }
+                _ => Err(Message::new(val.location, "No such function found")),
+            }
+        } else {
+            Err(Message::new(val.location, "No such identifier found"))
+        }
+    }
+
+    fn analyze_call_param(&self, _cp: &CallParam) -> Result<(), Message> {
+        // TODO: #58
+        Ok(())
+    }
+}
+
+// Alias
+impl Analyzer {
+    fn find_alias_value(&mut self, alias_type: &Type) -> Option<Type> {
+        if let Type::Custom(id) = alias_type {
+            let type_id = Ident::from(id.clone());
+            let mut ss = self.table.get_symbols();
+            ss.retain(|s| s.id == type_id && matches!(s.data, SymbolData::AliasDef { .. }));
+
+            if ss.len() == 1 {
+                if let SymbolData::AliasDef { ty } = &ss[0].data {
+                    Some(ty.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
         }
     }
 }
 
+// Expression
 impl Analyzer {
     fn analyze_unary_expr(
         &mut self,
@@ -843,15 +815,29 @@ impl Analyzer {
                 node.var_type.ty = rhs_type.clone();
             }
 
-            if node.var_type.get_type() != rhs_type {
-                self.error(Message::new(
-                    rhs.location(),
-                    &format!(
-                        "Cannot perform operation on objects with different types: {:?} and {:?}",
-                        node.var_type.get_type(),
-                        rhs_type
+            let var_type = node.var_type.get_type();
+
+            let mut alias_to = self.find_alias_value(&var_type);
+
+            if var_type == rhs_type {
+                alias_to = None;
+            }
+
+            if alias_to.is_none() && var_type != rhs_type {
+                return Err(Message {
+                    location: node.location,
+                    text: format!(
+                        "Cannot perform operation on objects with different types: {var_type:?} and {rhs_type:?}",
                     ),
-                ));
+                });
+            } else if alias_to.as_ref().is_some_and(|ty| rhs_type != *ty) {
+                return Err(Message {
+                    location: node.location,
+                    text: format!(
+                        "Cannot perform operation on objects with different types: {var_type:?} (aka: {}) and {rhs_type:?}",
+                        alias_to.unwrap()
+                    ),
+                });
             }
 
             self.add_symbol(self.create_symbol(
@@ -1268,8 +1254,65 @@ impl Analyzer {
         node.accept_mut(self)?;
         Ok(None)
     }
+
+    #[allow(dead_code)]
+    fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
+        if let Ast::Expression(node) = expr_node {
+            let location = node.location;
+
+            if let ExpressionKind::Binary {
+                operation,
+                lhs,
+                rhs,
+            } = &mut node.kind
+            {
+                self.convert_expr_node(lhs)?;
+                self.convert_expr_node(rhs)?;
+
+                let lhs_type = self.get_type(lhs);
+
+                let rhs_type = self.get_type(rhs);
+
+                let func_name_str = format!(
+                    "__tanit_compiler__{}_{}_{}",
+                    match operation {
+                        BinaryOperation::Add => "add",
+                        BinaryOperation::Sub => "sub",
+                        BinaryOperation::Mul => "mul",
+                        BinaryOperation::Div => "div",
+                        BinaryOperation::Mod => "mod",
+                        BinaryOperation::ShiftL => "lshift",
+                        BinaryOperation::ShiftR => "rshift",
+                        BinaryOperation::BitwiseOr => "or",
+                        BinaryOperation::BitwiseAnd => "and",
+                        _ => return Err(Message::new(location, "Unexpected operation")),
+                    },
+                    lhs_type,
+                    rhs_type
+                );
+
+                let func_id = Ident::from(func_name_str);
+
+                *expr_node = Ast::from(Value {
+                    location,
+                    kind: ValueKind::Call {
+                        identifier: func_id,
+                        arguments: vec![
+                            CallParam::Positional(0, lhs.clone()),
+                            CallParam::Positional(1, rhs.clone()),
+                        ],
+                    },
+                });
+            }
+
+            Ok(())
+        } else {
+            unreachable!()
+        }
+    }
 }
 
+// Block
 impl Analyzer {
     fn analyze_global_block(&mut self, block: &mut Block) -> Result<(), Message> {
         for n in block.statements.iter_mut() {
@@ -1341,6 +1384,7 @@ impl Analyzer {
     }
 }
 
+// Struct value
 impl Analyzer {
     fn analyze_struct_value(&mut self, value: &mut Value) -> Result<(), Message> {
         let ValueKind::Struct {
@@ -1456,17 +1500,31 @@ impl Analyzer {
 
         for comp_id in 0..value_comps.len() {
             let value_comp = value_comps.get(comp_id).unwrap();
+            let value_comp_name = value_comp.0;
             let value_comp_type = self.get_type(&value_comp.1);
-            let struct_comp_type = struct_comps.get(&value_comp.0).unwrap();
+            let struct_comp_type = struct_comps.get(&value_comp_name).unwrap();
 
-            if value_comp_type != *struct_comp_type {
-                return Err(Message::new(
-                    Location::new(),
-                    &format!(
-                        "Field named \"{}\" is {}, but initialized like {}",
-                        value_comp.0, struct_comp_type, value_comp_type
+            let mut alias_to = self.find_alias_value(struct_comp_type);
+
+            if value_comp_type == *struct_comp_type {
+                alias_to = None;
+            }
+
+            if alias_to.is_none() && value_comp_type != *struct_comp_type {
+                return Err(Message {
+                    location: value_comp.1.location(),
+                    text: format!(
+                        "Struct field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}",
                     ),
-                ));
+                });
+            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+                return Err(Message {
+                    location: value_comp.1.location(),
+                    text: format!(
+                        "Struct field named \"{value_comp_name}\" is {struct_comp_type} (aka: {}), but initialized like {value_comp_type}",
+                        alias_to.unwrap()
+                    ),
+                });
             }
         }
 
@@ -1506,13 +1564,27 @@ impl Analyzer {
             let value_comp_type = self.get_type(&value_comp.1);
             let union_comp_type = union_comps.get(&value_comp.0).unwrap();
 
-            if value_comp_type != *union_comp_type {
+            let mut alias_to = self.find_alias_value(union_comp_type);
+
+            if value_comp_type == *union_comp_type {
+                alias_to = None;
+            }
+
+            if alias_to.is_none() && value_comp_type != *union_comp_type {
                 return Err(Message::new(
                     Location::new(),
                     &format!(
-                        "Field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
+                        "Union field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
                     ),
                 ));
+            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+                return Err(Message::new(
+                        Location::new(),
+                        &format!(
+                            "Union field named \"{value_comp_name}\" is {union_comp_type} (aka: {}), but initialized like {value_comp_type}",
+                            alias_to.unwrap()
+                        ),
+                    ));
             }
         }
 
@@ -1520,6 +1592,7 @@ impl Analyzer {
     }
 }
 
+// Variant
 impl Analyzer {
     fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
         if self.has_symbol(variant_def.identifier) {

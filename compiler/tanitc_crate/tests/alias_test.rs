@@ -109,9 +109,10 @@ fn alias_in_func_test() {
 
 #[test]
 fn alias_test() {
-    const SRC_TEXT: &str = "\nstruct Vec2 {\
-                            \n    x: f32\
-                            \n    y: f32\
+    const SRC_TEXT: &str = "\nalias VecUnit = f32\
+                            \nstruct Vec2 {\
+                            \n    x: VecUnit\
+                            \n    y: VecUnit\
                             \n}\
                             \nalias Vec = Vec2\
                             \nfunc main() {\
@@ -136,12 +137,15 @@ fn alias_test() {
     }
 
     {
-        const EXPECTED: &str = "\n<struct-definition name=\"Vec2\">\
+        const EXPECTED: &str = "\n<alias-definition name=\"VecUnit\">\
+                                \n    <type style=\"primitive\" name=\"f32\"/>\
+                                \n</alias-definition>\
+                                \n<struct-definition name=\"Vec2\">\
                                 \n    <field name=\"x\">\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
+                                \n        <type style=\"named\" name=\"VecUnit\"/>\
                                 \n    </field>\
                                 \n    <field name=\"y\">\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
+                                \n        <type style=\"named\" name=\"VecUnit\"/>\
                                 \n    </field>\
                                 \n</struct-definition>\
                                 \n<alias-definition name=\"Vec\">\
@@ -176,9 +180,10 @@ fn alias_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "typedef struct {\
-                                     \nfloat x;\
-                                     \nfloat y;\
+        const HEADER_EXPECTED: &str = "typedef float VecUnit;\
+                                     \ntypedef struct {\
+                                        \nVecUnit x;\
+                                        \nVecUnit y;\
                                      \n} Vec2;\
                                      \ntypedef Vec2 Vec;\
                                      \nvoid main();\n";
@@ -227,5 +232,280 @@ fn incorrect_alias_object_test() {
         program.accept_mut(&mut analyzer).unwrap();
         let errors = analyzer.get_errors();
         assert_str_eq!(errors.first().expect("Expected error").text, EXPECTED);
+    }
+}
+
+#[test]
+fn alias_common_type_test() {
+    const SRC_TEXT: &str = "\nalias A = i32\
+                            \nfunc main() {\
+                            \n    var a: A = 100\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:#?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<alias-definition name=\"A\">\
+                                \n    <type style=\"primitive\" name=\"i32\"/>\
+                                \n</alias-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"A\"/>\
+                                \n        </variable-definition>\
+                                \n        <literal style=\"integer-number\" value=\"100\"/>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_str_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef signed int A;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                        \nA const a = 100;\
+                                      \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let mut res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, res);
+
+        res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, res);
+    }
+}
+
+#[test]
+fn incorrect_alias_common_type_test() {
+    const SRC_TEXT: &str = "\nalias A = i32\
+                            \nfunc main() {\
+                            \n    var a: A = 3.14\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED: &str = "Semantic error: Cannot perform operation on objects with different types: A (aka: i32) and f32";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_str_eq!(errors.first().expect("Expected error").text, EXPECTED);
+    }
+}
+
+#[test]
+fn alias_custom_type_test() {
+    const SRC_TEXT: &str = "\nstruct S {}\
+                            \nalias A = S\
+                            \nfunc main() {\
+                            \n    var a: A = S {}\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:#?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<struct-definition name=\"S\"/>\
+                                \n<alias-definition name=\"A\">\
+                                \n    <type style=\"named\" name=\"S\"/>\
+                                \n</alias-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"A\"/>\
+                                \n        </variable-definition>\
+                                \n        <struct-initialization name=\"S\"/>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_str_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} S;\
+                                     \ntypedef S A;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                        \nA const a = (S){\n};\
+                                      \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let mut res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, res);
+
+        res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, res);
+    }
+}
+
+#[test]
+fn incorrect_alias_custom_type_test() {
+    const SRC_TEXT: &str = "\nstruct S {}\
+                            \nalias A = S\
+                            \nfunc main() {\
+                            \n    var a: A = 100\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED: &str = "Semantic error: Cannot perform operation on objects with different types: A (aka: S) and i32";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_str_eq!(errors.first().expect("Expected error").text, EXPECTED);
+    }
+}
+
+#[test]
+fn alias_to_alias_type_test() {
+    const SRC_TEXT: &str = "\nstruct S {}\
+                            \nalias A = S\
+                            \nalias B = A\
+                            \nfunc main() {\
+                            \n    var b: B = S {}\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:#?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<struct-definition name=\"S\"/>\
+                                \n<alias-definition name=\"A\">\
+                                \n    <type style=\"named\" name=\"S\"/>\
+                                \n</alias-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"A\"/>\
+                                \n        </variable-definition>\
+                                \n        <struct-initialization name=\"S\"/>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_str_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} S;\
+                                     \ntypedef S A;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                        \nA const a = (S){\n};\
+                                      \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let mut res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, res);
+
+        res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, res);
     }
 }
