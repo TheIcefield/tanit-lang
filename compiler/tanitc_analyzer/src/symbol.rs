@@ -5,6 +5,9 @@ use crate::scope::Scope;
 
 #[derive(Debug, Clone)]
 pub enum SymbolData {
+    AliasDef {
+        ty: Type,
+    },
     ModuleDef,
     StructDef,
     StructField {
@@ -31,12 +34,12 @@ pub enum SymbolData {
         is_mutable: bool,
         is_initialization: bool,
     },
-    Type,
 }
 
 impl Symbol {
     pub fn traverse(&self, stream: &mut dyn std::io::Write) -> std::io::Result<()> {
         match &self.data {
+            SymbolData::AliasDef { ty } => write!(stream, "alias definition ({ty})"),
             SymbolData::ModuleDef => write!(stream, "module definition"),
             SymbolData::FunctionDef {
                 parameters,
@@ -87,7 +90,6 @@ impl Symbol {
                 if *is_mutable { "mut" } else { "" },
                 var_type
             ),
-            SymbolData::Type => write!(stream, "type"),
         }
     }
 }
