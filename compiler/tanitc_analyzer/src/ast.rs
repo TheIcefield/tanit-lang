@@ -239,7 +239,12 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.add_symbol(self.create_symbol(alias_def.identifier, SymbolData::Type));
+        self.add_symbol(self.create_symbol(
+            alias_def.identifier,
+            SymbolData::AliasDef {
+                ty: alias_def.value.get_type(),
+            },
+        ));
 
         Ok(())
     }
@@ -584,6 +589,7 @@ impl Analyzer {
     }
 
     fn analyze_call_param(&self, _cp: &CallParam) -> Result<(), Message> {
+        // TODO: #58
         Ok(())
     }
 
@@ -593,7 +599,7 @@ impl Analyzer {
             Ast::VariableDef(node) => self.get_var_def_type(node),
             Ast::Expression(node) => self.get_expr_type(node),
             Ast::Value(node) => self.get_value_type(node),
-            _ => todo!("GetType"),
+            _ => todo!("GetType: {}", node.name()),
         }
     }
 
@@ -1337,33 +1343,54 @@ impl Analyzer {
 
 impl Analyzer {
     fn analyze_struct_value(&mut self, value: &mut Value) -> Result<(), Message> {
-        let (object_name, value_comps) = if let ValueKind::Struct {
-            identifier,
-            components,
+        let ValueKind::Struct {
+            identifier: object_name,
+            components: value_comps,
         } = &mut value.kind
-        {
-            (identifier, components)
-        } else {
+        else {
             return Err(Message::unreachable(
                 value.location,
-                "expected ValueKind::Struct",
+                "Expected ValueKind::Struct",
             ));
         };
 
-        let first = if let Some(symbol) = self.get_first_symbol(*object_name) {
+        let mut object = if let Some(symbol) = self.get_first_symbol(*object_name) {
             symbol
         } else {
             return Err(Message::undefined_id(value.location, *object_name));
         };
 
-        if matches!(first.data, SymbolData::StructDef) {
+        if let SymbolData::AliasDef { ty } = &object.data {
+            match ty {
+                Type::Custom(id) => {
+                    let alias_to_id = Ident::from(id.clone());
+
+                    if let Some(symbol) = self.get_first_symbol(alias_to_id) {
+                        object = symbol;
+                    } else {
+                        return Err(Message::undefined_id(value.location, alias_to_id));
+                    };
+                }
+                ty if ty.is_common() => {
+                    return Err(Message {
+                        location: value.location,
+                        text: format!("Common type \"{ty}\" does not have any fields"),
+                    })
+                }
+                _ => {
+                    todo!("Unexpected type: {ty}");
+                }
+            }
+        }
+
+        if matches!(object.data, SymbolData::StructDef) {
             let mut struct_comps = HashMap::<Ident, Type>::new();
             let mut ss = self.table.get_symbols();
 
             ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
             for s in ss.iter() {
                 if let SymbolData::StructField { struct_id, ty } = &s.data {
-                    if *struct_id == first.id {
+                    if *struct_id == object.id {
                         struct_comps.insert(s.id, ty.clone());
                     }
                 }
@@ -1375,14 +1402,14 @@ impl Analyzer {
                 msg.location = value.location;
                 return Err(msg);
             }
-        } else if matches!(first.data, SymbolData::UnionDef) {
+        } else if matches!(object.data, SymbolData::UnionDef) {
             let mut union_comps = HashMap::<Ident, Type>::new();
             let mut ss = self.table.get_symbols();
 
             ss.retain(|s| matches!(s.data, SymbolData::UnionField { .. }));
             for s in ss.iter() {
                 if let SymbolData::UnionField { union_id, ty } = &s.data {
-                    if *union_id == first.id {
+                    if *union_id == object.id {
                         union_comps.insert(s.id, ty.clone());
                     }
                 }
