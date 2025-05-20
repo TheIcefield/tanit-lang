@@ -2,8 +2,8 @@ use tanitc_ast::{
     self,
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeSpec,
-    UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VisitorMut,
+    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ImplDef, ModuleDef, StructDef,
+    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -170,6 +170,10 @@ impl VisitorMut for Analyzer {
             kind: SymbolKind::from(EnumDefData { enums }),
         });
 
+        Ok(())
+    }
+
+    fn visit_impl_def(&mut self, _impl_def: &mut ImplDef) -> Result<(), Message> {
         Ok(())
     }
 

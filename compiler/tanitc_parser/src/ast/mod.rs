@@ -7,6 +7,7 @@ pub mod enums;
 pub mod expressions;
 pub mod externs;
 pub mod functions;
+pub mod methods;
 pub mod modules;
 pub mod structs;
 pub mod type_spec;

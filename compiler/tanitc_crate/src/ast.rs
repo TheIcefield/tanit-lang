@@ -1,6 +1,6 @@
 use tanitc_ast::{
-    AliasDef, Block, Branch, ControlFlow, EnumDef, Expression, ExternDef, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
+    AliasDef, Block, Branch, ControlFlow, EnumDef, Expression, ExternDef, FunctionDef, ImplDef,
+    ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
 };
 use tanitc_messages::Message;
 
@@ -96,6 +96,10 @@ impl Visitor for ModuleSearcher {
     }
 
     fn visit_enum_def(&mut self, _enum_def: &EnumDef) -> Result<(), Message> {
+        Ok(())
+    }
+
+    fn visit_impl_def(&mut self, _impl_def: &ImplDef) -> Result<(), Message> {
         Ok(())
     }
 

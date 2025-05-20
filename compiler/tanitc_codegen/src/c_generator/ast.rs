@@ -1,8 +1,9 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, ModuleDef, StructDef,
-    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, ImplDef, ModuleDef,
+    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -37,6 +38,13 @@ impl Visitor for CodeGenStream<'_> {
 
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
         match self.generate_variant_def(variant_def) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Self::codegen_err(e)),
+        }
+    }
+
+    fn visit_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), Message> {
+        match self.generate_impl_def(impl_def) {
             Ok(_) => Ok(()),
             Err(e) => Err(Self::codegen_err(e)),
         }
@@ -143,6 +151,7 @@ impl CodeGenStream<'_> {
             Ast::StructDef(node) => self.generate_struct_def(node),
             Ast::UnionDef(node) => self.generate_union_def(node),
             Ast::VariantDef(node) => self.generate_variant_def(node),
+            Ast::ImplDef(node) => self.generate_impl_def(node),
             Ast::EnumDef(node) => self.generate_enum_def(node),
             Ast::FuncDef(node) => self.generate_func_def(node),
             Ast::VariableDef(node) => self.generate_variable_def(node),
@@ -197,6 +206,18 @@ impl CodeGenStream<'_> {
         write!(self, "}} {}", union_def.identifier)?;
 
         writeln!(self, ";")?;
+
+        self.mode = old_mode;
+        Ok(())
+    }
+
+    fn generate_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), std::io::Error> {
+        let old_mode = self.mode;
+        self.mode = CodeGenMode::HeaderOnly;
+
+        for method in impl_def.methods.iter() {
+            self.generate_func_def(method)?;
+        }
 
         self.mode = old_mode;
         Ok(())
