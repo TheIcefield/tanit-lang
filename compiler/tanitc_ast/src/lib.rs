@@ -1,6 +1,6 @@
 use expression_utils::{BinaryOperation, UnaryOperation};
 use tanitc_ident::Ident;
-use tanitc_lexer::{location::Location, token::Lexem};
+use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
@@ -377,12 +377,27 @@ impl From<ExternDef> for Ast {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct ImplDef {
+    pub location: Location,
+    pub attrs: attributes::ImplAttributes,
+    pub identifier: Ident,
+    pub methods: Vec<FunctionDef>,
+}
+
+impl From<ImplDef> for Ast {
+    fn from(value: ImplDef) -> Self {
+        Self::ImplDef(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ast {
     ModuleDef(ModuleDef),
     StructDef(StructDef),
     UnionDef(UnionDef),
     VariantDef(VariantDef),
+    ImplDef(ImplDef),
     EnumDef(EnumDef),
     FuncDef(FunctionDef),
     VariableDef(VariableDef),
@@ -402,6 +417,7 @@ pub trait Visitor {
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message>;
     fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message>;
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message>;
+    fn visit_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message>;
     fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message>;
@@ -421,6 +437,7 @@ pub trait VisitorMut {
     fn visit_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message>;
     fn visit_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message>;
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message>;
+    fn visit_impl_def(&mut self, impl_def: &mut ImplDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message>;
     fn visit_extern_def(&mut self, extern_def: &mut ExternDef) -> Result<(), Message>;
@@ -442,6 +459,7 @@ impl Ast {
             Self::StructDef(node) => visitor.visit_struct_def(node),
             Self::UnionDef(node) => visitor.visit_union_def(node),
             Self::VariantDef(node) => visitor.visit_variant_def(node),
+            Self::ImplDef(node) => visitor.visit_impl_def(node),
             Self::EnumDef(node) => visitor.visit_enum_def(node),
             Self::FuncDef(node) => visitor.visit_func_def(node),
             Self::VariableDef(node) => visitor.visit_variable_def(node),
@@ -463,6 +481,7 @@ impl Ast {
             Self::StructDef(node) => visitor.visit_struct_def(node),
             Self::UnionDef(node) => visitor.visit_union_def(node),
             Self::VariantDef(node) => visitor.visit_variant_def(node),
+            Self::ImplDef(node) => visitor.visit_impl_def(node),
             Self::EnumDef(node) => visitor.visit_enum_def(node),
             Self::FuncDef(node) => visitor.visit_func_def(node),
             Self::VariableDef(node) => visitor.visit_variable_def(node),
@@ -484,6 +503,7 @@ impl Ast {
             Self::StructDef(node) => node.location,
             Self::UnionDef(node) => node.location,
             Self::VariantDef(node) => node.location,
+            Self::ImplDef(node) => node.location,
             Self::EnumDef(node) => node.location,
             Self::FuncDef(node) => node.location,
             Self::VariableDef(node) => node.location,
@@ -505,6 +525,7 @@ impl Ast {
             Self::StructDef(_) => "struct definition",
             Self::UnionDef(_) => "union definition",
             Self::VariantDef(_) => "variant definition",
+            Self::ImplDef(_) => "impl definition",
             Self::EnumDef(_) => "enum definition",
             Self::FuncDef(_) => "function definition",
             Self::VariableDef(_) => "variable definition",
@@ -529,36 +550,5 @@ impl Ast {
 impl Default for Ast {
     fn default() -> Self {
         Self::Block(Block::default())
-    }
-}
-
-impl ExpressionKind {
-    pub fn new_unary(operator: Lexem, operand: Box<Ast>) -> Result<Self, Message> {
-        let operation = match UnaryOperation::try_from(operator) {
-            Ok(operation) => operation,
-            Err(err) => return Err(Message::new(operand.location(), &err)),
-        };
-
-        Ok(Self::Unary {
-            operation,
-            node: operand,
-        })
-    }
-
-    pub fn new_binary(operator: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Result<Self, Message> {
-        let operation = match BinaryOperation::try_from(operator) {
-            Ok(operation) => operation,
-            Err(err) => return Err(Message::new(lhs.location(), &err)),
-        };
-
-        Ok(match operation {
-            BinaryOperation::Access => Self::Access { lhs, rhs },
-            BinaryOperation::Get => Self::Get { lhs, rhs },
-            _ => Self::Binary {
-                operation,
-                lhs,
-                rhs,
-            },
-        })
     }
 }

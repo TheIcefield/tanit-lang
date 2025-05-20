@@ -88,6 +88,7 @@ impl Parser {
 
                 Lexem::KwExtern => self.parse_extern_def(),
 
+                Lexem::KwImpl => self.parse_impl_def(),
                 _ => {
                     self.skip_until(&[Lexem::EndOfLine]);
                     self.get_token();

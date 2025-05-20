@@ -1,6 +1,9 @@
 use std::fmt::Display;
 
 use tanitc_lexer::token::Lexem;
+use tanitc_messages::Message;
+
+use crate::{Ast, ExpressionKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperation {
@@ -202,5 +205,36 @@ impl BinaryOperation {
             || *self == Self::BitwiseXorAssign
             || *self == Self::BitwiseShiftLAssign
             || *self == Self::BitwiseShiftRAssign
+    }
+}
+
+impl ExpressionKind {
+    pub fn new_unary(operator: Lexem, operand: Box<Ast>) -> Result<Self, Message> {
+        let operation = match UnaryOperation::try_from(operator) {
+            Ok(operation) => operation,
+            Err(err) => return Err(Message::new(operand.location(), &err)),
+        };
+
+        Ok(Self::Unary {
+            operation,
+            node: operand,
+        })
+    }
+
+    pub fn new_binary(operator: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Result<Self, Message> {
+        let operation = match BinaryOperation::try_from(operator) {
+            Ok(operation) => operation,
+            Err(err) => return Err(Message::new(lhs.location(), &err)),
+        };
+
+        Ok(match operation {
+            BinaryOperation::Access => Self::Access { lhs, rhs },
+            BinaryOperation::Get => Self::Get { lhs, rhs },
+            _ => Self::Binary {
+                operation,
+                lhs,
+                rhs,
+            },
+        })
     }
 }

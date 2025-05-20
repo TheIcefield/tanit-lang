@@ -23,23 +23,7 @@ impl Parser {
         func_def.identifier = self.consume_identifier()?;
 
         self.parse_func_header_params(func_def)?;
-
-        let old_opt = self.does_ignore_nl();
-        self.set_ignore_nl_option(false);
-
-        let next = self.peek_token();
-        func_def.return_type = if Lexem::Colon == next.lexem {
-            self.get_token();
-            self.parse_type_spec()?
-        } else {
-            TypeSpec {
-                location: next.location,
-                info: ParsedTypeInfo::default(),
-                ty: Type::unit(),
-            }
-        };
-
-        self.set_ignore_nl_option(old_opt);
+        self.parse_func_return_type(func_def)?;
 
         Ok(())
     }
@@ -131,6 +115,27 @@ impl Parser {
             is_global: false,
             is_mutable: false,
         })
+    }
+
+    fn parse_func_return_type(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
+        let old_opt = self.does_ignore_nl();
+        self.set_ignore_nl_option(false);
+
+        let next = self.peek_token();
+        func_def.return_type = if Lexem::Colon == next.lexem {
+            self.get_token();
+            self.parse_type_spec()?
+        } else {
+            TypeSpec {
+                location: next.location,
+                info: ParsedTypeInfo::default(),
+                ty: Type::unit(),
+            }
+        };
+
+        self.set_ignore_nl_option(old_opt);
+
+        Ok(())
     }
 }
 

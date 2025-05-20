@@ -41,6 +41,9 @@ pub struct StructAttributes {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ImplAttributes {}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct VariantAttributes {
     pub publicity: Publicity,
 }
@@ -155,6 +158,10 @@ impl super::VisitorMut for AttributesApply {
 
     fn visit_variant_def(&mut self, variant_def: &mut crate::VariantDef) -> Result<(), Message> {
         variant_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
+        Ok(())
+    }
+
+    fn visit_impl_def(&mut self, _impl_def: &mut crate::ImplDef) -> Result<(), Message> {
         Ok(())
     }
 
