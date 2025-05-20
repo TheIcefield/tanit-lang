@@ -7,8 +7,9 @@ use tanitc_ast::{
     attributes::Safety,
     expression_utils::{BinaryOperation, UnaryOperation},
     variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow,
-    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
-    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
+    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ImplDef, ModuleDef,
+    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -120,6 +121,10 @@ impl VisitorMut for Analyzer {
                 "Variants not supported in 0.1.0",
             ))
         }
+    }
+
+    fn visit_impl_def(&mut self, _impl_def: &mut ImplDef) -> Result<(), Message> {
+        Ok(())
     }
 
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {

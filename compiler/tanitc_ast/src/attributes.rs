@@ -85,6 +85,10 @@ impl super::VisitorMut for AttributesApply {
         Ok(())
     }
 
+    fn visit_impl_def(&mut self, _impl_def: &mut crate::ImplDef) -> Result<(), Message> {
+        Ok(())
+    }
+
     fn visit_control_flow(&mut self, _cf: &mut crate::ControlFlow) -> Result<(), Message> {
         Ok(())
     }

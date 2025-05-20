@@ -1,8 +1,9 @@
 use tanitc_ast::{
     attributes::{self, Attributes},
     expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
-    UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, ImplDef, StructDef, TypeInfo,
+    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
+    VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -844,18 +845,7 @@ impl Parser {
         func_def.identifier = self.consume_identifier()?;
 
         self.parse_func_header_params(func_def)?;
-
-        let next = self.peek_token();
-        func_def.return_type = if Lexem::Colon == next.lexem {
-            self.get_token();
-            self.parse_type_spec()?
-        } else {
-            TypeSpec {
-                location: next.location,
-                info: TypeInfo::default(),
-                ty: Type::unit(),
-            }
-        };
+        self.parse_func_return_type(func_def)?;
 
         Ok(())
     }
@@ -886,6 +876,22 @@ impl Parser {
                 return Err(Message::unexpected_token(next, &[]));
             }
         }
+
+        Ok(())
+    }
+
+    fn parse_func_return_type(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
+        let next = self.peek_token();
+        func_def.return_type = if Lexem::Colon == next.lexem {
+            self.get_token();
+            self.parse_type_spec()?
+        } else {
+            TypeSpec {
+                location: next.location,
+                info: TypeInfo::default(),
+                ty: Type::unit(),
+            }
+        };
 
         Ok(())
     }
@@ -1062,6 +1068,8 @@ impl Parser {
                 Lexem::KwUnion => self.parse_union_def(),
 
                 Lexem::KwVariant => self.parse_variant_def(),
+
+                Lexem::KwImpl => self.parse_impl_def(),
 
                 Lexem::KwVar | Lexem::KwStatic => self.parse_variable_def(),
 
@@ -1255,6 +1263,48 @@ impl Parser {
                 }
             }
         }
+
+        Ok(())
+    }
+}
+
+// Impl definition
+impl Parser {
+    pub fn parse_impl_def(&mut self) -> Result<Ast, Message> {
+        let mut node = ImplDef::default();
+
+        self.parse_impl_header(&mut node)?;
+        self.parse_impl_body(&mut node)?;
+
+        Ok(Ast::from(node))
+    }
+
+    fn parse_impl_header(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
+        impl_def.location = self.consume_token(Lexem::KwImpl)?.location;
+        impl_def.identifier = self.consume_identifier()?;
+        Ok(())
+    }
+
+    fn parse_impl_body(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
+        self.consume_token(Lexem::Lcb)?;
+        let old_opt = self.does_ignore_nl();
+
+        self.set_ignore_nl_option(true);
+        let methods = self.parse_global_block()?;
+        let Ast::Block(mut block) = methods else {
+            return Err(Message {
+                location: methods.location(),
+                text: format!("Unexpected node {} within impl block", methods.name()),
+            });
+        };
+        for method in block.statements.iter_mut() {
+            if let Ast::FuncDef(method) = method {
+                impl_def.methods.push(std::mem::take(method));
+            }
+        }
+        self.set_ignore_nl_option(old_opt);
+
+        self.consume_token(Lexem::Rcb)?;
 
         Ok(())
     }

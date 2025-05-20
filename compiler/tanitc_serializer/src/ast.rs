@@ -1,7 +1,8 @@
 use tanitc_ast::{
     attributes, AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec,
-    UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, FunctionDef, ImplDef, ModuleDef, StructDef, TypeInfo,
+    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
+    VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -81,6 +82,19 @@ impl Visitor for XmlWriter<'_> {
             self.serialize_variant_field(field)?;
 
             self.end_tag()?;
+        }
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn visit_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), Message> {
+        self.begin_tag("impl-definition")?;
+        self.put_param("name", impl_def.identifier)?;
+
+        for method in impl_def.methods.iter() {
+            self.visit_func_def(method)?;
         }
 
         self.end_tag()?;

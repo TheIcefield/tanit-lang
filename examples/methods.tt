@@ -1,0 +1,14 @@
+struct MyStruct
+{
+    f1: i32
+    f2: f32
+}
+impl MyStruct
+{
+
+}
+func main() {
+    var s = MyStruct {
+              f1: 1, f2: 2.0
+            }
+}
