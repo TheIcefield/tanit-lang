@@ -478,6 +478,7 @@ impl Lexer {
             "struct" => Lexem::KwStruct,
             "union" => Lexem::KwUnion,
             "variant" => Lexem::KwVariant,
+            "impl" => Lexem::KwImpl,
             "enum" => Lexem::KwEnum,
             "var" => Lexem::KwVar,
             "mut" => Lexem::KwMut,
@@ -531,7 +532,7 @@ impl Lexer {
 
 #[test]
 fn lexer_test() {
-    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha safe unsafe";
+    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha safe unsafe impl";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
 
@@ -597,6 +598,11 @@ fn lexer_test() {
     assert_eq!(
         lexer.get(),
         Token::new(Lexem::KwUnsafe, Location { row: 2, col: 21 })
+    );
+
+    assert_eq!(
+        lexer.get(),
+        Token::new(Lexem::KwImpl, Location { row: 2, col: 28 })
     );
 }
 
