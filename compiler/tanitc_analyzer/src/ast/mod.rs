@@ -23,6 +23,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use crate::Analyzer;
 
 pub mod expressions;
+pub mod methods;
 pub mod variants;
 
 impl VisitorMut for Analyzer {
@@ -173,8 +174,8 @@ impl VisitorMut for Analyzer {
         Ok(())
     }
 
-    fn visit_impl_def(&mut self, _impl_def: &mut ImplDef) -> Result<(), Message> {
-        Ok(())
+    fn visit_impl_def(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
+        self.analyze_impl_def(impl_def)
     }
 
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {

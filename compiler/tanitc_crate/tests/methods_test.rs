@@ -54,7 +54,7 @@ fn struct_with_methods_test() {
                                 \n    </field>\
                                 \n</struct-definition>\
                                 \n<impl-definition name=\"MyStruct\">\
-                                \n    <function-definition name=\"new\">\
+                                \n    <function-definition name=\"MyStruct__new\">\
                                 \n        <return-type>\
                                 \n            <type style=\"named\" name=\"MyStruct\"/>\
                                 \n        </return-type>\
@@ -103,10 +103,10 @@ fn struct_with_methods_test() {
                                         \nsigned int f1;\
                                         \nfloat f2;\
                                      \n} MyStruct;\
-                                     \nMyStruct new();\
+                                     \nMyStruct MyStruct__new();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "MyStruct new(){\
+        const SOURCE_EXPECTED: &str = "MyStruct MyStruct__new(){\
                                         \nreturn (MyStruct){\
                                             \n.f1=0,\
                                             \n.f2=0,\
