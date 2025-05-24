@@ -1,4 +1,6 @@
-use tanitc_serializer::XmlWriter;
+use tanitc_serializer::xml_writer::XmlWriter;
+
+use pretty_assertions::assert_str_eq;
 
 #[test]
 fn writer_test() {
@@ -33,5 +35,5 @@ fn writer_test() {
     writer.end_tag().unwrap();
 
     let res = String::from_utf8(buffer).unwrap();
-    assert_eq!(EXPECTED, res);
+    assert_str_eq!(EXPECTED, res);
 }

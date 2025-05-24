@@ -2,7 +2,7 @@ use tanitc_analyzer::Analyzer;
 use tanitc_codegen::CodeGenStream;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
-use tanitc_serializer::XmlWriter;
+use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 

@@ -1,6 +1,6 @@
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
-use tanitc_serializer::XmlWriter;
+use tanitc_serializer::xml_writer::XmlWriter;
 
 #[test]
 fn use_test() {
