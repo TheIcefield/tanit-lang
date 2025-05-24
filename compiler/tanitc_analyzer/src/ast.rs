@@ -729,7 +729,7 @@ impl Analyzer {
 
 // Alias
 impl Analyzer {
-    fn find_alias_value(&mut self, alias_type: &Type) -> Option<Type> {
+    fn find_alias_value(&self, alias_type: &Type) -> Option<Type> {
         if let Type::Custom(id) = alias_type {
             let type_id = Ident::from(id.clone());
             let mut ss = self.table.get_symbols();
@@ -737,7 +737,11 @@ impl Analyzer {
 
             if ss.len() == 1 {
                 if let SymbolData::AliasDef { ty } = &ss[0].data {
-                    Some(ty.clone())
+                    if let Some(alias_to) = self.find_alias_value(ty) {
+                        Some(alias_to)
+                    } else {
+                        Some(ty.clone())
+                    }
                 } else {
                     None
                 }
