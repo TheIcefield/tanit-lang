@@ -6,7 +6,7 @@ use tanitc_codegen::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::CompileOptions;
 use tanitc_parser::Parser;
-use tanitc_serializer::XmlWriter;
+use tanitc_serializer::xml_writer::XmlWriter;
 
 use lazy_static::lazy_static;
 
