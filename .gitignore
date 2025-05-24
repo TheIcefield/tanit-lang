@@ -1,6 +1,8 @@
 /target
 Cargo.lock
 *.ast.xml
+*.ast.ron
+*.ast.json
 *.symbol_table.txt
 *.tt.c
 *.tt.h

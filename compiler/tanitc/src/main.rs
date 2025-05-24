@@ -1,5 +1,5 @@
 use tanitc_crate::Unit;
-use tanitc_options::CompileOptions;
+use tanitc_options::{AstSerializeMode, CompileOptions};
 
 fn main() {
     let mut source_file = "main.tt".to_string();
@@ -12,8 +12,12 @@ fn main() {
             source_file = argv[i + 1].clone();
         } else if argv[i] == "--dump-tokens" {
             compile_options.verbose_tokens = true;
-        } else if argv[i] == "--dump-ast" {
-            compile_options.dump_ast = true;
+        } else if argv[i] == "--dump-ast" || argv[i] == "--dump-ast-ron" {
+            compile_options.dump_ast_mode = Some(AstSerializeMode::Ron);
+        } else if argv[i] == "--dump-ast-xml" {
+            compile_options.dump_ast_mode = Some(AstSerializeMode::Xml);
+        } else if argv[i] == "--dump-ast-json" {
+            compile_options.dump_ast_mode = Some(AstSerializeMode::Json);
         } else if argv[i] == "--dump-symtable" {
             compile_options.dump_symbol_table = true;
         } else if argv[i] == "--allow-variants" {
