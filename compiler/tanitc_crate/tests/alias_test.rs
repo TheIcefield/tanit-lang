@@ -465,13 +465,16 @@ fn alias_to_alias_type_test() {
                                 \n<alias-definition name=\"A\">\
                                 \n    <type style=\"named\" name=\"S\"/>\
                                 \n</alias-definition>\
+                                \n<alias-definition name=\"B\">\
+                                \n    <type style=\"named\" name=\"A\"/>\
+                                \n</alias-definition>\
                                 \n<function-definition name=\"main\">\
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"named\" name=\"A\"/>\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <type style=\"named\" name=\"B\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"S\"/>\
                                 \n    </operation>\
@@ -490,10 +493,11 @@ fn alias_to_alias_type_test() {
         const HEADER_EXPECTED: &str = "typedef struct {\
                                      \n} S;\
                                      \ntypedef S A;\
+                                     \ntypedef A B;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nA const a = (S){\n};\
+                                        \nB const b = (S){\n};\
                                       \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -507,5 +511,33 @@ fn alias_to_alias_type_test() {
 
         res = String::from_utf8(source_buffer).unwrap();
         assert_str_eq!(SOURCE_EXPECTED, res);
+    }
+}
+
+#[test]
+fn incorrect_alias_to_alias_type_test() {
+    const SRC_TEXT: &str = "\nstruct S {}\
+                            \nalias A = S\
+                            \nalias B = A\
+                            \nfunc main() {\
+                            \n    var b: B = 50\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED: &str = "Semantic error: Cannot perform operation on objects with different types: B (aka: S) and i32";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_str_eq!(errors.first().expect("Expected error").text, EXPECTED);
     }
 }
