@@ -31,6 +31,10 @@ impl Message {
         }
     }
 
+    pub fn from_string(location: Location, text: String) -> Self {
+        Self { location, text }
+    }
+
     pub fn unexpected_token(token: Token, expected: &[Lexem]) -> Self {
         let mut text = format!("Unexpected token: {}. ", token.lexem);
 
@@ -59,10 +63,16 @@ impl Message {
     }
 
     pub fn undefined_id(location: Location, id: Ident) -> Self {
-        let id: String = id.into();
         Self {
             location,
             text: format!("Undefined name \"{id}\""),
+        }
+    }
+
+    pub fn undefined_func(location: Location, func_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("No function \"{func_name}\" found"),
         }
     }
 

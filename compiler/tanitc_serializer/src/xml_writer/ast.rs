@@ -1,5 +1,5 @@
 use tanitc_ast::{
-    attributes, AliasDef, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind,
+    attributes, AliasDef, Block, Branch, BranchKind, CallArgKind, ControlFlow, ControlFlowKind,
     EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec,
     UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
@@ -321,12 +321,12 @@ impl Visitor for XmlWriter<'_> {
                     self.begin_tag("parameters")?;
                     for arg in arguments.iter() {
                         self.begin_tag("parameter")?;
-                        match arg {
-                            CallParam::Notified(id, expr) => {
+                        match &arg.kind {
+                            CallArgKind::Notified(id, expr) => {
                                 self.put_param("name", id)?;
                                 expr.accept(self)?;
                             }
-                            CallParam::Positional(index, expr) => {
+                            CallArgKind::Positional(index, expr) => {
                                 self.put_param("index", index)?;
                                 expr.accept(self)?;
                             }

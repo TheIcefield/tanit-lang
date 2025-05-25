@@ -1,8 +1,9 @@
 use tanitc_ast::{
     attributes::{self, Attributes},
     expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, Block, CallParam, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo, TypeSpec,
-    UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo,
+    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
+    VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -1419,10 +1420,10 @@ impl Parser {
 
 // Values
 impl Parser {
-    fn parse_call_params(&mut self) -> Result<Vec<CallParam>, Message> {
+    fn parse_call_params(&mut self) -> Result<Vec<CallArg>, Message> {
         let _ = self.consume_token(Lexem::LParen)?.location;
 
-        let mut args = Vec::<CallParam>::new();
+        let mut args = Vec::<CallArg>::new();
 
         let mut i = 0;
         loop {
@@ -1434,14 +1435,16 @@ impl Parser {
 
             let expr = self.parse_expression()?;
 
-            let param_id = if let Ast::Value(Value {
-                location: _,
+            let arg_location = expr.location();
+
+            let arg_id = if let Ast::Value(Value {
                 kind: ValueKind::Identifier(id),
+                ..
             }) = &expr
             {
                 if self.peek_token().lexem == Lexem::Colon {
                     self.consume_token(Lexem::Colon)?;
-                    Some(id)
+                    Some(*id)
                 } else {
                     None
                 }
@@ -1449,13 +1452,17 @@ impl Parser {
                 None
             };
 
-            let param = if let Some(id) = param_id {
-                CallParam::Notified(*id, Box::new(self.parse_expression()?))
+            let arg_kind = if let Some(id) = &arg_id {
+                CallArgKind::Notified(*id, Box::new(self.parse_expression()?))
             } else {
-                CallParam::Positional(i, Box::new(expr))
+                CallArgKind::Positional(i, Box::new(expr))
             };
 
-            args.push(param);
+            args.push(CallArg {
+                location: arg_location,
+                identifier: arg_id,
+                kind: arg_kind,
+            });
 
             i += 1;
 

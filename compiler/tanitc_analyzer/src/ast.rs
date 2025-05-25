@@ -1,4 +1,4 @@
-use crate::scope::ScopeUnitKind;
+use crate::{scope::ScopeUnitKind, symbol::Symbol};
 
 use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
 
@@ -6,7 +6,7 @@ use tanitc_ast::{
     self,
     attributes::Safety,
     expression_utils::{BinaryOperation, UnaryOperation},
-    variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow,
+    variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow,
     ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
     TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
 };
@@ -15,7 +15,10 @@ use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, HashMap},
+};
 
 impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
@@ -426,12 +429,15 @@ impl VisitorMut for Analyzer {
                 }
             }
 
-            ValueKind::Call { arguments, .. } => {
-                for arg in arguments.iter_mut() {
-                    self.analyze_call_param(arg)?;
-                }
+            ValueKind::Call {
+                identifier: func_name,
+                arguments: call_args,
+            } => {
+                let Some(func_symbol) = self.get_first_symbol(*func_name) else {
+                    return Err(Message::undefined_id(val.location, *func_name));
+                };
 
-                self.check_call_args(val)?;
+                self.analyze_call(&func_symbol, call_args, val.location)?;
 
                 Ok(())
             }
@@ -456,19 +462,12 @@ impl VisitorMut for Analyzer {
                 for comp in components.iter().enumerate() {
                     let current_comp_type = self.get_type(comp.1);
                     if comp_type != current_comp_type {
-                        return Err(Message::new(
+                        let comp_index = comp.0 + 1;
+                        let suffix = get_ordinal_number_suffix(comp.0);
+                        return Err(Message::from_string(
                             val.location,
-                            &format!(
-                                "Array type is declared like {}, but {}{} element has type {}",
-                                comp_type,
-                                comp.0 + 1,
-                                match comp.0 % 10 {
-                                    0 => "st",
-                                    1 => "nd",
-                                    2 => "rd",
-                                    _ => "th",
-                                },
-                                current_comp_type
+                            format!(
+                                "Array type is declared like {comp_type}, but {comp_index}{suffix} element has type {current_comp_type}",
                             ),
                         ));
                     }
@@ -602,127 +601,168 @@ impl Analyzer {
             }
         }
     }
-
-    fn get_call_param_type(&self, cp: &CallParam) -> Type {
-        match cp {
-            CallParam::Notified(_, expr) | CallParam::Positional(_, expr) => {
-                self.get_type(expr.as_ref())
-            }
-        }
-    }
 }
 
 // Call
 impl Analyzer {
-    fn check_call_args(&mut self, val: &mut Value) -> Result<(), Message> {
-        let (identifier, arguments) = if let ValueKind::Call {
-            identifier,
-            arguments,
-        } = &mut val.kind
-        {
-            (*identifier, arguments)
-        } else {
-            return Err(Message::new(
-                val.location,
-                "Expected call node, but provided another",
-            ));
+    fn check_arg_count(
+        &self,
+        func_name: Ident,
+        arguments: &[CallArg],
+        parameters: &[(Ident, Type)],
+        location: Location,
+    ) -> Result<(), Message> {
+        let expected_len = parameters.len();
+        let actual_len = arguments.len();
+
+        let many_or_few = match actual_len.cmp(&expected_len) {
+            Ordering::Greater => "many",
+            Ordering::Less => "few",
+            Ordering::Equal => "",
         };
 
-        if identifier.is_built_in() {
+        if actual_len != expected_len {
+            return Err(Message::new(
+                location,
+                &format!(
+                    "Too {many_or_few} arguments passed in function \"{func_name}\", expected: {expected_len}, actually: {actual_len}",
+                ),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn analyze_positional_arg(
+        &self,
+        func_name: Ident,
+        func_params: &[(Ident, Type)],
+        arg_idx: usize,
+        arg_value: &Ast,
+        positional_skipped: &mut bool,
+    ) -> Result<usize, Message> {
+        if *positional_skipped {
+            return Err(Message::from_string(
+                arg_value.location(),
+                format!("In function \"{func_name}\" call: positional parameter \"{arg_idx}\" must be passed before notified",
+            )));
+        }
+
+        let func_param_type = &func_params[arg_idx].1;
+        let expr_type = self.get_type(arg_value);
+
+        if expr_type != *func_param_type {
+            return Err(Message::from_string(
+                arg_value.location(),
+                format!("Mismatched types. In function \"{func_name}\" call: positional parameter \"{arg_idx}\" has type \"{expr_type}\" but expected \"{func_param_type}\""),
+            ));
+        }
+
+        Ok(arg_idx)
+    }
+
+    fn analyze_notified_arg(
+        &self,
+        func_name: Ident,
+        func_params: &[(Ident, Type)],
+        arg_id: Ident,
+        arg_value: &Ast,
+        positional_skipped: &mut bool,
+    ) -> Result<usize, Message> {
+        *positional_skipped = true;
+        let location = arg_value.location();
+
+        // check if such parameter declared in the function
+        for (param_index, (param_name, param_type)) in func_params.iter().enumerate() {
+            if *param_name == arg_id {
+                let arg_type = self.get_type(arg_value);
+                if *param_type != arg_type {
+                    return Err(Message::from_string(
+                        location,
+                        format!("Mismatched types. In function \"{func_name}\" call: notified parameter \"{arg_id}\" has type \"{arg_type}\" but expected \"{param_type}\""),
+                    ));
+                }
+
+                return Ok(param_index);
+            }
+        }
+
+        Err(Message::from_string(
+            location,
+            format!("No parameter named \"{arg_id}\" in function \"{func_name}\""),
+        ))
+    }
+
+    fn analyze_arg(
+        &mut self,
+        func_name: Ident,
+        func_params: &[(Ident, Type)],
+        arg: &mut CallArg,
+        positional_skipped: &mut bool,
+    ) -> Result<(), Message> {
+        let res = match &arg.kind {
+            CallArgKind::Notified(arg_id, arg_value) => self.analyze_notified_arg(
+                func_name,
+                func_params,
+                *arg_id,
+                arg_value,
+                positional_skipped,
+            ),
+            CallArgKind::Positional(arg_idx, arg_value) => self.analyze_positional_arg(
+                func_name,
+                func_params,
+                *arg_idx,
+                arg_value,
+                positional_skipped,
+            ),
+        };
+
+        match res {
+            Ok(arg_position) => {
+                let arg_value = match &mut arg.kind {
+                    CallArgKind::Notified(_, arg_value) => std::mem::take(arg_value),
+                    CallArgKind::Positional(_, arg_value) => std::mem::take(arg_value),
+                };
+
+                arg.kind = CallArgKind::Positional(arg_position, arg_value);
+            }
+            Err(err) => self.error(err),
+        }
+
+        Ok(())
+    }
+
+    fn analyze_call(
+        &mut self,
+        func_symbol: &Symbol,
+        call_args: &mut [CallArg],
+        location: Location,
+    ) -> Result<(), Message> {
+        let func_name = func_symbol.id;
+
+        let SymbolData::FunctionDef {
+            parameters: func_params,
+            ..
+        } = &func_symbol.data
+        else {
+            return Err(Message::undefined_func(location, func_name));
+        };
+
+        if func_name.is_built_in() {
             return Ok(());
         }
 
-        if let Some(mut ss) = self.get_first_symbol(identifier) {
-            match &mut ss.data {
-                SymbolData::FunctionDef { parameters, .. } => {
-                    if arguments.len() > parameters.len() {
-                        return Err(Message::new(
-                            val.location,
-                            &format!(
-                        "Too many arguments passed in function \"{}\", expected: {}, actually: {}",
-                        identifier, parameters.len(), arguments.len()),
-                        ));
-                    }
+        self.check_arg_count(func_name, call_args, func_params, location)?;
 
-                    if arguments.len() < parameters.len() {
-                        return Err(Message::new(
-                            val.location,
-                            &format!(
-                        "Too few arguments passed in function \"{}\", expected: {}, actually: {}",
-                        identifier, parameters.len(), arguments.len()),
-                        ));
-                    }
-
-                    let mut positional_skiped = false;
-                    for call_arg in arguments.iter_mut() {
-                        let arg_clone = call_arg.clone();
-                        match arg_clone {
-                            CallParam::Notified(arg_id, arg_value) => {
-                                positional_skiped = true;
-
-                                // check if such parameter declared in the function
-                                let mut param_found = false;
-                                for (param_index, (param_name, param_type)) in
-                                    parameters.iter().enumerate()
-                                {
-                                    if *param_name == arg_id {
-                                        param_found = true;
-
-                                        let arg_type = self.get_type(&arg_value);
-                                        if *param_type != arg_type {
-                                            self.error(Message::new(
-                                            val.location, &format!(
-                                            "Mismatched type for parameter \"{}\". Expected \"{}\", actually: \"{}\"",
-                                            param_name, param_type, param_type))
-                                        );
-                                        }
-
-                                        let modified_param =
-                                            CallParam::Positional(param_index, arg_value.clone());
-                                        *call_arg = modified_param;
-                                    }
-                                }
-                                if !param_found {
-                                    self.error(Message::new(
-                                        val.location,
-                                        &format!(
-                                            "No parameter named \"{}\" in function \"{}\"",
-                                            arg_id, identifier
-                                        ),
-                                    ))
-                                }
-                            }
-                            CallParam::Positional(..) => {
-                                if positional_skiped {
-                                    return Err(Message::new(
-                                        val.location,
-                                        "Positional parameters must be passed before notified",
-                                    ));
-                                }
-                            }
-                        }
-                    }
-
-                    /* Check parameters */
-                    for i in parameters.iter() {
-                        for j in arguments.iter() {
-                            let j_type = self.get_call_param_type(j);
-                            if j_type != i.1 {
-                                return Err(Message::new(val.location, "Mismatched types"));
-                            }
-                        }
-                    }
-                    Ok(())
-                }
-                _ => Err(Message::new(val.location, "No such function found")),
+        let mut positional_skipped = false;
+        for call_arg in call_args.iter_mut() {
+            if let Err(err) =
+                self.analyze_arg(func_name, func_params, call_arg, &mut positional_skipped)
+            {
+                self.error(err);
             }
-        } else {
-            Err(Message::new(val.location, "No such identifier found"))
         }
-    }
 
-    fn analyze_call_param(&self, _cp: &CallParam) -> Result<(), Message> {
-        // TODO: #58
         Ok(())
     }
 }
@@ -962,11 +1002,11 @@ impl Analyzer {
             s
         };
 
-        let processed_node: Option<Expression> = match s.data {
+        let processed_node = match s.data {
             SymbolData::EnumComponent { enum_id, val } => {
                 self.access_enum_component(s.id, enum_id, val, variant_ident, rhs)?
             }
-            SymbolData::FunctionDef { .. } => self.access_func_def()?,
+            SymbolData::FunctionDef { .. } => self.access_func_def(&s, rhs)?,
             SymbolData::StructDef => self.access_struct_def(s.id, rhs)?,
             SymbolData::UnionDef => self.access_union_def(s.id, rhs)?,
             _ => todo!("Unaccessible: {:?}", s.data),
@@ -1066,7 +1106,25 @@ impl Analyzer {
         }
     }
 
-    fn access_func_def(&mut self) -> Result<Option<Expression>, Message> {
+    fn access_func_def(
+        &mut self,
+        func_symbol: &Symbol,
+        rhs: &mut Ast,
+    ) -> Result<Option<Expression>, Message> {
+        if let Ast::Value(Value {
+            location,
+            kind:
+                ValueKind::Call {
+                    arguments: call_args,
+                    ..
+                },
+        }) = rhs
+        {
+            self.analyze_call(func_symbol, call_args, *location)?;
+        } else {
+            todo!("Unexpected rhs: {rhs:#?}");
+        };
+
         Ok(None)
     }
 
@@ -1302,8 +1360,16 @@ impl Analyzer {
                     kind: ValueKind::Call {
                         identifier: func_id,
                         arguments: vec![
-                            CallParam::Positional(0, lhs.clone()),
-                            CallParam::Positional(1, rhs.clone()),
+                            CallArg {
+                                location,
+                                identifier: None,
+                                kind: CallArgKind::Positional(0, lhs.clone()),
+                            },
+                            CallArg {
+                                location,
+                                identifier: None,
+                                kind: CallArgKind::Positional(1, rhs.clone()),
+                            },
                         ],
                     },
                 });
@@ -1750,5 +1816,14 @@ impl Analyzer {
         self.scope.pop();
 
         Ok(())
+    }
+}
+
+fn get_ordinal_number_suffix(num: usize) -> &'static str {
+    match num % 10 {
+        0 => "st",
+        1 => "nd",
+        2 => "rd",
+        _ => "th",
     }
 }
