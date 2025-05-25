@@ -102,8 +102,8 @@ fn functions_test() {
                             \n}\
                             \n\
                             \nfunc main() {\
-                            \n   var param = 34
-                            \n   var res = f(56, a: param)\
+                            \n   var param = 34\
+                            \n   var res = f(56, b: param)\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
@@ -162,7 +162,7 @@ fn functions_test() {
                                 \n                <parameter index=\"0\">\
                                 \n                    <literal style=\"integer-number\" value=\"56\"/>\
                                 \n                </parameter>\
-                                \n                <parameter index=\"0\">\
+                                \n                <parameter index=\"1\">\
                                 \n                    <identifier name=\"param\"/>\
                                 \n                </parameter>\
                                 \n            </parameters>\
@@ -315,5 +315,103 @@ fn function_in_module_work_test() {
 
         res = String::from_utf8(source_buffer).unwrap();
         assert_str_eq!(SOURCE_EXPECTED, res);
+    }
+}
+
+#[test]
+fn incorrect_call_test() {
+    const SRC_TEXT: &str = "\nfunc f(a: i32, b: i32): f32 {\
+                            \n    return a + b\
+                            \n}\
+                            \n\
+                            \nfunc main() {\
+                            \n   var pi = 3.14\
+                            \n   var res = f(5.6, b: pi)\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED_1: &str = "Semantic error: Mismatched types. In function \"f\" call: positional parameter \"0\" has type \"f32\" but expected \"i32\"";
+        const EXPECTED_2: &str = "Semantic error: Mismatched types. In function \"f\" call: notified parameter \"b\" has type \"f32\" but expected \"i32\"";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 2);
+        assert_str_eq!(errors[0].text, EXPECTED_1);
+        assert_str_eq!(errors[1].text, EXPECTED_2);
+    }
+}
+
+#[test]
+fn incorrect_notified_call_test() {
+    const SRC_TEXT: &str = "\nfunc f(a: i32, b: i32): f32 {\
+                            \n    return a + b\
+                            \n}\
+                            \n\
+                            \nfunc main() {\
+                            \n   var res = f(a: 44, 56)\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED: &str = "Semantic error: In function \"f\" call: positional parameter \"1\" must be passed before notified";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 1);
+        assert_str_eq!(errors[0].text, EXPECTED);
+    }
+}
+
+#[test]
+fn incorrect_module_func_call_test() {
+    const SRC_TEXT: &str = "\nmodule math {\
+                            \n    func f(a: i32, b: i32): f32 {\
+                            \n        return a + b\
+                            \n    }\
+                            \n}\
+                            \n\
+                            \nfunc main() {\
+                            \n   var pi = 3.14\
+                            \n   var res = math::f(5.6, b: pi)\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:#?}", parser.get_errors());
+        }
+    }
+
+    let mut analyzer = Analyzer::new();
+    {
+        const EXPECTED_1: &str = "Semantic error: Mismatched types. In function \"f\" call: positional parameter \"0\" has type \"f32\" but expected \"i32\"";
+        const EXPECTED_2: &str = "Semantic error: Mismatched types. In function \"f\" call: notified parameter \"b\" has type \"f32\" but expected \"i32\"";
+
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 2);
+        assert_str_eq!(errors[0].text, EXPECTED_1);
+        assert_str_eq!(errors[1].text, EXPECTED_2);
     }
 }

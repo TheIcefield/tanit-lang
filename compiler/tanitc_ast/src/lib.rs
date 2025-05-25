@@ -225,16 +225,23 @@ impl From<TypeSpec> for Ast {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CallParam {
+pub enum CallArgKind {
     Notified(Ident, Box<Ast>),
     Positional(usize, Box<Ast>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallArg {
+    pub location: Location,
+    pub identifier: Option<Ident>,
+    pub kind: CallArgKind,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueKind {
     Call {
         identifier: Ident,
-        arguments: Vec<CallParam>,
+        arguments: Vec<CallArg>,
     },
     Struct {
         identifier: Ident,
@@ -462,6 +469,12 @@ impl Ast {
     pub fn apply_attributes(&mut self, attrs: attributes::Attributes) -> Result<(), Message> {
         let mut visitor = attributes::AttributesApply { attrs };
         self.accept_mut(&mut visitor)
+    }
+}
+
+impl Default for Ast {
+    fn default() -> Self {
+        Self::Block(Block::default())
     }
 }
 

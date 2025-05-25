@@ -1,8 +1,8 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
-    AliasDef, Ast, Block, Branch, BranchKind, CallParam, ControlFlow, ControlFlowKind, EnumDef,
-    Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value,
-    ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
+    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef,
+    Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -498,10 +498,12 @@ impl CodeGenStream<'_> {
 }
 
 impl CodeGenStream<'_> {
-    fn generate_call_param(&mut self, p: &CallParam) -> Result<(), std::io::Error> {
-        match p {
-            CallParam::Positional(_, node) => self.generate(node.as_ref()),
-            CallParam::Notified(..) => unreachable!("Notified CallParam is not allowed in codegen"),
+    fn generate_call_param(&mut self, arg: &CallArg) -> Result<(), std::io::Error> {
+        match &arg.kind {
+            CallArgKind::Positional(_, node) => self.generate(node.as_ref()),
+            CallArgKind::Notified(..) => {
+                unreachable!("Notified CallParam is not allowed in codegen")
+            }
         }
     }
 }
