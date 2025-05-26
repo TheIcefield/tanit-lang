@@ -1,4 +1,4 @@
-use tanitc_options::{Backend, CrateType};
+use tanitc_options::{Backend, CompileOptions, CrateType};
 
 use std::{
     path::{Path, PathBuf},
@@ -12,11 +12,20 @@ fn get_utility_name(backend: Backend) -> &'static str {
     }
 }
 
-pub fn build_object_file(path: &Path, output: &Path, backend: Backend) -> Result<(), String> {
-    let utility = get_utility_name(backend);
+pub fn build_object_file(
+    path: &Path,
+    output: &Path,
+    options: &CompileOptions,
+) -> Result<(), String> {
+    let utility = get_utility_name(options.backend);
 
     let res = Command::new(utility)
         .arg("-c")
+        .arg(if options.crate_type == CrateType::DynamicLib {
+            "-fPIC"
+        } else {
+            ""
+        })
         .arg(path)
         .arg("-o")
         .arg(output)
@@ -46,12 +55,34 @@ fn build_static_lib(inputs: &[PathBuf], output: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn build_dynamic_lib(
+    inputs: &[PathBuf],
+    output: &Path,
+    options: &CompileOptions,
+) -> Result<(), String> {
+    let utility = get_utility_name(options.backend);
+
+    let res = Command::new(utility)
+        .args(inputs)
+        .arg("-shared")
+        .arg("-o")
+        .arg(output)
+        .output();
+
+    if let Err(err) = res {
+        return Err(format!("Error: {err}"));
+    }
+
+    Ok(())
+}
+
 pub fn link_crate_objects(
     inputs: &[PathBuf],
     output: &Path,
-    crate_type: CrateType,
+    options: &CompileOptions,
 ) -> Result<(), String> {
-    match crate_type {
+    match options.crate_type {
         CrateType::StaticLib => build_static_lib(inputs, output),
+        CrateType::DynamicLib => build_dynamic_lib(inputs, output, options),
     }
 }

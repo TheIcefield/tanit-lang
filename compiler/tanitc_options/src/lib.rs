@@ -11,6 +11,7 @@ pub enum AstSerializeMode {
 pub enum CrateType {
     #[default]
     StaticLib,
+    DynamicLib,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
