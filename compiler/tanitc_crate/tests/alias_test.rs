@@ -1,7 +1,7 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_ast::Ast;
 
-use tanitc_codegen::CodeGenStream;
+use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_ident::Ident;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;

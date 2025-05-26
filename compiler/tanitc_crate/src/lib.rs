@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
 use tanitc_ast::Ast;
-use tanitc_codegen::{CodeGenMode, CodeGenStream};
+use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions};
 use tanitc_parser::Parser;
