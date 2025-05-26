@@ -7,4 +7,5 @@ Cargo.lock
 *.tt.c
 *.tt.h
 *.o
+*.so
 *.a
