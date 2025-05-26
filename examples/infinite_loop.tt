@@ -1,0 +1,5 @@
+func main() {
+    # allow to check that generated code is executable
+    loop {
+    }
+}

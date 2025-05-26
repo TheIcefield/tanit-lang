@@ -1,13 +1,33 @@
 use tanitc_crate::Unit;
 use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
 
+fn crate_type_suffix(t: CrateType) -> &'static str {
+    match t {
+        CrateType::Bin => "",
+        CrateType::StaticLib => ".a",
+        CrateType::DynamicLib => ".so",
+    }
+}
+
 fn parse_crate_type(s: &str) -> CrateType {
     match s {
+        "bin" => CrateType::Bin,
         "static-lib" => CrateType::StaticLib,
         "dynamic-lib" => CrateType::DynamicLib,
         _ => {
             eprintln!("Error: unknown crate type: {s}");
             CrateType::StaticLib
+        }
+    }
+}
+
+fn parse_backend(s: &str) -> Backend {
+    match s {
+        "gcc" => Backend::Gcc,
+        "clang" => Backend::Clang,
+        _ => {
+            eprintln!("Error: unknown backend: {s}");
+            Backend::Gcc
         }
     }
 }
@@ -32,14 +52,14 @@ fn parse_options() -> CompileOptions {
             compile_options.dump_ast_mode = AstSerializeMode::Json;
         } else if argv[i] == "--dump-symtable" {
             compile_options.dump_symbol_table = true;
-        } else if argv[i] == "--backed-clang" {
-            compile_options.backend = Backend::Clang;
-        } else if argv[i] == "--backed-gcc" {
-            compile_options.backend = Backend::Gcc;
-        } else if argv[i] == "--allow-variants" {
-            compile_options.allow_variants = true;
+        } else if argv[i] == "--backend" {
+            compile_options.backend = parse_backend(&argv[i + 1]);
         } else if argv[i] == "--crate-type" {
             compile_options.crate_type = parse_crate_type(&argv[i + 1]);
+        } else if argv[i] == "--crate-name" {
+            compile_options.crate_name = argv[i + 1].clone();
+        } else if argv[i] == "--allow-variants" {
+            compile_options.allow_variants = true;
         }
     }
 
@@ -47,9 +67,7 @@ fn parse_options() -> CompileOptions {
 }
 
 fn main() {
-    let compile_options = parse_options();
-
-    tanitc_crate::set_compile_options(compile_options.clone());
+    let mut compile_options = parse_options();
 
     let input_file = compile_options.input_file.clone();
 
@@ -68,6 +86,20 @@ fn main() {
             main_unit_name.pop();
         }
     }
+
+    if compile_options.crate_name.is_empty() {
+        compile_options.crate_name = main_unit_name.clone();
+    }
+
+    if compile_options.output_file.is_empty() {
+        compile_options.output_file = format!(
+            "{}{}",
+            compile_options.crate_name,
+            crate_type_suffix(compile_options.crate_type)
+        );
+    }
+
+    tanitc_crate::set_compile_options(compile_options.clone());
 
     let main_unit = Unit::builder()
         .set_name(main_unit_name)

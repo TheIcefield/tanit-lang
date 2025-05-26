@@ -8,7 +8,7 @@ use tanitc_ast::Ast;
 use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
-use tanitc_options::{AstSerializeMode, CompileOptions};
+use tanitc_options::{AstSerializeMode, CompileOptions, CrateType};
 use tanitc_parser::Parser;
 
 use lazy_static::lazy_static;
@@ -135,10 +135,15 @@ impl Unit {
     }
 
     fn analyze_program(ast: &mut Ast, analyzer: &mut Analyzer) -> Option<SymbolTable> {
-        let res = ast.accept_mut(analyzer);
+        if let Err(err) = ast.accept_mut(analyzer) {
+            analyzer.error(err);
+        }
 
-        if let Err(err) = &res {
-            analyzer.error(err.clone());
+        let compile_options = get_compile_options();
+        if compile_options.crate_type == CrateType::Bin {
+            if let Err(err) = analyzer.check_main() {
+                analyzer.error(err);
+            }
         }
 
         if analyzer.has_errors() {
@@ -247,6 +252,7 @@ impl Unit {
         let compile_options = get_compile_options();
 
         self.built_path = format!("{}.o", &self.name);
+
         print!("Building AST: \"{}\"... ", &self.path);
 
         match build_object_file(
@@ -322,11 +328,7 @@ impl Unit {
         }
 
         let compile_options = get_compile_options();
-        if let Err(err) = link_crate_objects(
-            &sources,
-            Path::new(&compile_options.output_file),
-            &compile_options,
-        ) {
+        if let Err(err) = link_crate_objects(&sources, &compile_options) {
             eprintln!("{err}");
         }
 

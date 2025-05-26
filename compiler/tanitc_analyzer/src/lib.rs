@@ -1,5 +1,6 @@
 use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
+use tanitc_lexer::location::Location;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
 use tanitc_ty::Type;
@@ -105,6 +106,30 @@ impl Analyzer {
 
     pub fn has_symbol(&self, id: Ident) -> bool {
         self.get_first_symbol(id).is_some()
+    }
+
+    pub fn check_main(&self) -> Result<(), Message> {
+        let check_name = |id: Ident| -> bool { id == Ident::from("main".to_string()) };
+
+        let check_params = |params: &[(Ident, Type)]| -> bool { params.is_empty() };
+
+        let check_data = |data: &SymbolData| -> bool {
+            match data {
+                SymbolData::FunctionDef { parameters, .. } => check_params(parameters),
+                _ => false,
+            }
+        };
+
+        let check_scope = |scope: &Scope| -> bool { scope.0.is_empty() };
+
+        let mut ss = self.table.get_symbols();
+        ss.retain(|s| check_name(s.id) && check_data(&s.data) && check_scope(&s.scope));
+
+        if ss.is_empty() {
+            return Err(Message::new(Location::new(), "No entry point!"));
+        }
+
+        Ok(())
     }
 
     pub fn error(&mut self, mut error: Message) {
