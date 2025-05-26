@@ -6,3 +6,4 @@ Cargo.lock
 *.symbol_table.txt
 *.tt.c
 *.tt.h
+*.o
