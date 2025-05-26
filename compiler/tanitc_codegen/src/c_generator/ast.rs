@@ -8,7 +8,7 @@ use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
-use crate::{CodeGenMode, CodeGenStream};
+use super::{CodeGenMode, CodeGenStream};
 
 use std::{collections::BTreeMap, io::Write};
 
