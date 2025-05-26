@@ -4,6 +4,7 @@ use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
 fn parse_crate_type(s: &str) -> CrateType {
     match s {
         "static-lib" => CrateType::StaticLib,
+        "dynamic-lib" => CrateType::DynamicLib,
         _ => {
             eprintln!("Error: unknown crate type: {s}");
             CrateType::StaticLib

@@ -252,7 +252,7 @@ impl Unit {
         match build_object_file(
             Path::new(&self.generated_path),
             Path::new(&self.built_path),
-            compile_options.backend,
+            &compile_options,
         ) {
             Ok(_) => {
                 self.process_state = UnitProcessState::Processed;
@@ -325,7 +325,7 @@ impl Unit {
         if let Err(err) = link_crate_objects(
             &sources,
             Path::new(&compile_options.output_file),
-            compile_options.crate_type,
+            &compile_options,
         ) {
             eprintln!("{err}");
         }
