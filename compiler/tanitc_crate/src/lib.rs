@@ -1,8 +1,11 @@
-use std::{path::Path, sync::Mutex};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
 use tanitc_ast::Ast;
-use tanitc_builder::build_object_file;
+use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions};
@@ -271,8 +274,6 @@ impl Unit {
             let mut sub_units: Vec<Unit> = Vec::new();
 
             for unit in UNITS.lock().unwrap().iter_mut() {
-                println!("{} State is {:#?}", unit.path, unit.process_state);
-
                 match unit.process_state {
                     UnitProcessState::NotProcessed => {
                         is_all_processed = false;
@@ -313,6 +314,20 @@ impl Unit {
             if is_all_processed || failed {
                 break;
             }
+        }
+
+        let mut sources = Vec::<PathBuf>::new();
+        for unit in UNITS.lock().unwrap().iter_mut() {
+            sources.push(unit.built_path.clone().into());
+        }
+
+        let compile_options = get_compile_options();
+        if let Err(err) = link_crate_objects(
+            &sources,
+            Path::new(&compile_options.output_file),
+            compile_options.crate_type,
+        ) {
+            eprintln!("{err}");
         }
 
         Ok(())
