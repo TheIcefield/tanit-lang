@@ -1,7 +1,8 @@
-use std::sync::Mutex;
+use std::{path::Path, sync::Mutex};
 
 use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
 use tanitc_ast::Ast;
+use tanitc_builder::build_object_file;
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions};
@@ -11,12 +12,13 @@ use lazy_static::lazy_static;
 
 pub mod ast;
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 enum UnitProcessState {
     #[default]
     NotProcessed,
     Parsed,
     Analyzed,
+    Generated,
     Processed,
     Failed,
 }
@@ -25,6 +27,8 @@ enum UnitProcessState {
 pub struct Unit {
     name: String,
     path: String,
+    generated_path: String,
+    built_path: String,
     process_state: UnitProcessState,
     ast: Option<Ast>,
     symbol_table: Option<SymbolTable>,
@@ -35,6 +39,8 @@ impl Default for Unit {
         Self {
             name: "main".to_string(),
             path: "./main.tt".to_string(),
+            generated_path: String::default(),
+            built_path: String::default(),
             process_state: UnitProcessState::default(),
             ast: None,
             symbol_table: None,
@@ -170,9 +176,9 @@ impl Unit {
 
         let compile_options = get_compile_options();
 
-        if let Some(mode) = &compile_options.dump_ast_mode {
+        if AstSerializeMode::None != compile_options.dump_ast_mode {
             print!("Serializing AST: \"{}\"... ", &self.path);
-            self.serialize_ast(*mode);
+            self.serialize_ast(compile_options.dump_ast_mode);
             println!("OK!");
         }
 
@@ -189,7 +195,7 @@ impl Unit {
         use std::io::Write;
 
         if !matches!(self.process_state, UnitProcessState::Analyzed) {
-            return Err("Error: expected \"Parsed\" stated");
+            return Err("Error: expected \"Analyzed\" stated");
         }
 
         if self.ast.is_none() {
@@ -200,11 +206,13 @@ impl Unit {
             return Err("Error: missing required \"Symbol table\"");
         }
 
-        print!("Building \"{}\"... ", &self.path);
+        print!("Generating \"{}\"... ", &self.path);
+
+        self.generated_path = format!("{}.tt.c", &self.name);
 
         let mut header_stream = std::fs::File::create(format!("{}.tt.h", &self.name))
             .expect("Error: can't create file for header stream");
-        let mut source_stream = std::fs::File::create(format!("{}.tt.c", &self.name))
+        let mut source_stream = std::fs::File::create(&self.generated_path)
             .expect("Error: can't create file for source stream");
 
         let mut writer = CodeGenStream::new(&mut header_stream, &mut source_stream)
@@ -218,10 +226,39 @@ impl Unit {
         writer.mode = old_mode;
 
         if let Err(err) = self.ast.as_mut().unwrap().accept(&mut writer) {
+            self.process_state = UnitProcessState::Failed;
             eprintln!("Error: {}", err);
         } else {
-            self.process_state = UnitProcessState::Processed;
+            self.process_state = UnitProcessState::Generated;
             println!("OK!");
+        }
+
+        Ok(())
+    }
+
+    pub fn process_building(&mut self) -> Result<(), &'static str> {
+        if !matches!(self.process_state, UnitProcessState::Generated) {
+            return Err("Error: expected \"Generated\" stated");
+        }
+
+        let compile_options = get_compile_options();
+
+        self.built_path = format!("{}.o", &self.name);
+        print!("Building AST: \"{}\"... ", &self.path);
+
+        match build_object_file(
+            Path::new(&self.generated_path),
+            Path::new(&self.built_path),
+            compile_options.backend,
+        ) {
+            Ok(_) => {
+                self.process_state = UnitProcessState::Processed;
+                println!("OK!");
+            }
+            Err(err) => {
+                self.process_state = UnitProcessState::Failed;
+                eprintln!("{err}");
+            }
         }
 
         Ok(())
@@ -234,6 +271,8 @@ impl Unit {
             let mut sub_units: Vec<Unit> = Vec::new();
 
             for unit in UNITS.lock().unwrap().iter_mut() {
+                println!("{} State is {:#?}", unit.path, unit.process_state);
+
                 match unit.process_state {
                     UnitProcessState::NotProcessed => {
                         is_all_processed = false;
@@ -249,7 +288,13 @@ impl Unit {
                         }
                     }
                     UnitProcessState::Analyzed => {
+                        is_all_processed = false;
                         if let Err(e) = unit.process_codegen() {
+                            eprintln!("{e}");
+                        }
+                    }
+                    UnitProcessState::Generated => {
+                        if let Err(e) = unit.process_building() {
                             eprintln!("{e}");
                         }
                     }
@@ -299,6 +344,7 @@ impl Unit {
 
     fn serialize_ast(&mut self, mode: AstSerializeMode) {
         let suffix = match mode {
+            AstSerializeMode::None => "",
             AstSerializeMode::Ron => "ron",
             AstSerializeMode::Xml => "xml",
             AstSerializeMode::Json => "json",
@@ -308,6 +354,7 @@ impl Unit {
             .expect("Error: can't create file for dumping AST");
 
         match mode {
+            AstSerializeMode::None => {}
             AstSerializeMode::Ron => self.serialize_ron(&mut file),
             AstSerializeMode::Xml => self.serialize_xml(&mut file),
             AstSerializeMode::Json => self.serialize_json(&mut file),
@@ -355,7 +402,7 @@ pub fn set_compile_options(opt: CompileOptions) {
 }
 
 pub fn get_compile_options() -> CompileOptions {
-    *COMPILE_OPTIONS.lock().unwrap()
+    COMPILE_OPTIONS.lock().unwrap().clone()
 }
 
 pub fn register_unit(unit: Unit) {

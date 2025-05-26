@@ -1,13 +1,9 @@
 [package]
-name = "tanitc_codegen"
+name = "tanitc_builder"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tanitc_ident = { path = "../tanitc_ident" }
-tanitc_ast = { path = "../tanitc_ast" }
-tanitc_messages = { path = "../tanitc_messages" }
-tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_options = { path = "../tanitc_options" }
