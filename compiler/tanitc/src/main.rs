@@ -1,5 +1,15 @@
 use tanitc_crate::Unit;
-use tanitc_options::{AstSerializeMode, Backend, CompileOptions};
+use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
+
+fn parse_crate_type(s: &str) -> CrateType {
+    match s {
+        "static-lib" => CrateType::StaticLib,
+        _ => {
+            eprintln!("Error: unknown crate type: {s}");
+            CrateType::StaticLib
+        }
+    }
+}
 
 fn parse_options() -> CompileOptions {
     let mut compile_options = CompileOptions::default();
@@ -27,6 +37,8 @@ fn parse_options() -> CompileOptions {
             compile_options.backend = Backend::Gcc;
         } else if argv[i] == "--allow-variants" {
             compile_options.allow_variants = true;
+        } else if argv[i] == "--crate-type" {
+            compile_options.crate_type = parse_crate_type(&argv[i + 1]);
         }
     }
 
