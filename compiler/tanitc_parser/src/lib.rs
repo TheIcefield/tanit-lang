@@ -142,6 +142,22 @@ impl Parser {
         }
     }
 
+    pub fn consume_text(&mut self) -> Result<String, Message> {
+        let tkn = self.peek_token();
+
+        match tkn.lexem {
+            Lexem::Text(text) => {
+                self.get_token();
+                Ok(text)
+            }
+
+            _ => Err(Message::new(
+                tkn.location,
+                &format!("Unexpected token {tkn}. Expected text."),
+            )),
+        }
+    }
+
     pub fn skip_until(&mut self, until: &[Lexem]) {
         let old_opt = self.lexer.ignores_nl;
 

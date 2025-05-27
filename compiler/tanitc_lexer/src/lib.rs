@@ -421,6 +421,10 @@ impl Lexer {
             }
 
             _ => {
+                if next_char == '\"' {
+                    return self.get_text_token();
+                }
+
                 if next_char.is_ascii_digit() {
                     return self.get_numeric_token();
                 }
@@ -502,6 +506,25 @@ impl Lexer {
         };
 
         Token::new(lexem, location)
+    }
+
+    fn get_text_token(&mut self) -> Token {
+        let location = self.location;
+
+        let mut text = String::new();
+
+        self.get_char();
+
+        while !self.is_eof && self.peek_char().is_ascii() {
+            if self.peek_char() == '\"' {
+                self.get_char();
+                break;
+            }
+
+            text.push(self.get_char());
+        }
+
+        Token::new(Lexem::Text(text), location)
     }
 }
 

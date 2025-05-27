@@ -1,0 +1,3 @@
+extern "C" {
+    unsafe func hello(): i32
+}

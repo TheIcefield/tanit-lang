@@ -79,6 +79,7 @@ pub enum Lexem {
     Identifier(String),
     Integer(String),
     Decimal(String),
+    Text(String),
 
     Unknown,
 }
@@ -207,9 +208,10 @@ impl std::fmt::Display for Lexem {
             Self::KwSafe => write!(f, "safe"),
             Self::KwUnsafe => write!(f, "unsafe"),
 
-            Self::Identifier(val) => write!(f, "{}", val),
-            Self::Integer(val) => write!(f, "{}", val),
-            Self::Decimal(val) => write!(f, "{}", val),
+            Self::Identifier(val) => write!(f, "{val}"),
+            Self::Integer(val) => write!(f, "{val}"),
+            Self::Decimal(val) => write!(f, "{val}"),
+            Self::Text(val) => write!(f, "{val:?}"),
 
             Self::Unknown => write!(f, "unknown token"),
         }
