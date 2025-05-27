@@ -334,6 +334,7 @@ impl From<Use> for Ast {
 pub struct ExternDef {
     pub location: Location,
     pub abi_name: String,
+    pub functions: Vec<FunctionDef>,
 }
 
 impl From<ExternDef> for Ast {
