@@ -217,6 +217,10 @@ impl VisitorMut for Analyzer {
         Ok(())
     }
 
+    fn visit_extern_def(&mut self, _extern_def: &mut tanitc_ast::ExternDef) -> Result<(), Message> {
+        Ok(())
+    }
+
     fn visit_variable_def(&mut self, var_def: &mut VariableDef) -> Result<(), Message> {
         if self.has_symbol(var_def.identifier) {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));

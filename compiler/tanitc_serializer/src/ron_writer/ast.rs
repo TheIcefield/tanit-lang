@@ -1,6 +1,6 @@
 use tanitc_ast::{
-    AliasDef, Ast, Block, Branch, ControlFlow, EnumDef, Expression, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
+    AliasDef, Ast, Block, Branch, ControlFlow, EnumDef, Expression, ExternDef, FunctionDef,
+    ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
 };
 
 use tanitc_lexer::location::Location;
@@ -46,6 +46,13 @@ impl Visitor for RonWriter<'_> {
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
         match self.serialize_func_def(func_def) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Self::serialize_err(e)),
+        }
+    }
+
+    fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
+        match self.serialize_extern_def(extern_def) {
             Ok(_) => Ok(()),
             Err(e) => Err(Self::serialize_err(e)),
         }
@@ -145,6 +152,10 @@ impl RonWriter<'_> {
 
     pub fn serialize_func_def(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
         write!(self.stream, "{func_def:#?}")
+    }
+
+    pub fn serialize_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), std::io::Error> {
+        write!(self.stream, "{extern_def:#?}")
     }
 
     pub fn serialize_variable_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {

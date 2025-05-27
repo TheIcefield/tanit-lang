@@ -1,8 +1,8 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeSpec, UnionDef,
-    Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeSpec,
+    UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -50,6 +50,13 @@ impl Visitor for CodeGenStream<'_> {
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
         match self.generate_func_def(func_def) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Self::codegen_err(e)),
+        }
+    }
+
+    fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
+        match self.generate_extern_def(extern_def) {
             Ok(_) => Ok(()),
             Err(e) => Err(Self::codegen_err(e)),
         }
@@ -130,6 +137,7 @@ impl CodeGenStream<'_> {
             Ast::FuncDef(node) => self.generate_func_def(node),
             Ast::VariableDef(node) => self.generate_variable_def(node),
             Ast::AliasDef(node) => self.generate_alias_def(node),
+            Ast::ExternDef(node) => self.generate_extern_def(node),
             Ast::Expression(node) => self.generate_expression(node),
             Ast::BranchStmt(node) => self.generate_branch(node),
             Ast::ControlFlow(node) => self.generate_control_flow(node),
@@ -596,6 +604,12 @@ impl CodeGenStream<'_> {
 
         writeln!(self, "}} {field_id};")?;
 
+        Ok(())
+    }
+}
+
+impl CodeGenStream<'_> {
+    fn generate_extern_def(&mut self, _extern_def: &ExternDef) -> Result<(), std::io::Error> {
         Ok(())
     }
 }
