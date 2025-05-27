@@ -1,9 +1,9 @@
 use tanitc_ast::{
     attributes::{self, Attributes},
     expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, FunctionDef, StructDef, TypeInfo,
-    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
-    VariantField,
+    Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, ExternDef, FunctionDef,
+    StructDef, TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef,
+    VariantDef, VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -1086,6 +1086,8 @@ impl Parser {
 
                 Lexem::Lcb => self.parse_local_block(),
 
+                Lexem::KwExtern => self.parse_extern_def(),
+
                 _ => {
                     self.skip_until(&[Lexem::EndOfLine]);
                     self.get_token();
@@ -1902,5 +1904,12 @@ impl Parser {
         }
 
         Ok(())
+    }
+}
+
+// Extern
+impl Parser {
+    pub fn parse_extern_def(&mut self) -> Result<Ast, Message> {
+        Ok(Ast::ExternDef(ExternDef::default()))
     }
 }

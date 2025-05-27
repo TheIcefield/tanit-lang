@@ -330,6 +330,18 @@ impl From<Use> for Ast {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct ExternDef {
+    pub location: Location,
+    pub abi_name: String,
+}
+
+impl From<ExternDef> for Ast {
+    fn from(value: ExternDef) -> Self {
+        Self::ExternDef(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ast {
     ModuleDef(ModuleDef),
@@ -340,6 +352,7 @@ pub enum Ast {
     FuncDef(FunctionDef),
     VariableDef(VariableDef),
     AliasDef(AliasDef),
+    ExternDef(ExternDef),
     Expression(Expression),
     BranchStmt(Branch),
     ControlFlow(ControlFlow),
@@ -356,6 +369,7 @@ pub trait Visitor {
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message>;
+    fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message>;
     fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message>;
     fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message>;
     fn visit_expression(&mut self, expr: &Expression) -> Result<(), Message>;
@@ -374,6 +388,7 @@ pub trait VisitorMut {
     fn visit_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message>;
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message>;
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message>;
+    fn visit_extern_def(&mut self, extern_def: &mut ExternDef) -> Result<(), Message>;
     fn visit_variable_def(&mut self, var_def: &mut VariableDef) -> Result<(), Message>;
     fn visit_alias_def(&mut self, alias_def: &mut AliasDef) -> Result<(), Message>;
     fn visit_expression(&mut self, expr: &mut Expression) -> Result<(), Message>;
@@ -388,41 +403,43 @@ pub trait VisitorMut {
 impl Ast {
     pub fn accept(&self, visitor: &mut dyn Visitor) -> Result<(), Message> {
         match self {
-            Ast::ModuleDef(node) => visitor.visit_module_def(node),
-            Ast::StructDef(node) => visitor.visit_struct_def(node),
-            Ast::UnionDef(node) => visitor.visit_union_def(node),
-            Ast::VariantDef(node) => visitor.visit_variant_def(node),
-            Ast::EnumDef(node) => visitor.visit_enum_def(node),
-            Ast::FuncDef(node) => visitor.visit_func_def(node),
-            Ast::VariableDef(node) => visitor.visit_variable_def(node),
-            Ast::AliasDef(node) => visitor.visit_alias_def(node),
-            Ast::Expression(node) => visitor.visit_expression(node),
-            Ast::BranchStmt(node) => visitor.visit_branch(node),
-            Ast::ControlFlow(node) => visitor.visit_control_flow(node),
-            Ast::TypeSpec(node) => visitor.visit_type_spec(node),
-            Ast::Use(node) => visitor.visit_use(node),
-            Ast::Block(node) => visitor.visit_block(node),
-            Ast::Value(node) => visitor.visit_value(node),
+            Self::ModuleDef(node) => visitor.visit_module_def(node),
+            Self::StructDef(node) => visitor.visit_struct_def(node),
+            Self::UnionDef(node) => visitor.visit_union_def(node),
+            Self::VariantDef(node) => visitor.visit_variant_def(node),
+            Self::EnumDef(node) => visitor.visit_enum_def(node),
+            Self::FuncDef(node) => visitor.visit_func_def(node),
+            Self::VariableDef(node) => visitor.visit_variable_def(node),
+            Self::AliasDef(node) => visitor.visit_alias_def(node),
+            Self::ExternDef(node) => visitor.visit_extern_def(node),
+            Self::Expression(node) => visitor.visit_expression(node),
+            Self::BranchStmt(node) => visitor.visit_branch(node),
+            Self::ControlFlow(node) => visitor.visit_control_flow(node),
+            Self::TypeSpec(node) => visitor.visit_type_spec(node),
+            Self::Use(node) => visitor.visit_use(node),
+            Self::Block(node) => visitor.visit_block(node),
+            Self::Value(node) => visitor.visit_value(node),
         }
     }
 
     pub fn accept_mut(&mut self, visitor: &mut dyn VisitorMut) -> Result<(), Message> {
         match self {
-            Ast::ModuleDef(node) => visitor.visit_module_def(node),
-            Ast::StructDef(node) => visitor.visit_struct_def(node),
-            Ast::UnionDef(node) => visitor.visit_union_def(node),
-            Ast::VariantDef(node) => visitor.visit_variant_def(node),
-            Ast::EnumDef(node) => visitor.visit_enum_def(node),
-            Ast::FuncDef(node) => visitor.visit_func_def(node),
-            Ast::VariableDef(node) => visitor.visit_variable_def(node),
-            Ast::AliasDef(node) => visitor.visit_alias_def(node),
-            Ast::Expression(node) => visitor.visit_expression(node),
-            Ast::BranchStmt(node) => visitor.visit_branch(node),
-            Ast::ControlFlow(node) => visitor.visit_control_flow(node),
-            Ast::TypeSpec(node) => visitor.visit_type_spec(node),
-            Ast::Use(node) => visitor.visit_use(node),
-            Ast::Block(node) => visitor.visit_block(node),
-            Ast::Value(node) => visitor.visit_value(node),
+            Self::ModuleDef(node) => visitor.visit_module_def(node),
+            Self::StructDef(node) => visitor.visit_struct_def(node),
+            Self::UnionDef(node) => visitor.visit_union_def(node),
+            Self::VariantDef(node) => visitor.visit_variant_def(node),
+            Self::EnumDef(node) => visitor.visit_enum_def(node),
+            Self::FuncDef(node) => visitor.visit_func_def(node),
+            Self::VariableDef(node) => visitor.visit_variable_def(node),
+            Self::AliasDef(node) => visitor.visit_alias_def(node),
+            Self::ExternDef(node) => visitor.visit_extern_def(node),
+            Self::Expression(node) => visitor.visit_expression(node),
+            Self::BranchStmt(node) => visitor.visit_branch(node),
+            Self::ControlFlow(node) => visitor.visit_control_flow(node),
+            Self::TypeSpec(node) => visitor.visit_type_spec(node),
+            Self::Use(node) => visitor.visit_use(node),
+            Self::Block(node) => visitor.visit_block(node),
+            Self::Value(node) => visitor.visit_value(node),
         }
     }
 
@@ -436,6 +453,7 @@ impl Ast {
             Self::FuncDef(node) => node.location,
             Self::VariableDef(node) => node.location,
             Self::AliasDef(node) => node.location,
+            Self::ExternDef(node) => node.location,
             Self::Expression(node) => node.location,
             Self::BranchStmt(node) => node.location,
             Self::ControlFlow(node) => node.location,
@@ -448,21 +466,22 @@ impl Ast {
 
     pub fn name(&self) -> &'static str {
         match self {
-            Ast::ModuleDef(_) => "module definition",
-            Ast::StructDef(_) => "struct definition",
-            Ast::UnionDef(_) => "union definition",
-            Ast::VariantDef(_) => "variant definition",
-            Ast::EnumDef(_) => "enum definition",
-            Ast::FuncDef(_) => "function definition",
-            Ast::VariableDef(_) => "variable definition",
-            Ast::AliasDef(_) => "alias definition",
-            Ast::Expression(_) => "expression",
-            Ast::BranchStmt(_) => "branching",
-            Ast::ControlFlow(cf) => cf.kind.to_str(),
-            Ast::TypeSpec(_) => "type specification",
-            Ast::Use(_) => "using",
-            Ast::Block(_) => "block",
-            Ast::Value(_) => "value",
+            Self::ModuleDef(_) => "module definition",
+            Self::StructDef(_) => "struct definition",
+            Self::UnionDef(_) => "union definition",
+            Self::VariantDef(_) => "variant definition",
+            Self::EnumDef(_) => "enum definition",
+            Self::FuncDef(_) => "function definition",
+            Self::VariableDef(_) => "variable definition",
+            Self::AliasDef(_) => "alias definition",
+            Self::ExternDef(_) => "extern definition",
+            Self::Expression(_) => "expression",
+            Self::BranchStmt(_) => "branching",
+            Self::ControlFlow(cf) => cf.kind.to_str(),
+            Self::TypeSpec(_) => "type specification",
+            Self::Use(_) => "using",
+            Self::Block(_) => "block",
+            Self::Value(_) => "value",
         }
     }
 

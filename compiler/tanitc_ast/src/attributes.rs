@@ -60,6 +60,10 @@ impl super::VisitorMut for AttributesApply {
         Ok(())
     }
 
+    fn visit_extern_def(&mut self, _extern_def: &mut crate::ExternDef) -> Result<(), Message> {
+        Ok(())
+    }
+
     fn visit_type_spec(&mut self, _type_spec: &mut crate::TypeSpec) -> Result<(), Message> {
         Ok(())
     }

@@ -135,6 +135,16 @@ impl Visitor for XmlWriter<'_> {
         Ok(())
     }
 
+    fn visit_extern_def(&mut self, extern_def: &tanitc_ast::ExternDef) -> Result<(), Message> {
+        self.begin_tag("extern-definition")?;
+
+        self.put_param("abi-name", &extern_def.abi_name)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
     fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message> {
         self.begin_tag("variable-definition")?;
         self.put_param("name", var_def.identifier)?;
