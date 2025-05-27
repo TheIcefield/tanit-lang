@@ -846,6 +846,9 @@ impl Parser {
 
         self.parse_func_header_params(func_def)?;
 
+        let old_opt = self.does_ignore_nl();
+        self.set_ignore_nl_option(false);
+
         let next = self.peek_token();
         func_def.return_type = if Lexem::Colon == next.lexem {
             self.get_token();
@@ -857,6 +860,8 @@ impl Parser {
                 ty: Type::unit(),
             }
         };
+
+        self.set_ignore_nl_option(old_opt);
 
         Ok(())
     }
