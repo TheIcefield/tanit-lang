@@ -7,8 +7,9 @@ use tanitc_ast::{
     attributes::Safety,
     expression_utils::{BinaryOperation, UnaryOperation},
     variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow,
-    ControlFlowKind, EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef,
-    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, VisitorMut,
+    ControlFlowKind, EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef,
+    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
+    VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -217,7 +218,13 @@ impl VisitorMut for Analyzer {
         Ok(())
     }
 
-    fn visit_extern_def(&mut self, _extern_def: &mut tanitc_ast::ExternDef) -> Result<(), Message> {
+    fn visit_extern_def(&mut self, extern_def: &mut ExternDef) -> Result<(), Message> {
+        for func_def in extern_def.functions.iter_mut() {
+            if let Err(err) = self.visit_func_def(func_def) {
+                self.error(err);
+            }
+        }
+
         Ok(())
     }
 

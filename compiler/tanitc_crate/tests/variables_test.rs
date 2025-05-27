@@ -12,8 +12,7 @@ fn variables_test() {
     let radian_id = Ident::from("radian".to_string());
     let ceil_id = Ident::from("ceil".to_string());
 
-    const SRC_TEXT: &str = "\nfunc main()
-                            \n{\
+    const SRC_TEXT: &str = "\nfunc main() {\
                             \n    var const PI: f32\
                             \n    var radian = PI / 2.0\
                             \n    var mut ceil = radian as i32\
