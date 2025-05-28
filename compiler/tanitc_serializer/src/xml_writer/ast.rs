@@ -1,7 +1,8 @@
 use tanitc_ast::{
     attributes, AliasDef, Block, Branch, BranchKind, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, FunctionDef, ModuleDef, StructDef, TypeInfo, TypeSpec,
-    UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeInfo,
+    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
+    VariantField, Visitor,
 };
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -135,10 +136,14 @@ impl Visitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_extern_def(&mut self, extern_def: &tanitc_ast::ExternDef) -> Result<(), Message> {
+    fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
         self.begin_tag("extern-definition")?;
 
         self.put_param("abi-name", &extern_def.abi_name)?;
+
+        for func_def in extern_def.functions.iter() {
+            self.visit_func_def(func_def)?;
+        }
 
         self.end_tag()?;
 
