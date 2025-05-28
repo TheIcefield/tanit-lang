@@ -127,6 +127,15 @@ impl Visitor for CodeGenStream<'_> {
 }
 
 impl CodeGenStream<'_> {
+    fn codegen_err(err: std::io::Error) -> Message {
+        Message {
+            location: Location::new(),
+            text: format!("Codegen error: {err}"),
+        }
+    }
+}
+
+impl CodeGenStream<'_> {
     fn generate(&mut self, node: &Ast) -> Result<(), std::io::Error> {
         match node {
             Ast::ModuleDef(node) => self.generate_module_def(node),
@@ -478,13 +487,6 @@ impl CodeGenStream<'_> {
 }
 
 impl CodeGenStream<'_> {
-    fn codegen_err(err: std::io::Error) -> Message {
-        Message {
-            location: Location::new(),
-            text: format!("Codegen error: {err}"),
-        }
-    }
-
     fn generate_internal_module(&mut self, module_def: &ModuleDef) -> std::io::Result<()> {
         if let Some(body) = &module_def.body {
             self.generate_block(body)?;
@@ -609,7 +611,18 @@ impl CodeGenStream<'_> {
 }
 
 impl CodeGenStream<'_> {
-    fn generate_extern_def(&mut self, _extern_def: &ExternDef) -> Result<(), std::io::Error> {
+    fn generate_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), std::io::Error> {
+        let mode = self.mode;
+        self.mode = CodeGenMode::HeaderOnly;
+
+        for func_def in extern_def.functions.iter() {
+            write!(self, "extern ")?;
+
+            self.generate_func_def(func_def)?;
+        }
+
+        self.mode = mode;
+
         Ok(())
     }
 }
