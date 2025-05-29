@@ -6,13 +6,12 @@ use tanitc_options::CompileOptions;
 use tanitc_ty::Type;
 
 pub mod ast;
-pub mod scope;
-pub mod symbol;
-pub mod symbol_table;
 
-use scope::{Counter, Scope};
-use symbol::{Symbol, SymbolData};
-use symbol_table::SymbolTable;
+use tanitc_symbol_table::{
+    scope::{Counter, Scope},
+    symbol::{Symbol, SymbolData},
+    SymbolTable,
+};
 
 pub trait Analyze {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
@@ -176,7 +175,7 @@ fn scope_test() {
      * }
      */
 
-    use scope::{ScopeUnit, ScopeUnitKind};
+    use tanitc_symbol_table::scope::{ScopeUnit, ScopeUnitKind};
 
     let main_mod_id = Ident::from("Main".to_string());
     let bar_id = Ident::from("bar".to_string());
@@ -264,7 +263,7 @@ fn symbol_access_test() {
      * }
      */
 
-    use scope::{ScopeUnit, ScopeUnitKind};
+    use tanitc_symbol_table::scope::{ScopeUnit, ScopeUnitKind};
 
     let m1_id = Ident::from("M1".to_string());
     let m2_id = Ident::from("M2".to_string());
