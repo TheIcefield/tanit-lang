@@ -2,6 +2,9 @@ use tanitc_ident::Ident;
 
 use std::collections::HashMap;
 
+pub mod scope;
+pub mod symbol;
+
 use crate::{
     scope::{Scope, ScopeUnitKind},
     symbol::Symbol,

@@ -1,7 +1,3 @@
-use crate::{scope::ScopeUnitKind, symbol::Symbol};
-
-use super::{scope::ScopeUnit, symbol::SymbolData, Analyzer};
-
 use tanitc_ast::{
     self,
     attributes::Safety,
@@ -14,12 +10,18 @@ use tanitc_ast::{
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
+use tanitc_symbol_table::{
+    scope::{ScopeUnit, ScopeUnitKind},
+    symbol::{Symbol, SymbolData},
+};
 use tanitc_ty::Type;
 
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
 };
+
+use crate::Analyzer;
 
 impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {

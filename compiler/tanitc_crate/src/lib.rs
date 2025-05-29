@@ -3,13 +3,14 @@ use std::{
     sync::Mutex,
 };
 
-use tanitc_analyzer::{self, symbol_table::SymbolTable, Analyzer};
+use tanitc_analyzer::{self, Analyzer};
 use tanitc_ast::Ast;
 use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions, CrateType};
 use tanitc_parser::Parser;
+use tanitc_symbol_table::SymbolTable;
 
 use lazy_static::lazy_static;
 
