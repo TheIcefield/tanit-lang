@@ -52,7 +52,7 @@ fn union_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <block>\
-                                \n        <attributes safety=\"unsafe\"/>\
+                                \n        <attributes safety=\"Unsafe\"/>\
                                 \n        <operation style=\"binary\" operation=\"=\">\
                                 \n            <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
                                 \n                <type style=\"named\" name=\"MyUnion\"/>\

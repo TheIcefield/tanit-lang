@@ -4,6 +4,8 @@ use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
+use pretty_assertions::assert_str_eq;
+
 #[test]
 fn enum_def_test() {
     const SRC_TEXT: &str = "\nenum MyEnum {\
@@ -29,7 +31,7 @@ fn enum_def_test() {
         enum_node.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -48,7 +50,7 @@ fn enum_def_test() {
         let header_res = String::from_utf8(header_buffer).unwrap();
         let source_res = String::from_utf8(source_buffer).unwrap();
 
-        assert_eq!(HEADER_EXPECTED, header_res);
+        assert_str_eq!(HEADER_EXPECTED, header_res);
         assert!(source_res.is_empty());
     }
 }
@@ -85,7 +87,7 @@ fn empty_enum_def_test() {
         let header_res = String::from_utf8(header_buffer).unwrap();
         let source_res = String::from_utf8(source_buffer).unwrap();
 
-        assert_eq!(HEADER_EXPECTED, header_res);
+        assert_str_eq!(HEADER_EXPECTED, header_res);
         assert!(source_res.is_empty());
     }
 }
@@ -109,7 +111,7 @@ fn enum_with_one_field_def_test() {
         enum_node.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -178,7 +180,7 @@ fn enum_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -208,10 +210,10 @@ fn enum_work_test() {
         program.accept(&mut writer).unwrap();
 
         let mut res = String::from_utf8(header_buffer).unwrap();
-        assert_eq!(HEADER_EXPECTED, res);
+        assert_str_eq!(HEADER_EXPECTED, res);
 
         res = String::from_utf8(source_buffer).unwrap();
-        assert_eq!(SOURCE_EXPECTED, res);
+        assert_str_eq!(SOURCE_EXPECTED, res);
     }
 }
 
@@ -273,7 +275,7 @@ fn enum_in_module_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -295,9 +297,9 @@ fn enum_in_module_work_test() {
         program.accept(&mut writer).unwrap();
 
         let mut res = String::from_utf8(header_buffer).unwrap();
-        assert_eq!(HEADER_EXPECTED, res);
+        assert_str_eq!(HEADER_EXPECTED, res);
 
         res = String::from_utf8(source_buffer).unwrap();
-        assert_eq!(SOURCE_EXPECTED, res);
+        assert_str_eq!(SOURCE_EXPECTED, res);
     }
 }

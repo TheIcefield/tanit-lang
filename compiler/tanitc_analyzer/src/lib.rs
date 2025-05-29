@@ -3,15 +3,12 @@ use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
+use tanitc_symbol_table::{entry::Entry, table::Table};
 use tanitc_ty::Type;
 
 pub mod ast;
 
-use tanitc_symbol_table::{
-    scope::{Counter, Scope},
-    symbol::{Symbol, SymbolData},
-    SymbolTable,
-};
+pub type Counter = usize;
 
 pub trait Analyze {
     fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
@@ -22,8 +19,7 @@ pub trait Analyze {
 }
 
 pub struct Analyzer {
-    pub table: SymbolTable,
-    pub scope: Scope,
+    pub table: Box<Table>,
     compile_options: CompileOptions,
     counter: Counter,
     errors: Errors,
@@ -33,8 +29,7 @@ pub struct Analyzer {
 impl Analyzer {
     pub fn new() -> Self {
         Self {
-            table: SymbolTable::new(),
-            scope: Scope::new(),
+            table: Box::new(Table::new()),
             counter: 0,
             errors: Errors::new(),
             warnings: Warnings::new(),
@@ -44,8 +39,7 @@ impl Analyzer {
 
     pub fn with_options(compile_options: CompileOptions) -> Self {
         Self {
-            table: SymbolTable::new(),
-            scope: Scope::new(),
+            table: Box::new(Table::new()),
             counter: 0,
             errors: Errors::new(),
             warnings: Warnings::new(),
@@ -60,71 +54,23 @@ impl Analyzer {
     }
 
     pub fn get_current_safety(&self) -> Safety {
-        if let Some(unit) = self.scope.0.last() {
-            unit.safety
-        } else {
-            Safety::default()
-        }
+        self.table.get_safety()
     }
 
-    pub fn get_table(&self) -> &SymbolTable {
+    pub fn get_table(&self) -> &Table {
         &self.table
     }
 
-    pub fn add_symbol(&mut self, symbol: Symbol) {
-        self.table.insert(symbol.id, symbol);
+    pub fn has_symbol(&self, name: Ident) -> bool {
+        self.table.lookup(name).is_some()
     }
 
-    pub fn get_symbols(&self, id: &Ident) -> Option<&Vec<Symbol>> {
-        self.table.get(id)
-    }
-
-    pub fn get_symbols_mut(&mut self, id: &Ident) -> Option<&mut Vec<Symbol>> {
-        self.table.get_mut(id)
-    }
-
-    pub fn create_symbol(&self, id: Ident, data: SymbolData) -> Symbol {
-        Symbol {
-            id,
-            scope: self.scope.clone(),
-            data,
-        }
-    }
-
-    pub fn get_first_symbol(&self, id: Ident) -> Option<Symbol> {
-        if let Some(ss) = self.table.get(&id) {
-            for s in ss.iter() {
-                if self.scope.0.starts_with(&s.scope.0) {
-                    return Some(s.clone());
-                }
-            }
-        }
-
-        None
-    }
-
-    pub fn has_symbol(&self, id: Ident) -> bool {
-        self.get_first_symbol(id).is_some()
+    pub fn add_symbol(&mut self, entry: Entry) {
+        self.table.insert(entry);
     }
 
     pub fn check_main(&self) -> Result<(), Message> {
-        let check_name = |id: Ident| -> bool { id == Ident::from("main".to_string()) };
-
-        let check_params = |params: &[(Ident, Type)]| -> bool { params.is_empty() };
-
-        let check_data = |data: &SymbolData| -> bool {
-            match data {
-                SymbolData::FunctionDef { parameters, .. } => check_params(parameters),
-                _ => false,
-            }
-        };
-
-        let check_scope = |scope: &Scope| -> bool { scope.0.is_empty() };
-
-        let mut ss = self.table.get_symbols();
-        ss.retain(|s| check_name(s.id) && check_data(&s.data) && check_scope(&s.scope));
-
-        if ss.is_empty() {
+        if self.table.lookup(Ident::from("main".to_string())).is_none() {
             return Err(Message::new(Location::new(), "No entry point!"));
         }
 
@@ -162,166 +108,4 @@ impl Default for Analyzer {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[test]
-fn scope_test() {
-    /* example:
-     * Module Main {       # Main: @s
-     *     func bar() { }  # bar:  @s/Main
-     *     func main() {   # main: @s/Main
-     *         let var = 5 # var:  @s/Main/main
-     *     }
-     * }
-     */
-
-    use tanitc_symbol_table::scope::{ScopeUnit, ScopeUnitKind};
-
-    let main_mod_id = Ident::from("Main".to_string());
-    let bar_id = Ident::from("bar".to_string());
-    let main_fn_id = Ident::from("main".to_string());
-    let var_id = Ident::from("var".to_string());
-    let baz_id = Ident::from("baz".to_string());
-
-    let mut analyzer = Analyzer::new();
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Block(0),
-        safety: Safety::Safe,
-    }); // block-0
-
-    analyzer.add_symbol(analyzer.create_symbol(main_mod_id, SymbolData::ModuleDef));
-
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Module(main_mod_id),
-        safety: Safety::Safe,
-    }); // block-0/Main
-
-    analyzer.add_symbol(analyzer.create_symbol(
-        main_fn_id,
-        SymbolData::FunctionDef {
-            parameters: Vec::new(),
-            return_type: Type::unit(),
-            is_declaration: true,
-        },
-    ));
-
-    analyzer.add_symbol(analyzer.create_symbol(
-        bar_id,
-        SymbolData::FunctionDef {
-            parameters: Vec::new(),
-            return_type: Type::unit(),
-            is_declaration: true,
-        },
-    ));
-
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Func(main_fn_id),
-        safety: Safety::Safe,
-    }); // block-0/Main/main
-    analyzer.add_symbol(analyzer.create_symbol(
-        var_id,
-        SymbolData::VariableDef {
-            var_type: Type::I32,
-            is_mutable: false,
-            is_initialization: true,
-        },
-    ));
-
-    // check if var defined in main
-    assert!(analyzer.has_symbol(var_id));
-
-    // check if main inside Main
-    analyzer.scope.pop(); // @s/Main
-    assert!(analyzer.has_symbol(main_fn_id));
-
-    // check if baz not defined in Main
-    assert!(!analyzer.has_symbol(baz_id));
-
-    // check if var unaccessible in Main
-    assert!(!analyzer.has_symbol(var_id));
-
-    // check if var unaccessible in bar
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Func(bar_id),
-        safety: Safety::Safe,
-    });
-    assert!(!analyzer.has_symbol(var_id));
-
-    // check if bar accessible in bar
-    assert!(analyzer.has_symbol(bar_id));
-}
-
-#[test]
-fn symbol_access_test() {
-    /* example:
-     * Module M1 {       # M1
-     *     func f1() { } # M1/f1
-     *     func f2() { } # M1/f2
-     * }
-     * Module M2 {       # M2
-     *     func f2() { } # M2/f2
-     * }
-     */
-
-    use tanitc_symbol_table::scope::{ScopeUnit, ScopeUnitKind};
-
-    let m1_id = Ident::from("M1".to_string());
-    let m2_id = Ident::from("M2".to_string());
-    let f1_id = Ident::from("f1".to_string());
-    let f2_id = Ident::from("f2".to_string());
-
-    let mut analyzer = Analyzer::new();
-
-    analyzer.add_symbol(analyzer.create_symbol(m1_id, SymbolData::ModuleDef));
-
-    analyzer.add_symbol(analyzer.create_symbol(m2_id, SymbolData::ModuleDef));
-
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Module(m1_id),
-        safety: Safety::Safe,
-    }); // /M1
-    analyzer.add_symbol(analyzer.create_symbol(
-        f1_id,
-        SymbolData::FunctionDef {
-            parameters: Vec::new(),
-            return_type: Type::unit(),
-            is_declaration: true,
-        },
-    ));
-
-    analyzer.add_symbol(analyzer.create_symbol(
-        f2_id,
-        SymbolData::FunctionDef {
-            parameters: Vec::new(),
-            return_type: Type::unit(),
-            is_declaration: true,
-        },
-    ));
-
-    analyzer.scope.pop(); // /
-    analyzer.scope.push(ScopeUnit {
-        kind: ScopeUnitKind::Module(m2_id),
-        safety: Safety::Safe,
-    }); // /M2
-
-    analyzer.add_symbol(analyzer.create_symbol(
-        f2_id,
-        SymbolData::FunctionDef {
-            parameters: Vec::new(),
-            return_type: Type::unit(),
-            is_declaration: true,
-        },
-    ));
-
-    analyzer.scope.pop(); // /
-
-    let res = analyzer
-        .table
-        .access_symbol(&[m1_id, f2_id], &analyzer.scope);
-    assert_eq!(res.len(), 1);
-
-    let res = analyzer
-        .table
-        .access_symbol(&[m2_id, f1_id], &analyzer.scope);
-    assert_eq!(res.len(), 0);
 }

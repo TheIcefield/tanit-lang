@@ -996,7 +996,10 @@ impl Parser {
         if let Ast::Block(node) = block {
             mod_def.body = Some(node);
         } else {
-            return Err(Message::unreachable(mod_def.location, "expected Block"));
+            return Err(Message::unreachable(
+                mod_def.location,
+                "expected Block".to_string(),
+            ));
         }
 
         Ok(())

@@ -10,7 +10,7 @@ use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions, CrateType};
 use tanitc_parser::Parser;
-use tanitc_symbol_table::SymbolTable;
+use tanitc_symbol_table::table::Table;
 
 use lazy_static::lazy_static;
 
@@ -35,7 +35,7 @@ pub struct Unit {
     built_path: String,
     process_state: UnitProcessState,
     ast: Option<Ast>,
-    symbol_table: Option<SymbolTable>,
+    symbol_table: Option<Table>,
 }
 
 impl Default for Unit {
@@ -135,7 +135,7 @@ impl Unit {
         Ok(())
     }
 
-    fn analyze_program(ast: &mut Ast, analyzer: &mut Analyzer) -> Option<SymbolTable> {
+    fn analyze_program(ast: &mut Ast, analyzer: &mut Analyzer) -> Option<Table> {
         if let Err(err) = ast.accept_mut(analyzer) {
             analyzer.error(err);
         }
@@ -379,11 +379,13 @@ impl Unit {
         }
     }
 
-    fn serialize_symbol_table(&self, symbol_table: &SymbolTable) {
+    fn serialize_symbol_table(&self, symbol_table: &Table) {
+        use std::io::Write;
+
         let mut stream = std::fs::File::create(format!("{}.symbol_table.txt", &self.name))
             .expect("Error: can't create file for serializing symbol table");
 
-        if let Err(err) = symbol_table.traverse(&mut stream) {
+        if let Err(err) = write!(stream, "{symbol_table:#?}") {
             eprintln!("Error: {}", err);
         }
     }

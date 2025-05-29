@@ -525,7 +525,7 @@ impl CodeGenStream<'_> {
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
         let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
-        let field_id = tanitc_ast::variant_utils::get_variant_data_kind_field_id();
+        let field_id = Ident::from("__kind__".to_string());
 
         writeln!(self, "typedef enum {enum_id} {{")?;
 
@@ -586,7 +586,7 @@ impl CodeGenStream<'_> {
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
         let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
-        let field_id = tanitc_ast::variant_utils::get_variant_data_field_id();
+        let field_id = Ident::from("__data__".to_string());
 
         writeln!(self, "typedef union {union_id} {{")?;
 

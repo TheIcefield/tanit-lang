@@ -256,7 +256,7 @@ fn variant_in_module_work_test() {
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f1\">\
-                                \n                            <literal style=\"integer-number\" value=\"0\"/>\
+                                \n                            <struct-initialization name=\"__MyVariant__f1__\"/>\
                                 \n                        </field>\
                                 \n                    </struct-initialization>\
                                 \n                </field>\
@@ -275,7 +275,14 @@ fn variant_in_module_work_test() {
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f3\">\
-                                \n                            <literal style=\"integer-number\" value=\"0\"/>\
+                                \n                            <struct-initialization name=\"__MyVariant__f3__\">\
+                                \n                                <field name=\"x\">\
+                                \n                                    <literal style=\"integer-number\" value=\"4\"/>\
+                                \n                                </field>\
+                                \n                                <field name=\"y\">\
+                                \n                                    <literal style=\"decimal-number\" value=\"7.5\"/>\
+                                \n                                </field>\
+                                \n                            </struct-initialization>\
                                 \n                        </field>\
                                 \n                    </struct-initialization>\
                                 \n                </field>\
@@ -320,13 +327,17 @@ fn variant_in_module_work_test() {
                                         \nMyVariant const v1 = (MyVariant){\
                                             \n.__kind__=0,\
                                             \n.__data__=(__MyVariant__data__){\
-                                                \n.f1=0,\
+                                                \n.f1=(__MyVariant__f1__){\
+                                                \n},\
                                             \n},\
                                         \n};\
                                         \nMyVariant const v3 = (MyVariant){\
                                             \n.__kind__=2,\
                                             \n.__data__=(__MyVariant__data__){\
-                                                \n.f3=0,\
+                                                \n.f3=(__MyVariant__f3__){\
+                                                    \n.x=4,\
+                                                    \n.y=7.5,\
+                                                \n},\
                                             \n},\
                                         \n};\
                                        \n}\n";
