@@ -1,27 +1,27 @@
 use tanitc_ast::{
     self,
-    attributes::Safety,
     expression_utils::{BinaryOperation, UnaryOperation},
-    variant_utils, AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow,
-    ControlFlowKind, EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
-    VisitorMut,
+    AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
+    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeSpec,
+    UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VisitorMut,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
-    scope::{ScopeUnit, ScopeUnitKind},
-    symbol::{Symbol, SymbolData},
+    entry::{
+        AliasDefData, Entry, EnumData, EnumDefData, FuncDefData, ModuleDefData, StructDefData,
+        StructFieldData, SymbolKind, UnionDefData, VarDefData, VarStorageType,
+    },
+    table::Table,
 };
 use tanitc_ty::Type;
 
-use std::{
-    cmp::Ordering,
-    collections::{BTreeMap, HashMap},
-};
+use std::{cmp::Ordering, collections::BTreeMap};
 
 use crate::Analyzer;
+
+pub mod variants;
 
 impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
@@ -32,20 +32,25 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.add_symbol(self.create_symbol(module_def.identifier, SymbolData::ModuleDef));
-
-        let safety = self.get_current_safety();
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Module(module_def.identifier),
-            safety: module_def.attrs.safety.unwrap_or(safety),
+        self.table.insert(Entry {
+            name: module_def.identifier,
+            is_static: true,
+            kind: SymbolKind::from(ModuleDefData {
+                table: Box::new(Table::new()),
+            }),
         });
 
-        if let Some(body) = &mut module_def.body {
-            self.visit_block(body)?;
-        }
+        let mut analyzer = Analyzer::with_options(self.compile_options.clone());
 
-        self.scope.pop();
+        if let Some(body) = &mut module_def.body {
+            analyzer.visit_block(body)?;
+            let entry = self.table.lookup_mut(module_def.identifier).unwrap();
+            let SymbolKind::ModuleDef(ref mut data) = &mut entry.kind else {
+                unreachable!();
+            };
+
+            data.table = analyzer.table;
+        }
 
         Ok(())
     }
@@ -58,27 +63,25 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Struct(struct_def.identifier),
-            safety: self.get_current_safety(),
-        });
         for internal in struct_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
 
+        let mut fields = BTreeMap::<Ident, StructFieldData>::new();
         for (field_id, field_ty) in struct_def.fields.iter() {
-            self.add_symbol(self.create_symbol(
+            fields.insert(
                 *field_id,
-                SymbolData::StructField {
-                    struct_id: struct_def.identifier,
+                StructFieldData {
                     ty: field_ty.get_type(),
                 },
-            ));
+            );
         }
 
-        self.scope.pop();
-
-        self.add_symbol(self.create_symbol(struct_def.identifier, SymbolData::StructDef));
+        self.add_symbol(Entry {
+            name: struct_def.identifier,
+            is_static: true,
+            kind: SymbolKind::from(StructDefData { fields }),
+        });
 
         Ok(())
     }
@@ -91,27 +94,25 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Union(union_def.identifier),
-            safety: self.get_current_safety(),
-        });
         for internal in union_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
 
+        let mut fields = BTreeMap::<Ident, StructFieldData>::new();
         for (field_id, field_ty) in union_def.fields.iter() {
-            self.add_symbol(self.create_symbol(
+            fields.insert(
                 *field_id,
-                SymbolData::UnionField {
-                    union_id: union_def.identifier,
+                StructFieldData {
                     ty: field_ty.get_type(),
                 },
-            ));
+            );
         }
 
-        self.scope.pop();
-
-        self.add_symbol(self.create_symbol(union_def.identifier, SymbolData::UnionDef));
+        self.add_symbol(Entry {
+            name: union_def.identifier,
+            is_static: true,
+            kind: SymbolKind::from(UnionDefData { fields }),
+        });
 
         Ok(())
     }
@@ -137,7 +138,7 @@ impl VisitorMut for Analyzer {
         }
 
         let mut counter = 0usize;
-        let mut components = Vec::<(Ident, usize)>::new();
+        let mut enums = BTreeMap::<Ident, Entry>::new();
         for field in enum_def.fields.iter_mut() {
             if let Some(value) = field.1 {
                 counter = *value;
@@ -146,28 +147,26 @@ impl VisitorMut for Analyzer {
             // mark unmarked enum fields
             *field.1 = Some(counter);
 
-            components.push((*field.0, counter));
+            enums.insert(
+                *field.0,
+                Entry {
+                    name: *field.0,
+                    is_static: true,
+                    kind: SymbolKind::Enum(EnumData {
+                        enum_name: enum_def.identifier,
+                        value: counter,
+                    }),
+                },
+            );
 
             counter += 1;
         }
 
-        self.add_symbol(self.create_symbol(enum_def.identifier, SymbolData::EnumDef));
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Enum(enum_def.identifier),
-            safety: self.get_current_safety(),
+        self.add_symbol(Entry {
+            name: enum_def.identifier,
+            is_static: true,
+            kind: SymbolKind::from(EnumDefData { enums }),
         });
-
-        for comp in components.iter() {
-            self.add_symbol(self.create_symbol(
-                comp.0,
-                SymbolData::EnumComponent {
-                    enum_id: enum_def.identifier,
-                    val: comp.1,
-                },
-            ));
-        }
-        self.scope.pop();
 
         Ok(())
     }
@@ -180,42 +179,45 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        let safety = self.get_current_safety();
+        let mut scope_info = self.table.get_scope_info();
+        scope_info.safety = func_def.attrs.safety.unwrap_or(self.get_current_safety());
+        scope_info.is_in_func = true;
 
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Func(func_def.identifier),
-            safety,
-        });
+        self.table.enter_scope(scope_info);
 
         let mut parameters = Vec::<(Ident, Type)>::new();
         for p in func_def.parameters.iter_mut() {
-            if let Ast::VariableDef(node) = p {
-                parameters.push((node.identifier, node.var_type.get_type()));
-                p.accept_mut(self)?;
+            let Ast::VariableDef(param_def) = p else {
+                return Err(Message::from_string(
+                    p.location(),
+                    format!("Unexpected param node type: {}", p.name()),
+                ));
+            };
+
+            if let Err(err) = self.visit_variable_def(param_def) {
+                self.error(err);
+            } else {
+                parameters.push((param_def.identifier, param_def.var_type.get_type()));
             }
         }
-
-        self.scope.pop();
-
-        self.add_symbol(self.create_symbol(
-            func_def.identifier,
-            SymbolData::FunctionDef {
-                parameters,
-                return_type: func_def.return_type.get_type(),
-                is_declaration: func_def.body.is_some(),
-            },
-        ));
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Func(func_def.identifier),
-            safety,
-        });
 
         if let Some(body) = &mut func_def.body {
             body.accept_mut(self)?;
         }
 
-        self.scope.pop();
+        self.table.exit_scope();
+
+        self.add_symbol(Entry {
+            name: func_def.identifier,
+            is_static: false,
+            kind: SymbolKind::from(FuncDefData {
+                parameters,
+                return_type: func_def.return_type.get_type(),
+                is_virtual: false,
+                is_inline: false,
+                no_return: func_def.return_type.get_type() == Type::unit(),
+            }),
+        });
 
         Ok(())
     }
@@ -235,14 +237,16 @@ impl VisitorMut for Analyzer {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));
         }
 
-        self.add_symbol(self.create_symbol(
-            var_def.identifier,
-            SymbolData::VariableDef {
+        self.add_symbol(Entry {
+            name: var_def.identifier,
+            is_static: false,
+            kind: SymbolKind::from(VarDefData {
                 var_type: var_def.var_type.get_type(),
                 is_mutable: var_def.is_mutable,
                 is_initialization: false,
-            },
-        ));
+                storage: VarStorageType::Auto,
+            }),
+        });
 
         Ok(())
     }
@@ -255,12 +259,13 @@ impl VisitorMut for Analyzer {
             ));
         }
 
-        self.add_symbol(self.create_symbol(
-            alias_def.identifier,
-            SymbolData::AliasDef {
+        self.add_symbol(Entry {
+            name: alias_def.identifier,
+            is_static: true,
+            kind: SymbolKind::AliasDef(AliasDefData {
                 ty: alias_def.value.get_type(),
-            },
-        ));
+            }),
+        });
 
         Ok(())
     }
@@ -291,8 +296,6 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
-        let safety = self.get_current_safety();
-
         let analyze_body = |body: &mut Ast, analyzer: &mut Analyzer| -> Result<(), Message> {
             if let Ast::Block(node) = body {
                 for stmt in node.statements.iter_mut() {
@@ -312,33 +315,29 @@ impl VisitorMut for Analyzer {
                 Ok(())
             };
 
+        let mut scope_info = self.table.get_scope_info();
+
         match &mut branch.kind {
             BranchKind::While { body, condition } => {
-                let cnt = self.counter();
-                self.scope.push(ScopeUnit {
-                    kind: ScopeUnitKind::Loop(cnt),
-                    safety,
-                });
+                scope_info.is_in_loop = true;
+                self.table.enter_scope(scope_info);
 
                 condition.accept_mut(self)?;
 
                 analyze_condition(condition.as_mut(), self)?;
                 analyze_body(body.as_mut(), self)?;
 
-                self.scope.pop();
+                self.table.exit_scope();
 
                 Ok(())
             }
             BranchKind::Loop { body } => {
-                let cnt = self.counter();
-                self.scope.push(ScopeUnit {
-                    kind: ScopeUnitKind::Loop(cnt),
-                    safety,
-                });
+                scope_info.is_in_loop = true;
+                self.table.enter_scope(scope_info);
 
                 analyze_body(body.as_mut(), self)?;
 
-                self.scope.pop();
+                self.table.exit_scope();
 
                 Ok(())
             }
@@ -357,29 +356,8 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_control_flow(&mut self, cf: &mut ControlFlow) -> Result<(), Message> {
-        let is_in_func = {
-            let mut flag = false;
-            for s in self.scope.iter().rev() {
-                if matches!(s.kind, ScopeUnitKind::Func(_)) {
-                    flag = true;
-                    break;
-                }
-            }
-
-            flag
-        };
-
-        let is_in_loop = {
-            let mut flag = false;
-            for s in self.scope.iter().rev() {
-                if matches!(s.kind, ScopeUnitKind::Loop(_)) {
-                    flag = true;
-                    break;
-                }
-            }
-
-            flag
-        };
+        let is_in_func = self.table.get_scope_info().is_in_func;
+        let is_in_loop = self.table.get_scope_info().is_in_loop;
 
         match &mut cf.kind {
             ControlFlowKind::Break { ret } | ControlFlowKind::Return { ret } => {
@@ -446,11 +424,15 @@ impl VisitorMut for Analyzer {
                 identifier: func_name,
                 arguments: call_args,
             } => {
-                let Some(func_symbol) = self.get_first_symbol(*func_name) else {
+                let Some(func_entry) = self.table.lookup(*func_name) else {
                     return Err(Message::undefined_id(val.location, *func_name));
                 };
 
-                self.analyze_call(&func_symbol, call_args, val.location)?;
+                let SymbolKind::FuncDef(func_data) = func_entry.kind.clone() else {
+                    return Err(Message::undefined_func(val.location, *func_name));
+                };
+
+                self.analyze_call(func_entry.name, &func_data, call_args, val.location)?;
 
                 Ok(())
             }
@@ -571,13 +553,9 @@ impl Analyzer {
             ValueKind::Decimal(_) => Type::F32,
             ValueKind::Integer(_) => Type::I32,
             ValueKind::Identifier(id) => {
-                if let Some(ss) = self.get_symbols(id) {
-                    for s in ss.iter().rev() {
-                        if self.scope.0.starts_with(&s.scope.0) {
-                            if let SymbolData::VariableDef { var_type, .. } = &s.data {
-                                return var_type.clone();
-                            }
-                        }
+                if let Some(entry) = self.table.lookup(*id) {
+                    if let SymbolKind::VarDef(data) = &entry.kind {
+                        return data.var_type.clone();
                     }
                 }
                 Type::new()
@@ -605,9 +583,9 @@ impl Analyzer {
                 }
             }
             ValueKind::Call { identifier, .. } => {
-                if let Some(ss) = self.get_first_symbol(*identifier) {
-                    if let SymbolData::FunctionDef { return_type, .. } = &ss.data {
-                        return return_type.clone();
+                if let Some(ss) = self.table.lookup(*identifier) {
+                    if let SymbolKind::FuncDef(data) = &ss.kind {
+                        return data.return_type.clone();
                     }
                 }
                 Type::new()
@@ -747,30 +725,22 @@ impl Analyzer {
 
     fn analyze_call(
         &mut self,
-        func_symbol: &Symbol,
+        func_name: Ident,
+        func_data: &FuncDefData,
         call_args: &mut [CallArg],
         location: Location,
     ) -> Result<(), Message> {
-        let func_name = func_symbol.id;
-
-        let SymbolData::FunctionDef {
-            parameters: func_params,
-            ..
-        } = &func_symbol.data
-        else {
-            return Err(Message::undefined_func(location, func_name));
-        };
-
         if func_name.is_built_in() {
             return Ok(());
         }
 
-        self.check_arg_count(func_name, call_args, func_params, location)?;
+        let params = &func_data.parameters;
+
+        self.check_arg_count(func_name, call_args, params, location)?;
 
         let mut positional_skipped = false;
         for call_arg in call_args.iter_mut() {
-            if let Err(err) =
-                self.analyze_arg(func_name, func_params, call_arg, &mut positional_skipped)
+            if let Err(err) = self.analyze_arg(func_name, params, call_arg, &mut positional_skipped)
             {
                 self.error(err);
             }
@@ -785,21 +755,17 @@ impl Analyzer {
     fn find_alias_value(&self, alias_type: &Type) -> Option<Type> {
         if let Type::Custom(id) = alias_type {
             let type_id = Ident::from(id.clone());
-            let mut ss = self.table.get_symbols();
-            ss.retain(|s| s.id == type_id && matches!(s.data, SymbolData::AliasDef { .. }));
 
-            if ss.len() == 1 {
-                if let SymbolData::AliasDef { ty } = &ss[0].data {
-                    if let Some(alias_to) = self.find_alias_value(ty) {
-                        Some(alias_to)
-                    } else {
-                        Some(ty.clone())
-                    }
-                } else {
-                    None
-                }
+            let entry = self.table.lookup(type_id)?;
+
+            let SymbolKind::AliasDef(alias_data) = &entry.kind else {
+                return None;
+            };
+
+            if let Some(alias_to) = self.find_alias_value(&alias_data.ty) {
+                Some(alias_to)
             } else {
-                None
+                Some(alias_data.ty.clone())
             }
         } else {
             None
@@ -823,14 +789,12 @@ impl Analyzer {
             kind: ValueKind::Identifier(id),
         }) = node.as_ref()
         {
-            let Some(ss) = self.get_symbols(id) else {
+            let Some(entry) = self.table.lookup(*id) else {
                 return Err(Message::undefined_id(*location, *id));
             };
 
-            let first = &ss[0];
-
-            if let SymbolData::VariableDef { is_mutable, .. } = &first.data {
-                if !*is_mutable && does_mutate {
+            if let SymbolKind::VarDef(var_data) = &entry.kind {
+                if !var_data.is_mutable && does_mutate {
                     return Err(Message {
                         location: *location,
                         text: format!("Mutable reference to immutable variable \"{id}\""),
@@ -897,25 +861,22 @@ impl Analyzer {
                 });
             }
 
-            self.add_symbol(self.create_symbol(
-                node.identifier,
-                SymbolData::VariableDef {
+            self.add_symbol(Entry {
+                name: node.identifier,
+                is_static: false,
+                kind: SymbolKind::from(VarDefData {
+                    storage: VarStorageType::Auto,
                     var_type: node.var_type.get_type(),
                     is_mutable: node.is_mutable,
                     is_initialization: true,
-                },
-            ));
+                }),
+            });
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
-                    if let Some(s) = self.get_first_symbol(*id) {
-                        if let SymbolData::VariableDef {
-                            is_mutable,
-                            var_type,
-                            ..
-                        } = &s.data
-                        {
-                            if let Type::Ref { is_mutable, .. } = var_type {
+                    if let Some(entry) = self.table.lookup(*id) {
+                        if let SymbolKind::VarDef(var_data) = &entry.kind {
+                            if let Type::Ref { is_mutable, .. } = &var_data.var_type {
                                 if !*is_mutable && does_mutate {
                                     self.error(Message::new(
                                         Location::new(),
@@ -924,7 +885,7 @@ impl Analyzer {
                                         ),
                                     ));
                                 }
-                            } else if !*is_mutable && does_mutate {
+                            } else if !var_data.is_mutable && does_mutate {
                                 self.error(Message::new(
                                     Location::new(),
                                     &format!("Variable \"{id}\" is immutable in current scope",),
@@ -976,152 +937,49 @@ impl Analyzer {
     ) -> Result<Option<Expression>, Message> {
         let mut ids = Vec::<Ident>::new();
 
-        let mut variant_ident: Option<Ident> = None;
+        let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
 
-        Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
-
-        let scope = self.scope.clone();
-        let s = {
-            let ss = self.table.access_symbol(&ids, &scope);
-
-            if ss.is_empty() {
-                return Err(Message::undefined_id(lhs.location(), *ids.last().unwrap()));
-            }
-
-            let s = ss[0].clone();
-
-            if s.scope.0.len() < 2 {
-                variant_ident = None;
-            } else if let Some(ScopeUnit {
-                kind: ScopeUnitKind::Variant(variant_id),
-                ..
-            }) = s.scope.0.get(s.scope.0.len() - 2)
-            {
-                variant_ident = Some(*variant_id);
-            }
-
-            if ss.len() > 1 && variant_ident.is_some() {
-                let mut variant_ss = ss.clone();
-
-                // TODO: check scope
-                variant_ss.retain(|s| {
-                    matches!(s.data, SymbolData::StructDef) && s.id == *ids.last().unwrap()
-                    // && s.scope.0.starts_with(&variant_scope.0)
-                });
-
-                variant_ident = Some(variant_ident.unwrap());
-            }
-
-            s
+        let Some(entry) = self.table.lookup_qualified(ids.iter().peekable()) else {
+            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
         };
 
-        let processed_node = match s.data {
-            SymbolData::EnumComponent { enum_id, val } => {
-                self.access_enum_component(s.id, enum_id, val, variant_ident, rhs)?
-            }
-            SymbolData::FunctionDef { .. } => self.access_func_def(&s, rhs)?,
-            SymbolData::StructDef => self.access_struct_def(s.id, rhs)?,
-            SymbolData::UnionDef => self.access_union_def(s.id, rhs)?,
-            _ => todo!("Unaccessible: {:?}", s.data),
+        let entry = entry.clone();
+
+        let processed_node = match &entry.kind {
+            SymbolKind::Enum(data) => self.access_enum(data, rhs)?,
+            SymbolKind::Variant(data) => self.access_variant(entry.name, data, rhs)?,
+            SymbolKind::StructDef(data) => self.access_struct_def(entry.name, data, rhs)?,
+            SymbolKind::UnionDef(data) => self.access_union_def(entry.name, data, rhs)?,
+            SymbolKind::FuncDef(data) => self.access_func_def(entry.name, data, rhs)?,
+            _ => todo!("Unaccessible: {:?}", entry.kind),
         };
 
         Ok(processed_node)
     }
 
-    fn access_enum_component(
+    fn access_enum(
         &mut self,
-        enum_component_id: Ident,
-        enum_name: Ident,
-        enum_val: usize,
-        variant_kind: Option<Ident>,
+        enum_data: &EnumData,
         rhs: &Ast,
     ) -> Result<Option<Expression>, Message> {
         let location = rhs.location();
 
-        if let Some(variant_name) = variant_kind {
-            Ok(Some(Expression {
-                location: rhs.location(),
-                kind: ExpressionKind::Term {
-                    node: Box::new(Ast::Value(Value {
-                        location,
-                        kind: ValueKind::Struct {
-                            identifier: variant_name,
-                            components: vec![
-                                (
-                                    variant_utils::get_variant_data_kind_field_id(),
-                                    Ast::Value(Value {
-                                        location,
-                                        kind: ValueKind::Integer(enum_val),
-                                    }),
-                                ),
-                                (
-                                    variant_utils::get_variant_data_field_id(),
-                                    Ast::Value(Value {
-                                        location,
-                                        kind: ValueKind::Struct {
-                                            identifier:
-                                                tanitc_ast::variant_utils::get_variant_data_type_id(
-                                                    variant_name,
-                                                ),
-                                            components: vec![(
-                                                enum_component_id,
-                                                match rhs {
-                                                    Ast::Value(Value {
-                                                        kind: ValueKind::Identifier(_),
-                                                        location,
-                                                    }) => Ast::Value(Value {
-                                                        location: *location,
-                                                        kind: ValueKind::Struct {
-                                                            identifier: Ident::from(format!(
-                                                                "__{variant_name}__{enum_component_id}__"
-                                                            )),
-                                                            components: vec![],
-                                                        },
-                                                    }),
-                                                    Ast::Value(Value {
-                                                        kind: ValueKind::Struct { identifier, components },
-                                                        location,
-                                                    }) => Ast::Value(Value { location: *location, kind: ValueKind::Struct {
-                                                        identifier: Ident::from(format!(
-                                                            "__{variant_name}__{identifier}__"
-                                                        )),
-                                                        components: components.clone() } }),
-                                                    Ast::Expression(Expression { location, ..}) => Ast::Value(Value {
-                                                        location: *location,
-                                                        kind: ValueKind::Integer(0),
-                                                    }),
-                                                    _ => return Err(Message::unreachable(
-                                                        rhs.location(),
-                                                        &format!("Unexpected value in access_enum_component ({rhs:?})"),
-                                                    )),
-                                                },
-                                            )],
-                                        },
-                                    }),
-                                ),
-                            ],
-                        },
-                    })),
-                    ty: Type::Custom(variant_name.to_string()),
-                },
-            }))
-        } else {
-            Ok(Some(Expression {
-                location,
-                kind: ExpressionKind::Term {
-                    node: Box::new(Ast::Value(Value {
-                        location,
-                        kind: ValueKind::Integer(enum_val),
-                    })),
-                    ty: Type::Custom(enum_name.to_string()),
-                },
-            }))
-        }
+        Ok(Some(Expression {
+            location,
+            kind: ExpressionKind::Term {
+                node: Box::new(Ast::Value(Value {
+                    location,
+                    kind: ValueKind::Integer(enum_data.value),
+                })),
+                ty: Type::Custom(enum_data.enum_name.to_string()),
+            },
+        }))
     }
 
     fn access_func_def(
         &mut self,
-        func_symbol: &Symbol,
+        func_name: Ident,
+        func_data: &FuncDefData,
         rhs: &mut Ast,
     ) -> Result<Option<Expression>, Message> {
         if let Ast::Value(Value {
@@ -1133,7 +991,7 @@ impl Analyzer {
                 },
         }) = rhs
         {
-            self.analyze_call(func_symbol, call_args, *location)?;
+            self.analyze_call(func_name, func_data, call_args, *location)?;
         } else {
             todo!("Unexpected rhs: {rhs:#?}");
         };
@@ -1141,29 +999,15 @@ impl Analyzer {
         Ok(None)
     }
 
-    fn get_struct_fields(&mut self, struct_name: Ident) -> Result<HashMap<Ident, Type>, Message> {
-        let mut struct_comps = HashMap::<Ident, Type>::new();
-        let mut ss = self.table.get_symbols();
-        ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
-        for s in ss.iter() {
-            let struct_field_id = s.id;
-            if let SymbolData::StructField { struct_id, ty } = &s.data {
-                if struct_name == *struct_id {
-                    struct_comps.insert(struct_field_id, ty.clone());
-                }
-            }
-        }
-        Ok(struct_comps)
-    }
-
     fn access_struct_def(
         &mut self,
         struct_name: Ident,
+        struct_data: &StructDefData,
         node: &Ast,
     ) -> Result<Option<Expression>, Message> {
         let mut value = Box::new(node.clone());
 
-        let struct_comps = self.get_struct_fields(struct_name)?;
+        let struct_comps = &struct_data.fields;
 
         if let Ast::Value(Value {
             kind:
@@ -1175,7 +1019,7 @@ impl Analyzer {
         }) = value.as_mut()
         {
             if let Err(mut msg) =
-                self.check_struct_components(value_comps, struct_name, &struct_comps)
+                self.check_struct_components(value_comps, struct_name, struct_comps)
             {
                 msg.location = node.location();
                 return Err(msg);
@@ -1183,7 +1027,7 @@ impl Analyzer {
         } else {
             return Err(Message::unreachable(
                 node.location(),
-                "expected ValueKind::Struct, actually: {node:?}",
+                format!("expected ValueKind::Struct, actually: {node:?}"),
             ));
         }
 
@@ -1201,61 +1045,45 @@ impl Analyzer {
     fn access_union_def(
         &mut self,
         union_name: Ident,
+        union_data: &UnionDefData,
         node: &Ast,
     ) -> Result<Option<Expression>, Message> {
-        let mut value = Box::new(node.clone());
+        let mut value_clone = Box::new(node.clone());
 
-        let union_comps = {
-            let mut union_comps = HashMap::<Ident, Type>::new();
-            let mut ss = self.table.get_symbols();
-            ss.retain(|s| matches!(s.data, SymbolData::UnionField { .. }));
-            for s in ss.iter() {
-                let union_field_id = s.id;
-                if let SymbolData::UnionField { union_id, ty } = &s.data {
-                    if union_name == *union_id {
-                        union_comps.insert(union_field_id, ty.clone());
-                    }
-                }
-            }
-            union_comps
-        };
+        let union_comps = &union_data.fields;
 
-        if let Ast::Value(value) = value.as_mut() {
-            let (union_id, value_comps) = if let ValueKind::Struct {
-                identifier,
-                components,
-            } = &mut value.kind
-            {
-                (*identifier, std::mem::take(components))
-            } else {
-                return Err(Message::unreachable(
-                    value.location,
-                    "expected ValueKind::Struct",
-                ));
-            };
-
-            if let Err(mut msg) =
-                self.check_union_components(&value_comps, union_name, &union_comps)
-            {
-                msg.location = node.location();
-                return Err(msg);
-            }
-
-            value.kind = ValueKind::Struct {
-                identifier: union_id,
-                components: value_comps,
-            }
-        } else {
+        let Ast::Value(value) = value_clone.as_mut() else {
             return Err(Message::unreachable(
                 node.location(),
-                "expected ValueKind::Struct, actually: {rhs:?}",
+                format!("expected Ast::Value, actually: {}", node.name()),
             ));
+        };
+
+        let ValueKind::Struct {
+            identifier: union_id,
+            components: value_comps,
+        } = &mut value.kind
+        else {
+            return Err(Message::unreachable(
+                value.location,
+                format!("expected ValueKind::Struct, actually: {:?}", value.kind),
+            ));
+        };
+
+        if let Err(mut msg) = self.check_union_components(value_comps, union_name, union_comps) {
+            msg.location = node.location();
+            return Err(msg);
         }
+
+        value.kind = ValueKind::Struct {
+            identifier: *union_id,
+            components: std::mem::take(value_comps),
+        };
 
         let node = Expression {
             location: node.location(),
             kind: ExpressionKind::Term {
-                node: value,
+                node: value_clone,
                 ty: Type::Custom(union_name.to_string()),
             },
         };
@@ -1263,11 +1091,11 @@ impl Analyzer {
         Ok(Some(node))
     }
 
-    fn preprocess_access_tree(
+    fn preprocess_access_tree<'a>(
         ids: &mut Vec<Ident>,
-        lhs: &mut Ast,
-        rhs: &mut Ast,
-    ) -> Result<(), Message> {
+        lhs: &'a Ast,
+        rhs: &'a mut Ast,
+    ) -> Result<&'a mut Ast, Message> {
         let mut loc = Location::new();
 
         let lhs_id = match lhs {
@@ -1287,38 +1115,33 @@ impl Analyzer {
             Ast::Expression(Expression {
                 kind: ExpressionKind::Access { lhs, rhs },
                 ..
-            }) => {
-                Self::preprocess_access_tree(ids, lhs, rhs)?;
-            }
+            }) => Self::preprocess_access_tree(ids, lhs, rhs),
             Ast::Value(Value {
                 kind: ValueKind::Identifier(rhs_id),
                 ..
             }) => {
                 ids.push(*rhs_id);
+                Ok(rhs)
             }
             Ast::Value(Value {
                 kind: ValueKind::Call { identifier, .. },
                 ..
             }) => {
                 ids.push(*identifier);
+                Ok(rhs)
             }
             Ast::Value(Value {
                 kind: ValueKind::Struct { identifier, .. },
                 ..
             }) => {
                 ids.push(*identifier);
+                Ok(rhs)
             }
-            _ => {
-                return Err(Message::unreachable(
-                    loc,
-                    &format!(
-                        "expected ExpressionKind::Access or Value::Identifier, actually: {rhs:?}"
-                    ),
-                ))
-            }
+            _ => Err(Message::unreachable(
+                loc,
+                format!("Expected ExpressionKind::Access or Value::Identifier, actually: {rhs:?}"),
+            )),
         }
-
-        Ok(())
     }
 
     fn analyze_conversion_expr(&mut self) -> Result<Option<Expression>, Message> {
@@ -1410,12 +1233,12 @@ impl Analyzer {
             );
 
             if is_denied {
-                self.scope.pop();
-
-                return Err(Message {
+                self.error(Message {
                     location: n.location(),
                     text: format!("Node \"{}\" is not allowed in global scope", n.name()),
                 });
+
+                continue;
             }
 
             if let Err(err) = n.accept_mut(self) {
@@ -1427,14 +1250,12 @@ impl Analyzer {
     }
 
     fn analyze_local_block(&mut self, block: &mut Block) -> Result<(), Message> {
-        let cnt = self.counter();
+        let mut scope_info = self.table.get_scope_info();
+        if let Some(safety) = &block.attrs.safety {
+            scope_info.safety = *safety;
+        }
 
-        let safety = self.get_current_safety();
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Block(cnt),
-            safety: block.attrs.safety.unwrap_or(safety),
-        });
+        self.table.enter_scope(scope_info);
 
         for n in block.statements.iter_mut() {
             let is_denied = matches!(
@@ -1448,12 +1269,12 @@ impl Analyzer {
             );
 
             if is_denied {
-                self.scope.pop();
-
-                return Err(Message {
+                self.error(Message {
                     location: n.location(),
                     text: format!("Node \"{}\" is not allowed in local scope", n.name()),
                 });
+
+                continue;
             }
 
             if let Err(err) = n.accept_mut(self) {
@@ -1461,7 +1282,7 @@ impl Analyzer {
             }
         }
 
-        self.scope.pop();
+        self.table.exit_scope();
 
         Ok(())
     }
@@ -1477,23 +1298,24 @@ impl Analyzer {
         else {
             return Err(Message::unreachable(
                 value.location,
-                "Expected ValueKind::Struct",
+                format!("Expected ValueKind::Struct, actually: {:?}", value.kind),
             ));
         };
 
-        let mut object = if let Some(symbol) = self.get_first_symbol(*object_name) {
-            symbol
+        let mut object = if let Some(entry) = self.table.lookup(*object_name) {
+            entry.clone()
         } else {
             return Err(Message::undefined_id(value.location, *object_name));
         };
 
-        if let SymbolData::AliasDef { ty } = &object.data {
+        if let SymbolKind::AliasDef(alias_data) = &object.kind {
+            let ty = &alias_data.ty;
             match ty {
                 Type::Custom(id) => {
                     let alias_to_id = Ident::from(id.clone());
 
-                    if let Some(symbol) = self.get_first_symbol(alias_to_id) {
-                        object = symbol;
+                    if let Some(entry) = self.table.lookup(alias_to_id) {
+                        object = entry.clone();
                     } else {
                         return Err(Message::undefined_id(value.location, alias_to_id));
                     };
@@ -1510,54 +1332,34 @@ impl Analyzer {
             }
         }
 
-        if matches!(object.data, SymbolData::StructDef) {
-            let mut struct_comps = HashMap::<Ident, Type>::new();
-            let mut ss = self.table.get_symbols();
-
-            ss.retain(|s| matches!(s.data, SymbolData::StructField { .. }));
-            for s in ss.iter() {
-                if let SymbolData::StructField { struct_id, ty } = &s.data {
-                    if *struct_id == object.id {
-                        struct_comps.insert(s.id, ty.clone());
-                    }
+        match &object.kind {
+            SymbolKind::StructDef(struct_data) => {
+                if let Err(mut msg) =
+                    self.check_struct_components(value_comps, *object_name, &struct_data.fields)
+                {
+                    msg.location = value.location;
+                    return Err(msg);
                 }
             }
-
-            if let Err(mut msg) =
-                self.check_struct_components(value_comps, *object_name, &struct_comps)
-            {
-                msg.location = value.location;
-                return Err(msg);
-            }
-        } else if matches!(object.data, SymbolData::UnionDef) {
-            let mut union_comps = HashMap::<Ident, Type>::new();
-            let mut ss = self.table.get_symbols();
-
-            ss.retain(|s| matches!(s.data, SymbolData::UnionField { .. }));
-            for s in ss.iter() {
-                if let SymbolData::UnionField { union_id, ty } = &s.data {
-                    if *union_id == object.id {
-                        union_comps.insert(s.id, ty.clone());
-                    }
+            SymbolKind::UnionDef(union_data) => {
+                if let Err(mut msg) =
+                    self.check_union_components(value_comps, *object_name, &union_data.fields)
+                {
+                    msg.location = value.location;
+                    return Err(msg);
                 }
-            }
 
-            if let Err(mut msg) =
-                self.check_union_components(value_comps, *object_name, &union_comps)
-            {
-                msg.location = value.location;
-                return Err(msg);
+                value.kind = ValueKind::Struct {
+                    identifier: *object_name,
+                    components: std::mem::take(value_comps),
+                };
             }
-
-            value.kind = ValueKind::Struct {
-                identifier: *object_name,
-                components: std::mem::take(value_comps),
-            };
-        } else {
-            return Err(Message::new(
-                value.location,
-                &format!("Cannot find struct or union named \"{object_name}\" in this scope"),
-            ));
+            _ => {
+                return Err(Message::new(
+                    value.location,
+                    &format!("Cannot find struct or union named \"{object_name}\" in this scope"),
+                ));
+            }
         }
 
         Ok(())
@@ -1567,7 +1369,7 @@ impl Analyzer {
         &mut self,
         value_comps: &[(Ident, Ast)],
         struct_name: Ident,
-        struct_comps: &HashMap<Ident, Type>,
+        struct_comps: &BTreeMap<Ident, StructFieldData>,
     ) -> Result<(), Message> {
         if value_comps.len() != struct_comps.len() {
             return Err(Message::new(
@@ -1585,7 +1387,7 @@ impl Analyzer {
             let value_comp = value_comps.get(comp_id).unwrap();
             let value_comp_name = value_comp.0;
             let value_comp_type = self.get_type(&value_comp.1);
-            let struct_comp_type = struct_comps.get(&value_comp_name).unwrap();
+            let struct_comp_type = &struct_comps.get(&value_comp_name).unwrap().ty;
 
             let mut alias_to = self.find_alias_value(struct_comp_type);
 
@@ -1618,7 +1420,7 @@ impl Analyzer {
         &mut self,
         value_comps: &[(Ident, Ast)],
         union_name: Ident,
-        union_comps: &HashMap<Ident, Type>,
+        union_comps: &BTreeMap<Ident, StructFieldData>,
     ) -> Result<(), Message> {
         let union_comp_size = union_comps.len();
         let initialized_comp_size = value_comps.len();
@@ -1645,7 +1447,8 @@ impl Analyzer {
             let value_comp = value_comps.get(comp_id).unwrap();
             let value_comp_name = value_comp.0;
             let value_comp_type = self.get_type(&value_comp.1);
-            let union_comp_type = union_comps.get(&value_comp.0).unwrap();
+            let union_comp_data = union_comps.get(&value_comp.0).unwrap();
+            let union_comp_type = &union_comp_data.ty;
 
             let mut alias_to = self.find_alias_value(union_comp_type);
 
@@ -1673,160 +1476,57 @@ impl Analyzer {
 
         Ok(())
     }
-}
 
-// Variant
-impl Analyzer {
-    fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        if self.has_symbol(variant_def.identifier) {
-            return Err(Message::multiple_ids(
-                variant_def.location,
-                variant_def.identifier,
+    fn check_tuple_components(
+        &mut self,
+        value_comps: &[Ast],
+        tuple_name: Option<Ident>,
+        tuple_comps: &BTreeMap<usize, StructFieldData>,
+    ) -> Result<(), Message> {
+        if value_comps.len() != tuple_comps.len() {
+            return Err(Message::new(
+                Location::new(),
+                &format!(
+                    "Tuple {} consists of {} fields, but {} were supplied",
+                    if let Some(tuple_name) = tuple_name {
+                        tuple_name.to_string()
+                    } else {
+                        "".to_string()
+                    },
+                    tuple_comps.len(),
+                    value_comps.len()
+                ),
             ));
         }
 
-        let safety = self.get_current_safety();
+        for comp_id in 0..value_comps.len() {
+            let value_comp = value_comps.get(comp_id).unwrap();
+            let value_comp_type = self.get_type(value_comp);
+            let tuple_comp_type = &tuple_comps.get(&comp_id).unwrap().ty;
 
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Variant(variant_def.identifier),
-            safety,
-        });
+            let mut alias_to = self.find_alias_value(tuple_comp_type);
 
-        for internal in variant_def.internals.iter_mut() {
-            internal.accept_mut(self)?;
-        }
+            if value_comp_type == *tuple_comp_type {
+                alias_to = None;
+            }
 
-        self.create_variant_data_kind_symbol(variant_def.identifier, &variant_def.fields, safety)?;
-
-        self.create_variant_data_symbols(variant_def.identifier, &variant_def.fields, safety)?;
-
-        self.scope.pop();
-        self.add_symbol(self.create_symbol(variant_def.identifier, SymbolData::StructDef));
-
-        Ok(())
-    }
-
-    fn create_variant_data_kind_symbol(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-        safety: Safety,
-    ) -> Result<(), Message> {
-        let data_kind_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Enum(data_kind_id),
-            safety,
-        });
-
-        for (field_num, (field_id, _)) in fields.iter().enumerate() {
-            self.add_symbol(self.create_symbol(
-                *field_id,
-                SymbolData::EnumComponent {
-                    enum_id: data_kind_id,
-                    val: field_num,
-                },
-            ));
-        }
-
-        self.scope.pop();
-
-        Ok(())
-    }
-
-    fn create_variant_common_field_symbol(&mut self, field_id: Ident) -> Result<(), Message> {
-        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
-        Ok(())
-    }
-
-    fn create_variant_struct_field_symbol(
-        &mut self,
-        field_id: Ident,
-        subfields: &BTreeMap<Ident, TypeSpec>,
-        safety: Safety,
-    ) -> Result<(), Message> {
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Struct(field_id),
-            safety,
-        });
-
-        for (subfield_id, subfield_type) in subfields.iter() {
-            self.add_symbol(self.create_symbol(
-                *subfield_id,
-                SymbolData::StructField {
-                    struct_id: field_id,
-                    ty: subfield_type.get_type(),
-                },
-            ));
-        }
-
-        self.scope.pop();
-        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
-
-        Ok(())
-    }
-
-    fn create_variant_tuple_field_symbol(
-        &mut self,
-        field_id: Ident,
-        components: &[TypeSpec],
-        safety: Safety,
-    ) -> Result<(), Message> {
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Struct(field_id),
-            safety,
-        });
-
-        for (field_num, field_type) in components.iter().enumerate() {
-            let subfield_id = Ident::from(format!("_{field_num}"));
-            self.add_symbol(self.create_symbol(
-                subfield_id,
-                SymbolData::StructField {
-                    struct_id: field_id,
-                    ty: field_type.get_type(),
-                },
-            ));
-        }
-
-        self.scope.pop();
-        self.add_symbol(self.create_symbol(field_id, SymbolData::StructDef));
-
-        Ok(())
-    }
-
-    fn create_variant_fields_symbols(
-        &mut self,
-        fields: &BTreeMap<Ident, VariantField>,
-        safety: Safety,
-    ) -> Result<(), Message> {
-        for (field_id, field_data) in fields.iter() {
-            match field_data {
-                VariantField::Common => self.create_variant_common_field_symbol(*field_id)?,
-                VariantField::StructLike(subfields) => {
-                    self.create_variant_struct_field_symbol(*field_id, subfields, safety)?
-                }
-                VariantField::TupleLike(components) => {
-                    self.create_variant_tuple_field_symbol(*field_id, components, safety)?
-                }
+            if alias_to.is_none() && value_comp_type != *tuple_comp_type {
+                return Err(Message {
+                    location: value_comp.location(),
+                    text: format!(
+                        "Tuple component with index \"{comp_id}\" is {tuple_comp_type}, but initialized like {value_comp_type}",
+                    ),
+                });
+            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+                return Err(Message {
+                    location: value_comp.location(),
+                    text: format!(
+                        "Tuple component with index \"{comp_id}\" is {tuple_comp_type} (aka: {}), but initialized like {value_comp_type}",
+                        alias_to.unwrap()
+                    ),
+                });
             }
         }
-        Ok(())
-    }
-
-    fn create_variant_data_symbols(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-        safety: Safety,
-    ) -> Result<(), Message> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
-
-        self.scope.push(ScopeUnit {
-            kind: ScopeUnitKind::Union(union_id),
-            safety,
-        });
-        self.create_variant_fields_symbols(fields, safety)?;
-        self.scope.pop();
 
         Ok(())
     }

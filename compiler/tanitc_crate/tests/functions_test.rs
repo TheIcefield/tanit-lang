@@ -21,7 +21,7 @@ fn function_def_test() {
 
     {
         const EXPECTED: &str = "\n<function-definition name=\"sum\">\
-                                \n    <attributes safety=\"safe\"/>\
+                                \n    <attributes safety=\"Safe\"/>\
                                 \n    <return-type>\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
@@ -41,7 +41,7 @@ fn function_def_test() {
                                 \n    </return-statement>\
                                 \n</function-definition>\
                                 \n<function-definition name=\"main\">\
-                                \n    <attributes safety=\"unsafe\"/>\
+                                \n    <attributes safety=\"Unsafe\"/>\
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\

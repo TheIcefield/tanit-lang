@@ -1,3 +1,4 @@
+use pretty_assertions::assert_str_eq;
 use tanitc_analyzer::Analyzer;
 use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
@@ -49,7 +50,14 @@ fn if_in_global_scope_test() {
     }
 
     {
+        const EXPECTED: &str = "Semantic error: Node \"branching\" is not allowed in global scope";
+
         let mut analyzer = Analyzer::new();
-        assert!(program.accept_mut(&mut analyzer).is_err());
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 2);
+        assert_str_eq!(errors[0].text, EXPECTED);
+        assert_str_eq!(errors[1].text, EXPECTED);
     }
 }
