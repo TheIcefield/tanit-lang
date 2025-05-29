@@ -76,6 +76,20 @@ impl Message {
         }
     }
 
+    pub fn undefined_struct(location: Location, struct_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("No struct \"{struct_name}\" found"),
+        }
+    }
+
+    pub fn undefined_union(location: Location, union_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("No struct \"{union_name}\" found"),
+        }
+    }
+
     pub fn no_id_in_namespace(location: Location, namespace: Ident, id: Ident) -> Self {
         let id: String = id.into();
         Self {
@@ -112,7 +126,7 @@ impl Message {
         }
     }
 
-    pub fn unreachable(location: Location, msg: &str) -> Self {
+    pub fn unreachable(location: Location, msg: String) -> Self {
         Self {
             location,
             text: format!("Compiler reached unreachable code: {msg}"),

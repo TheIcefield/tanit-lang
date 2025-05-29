@@ -12,16 +12,12 @@ pub enum Safety {
     #[default]
     Safe,
     Unsafe,
+    Inherited,
 }
 
 impl Display for Safety {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Safe => write!(f, "safe")?,
-            Self::Unsafe => write!(f, "unsafe")?,
-        }
-
-        Ok(())
+        write!(f, "{self:?}")
     }
 }
 
