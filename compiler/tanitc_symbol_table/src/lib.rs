@@ -5,6 +5,9 @@ use std::collections::HashMap;
 pub mod scope;
 pub mod symbol;
 
+pub mod entry;
+pub mod table;
+
 use crate::{
     scope::{Scope, ScopeUnitKind},
     symbol::Symbol,
