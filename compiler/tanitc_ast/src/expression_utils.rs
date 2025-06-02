@@ -188,3 +188,19 @@ impl Display for BinaryOperation {
         )
     }
 }
+
+impl BinaryOperation {
+    pub fn does_mutate(&self) -> bool {
+        *self == Self::Assign
+            || *self == Self::SubAssign
+            || *self == Self::AddAssign
+            || *self == Self::DivAssign
+            || *self == Self::ModAssign
+            || *self == Self::MulAssign
+            || *self == Self::BitwiseAndAssign
+            || *self == Self::BitwiseOrAssign
+            || *self == Self::BitwiseXorAssign
+            || *self == Self::BitwiseShiftLAssign
+            || *self == Self::BitwiseShiftRAssign
+    }
+}
