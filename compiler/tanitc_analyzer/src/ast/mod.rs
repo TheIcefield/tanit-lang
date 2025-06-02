@@ -281,6 +281,7 @@ impl VisitorMut for Analyzer {
             ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
             ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),
             ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
+            ExpressionKind::Get { lhs, rhs } => return self.analyze_member_access(lhs, rhs),
         };
 
         match ret {
@@ -540,6 +541,7 @@ impl Analyzer {
             }
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
+            ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Term { ty, .. } => ty.clone(),
         }
     }
@@ -886,10 +888,7 @@ impl Analyzer {
                                     ));
                                 }
                             } else if !var_data.is_mutable && does_mutate {
-                                self.error(Message::new(
-                                    Location::new(),
-                                    &format!("Variable \"{id}\" is immutable in current scope",),
-                                ));
+                                self.error(Message::const_mutation(node.location, *id));
                             }
                         }
                     }
@@ -917,9 +916,9 @@ impl Analyzer {
             let lhs_type = self.get_type(lhs);
 
             if lhs_type != rhs_type {
-                self.error(Message::new(
+                self.error(Message::from_string(
                     rhs.location(),
-                    &format!(
+                    format!(
                         "Cannot perform operation on objects with different types: {:?} and {:?}",
                         lhs_type, rhs_type
                     ),
@@ -955,6 +954,23 @@ impl Analyzer {
         };
 
         Ok(processed_node)
+    }
+
+    fn analyze_member_access(&mut self, lhs: &mut Ast, rhs: &mut Ast) -> Result<(), Message> {
+        let mut ids = Vec::<Ident>::new();
+
+        let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
+
+        let Some(entry) = self.table.lookup_qualified(ids.iter().peekable()) else {
+            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
+        };
+
+        let entry = entry.clone();
+
+        match &entry.kind {
+            SymbolKind::VarDef(data) => self.check_member_access(entry.name, data, rhs),
+            _ => unimplemented!("Entry.kind: {:?}", entry.kind),
+        }
     }
 
     fn access_enum(
@@ -1091,6 +1107,117 @@ impl Analyzer {
         Ok(Some(node))
     }
 
+    fn check_member_access(
+        &mut self,
+        var_name: Ident,
+        var_data: &VarDefData,
+        node: &mut Ast,
+    ) -> Result<(), Message> {
+        let location = node.location();
+        let var_type = &var_data.var_type;
+
+        // panic!("({var_type:?}) {var_name}.{node:?}");
+
+        match node {
+            Ast::Expression(Expression {
+                kind:
+                    ExpressionKind::Binary {
+                        operation,
+                        lhs,
+                        rhs,
+                    },
+                ..
+            }) => {
+                if operation.does_mutate() && !var_data.is_mutable {
+                    return Err(Message::const_mutation(location, var_name));
+                }
+
+                let Ast::Value(Value {
+                    kind: ValueKind::Identifier(member_name),
+                    ..
+                }) = lhs.as_ref()
+                else {
+                    return Err(Message::unreachable(
+                        location,
+                        format!("Expected member access, actually: {lhs:?}"),
+                    ));
+                };
+
+                let Type::Custom(struct_name) = var_type else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("Type \"{var_type}\" doesn't have any members, including \"{member_name}\""),
+                    ));
+                };
+
+                let struct_name = Ident::from(struct_name.clone());
+                let Some(struct_entry) = self.table.lookup(struct_name) else {
+                    return Err(Message::new(
+                        location,
+                        "Struct type should be known at this point",
+                    ));
+                };
+
+                let struct_entry = struct_entry.clone();
+
+                match &struct_entry.kind {
+                    SymbolKind::StructDef(struct_data) => {
+                        let Some(field) = struct_data.fields.get(member_name) else {
+                            return Err(Message::from_string(
+                                location,
+                                format!(
+                                    "Struct \"{struct_name}\" doesn't have field \"{member_name}\""
+                                ),
+                            ));
+                        };
+
+                        rhs.accept_mut(self)?;
+
+                        let rhs_type = self.get_type(rhs);
+                        let field_type = &field.ty;
+
+                        if *field_type != rhs_type {
+                            return Err(Message::from_string(
+                                rhs.location(),
+                                format!(
+                                    "Cannot perform operation on objects with different types: {field_type:?} and {rhs_type:?}",
+                                ),
+                            ));
+                        }
+                    }
+                    SymbolKind::UnionDef(union_data) => {
+                        let Some(field) = union_data.fields.get(member_name) else {
+                            return Err(Message::from_string(
+                                location,
+                                format!(
+                                    "Union \"{struct_name}\" doesn't have field \"{member_name}\""
+                                ),
+                            ));
+                        };
+
+                        rhs.accept_mut(self)?;
+
+                        let rhs_type = self.get_type(rhs);
+                        let field_type = &field.ty;
+
+                        if *field_type != rhs_type {
+                            return Err(Message::from_string(
+                                rhs.location(),
+                                format!(
+                                    "Cannot perform operation on objects with different types: {field_type:?} and {rhs_type:?}",
+                                ),
+                            ));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => todo!("node:?"),
+        }
+
+        Ok(())
+    }
+
     fn preprocess_access_tree<'a>(
         ids: &mut Vec<Ident>,
         lhs: &'a Ast,
@@ -1116,6 +1243,14 @@ impl Analyzer {
                 kind: ExpressionKind::Access { lhs, rhs },
                 ..
             }) => Self::preprocess_access_tree(ids, lhs, rhs),
+            Ast::Expression(Expression {
+                kind:
+                    ExpressionKind::Binary {
+                        operation: BinaryOperation::Assign,
+                        ..
+                    },
+                ..
+            }) => Ok(rhs),
             Ast::Value(Value {
                 kind: ValueKind::Identifier(rhs_id),
                 ..

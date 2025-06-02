@@ -90,6 +90,13 @@ impl Message {
         }
     }
 
+    pub fn const_mutation(location: Location, var_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("Variable \"{var_name}\" is immutable in current scope"),
+        }
+    }
+
     pub fn no_id_in_namespace(location: Location, namespace: Ident, id: Ident) -> Self {
         let id: String = id.into();
         Self {

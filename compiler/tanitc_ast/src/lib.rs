@@ -119,6 +119,10 @@ pub enum ExpressionKind {
         lhs: Box<Ast>,
         rhs: Box<Ast>,
     },
+    Get {
+        lhs: Box<Ast>,
+        rhs: Box<Ast>,
+    },
     Term {
         node: Box<Ast>,
         ty: Type,
@@ -519,7 +523,7 @@ impl ExpressionKind {
 
         Ok(match operation {
             BinaryOperation::Access => Self::Access { lhs, rhs },
-            // BinaryOperation::Get => Self::Get { lhs, rhs },
+            BinaryOperation::Get => Self::Get { lhs, rhs },
             _ => Self::Binary {
                 operation,
                 lhs,
