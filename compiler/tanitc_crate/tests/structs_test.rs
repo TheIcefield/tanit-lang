@@ -4,6 +4,8 @@ use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
+use pretty_assertions::assert_str_eq;
+
 #[test]
 fn struct_work_test() {
     const SRC_TEXT: &str = "\nstruct MyStruct\
@@ -12,9 +14,10 @@ fn struct_work_test() {
                             \n    f2: f32\
                             \n}\
                             \nfunc main() {\
-                            \n    var s = MyStruct { \
+                            \n    var mut s = MyStruct { \
                             \n              f1: 1, f2: 2.0\
                             \n            }\
+                            \n    s.f1 = 2\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
@@ -48,7 +51,7 @@ fn struct_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"true\">\
                                 \n            <type style=\"named\" name=\"MyStruct\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"MyStruct\">\
@@ -60,6 +63,13 @@ fn struct_work_test() {
                                 \n            </field>\
                                 \n        </struct-initialization>\
                                 \n    </operation>\
+                                \n    <operation style=\"get\">\
+                                \n        <identifier name=\"s\"/>\
+                                \n        <operation style=\"binary\" operation=\"=\">\
+                                \n            <identifier name=\"f1\"/>\
+                                \n            <literal style=\"integer-number\" value=\"2\"/>\
+                                \n        </operation>\
+                                \n    </operation>\
                                 \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -68,21 +78,22 @@ fn struct_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
-                                     \nsigned int f1;\
-                                     \nfloat f2;\
+                                        \nsigned int f1;\
+                                        \nfloat f2;\
                                      \n} MyStruct;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyStruct const s = (MyStruct){\
-                                     \n.f1=1,\
-                                     \n.f2=2,\
-                                     \n};\
+                                        \nMyStruct s = (MyStruct){\
+                                            \n.f1=1,\
+                                            \n.f2=2,\
+                                        \n};\
+                                        \ns.f1 = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -94,8 +105,8 @@ fn struct_work_test() {
         let header_res = String::from_utf8(header_buffer).unwrap();
         let source_res = String::from_utf8(source_buffer).unwrap();
 
-        assert_eq!(HEADER_EXPECTED, header_res);
-        assert_eq!(SOURCE_EXPECTED, source_res);
+        assert_str_eq!(HEADER_EXPECTED, header_res);
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }
 
@@ -168,7 +179,7 @@ fn struct_in_module_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -179,10 +190,10 @@ fn struct_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nVector2 const vec = (Vector2){\
-                                     \n.x=0,\
-                                     \n.y=2,\
-                                     \n};\
+                                        \nVector2 const vec = (Vector2){\
+                                            \n.x=0,\
+                                            \n.y=2,\
+                                        \n};\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -192,9 +203,48 @@ fn struct_in_module_work_test() {
         program.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
-        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, header_res);
 
-        assert_eq!(HEADER_EXPECTED, header_res);
-        assert_eq!(SOURCE_EXPECTED, source_res);
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
+    }
+}
+
+#[test]
+fn incorrect_struct_work_test() {
+    const SRC_TEXT: &str = "\nstruct MyStruct\
+                            \n{\
+                            \n    f1: i32\
+                            \n    f2: f32\
+                            \n}\
+                            \nfunc main() {\
+                            \n    var mut s = MyStruct { \
+                            \n              f1: 1, f2: 2.0\
+                            \n            }\
+                            \n    s.f1 = 3.0\
+                            \n    s.f2 = 2.0\
+                            \n    s.f3 = 1.0\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED_1: &str =
+            "Semantic error: Cannot perform operation on objects with different types: i32 and f32";
+        const EXPECTED_2: &str = "Semantic error: Struct \"MyStruct\" doesn't have field \"f3\"";
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 2);
+        assert_eq!(errors[0].text, EXPECTED_1);
+        assert_eq!(errors[1].text, EXPECTED_2);
     }
 }
