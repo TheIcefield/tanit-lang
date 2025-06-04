@@ -1090,6 +1090,72 @@ impl Analyzer {
     }
 }
 
+// Variable
+impl Analyzer {
+    fn analyze_variable_def(
+        &mut self,
+        lhs: &mut VariableDef,
+        rhs: Option<&mut Ast>,
+    ) -> Result<(), Message> {
+        let variable_name = lhs.identifier;
+
+        let Some(rhs) = rhs else {
+            return Err(Message::from_string(
+                lhs.location,
+                format!("Variable {variable_name} is defined, but not initialized"),
+            ));
+        };
+
+        let rhs_type = self.get_type(rhs);
+
+        if self.has_symbol(variable_name) {
+            return Err(Message::multiple_ids(rhs.location(), variable_name));
+        }
+
+        if Type::Auto == lhs.var_type.get_type() {
+            lhs.var_type.ty = rhs_type.clone();
+        }
+
+        let var_type = lhs.var_type.get_type();
+
+        let mut alias_to = self.find_alias_value(&var_type);
+
+        if var_type == rhs_type {
+            alias_to = None;
+        }
+
+        if alias_to.is_none() && var_type != rhs_type {
+            return Err(Message {
+                    location: lhs.location,
+                    text: format!(
+                        "Cannot perform operation on objects with different types: {var_type:?} and {rhs_type:?}",
+                    ),
+                });
+        } else if alias_to.as_ref().is_some_and(|ty| rhs_type != *ty) {
+            return Err(Message {
+                    location: lhs.location,
+                    text: format!(
+                        "Cannot perform operation on objects with different types: {var_type:?} (aka: {}) and {rhs_type:?}",
+                        alias_to.unwrap()
+                    ),
+                });
+        }
+
+        self.add_symbol(Entry {
+            name: variable_name,
+            is_static: false,
+            kind: SymbolKind::from(VarDefData {
+                storage: VarStorageType::Auto,
+                var_type: lhs.var_type.get_type(),
+                is_mutable: lhs.is_mutable,
+                is_initialization: true,
+            }),
+        });
+
+        Ok(())
+    }
+}
+
 fn get_ordinal_number_suffix(num: usize) -> &'static str {
     match num % 10 {
         0 => "st",
