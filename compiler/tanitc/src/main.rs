@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use tanitc_crate::Unit;
 use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
 
@@ -42,6 +44,14 @@ fn parse_options() -> CompileOptions {
             compile_options.input_file = argv[i + 1].clone();
         } else if argv[i] == "-o" || argv[i] == "--output" {
             compile_options.output_file = argv[i + 1].clone();
+        } else if argv[i] == "-l" || argv[i] == "--include-libraries" {
+            compile_options
+                .libraries
+                .push(PathBuf::from(argv[i + 1].clone()));
+        } else if argv[i] == "-I" || argv[i] == "--include-directories" {
+            compile_options
+                .directories
+                .push(PathBuf::from(argv[i + 1].clone()));
         } else if argv[i] == "--dump-tokens" {
             compile_options.verbose_tokens = true;
         } else if argv[i] == "--dump-ast" || argv[i] == "--dump-ast-ron" {
