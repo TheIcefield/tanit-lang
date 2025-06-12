@@ -20,17 +20,16 @@ pub fn build_object_file(
     let utility = get_utility_name(options.backend);
 
     let mut cmd = Command::new(utility);
+
     cmd.arg("-c");
 
-    cmd.arg(if options.crate_type == CrateType::DynamicLib {
-        "-fPIC"
-    } else {
-        ""
-    });
+    if options.crate_type == CrateType::DynamicLib {
+        cmd.arg("-fPIC");
+    }
 
-    cmd.arg(path);
     cmd.arg("-o");
     cmd.arg(output);
+    cmd.arg(path);
 
     execute_command(&mut cmd)
 }
@@ -79,6 +78,8 @@ pub fn link_crate_objects(inputs: &[PathBuf], options: &CompileOptions) -> Resul
 }
 
 fn execute_command(cmd: &mut Command) -> Result<(), String> {
+    println!("cmd: {cmd:?}");
+
     match cmd.output() {
         Ok(out) => {
             if !out.status.success() {

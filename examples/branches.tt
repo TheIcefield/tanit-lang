@@ -25,7 +25,7 @@ func if_func() {
     if a > 0 {
         a = 1
     } else if a < 0 {
-        a = -1
+        a = 2
     } else {
         a = 0
     }
