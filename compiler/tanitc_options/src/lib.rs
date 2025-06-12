@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum AstSerializeMode {
     #[default]
@@ -33,6 +35,8 @@ pub struct CompileOptions {
     pub allow_variants: bool,
     pub backend: Backend,
     pub crate_type: CrateType,
+    pub libraries: Vec<PathBuf>,
+    pub directories: Vec<PathBuf>,
 }
 
 impl Default for CompileOptions {
@@ -47,6 +51,8 @@ impl Default for CompileOptions {
             allow_variants: false,
             backend: Backend::default(),
             crate_type: CrateType::default(),
+            libraries: Vec::new(),
+            directories: Vec::new(),
         }
     }
 }
