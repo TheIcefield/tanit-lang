@@ -42,6 +42,14 @@ fn build_executable(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), 
     cmd.arg("-o");
     cmd.arg(&options.output_file);
 
+    for dir in options.libraries_paths.iter() {
+        cmd.arg(format!("-L{}", dir.to_str().unwrap()));
+    }
+
+    for lib in options.libraries.iter() {
+        cmd.arg(format!("-l{lib}"));
+    }
+
     execute_command(&mut cmd)
 }
 
