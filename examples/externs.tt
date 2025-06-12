@@ -1,13 +1,7 @@
 extern "C" {
-    unsafe func hello()
+    unsafe func hello_world(): i32
 }
 
-extern "C" {
-    func world() {
-    }
-}
-
-func hello_world() {
-    hello()
-    world()
+func main() {
+    var res = hello_world()
 }

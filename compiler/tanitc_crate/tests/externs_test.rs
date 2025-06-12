@@ -62,7 +62,7 @@ fn extern_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "extern signed int hello();\
+        const HEADER_EXPECTED: &str = "signed int hello();\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\

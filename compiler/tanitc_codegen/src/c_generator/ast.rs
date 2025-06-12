@@ -616,8 +616,6 @@ impl CodeGenStream<'_> {
         self.mode = CodeGenMode::HeaderOnly;
 
         for func_def in extern_def.functions.iter() {
-            write!(self, "extern ")?;
-
             self.generate_func_def(func_def)?;
         }
 

@@ -22,11 +22,9 @@ pub fn build_object_file(
     let mut cmd = Command::new(utility);
     cmd.arg("-c");
 
-    cmd.arg(if options.crate_type == CrateType::DynamicLib {
-        "-fPIC"
-    } else {
-        ""
-    });
+    if options.crate_type == CrateType::DynamicLib {
+        cmd.arg("-fPIC");
+    }
 
     cmd.arg(path);
     cmd.arg("-o");
@@ -42,6 +40,14 @@ fn build_executable(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), 
     cmd.args(inputs);
     cmd.arg("-o");
     cmd.arg(&options.output_file);
+
+    for dir in options.libraries_paths.iter() {
+        cmd.arg(format!("-L{}", dir.to_str().unwrap()));
+    }
+
+    for lib in options.libraries.iter() {
+        cmd.arg(format!("-l{lib}"));
+    }
 
     execute_command(&mut cmd)
 }

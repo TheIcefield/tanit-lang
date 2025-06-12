@@ -35,8 +35,8 @@ pub struct CompileOptions {
     pub allow_variants: bool,
     pub backend: Backend,
     pub crate_type: CrateType,
-    pub libraries: Vec<PathBuf>,
-    pub directories: Vec<PathBuf>,
+    pub libraries: Vec<String>,
+    pub libraries_paths: Vec<PathBuf>,
 }
 
 impl Default for CompileOptions {
@@ -52,7 +52,7 @@ impl Default for CompileOptions {
             backend: Backend::default(),
             crate_type: CrateType::default(),
             libraries: Vec::new(),
-            directories: Vec::new(),
+            libraries_paths: Vec::new(),
         }
     }
 }
