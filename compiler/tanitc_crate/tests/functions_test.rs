@@ -101,9 +101,13 @@ fn functions_test() {
                             \n    return a + b\
                             \n}\
                             \n\
+                            \nfunc void_func() {\
+                            \n}\
+                            \n\
                             \nfunc main() {\
                             \n   var param = 34\
                             \n   var res = f(56, b: param)\
+                            \n   void_func()
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
@@ -143,6 +147,11 @@ fn functions_test() {
                                 \n        </operation>\
                                 \n    </return-statement>\
                                 \n</function-definition>\
+                                \n<function-definition name=\"void_func\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n</function-definition>\
                                 \n<function-definition name=\"main\">\
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
@@ -168,6 +177,7 @@ fn functions_test() {
                                 \n            </parameters>\
                                 \n        </call-statement>\
                                 \n    </operation>\
+                                \n    <call-statement name=\"void_func\"/>\
                                 \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -181,14 +191,18 @@ fn functions_test() {
 
     {
         const HEADER_EXPECTED: &str = "float f(signed int a, signed int b);\
+                                     \nvoid void_func();\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "float f(signed int a, signed int b){\
                                         \nreturn a + b;\
                                       \n}\
+                                      \nvoid void_func(){\
+                                      \n}\
                                       \nvoid main(){\
                                         \nsigned int const param = 34;\
                                         \nfloat const res = f(56, param);\
+                                        \nvoid_func();\
                                       \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

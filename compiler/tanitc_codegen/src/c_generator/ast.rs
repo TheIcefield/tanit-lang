@@ -423,9 +423,13 @@ impl CodeGenStream<'_> {
             self.generate(stmt)?;
 
             match stmt {
-                Ast::Expression(_) | Ast::ControlFlow(_) | Ast::VariableDef(_) => {
-                    write!(self, ";")?
-                }
+                Ast::Expression(_)
+                | Ast::ControlFlow(_)
+                | Ast::VariableDef(_)
+                | Ast::Value(Value {
+                    kind: ValueKind::Call { .. },
+                    ..
+                }) => write!(self, ";")?,
                 _ => {}
             }
 
