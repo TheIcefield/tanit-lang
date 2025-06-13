@@ -3,7 +3,10 @@ use std::collections::{BTreeMap, LinkedList};
 use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
 
-use super::entry::{Entry, SymbolKind};
+use super::{
+    entry::{Entry, SymbolKind},
+    type_info::{MemberInfo, TypeInfo},
+};
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ScopeInfo {
@@ -112,6 +115,45 @@ impl Table {
         } else {
             Some(entry)
         }
+    }
+
+    pub fn lookup_type(&self, name: Ident) -> Option<TypeInfo> {
+        let mut res: Option<TypeInfo> = None;
+
+        if let Some(entry) = self.lookup(name) {
+            match &entry.kind {
+                SymbolKind::StructDef(data) => {
+                    let mut members = BTreeMap::<Ident, MemberInfo>::new();
+
+                    for (field_name, _field_data) in data.fields.iter() {
+                        members.insert(*field_name, MemberInfo { is_public: true });
+                    }
+
+                    res = Some(TypeInfo { members });
+                }
+                SymbolKind::UnionDef(data) => {
+                    let mut members = BTreeMap::<Ident, MemberInfo>::new();
+
+                    for (field_name, _field_data) in data.fields.iter() {
+                        members.insert(*field_name, MemberInfo { is_public: true });
+                    }
+
+                    res = Some(TypeInfo { members });
+                }
+                _ => {}
+            }
+        } else {
+            for (_, entry) in self.entries.iter() {
+                if let SymbolKind::ModuleDef(data) = &entry.kind {
+                    if let Some(info) = data.table.lookup_type(name) {
+                        res = Some(info);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        res
     }
 
     pub fn get_scope_info(&self) -> ScopeInfo {
@@ -339,4 +381,82 @@ fn qualified_symbol_test() {
     assert!(table
         .lookup_qualified([m2_id, f1_id].iter().peekable())
         .is_none());
+}
+
+#[test]
+fn lookup_type_test() {
+    /* example:
+     * Module M1 {       # M1
+     *     Module M2 {   # M1/M2
+     *         Struct S1 {
+     *             f1: i32
+     *             f2: f32
+     *         }
+     *     }
+     * }
+     */
+
+    use crate::entry::{ModuleDefData, StructDefData, StructFieldData};
+    use tanitc_ty::Type;
+
+    let m1_id = Ident::from("M1".to_string());
+    let m2_id = Ident::from("M2".to_string());
+    let s1_id = Ident::from("S1".to_string());
+    let f1_id = Ident::from("f1".to_string());
+    let f2_id = Ident::from("f2".to_string());
+
+    let mut table = Table::new();
+
+    table.insert(Entry {
+        name: m1_id,
+        is_static: true,
+        kind: SymbolKind::ModuleDef(ModuleDefData {
+            table: Box::new(Table::new()),
+        }),
+    });
+
+    {
+        let m1 = table.lookup_mut(m1_id).unwrap();
+        let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
+            unreachable!()
+        };
+
+        data.table.insert(Entry {
+            name: m2_id,
+            is_static: true,
+            kind: SymbolKind::ModuleDef(ModuleDefData {
+                table: Box::new(Table::new()),
+            }),
+        });
+
+        {
+            let m2 = data.table.lookup_mut(m2_id).unwrap();
+            let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
+                unreachable!()
+            };
+
+            data.table.insert(Entry {
+                name: s1_id,
+                is_static: false,
+                kind: SymbolKind::from(StructDefData {
+                    fields: {
+                        let mut field = BTreeMap::<Ident, StructFieldData>::new();
+
+                        field.insert(f1_id, StructFieldData { ty: Type::I32 });
+                        field.insert(f2_id, StructFieldData { ty: Type::F32 });
+
+                        field
+                    },
+                }),
+            });
+        }
+    }
+
+    let s1 = table.lookup_type(s1_id).unwrap();
+    assert_eq!(s1.members.len(), 2);
+    assert!(s1.members.get(&f1_id).is_some());
+    assert!(s1.members.get(&f2_id).is_some());
+    assert!(s1.members.get(&m1_id).is_none());
+
+    assert!(table.lookup_type(m2_id).is_none());
 }
