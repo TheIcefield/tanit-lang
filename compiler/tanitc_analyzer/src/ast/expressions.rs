@@ -6,8 +6,7 @@ use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::entry::{
-    Entry, EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData,
-    VarStorageType,
+    EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData,
 };
 use tanitc_ty::Type;
 
@@ -67,49 +66,7 @@ impl Analyzer {
             || *operation == BinaryOperation::BitwiseShiftRAssign;
 
         if let Ast::VariableDef(node) = lhs {
-            if self.has_symbol(node.identifier) {
-                return Err(Message::multiple_ids(rhs.location(), node.identifier));
-            }
-
-            if Type::Auto == node.var_type.get_type() {
-                node.var_type.ty = rhs_type.clone();
-            }
-
-            let var_type = node.var_type.get_type();
-
-            let mut alias_to = self.find_alias_value(&var_type);
-
-            if var_type == rhs_type {
-                alias_to = None;
-            }
-
-            if alias_to.is_none() && var_type != rhs_type {
-                return Err(Message {
-                    location: node.location,
-                    text: format!(
-                        "Cannot perform operation on objects with different types: {var_type:?} and {rhs_type:?}",
-                    ),
-                });
-            } else if alias_to.as_ref().is_some_and(|ty| rhs_type != *ty) {
-                return Err(Message {
-                    location: node.location,
-                    text: format!(
-                        "Cannot perform operation on objects with different types: {var_type:?} (aka: {}) and {rhs_type:?}",
-                        alias_to.unwrap()
-                    ),
-                });
-            }
-
-            self.add_symbol(Entry {
-                name: node.identifier,
-                is_static: false,
-                kind: SymbolKind::from(VarDefData {
-                    storage: VarStorageType::Auto,
-                    var_type: node.var_type.get_type(),
-                    is_mutable: node.is_mutable,
-                    is_initialization: true,
-                }),
-            });
+            self.analyze_variable_def(node, Some(rhs))?;
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
@@ -132,19 +89,19 @@ impl Analyzer {
                 }
                 ValueKind::Integer(..) | ValueKind::Decimal(..) => {}
                 ValueKind::Text(..) => self.error(Message::new(
-                    Location::new(),
+                    node.location,
                     "Cannot perform operation with text in this context",
                 )),
                 ValueKind::Array { .. } => self.error(Message::new(
-                    Location::new(),
+                    node.location,
                     "Cannot perform operation with array in this context",
                 )),
                 ValueKind::Tuple { .. } => self.error(Message::new(
-                    Location::new(),
+                    node.location,
                     "Cannot perform operation with tuple in this context",
                 )),
                 _ => self.error(Message::new(
-                    Location::new(),
+                    node.location,
                     "Cannot perform operation with this object",
                 )),
             }
@@ -353,8 +310,6 @@ impl Analyzer {
         let location = node.location();
         let var_type = &var_data.var_type;
 
-        // panic!("({var_type:?}) {var_name}.{node:?}");
-
         match node {
             Ast::Expression(Expression {
                 kind:
@@ -449,7 +404,7 @@ impl Analyzer {
                     _ => {}
                 }
             }
-            _ => todo!("node:?"),
+            _ => todo!("{node:?}"),
         }
 
         Ok(())
