@@ -125,8 +125,14 @@ impl Table {
                 SymbolKind::StructDef(data) => {
                     let mut members = BTreeMap::<Ident, MemberInfo>::new();
 
-                    for (field_name, _field_data) in data.fields.iter() {
-                        members.insert(*field_name, MemberInfo { is_public: true });
+                    for (field_name, field_data) in data.fields.iter() {
+                        members.insert(
+                            *field_name,
+                            MemberInfo {
+                                is_public: true,
+                                ty: field_data.ty.clone(),
+                            },
+                        );
                     }
 
                     res = Some(TypeInfo { members });
@@ -134,8 +140,14 @@ impl Table {
                 SymbolKind::UnionDef(data) => {
                     let mut members = BTreeMap::<Ident, MemberInfo>::new();
 
-                    for (field_name, _field_data) in data.fields.iter() {
-                        members.insert(*field_name, MemberInfo { is_public: true });
+                    for (field_name, field_data) in data.fields.iter() {
+                        members.insert(
+                            *field_name,
+                            MemberInfo {
+                                is_public: true,
+                                ty: field_data.ty.clone(),
+                            },
+                        );
                     }
 
                     res = Some(TypeInfo { members });

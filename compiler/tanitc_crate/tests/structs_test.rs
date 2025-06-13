@@ -119,9 +119,10 @@ fn struct_in_module_work_test() {
                             \n    }\
                             \n}\
                             \nfunc main() {\
-                            \n    var vec = math::Vector2 { \
+                            \n    var mut vec = math::Vector2 { \
                             \n              x: 0.0, y: 2.0\
                             \n            }\
+                            \n    vec.x = 2.0\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
@@ -157,7 +158,7 @@ fn struct_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"vec\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"vec\" is-global=\"false\" is-mutable=\"true\">\
                                 \n            <type style=\"named\" name=\"Vector2\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
@@ -169,6 +170,13 @@ fn struct_in_module_work_test() {
                                 \n                    <literal style=\"decimal-number\" value=\"2\"/>\
                                 \n                </field>\
                                 \n            </struct-initialization>\
+                                \n        </operation>\
+                                \n    </operation>\
+                                \n    <operation style=\"get\">\
+                                \n        <identifier name=\"vec\"/>\
+                                \n        <operation style=\"binary\" operation=\"=\">\
+                                \n            <identifier name=\"x\"/>\
+                                \n            <literal style=\"decimal-number\" value=\"2\"/>\
                                 \n        </operation>\
                                 \n    </operation>\
                                 \n</function-definition>";
@@ -190,10 +198,11 @@ fn struct_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nVector2 const vec = (Vector2){\
+                                        \nVector2 vec = (Vector2){\
                                             \n.x=0,\
                                             \n.y=2,\
                                         \n};\
+                                        \nvec.x = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -238,7 +247,7 @@ fn incorrect_struct_work_test() {
     {
         const EXPECTED_1: &str =
             "Semantic error: Cannot perform operation on objects with different types: i32 and f32";
-        const EXPECTED_2: &str = "Semantic error: Struct \"MyStruct\" doesn't have field \"f3\"";
+        const EXPECTED_2: &str = "Semantic error: \"MyStruct\" doesn't have field \"f3\"";
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
