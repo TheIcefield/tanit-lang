@@ -335,73 +335,40 @@ impl Analyzer {
                     ));
                 };
 
-                let Type::Custom(struct_name) = var_type else {
+                let Type::Custom(type_name) = var_type else {
                     return Err(Message::from_string(
                         location,
                         format!("Type \"{var_type}\" doesn't have any members, including \"{member_name}\""),
                     ));
                 };
 
-                let struct_name = Ident::from(struct_name.clone());
-                let Some(struct_entry) = self.table.lookup(struct_name) else {
-                    return Err(Message::new(
+                let type_name = Ident::from(type_name.clone());
+                let Some(type_info) = self.table.lookup_type(type_name) else {
+                    return Err(Message::unreachable(
                         location,
-                        "Struct type should be known at this point",
+                        "Type is unknown in member access".to_string(),
                     ));
                 };
 
-                let struct_entry = struct_entry.clone();
+                let Some(field) = type_info.members.get(member_name) else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("\"{type_name}\" doesn't have field \"{member_name}\""),
+                    ));
+                };
 
-                match &struct_entry.kind {
-                    SymbolKind::StructDef(struct_data) => {
-                        let Some(field) = struct_data.fields.get(member_name) else {
-                            return Err(Message::from_string(
-                                location,
-                                format!(
-                                    "Struct \"{struct_name}\" doesn't have field \"{member_name}\""
-                                ),
-                            ));
-                        };
+                rhs.accept_mut(self)?;
 
-                        rhs.accept_mut(self)?;
+                let rhs_type = self.get_type(rhs);
+                let field_type = &field.ty;
 
-                        let rhs_type = self.get_type(rhs);
-                        let field_type = &field.ty;
-
-                        if *field_type != rhs_type {
-                            return Err(Message::from_string(
+                if *field_type != rhs_type {
+                    return Err(Message::from_string(
                                 rhs.location(),
                                 format!(
                                     "Cannot perform operation on objects with different types: {field_type:?} and {rhs_type:?}",
                                 ),
                             ));
-                        }
-                    }
-                    SymbolKind::UnionDef(union_data) => {
-                        let Some(field) = union_data.fields.get(member_name) else {
-                            return Err(Message::from_string(
-                                location,
-                                format!(
-                                    "Union \"{struct_name}\" doesn't have field \"{member_name}\""
-                                ),
-                            ));
-                        };
-
-                        rhs.accept_mut(self)?;
-
-                        let rhs_type = self.get_type(rhs);
-                        let field_type = &field.ty;
-
-                        if *field_type != rhs_type {
-                            return Err(Message::from_string(
-                                rhs.location(),
-                                format!(
-                                    "Cannot perform operation on objects with different types: {field_type:?} and {rhs_type:?}",
-                                ),
-                            ));
-                        }
-                    }
-                    _ => {}
                 }
             }
             _ => todo!("{node:?}"),
