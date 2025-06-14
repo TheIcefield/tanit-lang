@@ -247,13 +247,149 @@ fn incorrect_struct_work_test() {
     {
         const EXPECTED_1: &str =
             "Semantic error: Cannot perform operation on objects with different types: i32 and f32";
-        const EXPECTED_2: &str = "Semantic error: \"MyStruct\" doesn't have field \"f3\"";
+        const EXPECTED_2: &str = "Semantic error: \"s\" doesn't have member named \"f3\"";
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
         let errors = analyzer.get_errors();
         assert_eq!(errors.len(), 2);
-        assert_eq!(errors[0].text, EXPECTED_1);
-        assert_eq!(errors[1].text, EXPECTED_2);
+        assert_str_eq!(errors[0].text, EXPECTED_1);
+        assert_str_eq!(errors[1].text, EXPECTED_2);
+    }
+}
+
+#[test]
+fn internal_struct_work_test() {
+    const SRC_TEXT: &str = "\nmodule math {\
+                            \n    struct Unit {\
+                            \n        value: f32\
+                            \n    }\
+                            \n    struct Point2 {\
+                            \n        x: Unit\
+                            \n        y: Unit\
+                            \n    }\
+                            \n}\
+                            \nfunc main() {\
+                            \n    var mut pnt = math::Point2 { \
+                            \n                  x: Unit { value: 1.0 },\
+                            \n                  y: Unit { value: 2.0 },\
+                            \n            }\
+                            \n    pnt.x.value = 2.0\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
+
+    {
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:?}", analyzer.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED: &str = "\n<module-definition name=\"math\">\
+                                \n    <struct-definition name=\"Unit\">\
+                                \n        <field name=\"value\">\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </field>\
+                                \n    </struct-definition>\
+                                \n    <struct-definition name=\"Point2\">\
+                                \n        <field name=\"x\">\
+                                \n            <type style=\"named\" name=\"Unit\"/>\
+                                \n        </field>\
+                                \n        <field name=\"y\">\
+                                \n            <type style=\"named\" name=\"Unit\"/>\
+                                \n        </field>\
+                                \n    </struct-definition>\
+                                \n</module-definition>\
+                                \n<function-definition name=\"main\">\
+                                \n    <return-type>\
+                                \n        <type style=\"tuple\"/>\
+                                \n    </return-type>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <variable-definition name=\"pnt\" is-global=\"false\" is-mutable=\"true\">\
+                                \n            <type style=\"named\" name=\"Point2\"/>\
+                                \n        </variable-definition>\
+                                \n        <operation>\
+                                \n            <struct-initialization name=\"Point2\">\
+                                \n                <field name=\"x\">\
+                                \n                    <struct-initialization name=\"Unit\">\
+                                \n                        <field name=\"value\">\
+                                \n                            <literal style=\"decimal-number\" value=\"1\"/>\
+                                \n                        </field>\
+                                \n                    </struct-initialization>\
+                                \n                </field>\
+                                \n                <field name=\"y\">\
+                                \n                    <struct-initialization name=\"Unit\">\
+                                \n                        <field name=\"value\">\
+                                \n                            <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n                        </field>\
+                                \n                    </struct-initialization>\
+                                \n                </field>\
+                                \n            </struct-initialization>\
+                                \n        </operation>\
+                                \n    </operation>\
+                                \n    <operation style=\"get\">\
+                                \n        <identifier name=\"pnt\"/>\
+                                \n        <operation style=\"get\">\
+                                \n            <identifier name=\"x\"/>\
+                                \n            <operation style=\"binary\" operation=\"=\">\
+                                \n                <identifier name=\"value\"/>\
+                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n            </operation>\
+                                \n        </operation>\
+                                \n    </operation>\
+                                \n</function-definition>";
+
+        let mut buffer = Vec::<u8>::new();
+        let mut writer = XmlWriter::new(&mut buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+        let res = String::from_utf8(buffer).unwrap();
+
+        assert_str_eq!(EXPECTED, res);
+    }
+
+    {
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                        \nfloat value;\
+                                     \n} Unit;\
+                                     \ntypedef struct {\
+                                        \nUnit x;\
+                                        \nUnit y;\
+                                     \n} Point2;\
+                                     \nvoid main();\n";
+
+        const SOURCE_EXPECTED: &str = "void main(){\
+                                        \nPoint2 pnt = (Point2){\
+                                            \n.x=(Unit){\
+                                                \n.value=1,\
+                                            \n},\
+                                            \n.y=(Unit){\
+                                                \n.value=2,\
+                                            \n},\
+                                        \n};\
+                                        \npnt.x.value = 2;\
+                                     \n}\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(HEADER_EXPECTED, header_res);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }

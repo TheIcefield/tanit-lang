@@ -277,7 +277,7 @@ impl VisitorMut for Analyzer {
                 operation,
                 lhs,
                 rhs,
-            } => self.analyze_binary_expr(operation, lhs.as_mut(), rhs.as_mut()),
+            } => self.analyze_binary_expr(operation, lhs, rhs),
             ExpressionKind::Unary { operation, node } => self.analyze_unary_expr(operation, node),
             ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
             ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),

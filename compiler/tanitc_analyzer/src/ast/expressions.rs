@@ -1,3 +1,5 @@
+use std::{iter::Peekable, slice::Iter};
+
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     Ast, CallArg, CallArgKind, Expression, ExpressionKind, Value, ValueKind,
@@ -5,8 +7,9 @@ use tanitc_ast::{
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
-use tanitc_symbol_table::entry::{
-    EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData,
+use tanitc_symbol_table::{
+    entry::{EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData},
+    type_info::TypeInfo,
 };
 use tanitc_ty::Type;
 
@@ -154,15 +157,20 @@ impl Analyzer {
         let mut ids = Vec::<Ident>::new();
 
         let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
+        if ids.is_empty() {
+            unreachable!();
+        }
 
-        let Some(entry) = self.table.lookup_qualified(ids.iter().peekable()) else {
+        let mut iter = ids.iter().peekable();
+
+        let Some(entry) = self.table.lookup(*iter.next().unwrap()) else {
             return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
         };
 
         let entry = entry.clone();
 
         match &entry.kind {
-            SymbolKind::VarDef(data) => self.check_member_access(entry.name, data, rhs),
+            SymbolKind::VarDef(data) => self.check_member_access(entry.name, data, iter, rhs),
             _ => unimplemented!("Entry.kind: {:?}", entry.kind),
         }
     }
@@ -301,14 +309,44 @@ impl Analyzer {
         Ok(Some(node))
     }
 
+    fn check_members(
+        &mut self,
+        name: Ident,
+        type_info: &TypeInfo,
+        members: &mut Peekable<Iter<Ident>>,
+        location: Location,
+    ) -> Result<Type, Message> {
+        let Some(next) = members.next() else {
+            return Ok(type_info.ty.clone());
+        };
+
+        if let Some(member) = type_info.members.get(next) {
+            let member_type = self.table.lookup_type(&member.ty).unwrap();
+
+            self.check_members(*next, &member_type, members, location)
+        } else {
+            Err(Message::from_string(
+                location,
+                format!("\"{name}\" doesn't have member named \"{next}\""),
+            ))
+        }
+    }
+
     fn check_member_access(
         &mut self,
         var_name: Ident,
         var_data: &VarDefData,
+        mut members: Peekable<Iter<Ident>>,
         node: &mut Ast,
     ) -> Result<(), Message> {
         let location = node.location();
         let var_type = &var_data.var_type;
+
+        let member_type = if let Some(type_info) = self.table.lookup_type(var_type) {
+            self.check_members(var_name, &type_info, &mut members, location)?
+        } else {
+            unreachable!()
+        };
 
         match node {
             Ast::Expression(Expression {
@@ -325,7 +363,7 @@ impl Analyzer {
                 }
 
                 let Ast::Value(Value {
-                    kind: ValueKind::Identifier(member_name),
+                    kind: ValueKind::Identifier(_),
                     ..
                 }) = lhs.as_ref()
                 else {
@@ -335,38 +373,15 @@ impl Analyzer {
                     ));
                 };
 
-                let Type::Custom(type_name) = var_type else {
-                    return Err(Message::from_string(
-                        location,
-                        format!("Type \"{var_type}\" doesn't have any members, including \"{member_name}\""),
-                    ));
-                };
-
-                let type_name = Ident::from(type_name.clone());
-                let Some(type_info) = self.table.lookup_type(type_name) else {
-                    return Err(Message::unreachable(
-                        location,
-                        "Type is unknown in member access".to_string(),
-                    ));
-                };
-
-                let Some(field) = type_info.members.get(member_name) else {
-                    return Err(Message::from_string(
-                        location,
-                        format!("\"{type_name}\" doesn't have field \"{member_name}\""),
-                    ));
-                };
-
                 rhs.accept_mut(self)?;
 
                 let rhs_type = self.get_type(rhs);
-                let field_type = &field.ty;
 
-                if *field_type != rhs_type {
+                if member_type != rhs_type {
                     return Err(Message::from_string(
                                 rhs.location(),
                                 format!(
-                                    "Cannot perform operation on objects with different types: {field_type:?} and {rhs_type:?}",
+                                    "Cannot perform operation on objects with different types: {member_type:?} and {rhs_type:?}",
                                 ),
                             ));
                 }
@@ -399,6 +414,10 @@ impl Analyzer {
 
         match rhs {
             Ast::Expression(Expression {
+                kind: ExpressionKind::Get { lhs, rhs },
+                ..
+            }) => Self::preprocess_access_tree(ids, lhs, rhs),
+            Ast::Expression(Expression {
                 kind: ExpressionKind::Access { lhs, rhs },
                 ..
             }) => Self::preprocess_access_tree(ids, lhs, rhs),
@@ -406,10 +425,32 @@ impl Analyzer {
                 kind:
                     ExpressionKind::Binary {
                         operation: BinaryOperation::Assign,
+                        lhs: last_lhs,
                         ..
                     },
                 ..
-            }) => Ok(rhs),
+            }) => {
+                match last_lhs.as_ref() {
+                    Ast::Value(Value {
+                        kind: ValueKind::Identifier(last_lhs_id),
+                        ..
+                    }) => {
+                        ids.push(*last_lhs_id);
+                    }
+                    Ast::Value(Value {
+                        kind:
+                            ValueKind::Call {
+                                identifier: last_lhs_id,
+                                ..
+                            },
+                        ..
+                    }) => {
+                        ids.push(*last_lhs_id);
+                    }
+                    _ => {}
+                }
+                Ok(rhs)
+            }
             Ast::Value(Value {
                 kind: ValueKind::Identifier(rhs_id),
                 ..

@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, LinkedList};
 
 use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
+use tanitc_ty::Type;
 
 use super::{
     entry::{Entry, SymbolKind},
@@ -117,8 +118,17 @@ impl Table {
         }
     }
 
-    pub fn lookup_type(&self, name: Ident) -> Option<TypeInfo> {
+    pub fn lookup_type(&self, ty: &Type) -> Option<TypeInfo> {
         let mut res: Option<TypeInfo> = None;
+
+        if ty.is_common() {
+            return Some(TypeInfo {
+                ty: ty.clone(),
+                members: BTreeMap::new(),
+            });
+        }
+
+        let name = Ident::from(ty.to_string());
 
         if let Some(entry) = self.lookup(name) {
             match &entry.kind {
@@ -135,7 +145,10 @@ impl Table {
                         );
                     }
 
-                    res = Some(TypeInfo { members });
+                    res = Some(TypeInfo {
+                        ty: Type::Custom(name.to_string()),
+                        members,
+                    });
                 }
                 SymbolKind::UnionDef(data) => {
                     let mut members = BTreeMap::<Ident, MemberInfo>::new();
@@ -150,14 +163,17 @@ impl Table {
                         );
                     }
 
-                    res = Some(TypeInfo { members });
+                    res = Some(TypeInfo {
+                        ty: Type::Custom(name.to_string()),
+                        members,
+                    });
                 }
                 _ => {}
             }
         } else {
             for (_, entry) in self.entries.iter() {
                 if let SymbolKind::ModuleDef(data) = &entry.kind {
-                    if let Some(info) = data.table.lookup_type(name) {
+                    if let Some(info) = data.table.lookup_type(ty) {
                         res = Some(info);
                         continue;
                     }
@@ -464,11 +480,13 @@ fn lookup_type_test() {
         }
     }
 
-    let s1 = table.lookup_type(s1_id).unwrap();
+    let s1 = table.lookup_type(&Type::Custom(s1_id.to_string())).unwrap();
     assert_eq!(s1.members.len(), 2);
     assert!(s1.members.get(&f1_id).is_some());
     assert!(s1.members.get(&f2_id).is_some());
     assert!(s1.members.get(&m1_id).is_none());
 
-    assert!(table.lookup_type(m2_id).is_none());
+    assert!(table
+        .lookup_type(&Type::Custom(m2_id.to_string()))
+        .is_none());
 }
