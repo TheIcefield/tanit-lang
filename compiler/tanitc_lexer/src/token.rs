@@ -75,6 +75,7 @@ pub enum Lexem {
     KwAs,
     KwSafe,
     KwUnsafe,
+    KwPub,
 
     Identifier(String),
     Integer(String),
@@ -207,6 +208,7 @@ impl std::fmt::Display for Lexem {
             Self::KwAs => write!(f, "as"),
             Self::KwSafe => write!(f, "safe"),
             Self::KwUnsafe => write!(f, "unsafe"),
+            Self::KwPub => write!(f, "pub"),
 
             Self::Identifier(val) => write!(f, "{val}"),
             Self::Integer(val) => write!(f, "{val}"),

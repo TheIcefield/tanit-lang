@@ -502,6 +502,7 @@ impl Lexer {
             "as" => Lexem::KwAs,
             "safe" => Lexem::KwSafe,
             "unsafe" => Lexem::KwUnsafe,
+            "pub" => Lexem::KwPub,
             _ => Lexem::Identifier(text),
         };
 
