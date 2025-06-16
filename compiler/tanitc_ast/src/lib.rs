@@ -1,4 +1,3 @@
-use attributes::Attributes;
 use expression_utils::{BinaryOperation, UnaryOperation};
 use tanitc_ident::Ident;
 use tanitc_lexer::{location::Location, token::Lexem};
@@ -14,6 +13,7 @@ pub mod variant_utils;
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct AliasDef {
     pub location: Location,
+    pub attributes: attributes::AliasAttributes,
     pub identifier: Ident,
     pub value: TypeSpec,
 }
@@ -27,7 +27,7 @@ impl From<AliasDef> for Ast {
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Block {
     pub location: Location,
-    pub attrs: Attributes,
+    pub attributes: attributes::BlockAttributes,
     pub statements: Vec<Ast>,
     pub is_global: bool,
 }
@@ -90,6 +90,7 @@ impl From<ControlFlow> for Ast {
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct EnumDef {
     pub location: Location,
+    pub attributes: attributes::EnumAttributes,
     pub identifier: Ident,
     pub fields: BTreeMap<Ident, Option<usize>>,
 }
@@ -144,7 +145,7 @@ impl From<Expression> for Ast {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
-    pub attrs: Attributes,
+    pub attributes: attributes::FunctionAttributes,
     pub identifier: Ident,
     pub return_type: TypeSpec,
     pub parameters: Vec<Ast>,
@@ -160,7 +161,7 @@ impl From<FunctionDef> for Ast {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ModuleDef {
     pub location: Location,
-    pub attrs: Attributes,
+    pub attributes: attributes::ModuleAttributes,
     pub identifier: Ident,
     pub is_external: bool,
     pub body: Option<Block>,
@@ -173,10 +174,17 @@ impl From<ModuleDef> for Ast {
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]
+pub struct FieldInfo {
+    pub ty: TypeSpec,
+    pub attributes: attributes::FieldAttributes,
+}
+
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
+    pub attributes: attributes::StructAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, TypeSpec>,
+    pub fields: BTreeMap<Ident, FieldInfo>,
     pub internals: Vec<Ast>,
 }
 
@@ -189,8 +197,9 @@ impl From<StructDef> for Ast {
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct UnionDef {
     pub location: Location,
+    pub attributes: attributes::UnionAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, TypeSpec>,
+    pub fields: BTreeMap<Ident, FieldInfo>,
     pub internals: Vec<Ast>,
 }
 
@@ -278,6 +287,7 @@ impl From<Value> for Ast {
 #[derive(Clone, Debug, PartialEq)]
 pub struct VariableDef {
     pub location: Location,
+    pub attributes: attributes::VariableAttributes,
     pub identifier: Ident,
     pub var_type: TypeSpec,
     pub is_global: bool,
@@ -301,6 +311,7 @@ pub enum VariantField {
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct VariantDef {
     pub location: Location,
+    pub attributes: attributes::VariantAttributes,
     pub identifier: Ident,
     pub fields: BTreeMap<Ident, VariantField>,
     pub internals: Vec<Ast>,
@@ -490,7 +501,7 @@ impl Ast {
         }
     }
 
-    pub fn apply_attributes(&mut self, attrs: attributes::Attributes) -> Result<(), Message> {
+    pub fn apply_attributes(&mut self, attrs: attributes::ParsedAttributes) -> Result<(), Message> {
         let mut visitor = attributes::AttributesApply { attrs };
         self.accept_mut(&mut visitor)
     }

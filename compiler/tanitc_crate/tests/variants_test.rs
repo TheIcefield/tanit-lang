@@ -9,7 +9,7 @@ use pretty_assertions::assert_str_eq;
 
 #[test]
 fn variant_work_test() {
-    const SRC_TEXT: &str = "\nvariant MyVariant\
+    const SRC_TEXT: &str = "\npub variant MyVariant\
                             \n{\
                             \n    f1\
                             \n    f2(i32, i32)\
@@ -50,6 +50,7 @@ fn variant_work_test() {
 
     {
         const EXPECTED: &str = "\n<variant-definition name=\"MyVariant\">\
+                                \n    <attributes publicity=\"Public\"/>\
                                 \n    <field name=\"f1\"/>\
                                 \n    <field name=\"f2\">\
                                 \n        <type style=\"primitive\" name=\"i32\"/>\

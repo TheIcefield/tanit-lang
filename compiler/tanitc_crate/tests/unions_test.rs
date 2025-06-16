@@ -40,10 +40,10 @@ fn union_work_test() {
 
     {
         const EXPECTED: &str = "\n<union-definition name=\"MyUnion\">\
-                                \n    <field name=\"f1\">\
+                                \n    <field name=\"f1\" publicity=\"Private\">\
                                 \n        <type style=\"primitive\" name=\"i32\"/>\
                                 \n    </field>\
-                                \n    <field name=\"f2\">\
+                                \n    <field name=\"f2\" publicity=\"Private\">\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </field>\
                                 \n</union-definition>\
@@ -110,7 +110,7 @@ fn union_in_module_work_test() {
     const SRC_TEXT: &str = "\nmodule mod {\
                             \n    union MyUnion {\
                             \n        x: i32\
-                            \n        y: f32\
+                            \n        pub y: f32\
                             \n    }\
                             \n}\
                             \nfunc main() {\
@@ -139,10 +139,10 @@ fn union_in_module_work_test() {
     {
         const EXPECTED: &str = "\n<module-definition name=\"mod\">\
                                 \n    <union-definition name=\"MyUnion\">\
-                                \n        <field name=\"x\">\
+                                \n        <field name=\"x\" publicity=\"Private\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </field>\
-                                \n        <field name=\"y\">\
+                                \n        <field name=\"y\" publicity=\"Public\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </field>\
                                 \n    </union-definition>\
@@ -171,7 +171,7 @@ fn union_in_module_work_test() {
         program.accept(&mut writer).unwrap();
         let res = String::from_utf8(buffer).unwrap();
 
-        assert_eq!(EXPECTED, res);
+        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -196,7 +196,7 @@ fn union_in_module_work_test() {
         let header_res = String::from_utf8(header_buffer).unwrap();
         let source_res = String::from_utf8(source_buffer).unwrap();
 
-        assert_eq!(HEADER_EXPECTED, header_res);
-        assert_eq!(SOURCE_EXPECTED, source_res);
+        assert_str_eq!(HEADER_EXPECTED, header_res);
+        assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }

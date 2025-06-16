@@ -1,9 +1,10 @@
 use tanitc_ast::{
     attributes, AliasDef, Block, Branch, BranchKind, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeInfo,
-    TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
+    EnumDef, Expression, ExpressionKind, ExternDef, FieldInfo, FunctionDef, ModuleDef, StructDef,
+    TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
     VariantField, Visitor,
 };
+use tanitc_ident::Ident;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
@@ -22,17 +23,14 @@ impl Visitor for XmlWriter<'_> {
         self.begin_tag("struct-definition")?;
         self.put_param("name", struct_def.identifier)?;
 
+        self.serialize_struct_attributes(&struct_def.attributes)?;
+
         for internal in struct_def.internals.iter() {
             internal.accept(self)?;
         }
 
-        for (field_id, field_type) in struct_def.fields.iter() {
-            self.begin_tag("field")?;
-            self.put_param("name", field_id)?;
-
-            self.visit_type_spec(field_type)?;
-
-            self.end_tag()?;
+        for (field_id, field_info) in struct_def.fields.iter() {
+            self.serialize_field_info(*field_id, field_info)?;
         }
 
         self.end_tag()?;
@@ -40,21 +38,18 @@ impl Visitor for XmlWriter<'_> {
         Ok(())
     }
 
-    fn visit_union_def(&mut self, struct_def: &UnionDef) -> Result<(), Message> {
+    fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message> {
         self.begin_tag("union-definition")?;
-        self.put_param("name", struct_def.identifier)?;
+        self.put_param("name", union_def.identifier)?;
 
-        for internal in struct_def.internals.iter() {
+        self.serialize_union_attributes(&union_def.attributes)?;
+
+        for internal in union_def.internals.iter() {
             internal.accept(self)?;
         }
 
-        for (field_id, field_type) in struct_def.fields.iter() {
-            self.begin_tag("field")?;
-            self.put_param("name", field_id)?;
-
-            self.visit_type_spec(field_type)?;
-
-            self.end_tag()?;
+        for (field_id, field_info) in union_def.fields.iter() {
+            self.serialize_field_info(*field_id, field_info)?;
         }
 
         self.end_tag()?;
@@ -65,6 +60,8 @@ impl Visitor for XmlWriter<'_> {
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
         self.begin_tag("variant-definition")?;
         self.put_param("name", variant_def.identifier)?;
+
+        self.serialize_variant_attributes(&variant_def.attributes)?;
 
         for internal in variant_def.internals.iter() {
             internal.accept(self)?;
@@ -93,6 +90,8 @@ impl Visitor for XmlWriter<'_> {
         self.begin_tag("enum-definition")?;
         self.put_param("name", enum_def.identifier)?;
 
+        self.serialize_enum_attributes(&enum_def.attributes)?;
+
         for field in enum_def.fields.iter() {
             self.begin_tag("field")?;
             self.put_param("name", field.0)?;
@@ -113,7 +112,7 @@ impl Visitor for XmlWriter<'_> {
         self.begin_tag("function-definition")?;
         self.put_param("name", func_def.identifier)?;
 
-        self.serialize_attributes(&func_def.attrs)?;
+        self.serialize_func_attributes(&func_def.attributes)?;
 
         self.begin_tag("return-type")?;
         self.visit_type_spec(&func_def.return_type)?;
@@ -153,6 +152,9 @@ impl Visitor for XmlWriter<'_> {
     fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message> {
         self.begin_tag("variable-definition")?;
         self.put_param("name", var_def.identifier)?;
+
+        self.serialize_variable_attributes(&var_def.attributes)?;
+
         self.put_param("is-global", var_def.is_global)?;
         self.put_param("is-mutable", var_def.is_mutable)?;
 
@@ -166,6 +168,8 @@ impl Visitor for XmlWriter<'_> {
     fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message> {
         self.begin_tag("alias-definition")?;
         self.put_param("name", alias_def.identifier)?;
+
+        self.serialize_alias_attributes(&alias_def.attributes)?;
 
         self.visit_type_spec(&alias_def.value)?;
 
@@ -311,11 +315,11 @@ impl Visitor for XmlWriter<'_> {
     }
 
     fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
-        let is_default = block.attrs == attributes::Attributes::default();
+        let is_default = block.attributes == attributes::BlockAttributes::default();
 
         if !is_default {
             self.begin_tag("block")?;
-            self.serialize_attributes(&block.attrs)?;
+            self.serialize_block_attributes(&block.attributes)?;
         }
 
         for stmt in block.statements.iter() {
@@ -424,12 +428,13 @@ impl Visitor for XmlWriter<'_> {
     }
 }
 
+// Module definition
 impl XmlWriter<'_> {
     fn serializer_module_def_internal(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         self.begin_tag("module-definition")?;
         self.put_param("name", module_def.identifier)?;
 
-        self.serialize_attributes(&module_def.attrs)?;
+        self.serialize_module_attributes(&module_def.attributes)?;
 
         if let Some(body) = &module_def.body {
             self.visit_block(body)?;
@@ -444,7 +449,7 @@ impl XmlWriter<'_> {
         self.begin_tag("module-import")?;
         self.put_param("name", module_def.identifier)?;
 
-        self.serialize_attributes(&module_def.attrs)?;
+        self.serialize_module_attributes(&module_def.attributes)?;
 
         self.end_tag()?;
 
@@ -590,16 +595,186 @@ impl XmlWriter<'_> {
 }
 
 impl XmlWriter<'_> {
-    fn serialize_attributes(&mut self, attrs: &attributes::Attributes) -> Result<(), Message> {
-        if *attrs == attributes::Attributes::default() {
+    fn serialize_field_info(
+        &mut self,
+        field_id: Ident,
+        field_info: &FieldInfo,
+    ) -> Result<(), Message> {
+        self.begin_tag("field")?;
+        self.put_param("name", field_id)?;
+        self.serialize_publicity(&field_info.attributes.publicity)?;
+
+        self.visit_type_spec(&field_info.ty)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+}
+
+// Attributes
+impl XmlWriter<'_> {
+    fn serialize_safety(&mut self, safety: &attributes::Safety) -> Result<(), Message> {
+        self.put_param("safety", safety)?;
+
+        Ok(())
+    }
+
+    fn serialize_publicity(&mut self, publicity: &attributes::Publicity) -> Result<(), Message> {
+        self.put_param("publicity", publicity)?;
+
+        Ok(())
+    }
+
+    fn serialize_block_attributes(
+        &mut self,
+        attrs: &attributes::BlockAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::BlockAttributes::default() {
             return Ok(());
         }
 
         self.begin_tag("attributes")?;
 
-        if let Some(safety) = attrs.safety {
-            self.put_param("safety", safety)?;
+        self.serialize_safety(&attrs.safety)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_func_attributes(
+        &mut self,
+        attrs: &attributes::FunctionAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::FunctionAttributes::default() {
+            return Ok(());
         }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_safety(&attrs.safety)?;
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_module_attributes(
+        &mut self,
+        attrs: &attributes::ModuleAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::ModuleAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_safety(&attrs.safety)?;
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_struct_attributes(
+        &mut self,
+        attrs: &attributes::StructAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::StructAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_union_attributes(
+        &mut self,
+        attrs: &attributes::UnionAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::UnionAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_enum_attributes(
+        &mut self,
+        attrs: &attributes::EnumAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::EnumAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_alias_attributes(
+        &mut self,
+        attrs: &attributes::AliasAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::AliasAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_variant_attributes(
+        &mut self,
+        attrs: &attributes::VariantAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::VariantAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_variable_attributes(
+        &mut self,
+        attrs: &attributes::VariableAttributes,
+    ) -> Result<(), Message> {
+        if *attrs == attributes::VariableAttributes::default() {
+            return Ok(());
+        }
+
+        self.begin_tag("attributes")?;
+
+        self.serialize_publicity(&attrs.publicity)?;
 
         self.end_tag()?;
 

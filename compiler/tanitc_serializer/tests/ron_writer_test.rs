@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use pretty_assertions::assert_str_eq;
-use tanitc_ast::{Ast, Block, FunctionDef, StructDef, TypeSpec};
+use tanitc_ast::{Ast, Block, FieldInfo, FunctionDef, StructDef, TypeSpec};
 use tanitc_ident::Ident;
 use tanitc_serializer::ron_writer::RonWriter;
 use tanitc_ty::Type;
@@ -16,15 +16,21 @@ fn ast_write_test() {
                     let mut fields = BTreeMap::new();
                     fields.insert(
                         Ident::from("a".to_string()),
-                        TypeSpec {
-                            ty: Type::I16,
+                        FieldInfo {
+                            ty: TypeSpec {
+                                ty: Type::I16,
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
                     );
                     fields.insert(
                         Ident::from("b".to_string()),
-                        TypeSpec {
-                            ty: Type::I16,
+                        FieldInfo {
+                            ty: TypeSpec {
+                                ty: Type::I16,
+                                ..Default::default()
+                            },
                             ..Default::default()
                         },
                     );

@@ -1,9 +1,11 @@
+use std::collections::BTreeMap;
+
 use tanitc_ast::{
-    attributes::{self, Attributes},
+    attributes::{self, FieldAttributes},
     expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, ExternDef, FunctionDef,
-    StructDef, TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef,
-    VariantDef, VariantField,
+    Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, ExternDef, FieldInfo,
+    FunctionDef, StructDef, TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind,
+    VariableDef, VariantDef, VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -938,6 +940,7 @@ impl Parser {
 
         Ok(VariableDef {
             location,
+            attributes: attributes::VariableAttributes::default(),
             identifier,
             var_type,
             is_global: false,
@@ -1035,20 +1038,27 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
-    fn parse_attributes(&mut self) -> Result<Attributes, Message> {
-        let mut attrs = Attributes::default();
-        let next = self.peek_token();
+    fn parse_attributes(&mut self) -> Result<attributes::ParsedAttributes, Message> {
+        let mut attrs = attributes::ParsedAttributes::default();
 
-        match next.lexem {
-            Lexem::KwSafe => {
-                self.get_token();
-                attrs.safety = Some(attributes::Safety::Safe);
+        loop {
+            let next = self.peek_token();
+
+            match next.lexem {
+                Lexem::KwSafe => {
+                    self.get_token();
+                    attrs.safety = Some(attributes::Safety::Safe);
+                }
+                Lexem::KwUnsafe => {
+                    self.get_token();
+                    attrs.safety = Some(attributes::Safety::Unsafe);
+                }
+                Lexem::KwPub => {
+                    self.get_token();
+                    attrs.publicity = Some(attributes::Publicity::Public);
+                }
+                _ => break,
             }
-            Lexem::KwUnsafe => {
-                self.get_token();
-                attrs.safety = Some(attributes::Safety::Unsafe);
-            }
-            _ => {}
         }
 
         Ok(attrs)
@@ -1164,6 +1174,8 @@ impl Parser {
 
     fn parse_struct_body_internal(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         loop {
+            let attrs = self.parse_attributes()?;
+
             let next = self.peek_token();
 
             match &next.lexem {
@@ -1193,15 +1205,24 @@ impl Parser {
 
                     self.consume_token(Lexem::Colon)?;
 
-                    struct_def
-                        .fields
-                        .insert(identifier, self.parse_type_spec()?);
+                    struct_def.fields.insert(
+                        identifier,
+                        FieldInfo {
+                            ty: self.parse_type_spec()?,
+                            attributes: FieldAttributes {
+                                publicity: attrs.publicity.unwrap_or_default(),
+                            },
+                        },
+                    );
                 }
 
                 _ => {
-                    return Err(Message::new(
+                    return Err(Message::from_string(
                         next.location,
-                        "Unexpected token when parsing struct fields",
+                        format!(
+                            "Unexpected token when parsing struct fields: {}",
+                            next.lexem
+                        ),
                     ));
                 }
             }
@@ -1240,6 +1261,8 @@ impl Parser {
 
     fn parse_union_body_internal(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
         loop {
+            let attrs = self.parse_attributes()?;
+
             let next = self.peek_token();
 
             match &next.lexem {
@@ -1269,13 +1292,21 @@ impl Parser {
 
                     self.consume_token(Lexem::Colon)?;
 
-                    union_def.fields.insert(identifier, self.parse_type_spec()?);
+                    union_def.fields.insert(
+                        identifier,
+                        FieldInfo {
+                            ty: self.parse_type_spec()?,
+                            attributes: FieldAttributes {
+                                publicity: attrs.publicity.unwrap_or_default(),
+                            },
+                        },
+                    );
                 }
 
                 _ => {
-                    return Err(Message::new(
+                    return Err(Message::from_string(
                         next.location,
-                        "Unexpected token when parsing struct fields",
+                        format!("Unexpected token when parsing union fields: {}", next.lexem),
                     ));
                 }
             }
@@ -1672,6 +1703,7 @@ impl Parser {
 
         let var_node = Ast::from(VariableDef {
             location,
+            attributes: attributes::VariableAttributes::default(),
             identifier,
             var_type: var_type.unwrap_or(TypeSpec {
                 location,
@@ -1834,7 +1866,12 @@ impl Parser {
                 let mut node = StructDef::default();
                 self.parse_struct_body(&mut node)?;
 
-                *variant_field = VariantField::StructLike(node.fields);
+                let mut fields = BTreeMap::<Ident, TypeSpec>::new();
+                for (field_name, field_info) in node.fields.iter() {
+                    fields.insert(*field_name, field_info.ty.clone());
+                }
+
+                *variant_field = VariantField::StructLike(fields);
 
                 Ok(())
             }

@@ -73,7 +73,7 @@ impl VisitorMut for Analyzer {
             fields.insert(
                 *field_id,
                 StructFieldData {
-                    ty: field_ty.get_type(),
+                    ty: field_ty.ty.get_type(),
                 },
             );
         }
@@ -104,7 +104,7 @@ impl VisitorMut for Analyzer {
             fields.insert(
                 *field_id,
                 StructFieldData {
-                    ty: field_ty.get_type(),
+                    ty: field_ty.ty.get_type(),
                 },
             );
         }
@@ -181,7 +181,7 @@ impl VisitorMut for Analyzer {
         }
 
         let mut scope_info = self.table.get_scope_info();
-        scope_info.safety = func_def.attrs.safety.unwrap_or(self.get_current_safety());
+        scope_info.safety = func_def.attributes.safety;
         scope_info.is_in_func = true;
 
         self.table.enter_scope(scope_info);
@@ -809,9 +809,7 @@ impl Analyzer {
 
     fn analyze_local_block(&mut self, block: &mut Block) -> Result<(), Message> {
         let mut scope_info = self.table.get_scope_info();
-        if let Some(safety) = &block.attrs.safety {
-            scope_info.safety = *safety;
-        }
+        scope_info.safety = block.attributes.safety;
 
         self.table.enter_scope(scope_info);
 
