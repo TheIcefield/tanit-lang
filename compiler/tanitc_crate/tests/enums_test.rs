@@ -135,7 +135,7 @@ fn enum_with_one_field_def_test() {
 
 #[test]
 fn enum_work_test() {
-    const SRC_TEXT: &str = "\nenum MyEnum {\
+    const SRC_TEXT: &str = "\npub enum MyEnum {\
                             \n    One: 1\
                             \n    Second\
                             \n    Max\
@@ -155,6 +155,7 @@ fn enum_work_test() {
 
     {
         const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
+                                \n    <attributes publicity=\"Public\"/>\
                                 \n    <field name=\"One\" value=\"1\"/>\
                                 \n    <field name=\"Second\"/>\
                                 \n    <field name=\"Max\"/>\

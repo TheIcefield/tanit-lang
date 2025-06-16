@@ -170,8 +170,8 @@ impl CodeGenStream<'_> {
         self.mode = CodeGenMode::HeaderOnly;
 
         writeln!(self, "typedef struct {{")?;
-        for (field_id, field_type) in struct_def.fields.iter() {
-            self.generate_type_spec(field_type)?;
+        for (field_id, field_info) in struct_def.fields.iter() {
+            self.generate_type_spec(&field_info.ty)?;
             write!(self, " {}", field_id)?;
             writeln!(self, ";")?;
         }
@@ -188,8 +188,8 @@ impl CodeGenStream<'_> {
         self.mode = CodeGenMode::HeaderOnly;
 
         writeln!(self, "typedef union {{")?;
-        for (field_id, field_type) in union_def.fields.iter() {
-            self.generate_type_spec(field_type)?;
+        for (field_id, field_info) in union_def.fields.iter() {
+            self.generate_type_spec(&field_info.ty)?;
             write!(self, " {}", field_id)?;
             writeln!(self, ";")?;
         }

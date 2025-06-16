@@ -3,16 +3,11 @@ use std::fmt::Display;
 use tanitc_messages::Message;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Attributes {
-    pub safety: Option<Safety>,
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Safety {
     #[default]
+    Inherited,
     Safe,
     Unsafe,
-    Inherited,
 }
 
 impl Display for Safety {
@@ -21,12 +16,84 @@ impl Display for Safety {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Publicity {
+    #[default]
+    Private,
+    Public,
+}
+
+impl Display for Publicity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParsedAttributes {
+    pub safety: Option<Safety>,
+    pub publicity: Option<Publicity>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct StructAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct VariantAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct UnionAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct EnumAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct VariableAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct AliasAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct FieldAttributes {
+    pub publicity: Publicity,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ModuleAttributes {
+    pub publicity: Publicity,
+    pub safety: Safety,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct FunctionAttributes {
+    pub publicity: Publicity,
+    pub safety: Safety,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct BlockAttributes {
+    pub safety: Safety,
+}
+
 pub struct AttributesApply {
-    pub attrs: Attributes,
+    pub attrs: ParsedAttributes,
 }
 
 impl super::VisitorMut for AttributesApply {
-    fn visit_alias_def(&mut self, _alias_def: &mut crate::AliasDef) -> Result<(), Message> {
+    fn visit_alias_def(&mut self, alias_def: &mut crate::AliasDef) -> Result<(), Message> {
+        alias_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
@@ -43,16 +110,18 @@ impl super::VisitorMut for AttributesApply {
     }
 
     fn visit_block(&mut self, block: &mut crate::Block) -> Result<(), Message> {
-        block.attrs = self.attrs;
+        block.attributes.safety = self.attrs.safety.unwrap_or_default();
         Ok(())
     }
 
-    fn visit_enum_def(&mut self, _enum_def: &mut crate::EnumDef) -> Result<(), Message> {
+    fn visit_enum_def(&mut self, enum_def: &mut crate::EnumDef) -> Result<(), Message> {
+        enum_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
     fn visit_func_def(&mut self, func_def: &mut crate::FunctionDef) -> Result<(), Message> {
-        func_def.attrs = self.attrs;
+        func_def.attributes.safety = self.attrs.safety.unwrap_or_default();
+        func_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
@@ -64,7 +133,8 @@ impl super::VisitorMut for AttributesApply {
         Ok(())
     }
 
-    fn visit_union_def(&mut self, _union_def: &mut crate::UnionDef) -> Result<(), Message> {
+    fn visit_union_def(&mut self, union_def: &mut crate::UnionDef) -> Result<(), Message> {
+        union_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
@@ -73,15 +143,18 @@ impl super::VisitorMut for AttributesApply {
     }
 
     fn visit_module_def(&mut self, module_def: &mut crate::ModuleDef) -> Result<(), Message> {
-        module_def.attrs = self.attrs;
+        module_def.attributes.safety = self.attrs.safety.unwrap_or_default();
+        module_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
-    fn visit_struct_def(&mut self, _struct_def: &mut crate::StructDef) -> Result<(), Message> {
+    fn visit_struct_def(&mut self, struct_def: &mut crate::StructDef) -> Result<(), Message> {
+        struct_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
-    fn visit_variant_def(&mut self, _variant_def: &mut crate::VariantDef) -> Result<(), Message> {
+    fn visit_variant_def(&mut self, variant_def: &mut crate::VariantDef) -> Result<(), Message> {
+        variant_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 
@@ -89,7 +162,8 @@ impl super::VisitorMut for AttributesApply {
         Ok(())
     }
 
-    fn visit_variable_def(&mut self, _var_def: &mut crate::VariableDef) -> Result<(), Message> {
+    fn visit_variable_def(&mut self, var_def: &mut crate::VariableDef) -> Result<(), Message> {
+        var_def.attributes.publicity = self.attrs.publicity.unwrap_or_default();
         Ok(())
     }
 }

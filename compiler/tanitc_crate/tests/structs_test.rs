@@ -10,7 +10,7 @@ use pretty_assertions::assert_str_eq;
 fn struct_work_test() {
     const SRC_TEXT: &str = "\nstruct MyStruct\
                             \n{\
-                            \n    f1: i32\
+                            \n    pub f1: i32\
                             \n    f2: f32\
                             \n}\
                             \nfunc main() {\
@@ -39,10 +39,10 @@ fn struct_work_test() {
 
     {
         const EXPECTED: &str = "\n<struct-definition name=\"MyStruct\">\
-                                \n    <field name=\"f1\">\
+                                \n    <field name=\"f1\" publicity=\"Public\">\
                                 \n        <type style=\"primitive\" name=\"i32\"/>\
                                 \n    </field>\
-                                \n    <field name=\"f2\">\
+                                \n    <field name=\"f2\" publicity=\"Private\">\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </field>\
                                 \n</struct-definition>\
@@ -145,10 +145,10 @@ fn struct_in_module_work_test() {
     {
         const EXPECTED: &str = "\n<module-definition name=\"math\">\
                                 \n    <struct-definition name=\"Vector2\">\
-                                \n        <field name=\"x\">\
+                                \n        <field name=\"x\" publicity=\"Private\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </field>\
-                                \n        <field name=\"y\">\
+                                \n        <field name=\"y\" publicity=\"Private\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </field>\
                                 \n    </struct-definition>\
@@ -297,15 +297,15 @@ fn internal_struct_work_test() {
     {
         const EXPECTED: &str = "\n<module-definition name=\"math\">\
                                 \n    <struct-definition name=\"Unit\">\
-                                \n        <field name=\"value\">\
+                                \n        <field name=\"value\" publicity=\"Private\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </field>\
                                 \n    </struct-definition>\
                                 \n    <struct-definition name=\"Point2\">\
-                                \n        <field name=\"x\">\
+                                \n        <field name=\"x\" publicity=\"Private\">\
                                 \n            <type style=\"named\" name=\"Unit\"/>\
                                 \n        </field>\
-                                \n        <field name=\"y\">\
+                                \n        <field name=\"y\" publicity=\"Private\">\
                                 \n            <type style=\"named\" name=\"Unit\"/>\
                                 \n        </field>\
                                 \n    </struct-definition>\

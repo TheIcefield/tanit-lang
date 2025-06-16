@@ -8,7 +8,7 @@ use pretty_assertions::assert_str_eq;
 
 #[test]
 fn function_def_test() {
-    const SRC_TEXT: &str = "\nsafe func sum(a: f32, b: f32): f32 {\
+    const SRC_TEXT: &str = "\nsafe pub func sum(a: f32, b: f32): f32 {\
                             \n    return a + b\
                             \n}\
                             \nunsafe func main() {\
@@ -21,7 +21,7 @@ fn function_def_test() {
 
     {
         const EXPECTED: &str = "\n<function-definition name=\"sum\">\
-                                \n    <attributes safety=\"Safe\"/>\
+                                \n    <attributes safety=\"Safe\" publicity=\"Public\"/>\
                                 \n    <return-type>\
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
@@ -41,7 +41,7 @@ fn function_def_test() {
                                 \n    </return-statement>\
                                 \n</function-definition>\
                                 \n<function-definition name=\"main\">\
-                                \n    <attributes safety=\"Unsafe\"/>\
+                                \n    <attributes safety=\"Unsafe\" publicity=\"Private\"/>\
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\

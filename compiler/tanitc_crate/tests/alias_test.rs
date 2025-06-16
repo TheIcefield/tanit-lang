@@ -109,8 +109,8 @@ fn alias_in_func_test() {
 
 #[test]
 fn alias_test() {
-    const SRC_TEXT: &str = "\nalias VecUnit = f32\
-                            \nstruct Vec2 {\
+    const SRC_TEXT: &str = "\npub alias VecUnit = f32\
+                            \npub struct Vec2 {\
                             \n    x: VecUnit\
                             \n    y: VecUnit\
                             \n}\
@@ -138,13 +138,15 @@ fn alias_test() {
 
     {
         const EXPECTED: &str = "\n<alias-definition name=\"VecUnit\">\
+                                \n    <attributes publicity=\"Public\"/>\
                                 \n    <type style=\"primitive\" name=\"f32\"/>\
                                 \n</alias-definition>\
                                 \n<struct-definition name=\"Vec2\">\
-                                \n    <field name=\"x\">\
+                                \n    <attributes publicity=\"Public\"/>\
+                                \n    <field name=\"x\" publicity=\"Private\">\
                                 \n        <type style=\"named\" name=\"VecUnit\"/>\
                                 \n    </field>\
-                                \n    <field name=\"y\">\
+                                \n    <field name=\"y\" publicity=\"Private\">\
                                 \n        <type style=\"named\" name=\"VecUnit\"/>\
                                 \n    </field>\
                                 \n</struct-definition>\
