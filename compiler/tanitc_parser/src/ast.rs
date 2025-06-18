@@ -874,10 +874,19 @@ impl Parser {
         loop {
             let next = self.peek_token();
 
+            let mut is_mutable = false;
+            if next.lexem == Lexem::KwMut {
+                self.get_token();
+                is_mutable = true;
+            }
+
+            let next = self.peek_token();
+
             if next.is_identifier() {
-                func_def
-                    .parameters
-                    .push(Ast::VariableDef(self.parse_func_param()?));
+                let mut param = self.parse_func_param()?;
+                param.is_mutable = is_mutable;
+
+                func_def.parameters.push(Ast::VariableDef(param));
 
                 let next = self.peek_token();
                 if next.lexem == Lexem::Comma {
@@ -944,7 +953,7 @@ impl Parser {
             identifier,
             var_type,
             is_global: false,
-            is_mutable: true,
+            is_mutable: false,
         })
     }
 }
@@ -1325,48 +1334,61 @@ impl Parser {
         Ok(TypeSpec { location, info, ty })
     }
 
-    fn parse_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_reference_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+        self.consume_token(Lexem::Ampersand)?;
+
         let mut info = TypeInfo::default();
+
+        if matches!(self.peek_token().lexem, Lexem::KwMut) {
+            info.is_mut = true;
+            self.get_token();
+        }
+
+        let (ref_to, _) = self.parse_type()?;
+
+        Ok((
+            Type::Ref {
+                ref_to: Box::new(ref_to),
+                is_mutable: info.is_mut,
+            },
+            info,
+        ))
+    }
+
+    fn parse_pointer_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+        self.consume_token(Lexem::Star)?;
+
+        let mut info = TypeInfo::default();
+
+        if matches!(self.peek_token().lexem, Lexem::KwMut) {
+            info.is_mut = true;
+            self.get_token();
+        }
+
+        let (ptr_to, _) = self.parse_type()?;
+
+        Ok((Type::Ptr(Box::new(ptr_to)), info))
+    }
+
+    fn parse_type(&mut self) -> Result<(Type, TypeInfo), Message> {
         let next = self.peek_token();
 
+        // Parse reference: &mut i32
         if self.peek_token().lexem == Lexem::Ampersand {
-            info.is_mut = false;
-            self.get_token();
-
-            if matches!(self.peek_token().lexem, Lexem::KwMut) {
-                info.is_mut = true;
-                self.get_token();
-            }
-
-            let (ref_to, type_info) = self.parse_type()?;
-
-            return Ok((
-                Type::Ref {
-                    ref_to: Box::new(ref_to),
-                    is_mutable: type_info.is_mut,
-                },
-                info,
-            ));
+            return self.parse_reference_type();
         }
 
+        // Parse pointer: *mut f32
         if next.lexem == Lexem::Star {
-            info.is_mut = false;
-            self.get_token();
-
-            if matches!(self.peek_token().lexem, Lexem::KwMut) {
-                info.is_mut = true;
-                self.get_token();
-            }
-
-            let (ptr_to, _) = self.parse_type()?;
-
-            return Ok((Type::Ptr(Box::new(ptr_to)), info));
+            return self.parse_pointer_type();
         }
 
+        // Parse tuple: (i32, f32)
         if next.lexem == Lexem::LParen {
             return self.parse_tuple_def();
         }
 
+        // Parse array: [f32: 4]
         if next.lexem == Lexem::Lsb {
             return self.parse_array_def();
         }
@@ -1374,6 +1396,7 @@ impl Parser {
         let identifier = self.consume_identifier()?;
         let id_str: String = identifier.into();
 
+        let info = TypeInfo::default();
         match &id_str[..] {
             "!" => return Ok((Type::Never, info)),
             "bool" => return Ok((Type::Bool, info)),

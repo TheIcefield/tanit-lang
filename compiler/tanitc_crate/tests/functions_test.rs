@@ -8,7 +8,7 @@ use pretty_assertions::assert_str_eq;
 
 #[test]
 fn function_def_test() {
-    const SRC_TEXT: &str = "\nsafe pub func sum(a: f32, b: f32): f32 {\
+    const SRC_TEXT: &str = "\nsafe pub func sum(mut a: f32, b: f32): f32 {\
                             \n    return a + b\
                             \n}\
                             \nunsafe func main() {\
@@ -29,7 +29,7 @@ fn function_def_test() {
                                 \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"true\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
@@ -72,9 +72,9 @@ fn function_def_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "float sum(float a, float b);\
+        const HEADER_EXPECTED: &str = "float sum(float a, float const b);\
                                      \nvoid main();\n";
-        const SOURCE_EXPECTED: &str = "float sum(float a, float b){\
+        const SOURCE_EXPECTED: &str = "float sum(float a, float const b){\
                                      \nreturn a + b;\
                                      \n}\
                                      \nvoid main(){\
@@ -133,10 +133,10 @@ fn functions_test() {
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
                                 \n    <parameters>\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
@@ -190,11 +190,11 @@ fn functions_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "float f(signed int a, signed int b);\
+        const HEADER_EXPECTED: &str = "float f(signed int const a, signed int const b);\
                                      \nvoid void_func();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "float f(signed int a, signed int b){\
+        const SOURCE_EXPECTED: &str = "float f(signed int const a, signed int const b){\
                                         \nreturn a + b;\
                                       \n}\
                                       \nvoid void_func(){\

@@ -332,12 +332,12 @@ impl CodeGenStream<'_> {
 
         match &expr.kind {
             ExpressionKind::Unary { operation, node } => {
-                let keep_space = if *operation == UnaryOperation::RefMut {
-                    " "
-                } else {
-                    ""
+                match operation {
+                    UnaryOperation::RefMut | UnaryOperation::Ref => write!(self, "&")?,
+                    UnaryOperation::Not => write!(self, "~")?,
+                    UnaryOperation::Deref => write!(self, "*")?,
                 };
-                write!(self, "{}{}", operation, keep_space)?;
+
                 self.generate(node)?;
             }
             ExpressionKind::Binary {
