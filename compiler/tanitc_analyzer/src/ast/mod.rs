@@ -15,7 +15,7 @@ use tanitc_symbol_table::{
     },
     table::Table,
 };
-use tanitc_ty::Type;
+use tanitc_ty::{ArraySize, Type};
 
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -575,13 +575,13 @@ impl Analyzer {
                 let len = components.len();
                 if len == 0 {
                     return Type::Array {
-                        size: None,
+                        size: ArraySize::Unknown,
                         value_type: Box::new(Type::Auto),
                     };
                 }
 
                 Type::Array {
-                    size: None,
+                    size: ArraySize::Fixed(len),
                     value_type: Box::new(self.get_type(&components[0])),
                 }
             }

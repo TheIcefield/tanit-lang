@@ -7,6 +7,7 @@ use tanitc_ast::{
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
+use tanitc_ty::{ArraySize, Type};
 
 use super::{CodeGenMode, CodeGenStream};
 
@@ -271,7 +272,30 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 
+    fn generate_variable_array_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {
+        let ty = var_def.var_type.get_type();
+        let Type::Array { size, value_type } = ty else {
+            unreachable!("Called generate_variable_array_def on none array variable");
+        };
+
+        let ArraySize::Fixed(size) = size else {
+            unreachable!("Array size must be known at this point");
+        };
+
+        let type_str = value_type.get_c_type();
+        let var_name = var_def.identifier;
+        let mutable_str = if var_def.is_mutable { " " } else { " const " };
+
+        write!(self, "{type_str}{mutable_str}{var_name}[{size}]")?;
+
+        Ok(())
+    }
+
     fn generate_variable_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {
+        if let Type::Array { .. } = var_def.var_type.get_type() {
+            return self.generate_variable_array_def(var_def);
+        }
+
         self.generate_type_spec(&var_def.var_type)?;
 
         write!(
@@ -487,6 +511,19 @@ impl CodeGenStream<'_> {
                 }
 
                 write!(self, "}}")?;
+            }
+            ValueKind::Array { components } => {
+                write!(self, "{{ ")?;
+
+                for (c_idx, c) in components.iter().enumerate() {
+                    self.generate(c)?;
+
+                    if c_idx != components.len() - 1 {
+                        write!(self, ", ")?;
+                    }
+                }
+
+                write!(self, " }}")?;
             }
             _ => todo!("Unimplemented for ({:?})", val.kind),
         }

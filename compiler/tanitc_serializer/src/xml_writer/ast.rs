@@ -6,7 +6,7 @@ use tanitc_ast::{
 };
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
-use tanitc_ty::Type;
+use tanitc_ty::{ArraySize, Type};
 
 use super::XmlWriter;
 
@@ -507,7 +507,7 @@ impl XmlWriter<'_> {
             Type::Array { size, value_type } => {
                 self.put_param("style", "array")?;
 
-                if let Some(size) = size {
+                if let ArraySize::Fixed(size) = size {
                     self.put_param("size", size)?;
                 }
 
