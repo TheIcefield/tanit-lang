@@ -2,6 +2,12 @@ use tanitc_ident::Ident;
 
 use std::str::FromStr;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArraySize {
+    Unknown,
+    Fixed(usize),
+}
+
 #[derive(Clone, PartialEq)]
 pub enum Type {
     Ref {
@@ -11,7 +17,7 @@ pub enum Type {
     Ptr(Box<Type>),
     Tuple(Vec<Type>),
     Array {
-        size: Option<usize>,
+        size: ArraySize,
         value_type: Box<Type>,
     },
     Template {
@@ -100,6 +106,7 @@ impl Type {
                     unimplemented!()
                 }
             }
+            Self::Array { value_type, .. } => value_type.get_c_type(),
             _ => unimplemented!(),
         }
     }

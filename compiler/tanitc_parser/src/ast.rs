@@ -10,7 +10,7 @@ use tanitc_ast::{
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
-use tanitc_ty::Type;
+use tanitc_ty::{ArraySize, Type};
 
 use crate::Parser;
 
@@ -1433,18 +1433,19 @@ impl Parser {
         self.consume_token(Lexem::Lsb)?;
 
         let (value_type, _) = self.parse_type()?;
+        let mut size = ArraySize::Unknown;
 
         if self.peek_token().lexem == Lexem::Colon {
             self.get_token();
 
-            // size = Some(Box::new(self.parse_expression()?));
+            size = ArraySize::Fixed(self.consume_integer()?.lexem.get_int().unwrap());
         }
 
         self.consume_token(Lexem::Rsb)?;
 
         Ok((
             Type::Array {
-                size: None,
+                size,
                 value_type: Box::new(value_type),
             },
             TypeInfo::default(),
