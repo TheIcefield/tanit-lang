@@ -77,6 +77,7 @@ impl Analyzer {
                         if let SymbolKind::VarDef(var_data) = &entry.kind {
                             if let Type::Ref { is_mutable, .. } = &var_data.var_type {
                                 if !*is_mutable && does_mutate {
+                                    println!("Hello: {is_mutable}");
                                     self.error(Message::new(
                                         Location::new(),
                                         &format!(
