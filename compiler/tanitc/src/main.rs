@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-
 use tanitc_crate::Unit;
-use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
+use tanitc_options::CrateType;
+
+pub mod options;
 
 fn crate_type_suffix(t: CrateType) -> &'static str {
     match t {
@@ -11,71 +11,15 @@ fn crate_type_suffix(t: CrateType) -> &'static str {
     }
 }
 
-fn parse_crate_type(s: &str) -> CrateType {
-    match s {
-        "bin" => CrateType::Bin,
-        "static-lib" => CrateType::StaticLib,
-        "dynamic-lib" => CrateType::DynamicLib,
-        _ => {
-            eprintln!("Error: unknown crate type: {s}");
-            CrateType::StaticLib
-        }
-    }
-}
-
-fn parse_backend(s: &str) -> Backend {
-    match s {
-        "gcc" => Backend::Gcc,
-        "clang" => Backend::Clang,
-        _ => {
-            eprintln!("Error: unknown backend: {s}");
-            Backend::Gcc
-        }
-    }
-}
-
-fn parse_options() -> CompileOptions {
-    let mut compile_options = CompileOptions::default();
-
-    let argv = std::env::args().collect::<Vec<String>>();
-    #[allow(clippy::needless_range_loop)]
-    for i in 1..argv.len() {
-        if argv[i] == "-i" || argv[i] == "--input" {
-            compile_options.input_file = argv[i + 1].clone();
-        } else if argv[i] == "-o" || argv[i] == "--output" {
-            compile_options.output_file = argv[i + 1].clone();
-        } else if argv[i] == "-l" || argv[i] == "--library" {
-            compile_options.libraries.push(argv[i + 1].clone());
-        } else if argv[i] == "-L" || argv[i] == "--library-path" {
-            compile_options
-                .libraries_paths
-                .push(PathBuf::from(argv[i + 1].clone()));
-        } else if argv[i] == "--dump-tokens" {
-            compile_options.verbose_tokens = true;
-        } else if argv[i] == "--dump-ast" || argv[i] == "--dump-ast-ron" {
-            compile_options.dump_ast_mode = AstSerializeMode::Ron;
-        } else if argv[i] == "--dump-ast-xml" {
-            compile_options.dump_ast_mode = AstSerializeMode::Xml;
-        } else if argv[i] == "--dump-ast-json" {
-            compile_options.dump_ast_mode = AstSerializeMode::Json;
-        } else if argv[i] == "--dump-symtable" {
-            compile_options.dump_symbol_table = true;
-        } else if argv[i] == "--backend" {
-            compile_options.backend = parse_backend(&argv[i + 1]);
-        } else if argv[i] == "--crate-type" {
-            compile_options.crate_type = parse_crate_type(&argv[i + 1]);
-        } else if argv[i] == "--crate-name" {
-            compile_options.crate_name = argv[i + 1].clone();
-        } else if argv[i] == "--allow-variants" {
-            compile_options.allow_variants = true;
-        }
-    }
-
-    compile_options
-}
-
 fn main() {
-    let mut compile_options = parse_options();
+    let mut compile_options =
+        match options::CommandLineParser::new(std::env::args().collect()).parse() {
+            Ok(options) => options,
+            Err(err) => {
+                eprintln!("{err}");
+                return;
+            }
+        };
 
     let input_file = compile_options.input_file.clone();
 
