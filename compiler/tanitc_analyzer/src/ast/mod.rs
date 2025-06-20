@@ -238,8 +238,6 @@ impl VisitorMut for Analyzer {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));
         }
 
-        println!("VAR: {var_def:?}");
-
         self.add_symbol(Entry {
             name: var_def.identifier,
             is_static: false,
