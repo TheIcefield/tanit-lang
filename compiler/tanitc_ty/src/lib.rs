@@ -97,7 +97,7 @@ impl Type {
             Self::Ref { ref_to, is_mutable } => format!(
                 "{}{}*",
                 ref_to.get_c_type(),
-                if *is_mutable { " const " } else { " " }
+                if !*is_mutable { " const " } else { " " }
             ),
             Self::Tuple(components) => {
                 if components.is_empty() {

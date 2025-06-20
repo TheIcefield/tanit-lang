@@ -113,7 +113,7 @@ fn mutable_deref_test() {
         const HEADER_EXPECTED: &str = "void main();\n";
         const SOURCE_EXPECTED: &str = "void main(){\
                                         \nsigned int value = 50;\
-                                        \nsigned int const * const ref = &value;\
+                                        \nsigned int * const ref = &value;\
                                         \nif (1)\
                                         \n{\
                                             \n*ref = 10;\
@@ -276,9 +276,9 @@ fn mutable_deref_param_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "void bar(signed int const * const p);\
+        const HEADER_EXPECTED: &str = "void bar(signed int * const p);\
                                      \nvoid main();\n";
-        const SOURCE_EXPECTED: &str = "void bar(signed int const * const p){\
+        const SOURCE_EXPECTED: &str = "void bar(signed int * const p){\
                                         \n*p = 10;\
                                      \n}\
                                      \nvoid main(){\

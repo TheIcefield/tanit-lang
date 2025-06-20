@@ -532,6 +532,7 @@ impl CodeGenStream<'_> {
     }
 }
 
+// Modules
 impl CodeGenStream<'_> {
     fn generate_internal_module(&mut self, module_def: &ModuleDef) -> std::io::Result<()> {
         if let Some(body) = &module_def.body {
@@ -553,6 +554,7 @@ impl CodeGenStream<'_> {
     }
 }
 
+// Call args
 impl CodeGenStream<'_> {
     fn generate_call_param(&mut self, arg: &CallArg) -> Result<(), std::io::Error> {
         match &arg.kind {
@@ -564,6 +566,7 @@ impl CodeGenStream<'_> {
     }
 }
 
+// Variants
 impl CodeGenStream<'_> {
     fn generate_variant_enum(
         &mut self,
@@ -656,6 +659,7 @@ impl CodeGenStream<'_> {
     }
 }
 
+// Externs
 impl CodeGenStream<'_> {
     fn generate_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), std::io::Error> {
         let mode = self.mode;
