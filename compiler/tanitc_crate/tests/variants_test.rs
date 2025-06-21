@@ -76,12 +76,12 @@ fn variant_work_test() {
                                 \n        <operation>\
                                 \n            <struct-initialization name=\"MyVariant\">\
                                 \n                <field name=\"__kind__\">\
-                                \n                    <literal style=\"integer-number\" value=\"0\"/>\
+                                \n                    <identifier name=\"__MyVariant__kind__f1__\"/>\
                                 \n                </field>\
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f1\">\
-                                \n                            <struct-initialization name=\"__MyVariant__f1__\"/>\
+                                \n                            <struct-initialization name=\"__MyVariant__data__f1__\"/>\
                                 \n                        </field>\
                                 \n                    </struct-initialization>\
                                 \n                </field>\
@@ -95,12 +95,12 @@ fn variant_work_test() {
                                 \n        <operation>\
                                 \n            <struct-initialization name=\"MyVariant\">\
                                 \n                <field name=\"__kind__\">\
-                                \n                    <literal style=\"integer-number\" value=\"2\"/>\
+                                \n                    <identifier name=\"__MyVariant__kind__f3__\"/>\
                                 \n                </field>\
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f3\">\
-                                \n                            <struct-initialization name=\"__MyVariant__f3__\">\
+                                \n                            <struct-initialization name=\"__MyVariant__data__f3__\">\
                                 \n                                <field name=\"x\">\
                                 \n                                    <literal style=\"integer-number\" value=\"4\"/>\
                                 \n                                </field>\
@@ -126,39 +126,49 @@ fn variant_work_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "typedef struct {\
-                                        \ntypedef enum __MyVariant__kind__ {\
-                                        \n    f1,\
-                                        \n    f2,\
-                                        \n    f3,\
-                                        \n} __kind__;\
-                                        \ntypedef union __MyVariant__data__ {\
-                                            \ntypedef struct __MyVariant__f1__ {\
-                                            \n} __MyVariant__f1__ f1\
-                                            \ntypedef struct __MyVariant__f2__ {\
-                                            \n    i32 _0;\
-                                            \n    i32 _1;\
-                                            \n} __MyVariant__f2__ f2\
-                                            \ntypedef struct __MyVariant__f3__ {\
-                                            \n    i32 x;\
-                                            \n    f32 y;\
-                                            \n} __MyVariant__f3__ f3\
-                                        \n} __data__;\
+        const HEADER_EXPECTED: &str = "typedef enum {\
+                                     \n    __MyVariant__kind__f1__,\
+                                     \n    __MyVariant__kind__f2__,\
+                                     \n    __MyVariant__kind__f3__,\
+                                     \n} __MyVariant__kind__;\
+                                     \n\
+                                     \ntypedef struct { } __MyVariant__data__f1__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    signed int _0;\
+                                     \n    signed int _1;\
+                                     \n} __MyVariant__data__f2__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    signed int x;\
+                                     \n    float y;\
+                                     \n} __MyVariant__data__f3__;\
+                                     \n\
+                                     \ntypedef union __MyVariant__data__ {\
+                                     \n    __MyVariant__data__f1__ f1;\
+                                     \n    __MyVariant__data__f2__ f2;\
+                                     \n    __MyVariant__data__f3__ f3;\
+                                     \n} __MyVariant__data__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    __MyVariant__kind__ __kind__;\
+                                     \n    __MyVariant__data__ __data__;\
                                      \n} MyVariant;\
+                                     \n\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
                                         \nMyVariant const v1 = (MyVariant){\
-                                            \n.__kind__=0,\
+                                            \n.__kind__=__MyVariant__kind__f1__,\
                                             \n.__data__=(__MyVariant__data__){\
-                                               \n.f1=(__MyVariant__f1__){\
+                                               \n.f1=(__MyVariant__data__f1__){\
                                                    \n},\
                                                \n},\
                                             \n};\
                                             \nMyVariant const v3 = (MyVariant){\
-                                                \n.__kind__=2,\
+                                                \n.__kind__=__MyVariant__kind__f3__,\
                                                 \n.__data__=(__MyVariant__data__){\
-                                                    \n.f3=(__MyVariant__f3__){\
+                                                    \n.f3=(__MyVariant__data__f3__){\
                                                         \n.x=4,\
                                                         \n.y=7.5,\
                                                     \n},\
@@ -252,12 +262,12 @@ fn variant_in_module_work_test() {
                                 \n        <operation>\
                                 \n            <struct-initialization name=\"MyVariant\">\
                                 \n                <field name=\"__kind__\">\
-                                \n                    <literal style=\"integer-number\" value=\"0\"/>\
+                                \n                    <identifier name=\"__MyVariant__kind__f1__\"/>\
                                 \n                </field>\
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f1\">\
-                                \n                            <struct-initialization name=\"__MyVariant__f1__\"/>\
+                                \n                            <struct-initialization name=\"__MyVariant__data__f1__\"/>\
                                 \n                        </field>\
                                 \n                    </struct-initialization>\
                                 \n                </field>\
@@ -271,12 +281,12 @@ fn variant_in_module_work_test() {
                                 \n        <operation>\
                                 \n            <struct-initialization name=\"MyVariant\">\
                                 \n                <field name=\"__kind__\">\
-                                \n                    <literal style=\"integer-number\" value=\"2\"/>\
+                                \n                    <identifier name=\"__MyVariant__kind__f3__\"/>\
                                 \n                </field>\
                                 \n                <field name=\"__data__\">\
                                 \n                    <struct-initialization name=\"__MyVariant__data__\">\
                                 \n                        <field name=\"f3\">\
-                                \n                            <struct-initialization name=\"__MyVariant__f3__\">\
+                                \n                            <struct-initialization name=\"__MyVariant__data__f3__\">\
                                 \n                                <field name=\"x\">\
                                 \n                                    <literal style=\"integer-number\" value=\"4\"/>\
                                 \n                                </field>\
@@ -302,40 +312,50 @@ fn variant_in_module_work_test() {
     }
 
     {
-        const HEADER_EXPECTED: &str = "typedef struct {\
-                                        \ntypedef enum __MyVariant__kind__ {\
-                                        \n    f1,\
-                                        \n    f2,\
-                                        \n    f3,\
-                                        \n} __kind__;\
-                                        \ntypedef union __MyVariant__data__ {\
-                                            \ntypedef struct __MyVariant__f1__ {\
-                                            \n} __MyVariant__f1__ f1\
-                                            \ntypedef struct __MyVariant__f2__ {\
-                                            \n    i32 _0;\
-                                            \n    i32 _1;\
-                                            \n} __MyVariant__f2__ f2\
-                                            \ntypedef struct __MyVariant__f3__ {\
-                                            \n    i32 x;\
-                                            \n    f32 y;\
-                                            \n} __MyVariant__f3__ f3\
-                                        \n} __data__;\
+        const HEADER_EXPECTED: &str = "typedef enum {\
+                                     \n    __MyVariant__kind__f1__,\
+                                     \n    __MyVariant__kind__f2__,\
+                                     \n    __MyVariant__kind__f3__,\
+                                     \n} __MyVariant__kind__;\
+                                     \n\
+                                     \ntypedef struct { } __MyVariant__data__f1__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    signed int _0;\
+                                     \n    signed int _1;\
+                                     \n} __MyVariant__data__f2__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    signed int x;\
+                                     \n    float y;\
+                                     \n} __MyVariant__data__f3__;\
+                                     \n\
+                                     \ntypedef union __MyVariant__data__ {\
+                                     \n    __MyVariant__data__f1__ f1;\
+                                     \n    __MyVariant__data__f2__ f2;\
+                                     \n    __MyVariant__data__f3__ f3;\
+                                     \n} __MyVariant__data__;\
+                                     \n\
+                                     \ntypedef struct {\
+                                     \n    __MyVariant__kind__ __kind__;\
+                                     \n    __MyVariant__data__ __data__;\
                                      \n} MyVariant;\
+                                     \n\
                                      \nvoid main();\n";
 
         // TODO: correct data field initialization
         const SOURCE_EXPECTED: &str = "void main(){\
                                         \nMyVariant const v1 = (MyVariant){\
-                                            \n.__kind__=0,\
+                                            \n.__kind__=__MyVariant__kind__f1__,\
                                             \n.__data__=(__MyVariant__data__){\
-                                                \n.f1=(__MyVariant__f1__){\
+                                                \n.f1=(__MyVariant__data__f1__){\
                                                 \n},\
                                             \n},\
                                         \n};\
                                         \nMyVariant const v3 = (MyVariant){\
-                                            \n.__kind__=2,\
+                                            \n.__kind__=__MyVariant__kind__f3__,\
                                             \n.__data__=(__MyVariant__data__){\
-                                                \n.f3=(__MyVariant__f3__){\
+                                                \n.f3=(__MyVariant__data__f3__){\
                                                     \n.x=4,\
                                                     \n.y=7.5,\
                                                 \n},\
