@@ -136,7 +136,10 @@ impl Analyzer {
                                 Ident::from("__kind__".to_string()),
                                 Ast::Value(Value {
                                     location,
-                                    kind: ValueKind::Integer(variant_data.variant_kind_num),
+                                    kind: ValueKind::Identifier(Ident::from(format!(
+                                        "__{}__kind__{}__",
+                                        variant_data.variant_name, variant_name
+                                    ))),
                                 }),
                             ),
                             (
@@ -153,7 +156,7 @@ impl Analyzer {
                                                 location,
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
-                                                        "__{}__{}__",
+                                                        "__{}__data__{}__",
                                                         variant_data.variant_name, variant_name
                                                     )),
                                                     components: vec![],
@@ -210,7 +213,10 @@ impl Analyzer {
                                 Ident::from("__kind__".to_string()),
                                 Ast::Value(Value {
                                     location,
-                                    kind: ValueKind::Integer(variant_data.variant_kind_num),
+                                    kind: ValueKind::Identifier(Ident::from(format!(
+                                        "__{}__kind__{}__",
+                                        variant_data.variant_name, variant_name
+                                    ))),
                                 }),
                             ),
                             (
@@ -227,7 +233,7 @@ impl Analyzer {
                                                 location,
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
-                                                        "__{}__{}__",
+                                                        "__{}__data__{}__",
                                                         variant_data.variant_name, variant_name
                                                     )),
                                                     components: value_comps.clone(),
@@ -284,7 +290,10 @@ impl Analyzer {
                                 Ident::from("__kind__".to_string()),
                                 Ast::Value(Value {
                                     location,
-                                    kind: ValueKind::Integer(variant_data.variant_kind_num),
+                                    kind: ValueKind::Identifier(Ident::from(format!(
+                                        "__{}__kind__{}__",
+                                        variant_data.variant_name, variant_name
+                                    ))),
                                 }),
                             ),
                             (
@@ -301,7 +310,7 @@ impl Analyzer {
                                                 location,
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
-                                                        "__{}__{}__",
+                                                        "__{}__data__{}__",
                                                         variant_data.variant_name, variant_name
                                                     )),
                                                     components: {
