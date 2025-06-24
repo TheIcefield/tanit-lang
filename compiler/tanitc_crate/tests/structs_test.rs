@@ -11,11 +11,11 @@ fn struct_work_test() {
     const SRC_TEXT: &str = "\nstruct MyStruct\
                             \n{\
                             \n    pub f1: i32\
-                            \n    f2: f32\
+                            \n    f2: [f32: 2]\
                             \n}\
                             \nfunc main() {\
                             \n    var mut s = MyStruct { \
-                            \n              f1: 1, f2: 2.0\
+                            \n              f1: 1, f2: [2.0, 3.0]\
                             \n            }\
                             \n    s.f1 = 2\
                             \n}";
@@ -43,7 +43,10 @@ fn struct_work_test() {
                                 \n        <type style=\"primitive\" name=\"i32\"/>\
                                 \n    </field>\
                                 \n    <field name=\"f2\" publicity=\"Private\">\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
+                                \n        <type style=\"array\">\
+                                \n            <size value=\"2\"/>\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </type>\
                                 \n    </field>\
                                 \n</struct-definition>\
                                 \n<function-definition name=\"main\">\
@@ -59,7 +62,10 @@ fn struct_work_test() {
                                 \n                <literal style=\"integer-number\" value=\"1\"/>\
                                 \n            </field>\
                                 \n            <field name=\"f2\">\
-                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n                <array-initialization>\
+                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
+                                \n                    <literal style=\"decimal-number\" value=\"3\"/>\
+                                \n                </array-initialization>\
                                 \n            </field>\
                                 \n        </struct-initialization>\
                                 \n    </operation>\
@@ -91,7 +97,7 @@ fn struct_work_test() {
         const SOURCE_EXPECTED: &str = "void main(){\
                                         \nMyStruct s = (MyStruct){\
                                             \n.f1=1,\
-                                            \n.f2=2,\
+                                            \n.f2={ 2, 3 },\
                                         \n};\
                                         \ns.f1 = 2;\
                                      \n}\n";
