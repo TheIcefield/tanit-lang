@@ -69,6 +69,13 @@ impl Message {
         }
     }
 
+    pub fn undefined_variable(location: Location, var_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("No variable \"{var_name}\" found"),
+        }
+    }
+
     pub fn undefined_func(location: Location, func_name: Ident) -> Self {
         Self {
             location,
@@ -90,10 +97,26 @@ impl Message {
         }
     }
 
-    pub fn const_mutation(location: Location, var_name: Ident) -> Self {
+    pub fn const_mutation(location: Location, s: &str) -> Self {
+        Self {
+            location,
+            text: format!(
+                "Cannot mutate immutable object of type \"{s}\" is immutable in current scope"
+            ),
+        }
+    }
+
+    pub fn const_var_mutation(location: Location, var_name: Ident) -> Self {
         Self {
             location,
             text: format!("Variable \"{var_name}\" is immutable in current scope"),
+        }
+    }
+
+    pub fn const_ref_mutation(location: Location, var_name: Ident) -> Self {
+        Self {
+            location,
+            text: format!("Reference \"{var_name}\" is immutable in current scope"),
         }
     }
 

@@ -4,8 +4,8 @@ use tanitc_ast::{
     attributes::{self, FieldAttributes},
     expression_utils::{BinaryOperation, UnaryOperation},
     Ast, Block, CallArg, CallArgKind, Expression, ExpressionKind, ExternDef, FieldInfo,
-    FunctionDef, StructDef, TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind,
-    VariableDef, VariantDef, VariantField,
+    FunctionDef, ParsedTypeInfo, StructDef, TypeSpec, UnionDef, Use, UseIdentifier, Value,
+    ValueKind, VariableDef, VariantDef, VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
@@ -878,7 +878,7 @@ impl Parser {
         } else {
             TypeSpec {
                 location: next.location,
-                info: TypeInfo::default(),
+                info: ParsedTypeInfo::default(),
                 ty: Type::unit(),
             }
         };
@@ -1354,10 +1354,10 @@ impl Parser {
         Ok(TypeSpec { location, info, ty })
     }
 
-    fn parse_reference_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_reference_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         self.consume_token(Lexem::Ampersand)?;
 
-        let mut info = TypeInfo::default();
+        let mut info = ParsedTypeInfo::default();
 
         if matches!(self.peek_token().lexem, Lexem::KwMut) {
             info.is_mut = true;
@@ -1375,10 +1375,10 @@ impl Parser {
         ))
     }
 
-    fn parse_pointer_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_pointer_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         self.consume_token(Lexem::Star)?;
 
-        let mut info = TypeInfo::default();
+        let mut info = ParsedTypeInfo::default();
 
         if matches!(self.peek_token().lexem, Lexem::KwMut) {
             info.is_mut = true;
@@ -1390,7 +1390,7 @@ impl Parser {
         Ok((Type::Ptr(Box::new(ptr_to)), info))
     }
 
-    fn parse_type(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         let next = self.peek_token();
 
         // Parse reference: &mut i32
@@ -1416,7 +1416,7 @@ impl Parser {
         let identifier = self.consume_identifier()?;
         let id_str: String = identifier.into();
 
-        let info = TypeInfo::default();
+        let info = ParsedTypeInfo::default();
         match &id_str[..] {
             "!" => return Ok((Type::Never, info)),
             "bool" => return Ok((Type::Bool, info)),
@@ -1449,7 +1449,7 @@ impl Parser {
         Ok((Type::Custom(id_str), info))
     }
 
-    fn parse_tuple_def(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_tuple_def(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         self.consume_token(Lexem::LParen)?;
 
         let mut children = Vec::<Type>::new();
@@ -1469,10 +1469,10 @@ impl Parser {
 
         self.consume_token(Lexem::RParen)?;
 
-        Ok((Type::Tuple(children), TypeInfo::default()))
+        Ok((Type::Tuple(children), ParsedTypeInfo::default()))
     }
 
-    fn parse_array_def(&mut self) -> Result<(Type, TypeInfo), Message> {
+    fn parse_array_def(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         self.consume_token(Lexem::Lsb)?;
 
         let (value_type, _) = self.parse_type()?;
@@ -1491,7 +1491,7 @@ impl Parser {
                 size,
                 value_type: Box::new(value_type),
             },
-            TypeInfo::default(),
+            ParsedTypeInfo::default(),
         ))
     }
 
@@ -1752,7 +1752,7 @@ impl Parser {
             identifier,
             var_type: var_type.unwrap_or(TypeSpec {
                 location,
-                info: TypeInfo::default(),
+                info: ParsedTypeInfo::default(),
                 ty: Type::Auto,
             }),
             is_global,

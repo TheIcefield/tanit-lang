@@ -14,6 +14,7 @@ use tanitc_symbol_table::{
         StructFieldData, SymbolKind, UnionDefData, VarDefData, VarStorageType,
     },
     table::Table,
+    type_info::{MemberInfo, TypeInfo},
 };
 use tanitc_ty::{ArraySize, Type};
 
@@ -459,13 +460,14 @@ impl VisitorMut for Analyzer {
 
                 for comp in components.iter().enumerate() {
                     let current_comp_type = self.get_type(comp.1);
-                    if comp_type != current_comp_type {
+                    if comp_type.ty != current_comp_type.ty {
                         let comp_index = comp.0 + 1;
                         let suffix = get_ordinal_number_suffix(comp.0);
                         return Err(Message::from_string(
                             val.location,
                             format!(
-                                "Array type is declared like {comp_type}, but {comp_index}{suffix} element has type {current_comp_type}",
+                                "Array type is declared like {}, but {comp_index}{suffix} element has type {}",
+                                comp_type.ty, current_comp_type.ty
                             ),
                         ));
                     }
@@ -479,7 +481,7 @@ impl VisitorMut for Analyzer {
 
 // Type
 impl Analyzer {
-    fn get_type(&self, node: &Ast) -> Type {
+    fn get_type(&self, node: &Ast) -> TypeInfo {
         match node {
             Ast::AliasDef(node) => self.get_alias_def_type(node),
             Ast::VariableDef(node) => self.get_var_def_type(node),
@@ -489,15 +491,28 @@ impl Analyzer {
         }
     }
 
-    fn get_alias_def_type(&self, alias_def: &AliasDef) -> Type {
-        alias_def.value.get_type()
+    fn get_alias_def_type(&self, alias_def: &AliasDef) -> TypeInfo {
+        TypeInfo {
+            ty: alias_def.value.get_type(),
+            is_mutable: false,
+            members: BTreeMap::new(),
+        }
     }
 
-    fn get_var_def_type(&self, var_def: &VariableDef) -> Type {
-        var_def.var_type.get_type()
+    fn get_var_def_type(&self, var_def: &VariableDef) -> TypeInfo {
+        let Some(mut type_info) = self.table.lookup_type(&var_def.var_type.ty) else {
+            return TypeInfo {
+                ty: var_def.var_type.ty.clone(),
+                is_mutable: var_def.is_mutable,
+                members: BTreeMap::new(),
+            };
+        };
+
+        type_info.is_mutable = var_def.is_mutable;
+        type_info
     }
 
-    fn get_expr_type(&self, expr: &Expression) -> Type {
+    fn get_expr_type(&self, expr: &Expression) -> TypeInfo {
         match &expr.kind {
             ExpressionKind::Binary {
                 operation,
@@ -509,12 +524,16 @@ impl Analyzer {
                 | BinaryOperation::LogicalLt
                 | BinaryOperation::LogicalLe
                 | BinaryOperation::LogicalGt
-                | BinaryOperation::LogicalGe => Type::Bool,
+                | BinaryOperation::LogicalGe => TypeInfo {
+                    ty: Type::Bool,
+                    is_mutable: true,
+                    members: BTreeMap::new(),
+                },
 
                 _ => {
                     let lhs_type = self.get_type(lhs);
 
-                    if let Type::Auto = lhs_type {
+                    if let Type::Auto = lhs_type.ty {
                         return self.get_type(rhs);
                     }
 
@@ -533,73 +552,174 @@ impl Analyzer {
                 };
 
                 if is_ref {
-                    return Type::Ref {
-                        ref_to: Box::new(node_type),
+                    return TypeInfo {
+                        ty: Type::Ref {
+                            ref_to: Box::new(node_type.ty.clone()),
+                            is_mutable,
+                        },
                         is_mutable,
+                        members: node_type.members,
                     };
                 }
 
                 node_type
             }
-            ExpressionKind::Conversion { ty, .. } => ty.get_type(),
+            ExpressionKind::Conversion { ty, .. } => TypeInfo {
+                ty: ty.get_type(),
+                is_mutable: true,
+                members: BTreeMap::new(),
+            },
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Indexing { lhs, .. } => {
-                let Type::Array { ref value_type, .. } = self.get_type(lhs) else {
+                let mut lhs_type = self.get_type(lhs);
+                let Type::Array { ref value_type, .. } = &lhs_type.ty else {
                     unreachable!()
                 };
 
-                value_type.as_ref().clone()
+                lhs_type.ty = value_type.as_ref().clone();
+                lhs_type
             }
-            ExpressionKind::Term { ty, .. } => ty.clone(),
+            ExpressionKind::Term { ty, .. } => TypeInfo {
+                ty: ty.clone(),
+                is_mutable: false,
+                members: BTreeMap::new(),
+            },
         }
     }
 
-    fn get_value_type(&self, val: &Value) -> Type {
+    fn get_value_type(&self, val: &Value) -> TypeInfo {
         match &val.kind {
-            ValueKind::Text(_) => Type::Ref {
-                ref_to: Box::new(Type::Str),
+            ValueKind::Text(_) => TypeInfo {
+                ty: Type::Ref {
+                    ref_to: Box::new(Type::Str),
+                    is_mutable: false,
+                },
                 is_mutable: false,
+                members: BTreeMap::new(),
             },
-            ValueKind::Decimal(_) => Type::F32,
-            ValueKind::Integer(_) => Type::I32,
+            ValueKind::Decimal(_) => TypeInfo {
+                ty: Type::F32,
+                is_mutable: true,
+                members: BTreeMap::new(),
+            },
+            ValueKind::Integer(_) => TypeInfo {
+                ty: Type::I32,
+                is_mutable: true,
+                members: BTreeMap::new(),
+            },
             ValueKind::Identifier(id) => {
-                if let Some(entry) = self.table.lookup(*id) {
-                    if let SymbolKind::VarDef(data) = &entry.kind {
-                        return data.var_type.clone();
-                    }
-                }
-                Type::new()
+                let Some(entry) = self.table.lookup(*id) else {
+                    return TypeInfo {
+                        ty: Type::new(),
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                let SymbolKind::VarDef(data) = &entry.kind else {
+                    return TypeInfo {
+                        ty: Type::new(),
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                let Some(mut type_info) = self.table.lookup_type(&data.var_type) else {
+                    return TypeInfo {
+                        ty: data.var_type.clone(),
+                        is_mutable: data.is_mutable,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                type_info.is_mutable = data.is_mutable;
+                type_info
             }
-            ValueKind::Struct { identifier, .. } => Type::Custom(identifier.to_string()),
+            ValueKind::Struct { identifier, .. } => {
+                let ty = Type::Custom(identifier.to_string());
+                let Some(mut type_info) = self.table.lookup_type(&ty) else {
+                    return TypeInfo {
+                        ty,
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+                type_info.is_mutable = true;
+                type_info
+            }
             ValueKind::Tuple { components } => {
                 let mut comp_vec = Vec::<Type>::new();
                 for comp in components.iter() {
-                    comp_vec.push(self.get_type(comp));
+                    comp_vec.push(self.get_type(comp).ty);
                 }
-                Type::Tuple(comp_vec)
+                TypeInfo {
+                    ty: Type::Tuple(comp_vec.clone()),
+                    is_mutable: true,
+                    members: {
+                        let mut members = BTreeMap::<Ident, MemberInfo>::new();
+                        for (comp_idx, comp_type) in comp_vec.iter().enumerate() {
+                            members.insert(
+                                Ident::from(format!("{comp_idx}")),
+                                MemberInfo {
+                                    is_public: true,
+                                    ty: comp_type.clone(),
+                                },
+                            );
+                        }
+                        members
+                    },
+                }
             }
             ValueKind::Array { components } => {
                 let len = components.len();
                 if len == 0 {
-                    return Type::Array {
-                        size: ArraySize::Unknown,
-                        value_type: Box::new(Type::Auto),
+                    return TypeInfo {
+                        ty: Type::Array {
+                            size: ArraySize::Unknown,
+                            value_type: Box::new(Type::Auto),
+                        },
+                        is_mutable: true,
+                        members: BTreeMap::new(),
                     };
                 }
 
-                Type::Array {
-                    size: ArraySize::Fixed(len),
-                    value_type: Box::new(self.get_type(&components[0])),
+                TypeInfo {
+                    ty: Type::Array {
+                        size: ArraySize::Fixed(len),
+                        value_type: Box::new(self.get_type(&components[0]).ty),
+                    },
+                    is_mutable: true,
+                    members: BTreeMap::new(),
                 }
             }
             ValueKind::Call { identifier, .. } => {
-                if let Some(ss) = self.table.lookup(*identifier) {
-                    if let SymbolKind::FuncDef(data) = &ss.kind {
-                        return data.return_type.clone();
-                    }
-                }
-                Type::new()
+                let Some(ss) = self.table.lookup(*identifier) else {
+                    return TypeInfo {
+                        ty: Type::new(),
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                let SymbolKind::FuncDef(data) = &ss.kind else {
+                    return TypeInfo {
+                        ty: Type::new(),
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                let Some(mut type_info) = self.table.lookup_type(&data.return_type) else {
+                    return TypeInfo {
+                        ty: data.return_type.clone(),
+                        is_mutable: true,
+                        members: BTreeMap::new(),
+                    };
+                };
+
+                type_info.is_mutable = true;
+                type_info
             }
         }
     }
@@ -653,7 +773,7 @@ impl Analyzer {
         let func_param_type = &func_params[arg_idx].1;
         let expr_type = self.get_type(arg_value);
 
-        if expr_type != *func_param_type {
+        if expr_type.ty != *func_param_type {
             return Err(Message::from_string(
                 arg_value.location(),
                 format!("Mismatched types. In function \"{func_name}\" call: positional parameter \"{arg_idx}\" has type \"{expr_type}\" but expected \"{func_param_type}\""),
@@ -678,10 +798,10 @@ impl Analyzer {
         for (param_index, (param_name, param_type)) in func_params.iter().enumerate() {
             if *param_name == arg_id {
                 let arg_type = self.get_type(arg_value);
-                if *param_type != arg_type {
+                if *param_type != arg_type.ty {
                     return Err(Message::from_string(
                         location,
-                        format!("Mismatched types. In function \"{func_name}\" call: notified parameter \"{arg_id}\" has type \"{arg_type}\" but expected \"{param_type}\""),
+                        format!("Mismatched types. In function \"{func_name}\" call: notified parameter \"{arg_id}\" has type \"{arg_type}\" but expected \"{param_type}\"", ),
                     ));
                 }
 
@@ -939,8 +1059,7 @@ impl Analyzer {
             return Err(Message::new(
                 Location::new(),
                 &format!(
-                    "Struct \"{}\" consists of {} fields, but {} were supplied",
-                    struct_name,
+                    "Struct \"{struct_name}\" consists of {} fields, but {} were supplied",
                     struct_comps.len(),
                     value_comps.len()
                 ),
@@ -955,18 +1074,21 @@ impl Analyzer {
 
             let mut alias_to = self.find_alias_value(struct_comp_type);
 
-            if value_comp_type == *struct_comp_type {
+            if value_comp_type.ty == *struct_comp_type {
                 alias_to = None;
             }
 
-            if alias_to.is_none() && value_comp_type != *struct_comp_type {
+            if alias_to.is_none() && value_comp_type.ty != *struct_comp_type {
                 return Err(Message {
                     location: value_comp.1.location(),
                     text: format!(
                         "Struct field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}",
                     ),
                 });
-            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+            } else if alias_to
+                .as_ref()
+                .is_some_and(|ty| value_comp_type.ty != *ty)
+            {
                 return Err(Message {
                     location: value_comp.1.location(),
                     text: format!(
@@ -1016,18 +1138,21 @@ impl Analyzer {
 
             let mut alias_to = self.find_alias_value(union_comp_type);
 
-            if value_comp_type == *union_comp_type {
+            if value_comp_type.ty == *union_comp_type {
                 alias_to = None;
             }
 
-            if alias_to.is_none() && value_comp_type != *union_comp_type {
+            if alias_to.is_none() && value_comp_type.ty != *union_comp_type {
                 return Err(Message::new(
                     Location::new(),
                     &format!(
                         "Union field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
                     ),
                 ));
-            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+            } else if alias_to
+                .as_ref()
+                .is_some_and(|ty| value_comp_type.ty != *ty)
+            {
                 return Err(Message::new(
                         Location::new(),
                         &format!(
@@ -1070,18 +1195,21 @@ impl Analyzer {
 
             let mut alias_to = self.find_alias_value(tuple_comp_type);
 
-            if value_comp_type == *tuple_comp_type {
+            if value_comp_type.ty == *tuple_comp_type {
                 alias_to = None;
             }
 
-            if alias_to.is_none() && value_comp_type != *tuple_comp_type {
+            if alias_to.is_none() && value_comp_type.ty != *tuple_comp_type {
                 return Err(Message {
                     location: value_comp.location(),
                     text: format!(
                         "Tuple component with index \"{comp_id}\" is {tuple_comp_type}, but initialized like {value_comp_type}",
                     ),
                 });
-            } else if alias_to.as_ref().is_some_and(|ty| value_comp_type != *ty) {
+            } else if alias_to
+                .as_ref()
+                .is_some_and(|ty| value_comp_type.ty != *ty)
+            {
                 return Err(Message {
                     location: value_comp.location(),
                     text: format!(
@@ -1119,29 +1247,29 @@ impl Analyzer {
         }
 
         if Type::Auto == lhs.var_type.get_type() {
-            lhs.var_type.ty = rhs_type.clone();
+            lhs.var_type.ty = rhs_type.ty.clone();
         }
 
         let var_type = lhs.var_type.get_type();
 
         let mut alias_to = self.find_alias_value(&var_type);
 
-        if var_type == rhs_type {
+        if var_type == rhs_type.ty {
             alias_to = None;
         }
 
-        if alias_to.is_none() && var_type != rhs_type {
+        if alias_to.is_none() && var_type != rhs_type.ty {
             return Err(Message {
                     location: lhs.location,
                     text: format!(
-                        "Cannot perform operation on objects with different types: {var_type:?} and {rhs_type:?}",
+                        "Cannot perform operation on objects with different types: {var_type} and {rhs_type}",
                     ),
                 });
-        } else if alias_to.as_ref().is_some_and(|ty| rhs_type != *ty) {
+        } else if alias_to.as_ref().is_some_and(|ty| rhs_type.ty != *ty) {
             return Err(Message {
                     location: lhs.location,
                     text: format!(
-                        "Cannot perform operation on objects with different types: {var_type:?} (aka: {}) and {rhs_type:?}",
+                        "Cannot perform operation on objects with different types: {var_type} (aka: {}) and {rhs_type}",
                         alias_to.unwrap()
                     ),
                 });

@@ -214,14 +214,14 @@ impl From<UnionDef> for Ast {
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub struct TypeInfo {
+pub struct ParsedTypeInfo {
     pub is_mut: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct TypeSpec {
     pub location: Location,
-    pub info: TypeInfo,
+    pub info: ParsedTypeInfo,
     pub ty: Type,
 }
 

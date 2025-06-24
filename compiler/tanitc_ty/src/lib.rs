@@ -78,6 +78,62 @@ impl Type {
         )
     }
 
+    pub fn is_integer(&self) -> bool {
+        matches!(
+            self,
+            Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::I128
+                | Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::U128
+        )
+    }
+
+    pub fn as_str(&self) -> String {
+        match self {
+            Self::Auto => "auto".to_string(),
+            Self::Bool => "bool".to_string(),
+            Self::U8 => "u8".to_string(),
+            Self::U16 => "u16".to_string(),
+            Self::U32 => "u32".to_string(),
+            Self::U64 => "u64".to_string(),
+            Self::U128 => "u128".to_string(),
+            Self::I8 => "i8".to_string(),
+            Self::I16 => "i16".to_string(),
+            Self::I32 => "i32".to_string(),
+            Self::I64 => "i64".to_string(),
+            Self::I128 => "i128".to_string(),
+            Self::F32 => "f32".to_string(),
+            Self::F64 => "f54".to_string(),
+            Self::Custom(id) => id.clone(),
+            Self::Ref { ref_to, is_mutable } => format!(
+                "&{}{}",
+                if *is_mutable { "mut " } else { "" },
+                ref_to.as_str(),
+            ),
+            Self::Tuple(components) => {
+                let mut res = String::new();
+
+                res.push_str("( ");
+
+                components.iter().for_each(|c_type| {
+                    res.push_str(&format!("{}, ", c_type.as_str()));
+                });
+
+                res.push(')');
+
+                res
+            }
+            Self::Array { value_type, .. } => value_type.get_c_type(),
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn get_c_type(&self) -> String {
         match self {
             Self::Auto => unreachable!("automatic type is not eliminated"),

@@ -124,6 +124,7 @@ impl Table {
         if ty.is_common() {
             return Some(TypeInfo {
                 ty: ty.clone(),
+                is_mutable: false,
                 members: BTreeMap::new(),
             });
         }
@@ -147,6 +148,7 @@ impl Table {
 
                     res = Some(TypeInfo {
                         ty: Type::Custom(name.to_string()),
+                        is_mutable: false,
                         members,
                     });
                 }
@@ -165,6 +167,7 @@ impl Table {
 
                     res = Some(TypeInfo {
                         ty: Type::Custom(name.to_string()),
+                        is_mutable: false,
                         members,
                     });
                 }
