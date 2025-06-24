@@ -358,6 +358,13 @@ impl CodeGenStream<'_> {
                 write!(self, ".")?;
                 self.generate(rhs)?;
             }
+            ExpressionKind::Indexing { lhs, index } => {
+                self.generate(lhs)?;
+
+                write!(self, "[")?;
+                self.generate(index)?;
+                write!(self, "]")?;
+            }
             ExpressionKind::Term { node, .. } => {
                 self.generate(node)?;
             }

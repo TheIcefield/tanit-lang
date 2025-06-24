@@ -456,6 +456,20 @@ impl Parser {
                             components,
                         },
                     }));
+                } else if next.lexem == Lexem::Lsb {
+                    // if indexing: [i + 1]
+
+                    let lhs = Box::new(Ast::from(Value {
+                        kind: ValueKind::Identifier(identifier),
+                        location,
+                    }));
+
+                    let index = Box::new(self.parse_array_indexing()?);
+
+                    return Ok(Ast::from(Expression {
+                        kind: ExpressionKind::Indexing { lhs, index },
+                        location: next.location,
+                    }));
                 }
 
                 Ok(Ast::from(Value {
@@ -527,6 +541,15 @@ impl Parser {
                 &format!("Unexpected token \"{}\" within expression", next),
             )),
         }
+    }
+
+    // [index]
+    pub fn parse_array_indexing(&mut self) -> Result<Ast, Message> {
+        self.consume_token(Lexem::Lsb)?;
+        let index = self.parse_expression()?;
+        self.consume_token(Lexem::Rsb)?;
+
+        Ok(index)
     }
 }
 
@@ -1499,6 +1522,7 @@ impl Parser {
 
 // Values
 impl Parser {
+    // func_name(1, 2 ,3)
     fn parse_call_params(&mut self) -> Result<Vec<CallArg>, Message> {
         let _ = self.consume_token(Lexem::LParen)?.location;
 
@@ -1563,6 +1587,7 @@ impl Parser {
         Ok(args)
     }
 
+    // [1, 2, 3]
     fn parse_array_value(&mut self) -> Result<Ast, Message> {
         let location = self.consume_token(Lexem::Lsb)?.location;
 
@@ -1597,6 +1622,7 @@ impl Parser {
         }))
     }
 
+    // StructName { field_1: i32, field2: f32 }
     fn parse_struct_value(&mut self) -> Result<Vec<(Ident, Ast)>, Message> {
         self.consume_token(Lexem::Lcb)?;
 

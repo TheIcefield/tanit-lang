@@ -9,10 +9,10 @@ use pretty_assertions::assert_str_eq;
 #[test]
 fn array_parse_test() {
     const SRC_TEXT: &str = "\nfunc main() {\
-                            \n    var arr_1: [f32: 6]
-                            \n    var arr_2: [i32: 3] = [4, 5, 6]
-                            \n    var arr_3 = [1.0, 2.0, 3.0]
-                            \n    # arr_1[1] = 7
+                            \n    var arr_1: [f32: 6]\
+                            \n    var arr_2: [i32: 3] = [4, 5, 6]\
+                            \n    var arr_3 = [1.0, 2.0, 3.0]\
+                            \n    arr_1[1 + 1] = 7.0\
                             \n}";
 
     let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
@@ -60,6 +60,16 @@ fn array_parse_test() {
                                 \n            <literal style=\"decimal-number\" value=\"3\"/>\
                                 \n        </array-initialization>\
                                 \n    </operation>\
+                                \n    <operation style=\"binary\" operation=\"=\">\
+                                \n        <operation style=\"indexing\">\
+                                \n            <identifier name=\"arr_1\"/>\
+                                \n            <operation style=\"binary\" operation=\"+\">\
+                                \n                <literal style=\"integer-number\" value=\"1\"/>\
+                                \n                <literal style=\"integer-number\" value=\"1\"/>\
+                                \n            </operation>\
+                                \n        </operation>\
+                                \n        <literal style=\"decimal-number\" value=\"7\"/>\
+                                \n    </operation>\
                                 \n</function-definition>";
 
         let mut buffer = Vec::<u8>::new();
@@ -78,6 +88,7 @@ fn array_parse_test() {
                                         \nfloat const arr_1[6];\
                                         \nsigned int const arr_2[3] = { 4, 5, 6 };\
                                         \nfloat const arr_3[3] = { 1, 2, 3 };\
+                                        \narr_1[1 + 1] = 7;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

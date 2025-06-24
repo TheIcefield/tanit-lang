@@ -281,8 +281,9 @@ impl VisitorMut for Analyzer {
             ExpressionKind::Unary { operation, node } => self.analyze_unary_expr(operation, node),
             ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
             ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),
-            ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
             ExpressionKind::Get { lhs, rhs } => return self.analyze_member_access(lhs, rhs),
+            ExpressionKind::Indexing { lhs, index } => return self.analyze_indexing(lhs, index),
+            ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
         };
 
         match ret {
@@ -543,6 +544,13 @@ impl Analyzer {
             ExpressionKind::Conversion { ty, .. } => ty.get_type(),
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
+            ExpressionKind::Indexing { lhs, .. } => {
+                let Type::Array { ref value_type, .. } = self.get_type(lhs) else {
+                    unreachable!()
+                };
+
+                value_type.as_ref().clone()
+            }
             ExpressionKind::Term { ty, .. } => ty.clone(),
         }
     }

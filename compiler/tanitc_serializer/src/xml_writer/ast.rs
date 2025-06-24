@@ -216,6 +216,12 @@ impl Visitor for XmlWriter<'_> {
                 lhs.accept(self)?;
                 rhs.accept(self)?;
             }
+            ExpressionKind::Indexing { lhs, index } => {
+                self.put_param("style", "indexing")?;
+
+                lhs.accept(self)?;
+                index.accept(self)?;
+            }
             ExpressionKind::Term { node, .. } => {
                 node.accept(self)?;
             }
