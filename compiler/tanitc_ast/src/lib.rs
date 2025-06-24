@@ -124,6 +124,10 @@ pub enum ExpressionKind {
         lhs: Box<Ast>,
         rhs: Box<Ast>,
     },
+    Indexing {
+        lhs: Box<Ast>,
+        index: Box<Ast>,
+    },
     Term {
         node: Box<Ast>,
         ty: Type,

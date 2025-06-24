@@ -176,6 +176,10 @@ impl Analyzer {
         }
     }
 
+    pub fn analyze_indexing(&mut self, _lhs: &mut Ast, _index: &mut Ast) -> Result<(), Message> {
+        Ok(())
+    }
+
     fn access_enum(
         &mut self,
         enum_data: &EnumData,
