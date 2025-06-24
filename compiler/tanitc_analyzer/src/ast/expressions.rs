@@ -176,8 +176,42 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze_indexing(&mut self, _lhs: &mut Ast, _index: &mut Ast) -> Result<(), Message> {
-        Ok(())
+    pub fn analyze_indexing(&mut self, lhs: &mut Ast, index: &mut Ast) -> Result<(), Message> {
+        lhs.accept_mut(self)?;
+        index.accept_mut(self)?;
+
+        let location = lhs.location();
+
+        match lhs {
+            Ast::Value(Value {
+                kind: ValueKind::Identifier(var_name),
+                ..
+            }) => {
+                let Some(var_entry) = self.table.lookup(*var_name) else {
+                    return Err(Message::undefined_id(location, *var_name));
+                };
+
+                let SymbolKind::VarDef(var_data) = &var_entry.kind else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("{var_name} is not an variable"),
+                    ));
+                };
+
+                let Type::Array { .. } = &var_data.var_type else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("{var_name} is not an array"),
+                    ));
+                };
+
+                Ok(())
+            }
+            _ => Err(Message::from_string(
+                lhs.location(),
+                format!("Can't index {}", lhs.name()),
+            )),
+        }
     }
 
     fn access_enum(
