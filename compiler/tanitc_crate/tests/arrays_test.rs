@@ -38,11 +38,17 @@ fn array_parse_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <variable-definition name=\"arr_1\" is-global=\"false\" is-mutable=\"false\">\
-                                \n        <type style=\"array\" size=\"6\" style=\"primitive\" name=\"f32\"/>\
+                                \n        <type style=\"array\">\
+                                \n            <size value=\"6\"/>\
+                                \n            <type style=\"primitive\" name=\"f32\"/>\
+                                \n        </type>\
                                 \n    </variable-definition>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
                                 \n        <variable-definition name=\"arr_2\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"array\" size=\"3\" style=\"primitive\" name=\"i32\"/>\
+                                \n            <type style=\"array\">\
+                                \n                <size value=\"3\"/>\
+                                \n                <type style=\"primitive\" name=\"i32\"/>\
+                                \n            </type>\
                                 \n        </variable-definition>\
                                 \n        <array-initialization>\
                                 \n            <literal style=\"integer-number\" value=\"4\"/>\
@@ -52,7 +58,10 @@ fn array_parse_test() {
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
                                 \n        <variable-definition name=\"arr_3\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"array\" size=\"3\" style=\"primitive\" name=\"f32\"/>\
+                                \n            <type style=\"array\">\
+                                \n                <size value=\"3\"/>\
+                                \n                <type style=\"primitive\" name=\"f32\"/>\
+                                \n            </type>\
                                 \n        </variable-definition>\
                                 \n        <array-initialization>\
                                 \n            <literal style=\"decimal-number\" value=\"1\"/>\

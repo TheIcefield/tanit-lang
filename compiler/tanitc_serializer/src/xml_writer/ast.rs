@@ -513,11 +513,15 @@ impl XmlWriter<'_> {
             Type::Array { size, value_type } => {
                 self.put_param("style", "array")?;
 
+                self.begin_tag("size")?;
                 if let ArraySize::Fixed(size) = size {
-                    self.put_param("size", size)?;
+                    self.put_param("value", size)?;
                 }
+                self.end_tag()?;
 
+                self.begin_tag("type")?;
                 self.serialize_type(value_type, info)?;
+                self.end_tag()?;
             }
             Type::Template {
                 identifier,
