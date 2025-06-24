@@ -7,9 +7,9 @@ use tanitc_serializer::xml_writer::XmlWriter;
 use pretty_assertions::assert_str_eq;
 
 #[test]
-fn array_parse_test() {
+fn array_work_test() {
     const SRC_TEXT: &str = "\nfunc main() {\
-                            \n    var arr_1: [f32: 6]\
+                            \n    var mut arr_1: [f32: 6]\
                             \n    var arr_2: [i32: 3] = [4, 5, 6]\
                             \n    var arr_3 = [1.0, 2.0, 3.0]\
                             \n    arr_1[1 + 1] = 7.0\
@@ -37,7 +37,7 @@ fn array_parse_test() {
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
-                                \n    <variable-definition name=\"arr_1\" is-global=\"false\" is-mutable=\"false\">\
+                                \n    <variable-definition name=\"arr_1\" is-global=\"false\" is-mutable=\"true\">\
                                 \n        <type style=\"array\">\
                                 \n            <size value=\"6\"/>\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
@@ -94,7 +94,7 @@ fn array_parse_test() {
         const HEADER_EXPECTED: &str = "void main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nfloat const arr_1[6];\
+                                        \nfloat arr_1[6];\
                                         \nsigned int const arr_2[3] = { 4, 5, 6 };\
                                         \nfloat const arr_3[3] = { 1, 2, 3 };\
                                         \narr_1[1 + 1] = 7;\
@@ -111,5 +111,59 @@ fn array_parse_test() {
 
         assert_str_eq!(HEADER_EXPECTED, header_res);
         assert_str_eq!(SOURCE_EXPECTED, source_res);
+    }
+}
+
+#[test]
+fn immutable_array_bad_test() {
+    const SRC_TEXT: &str = "\nfunc main() {\
+                            \n    var arr = [1.0, 2.0, 3.0] # immutable\
+                            \n    arr[0] = 7.0\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED_ERR: &str = "Semantic error: Cannot mutate immutable object of type \"f32\" is immutable in current scope";
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 1);
+        assert_str_eq!(errors[0].text, EXPECTED_ERR);
+    }
+}
+
+#[test]
+fn strange_index_array_bad_test() {
+    const SRC_TEXT: &str = "\nfunc main() {\
+                            \n    var mut arr = [1.0, 2.0, 3.0]\
+                            \n    arr[3.14] = 7.0\
+                            \n}";
+
+    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+
+    let mut program = parser.parse_global_block().unwrap();
+    {
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+    }
+
+    {
+        const EXPECTED_ERR: &str = "Semantic error: Invalid index type: f32";
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 1);
+        assert_str_eq!(errors[0].text, EXPECTED_ERR);
     }
 }

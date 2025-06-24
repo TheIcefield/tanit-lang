@@ -56,39 +56,27 @@ impl Analyzer {
         rhs.accept_mut(self)?;
         let rhs_type = self.get_type(rhs);
 
-        let does_mutate = *operation == BinaryOperation::Assign
-            || *operation == BinaryOperation::SubAssign
-            || *operation == BinaryOperation::AddAssign
-            || *operation == BinaryOperation::DivAssign
-            || *operation == BinaryOperation::ModAssign
-            || *operation == BinaryOperation::MulAssign
-            || *operation == BinaryOperation::BitwiseAndAssign
-            || *operation == BinaryOperation::BitwiseOrAssign
-            || *operation == BinaryOperation::BitwiseXorAssign
-            || *operation == BinaryOperation::BitwiseShiftLAssign
-            || *operation == BinaryOperation::BitwiseShiftRAssign;
+        let does_mutate = operation.does_mutate();
 
         if let Ast::VariableDef(node) = lhs {
             self.analyze_variable_def(node, Some(rhs))?;
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
-                    if let Some(entry) = self.table.lookup(*id) {
-                        if let SymbolKind::VarDef(var_data) = &entry.kind {
-                            if let Type::Ref { is_mutable, .. } = &var_data.var_type {
-                                if !*is_mutable && does_mutate {
-                                    println!("Hello: {is_mutable}");
-                                    self.error(Message::new(
-                                        Location::new(),
-                                        &format!(
-                                            "Reference \"{id}\" is immutable in current scope",
-                                        ),
-                                    ));
-                                }
-                            } else if !var_data.is_mutable && does_mutate {
-                                self.error(Message::const_mutation(node.location, *id));
-                            }
+                    let Some(entry) = self.table.lookup(*id) else {
+                        return Err(Message::undefined_id(node.location, *id));
+                    };
+
+                    let SymbolKind::VarDef(var_data) = &entry.kind else {
+                        return Err(Message::undefined_variable(node.location, *id));
+                    };
+
+                    if let Type::Ref { is_mutable, .. } = &var_data.var_type {
+                        if !*is_mutable && does_mutate {
+                            return Err(Message::const_ref_mutation(node.location, *id));
                         }
+                    } else if !var_data.is_mutable && does_mutate {
+                        return Err(Message::const_var_mutation(node.location, *id));
                     }
                 }
                 ValueKind::Integer(..) | ValueKind::Decimal(..) => {}
@@ -113,14 +101,23 @@ impl Analyzer {
             lhs.accept_mut(self)?;
             let lhs_type = self.get_type(lhs);
 
-            if lhs_type != rhs_type {
+            if lhs_type.ty != rhs_type.ty {
                 self.error(Message::from_string(
                     rhs.location(),
                     format!(
-                        "Cannot perform operation on objects with different types: {lhs_type:?} and {rhs_type:?}",
+                        "Cannot perform operation on objects with different types: {lhs_type} and {rhs_type}",
                     ),
                 ));
             }
+
+            if !lhs_type.is_mutable && does_mutate {
+                return Err(Message::const_mutation(
+                    lhs.location(),
+                    &lhs_type.ty.as_str(),
+                ));
+            }
+
+            println!("HELLO, WORLD: {lhs_type:?}");
         }
 
         Ok(None)
@@ -175,7 +172,51 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze_indexing(&mut self, _lhs: &mut Ast, _index: &mut Ast) -> Result<(), Message> {
+    pub fn analyze_indexing(&mut self, lhs: &mut Ast, index: &mut Ast) -> Result<(), Message> {
+        lhs.accept_mut(self)?;
+        index.accept_mut(self)?;
+
+        let location = lhs.location();
+
+        match lhs {
+            Ast::Value(Value {
+                kind: ValueKind::Identifier(var_name),
+                ..
+            }) => {
+                let Some(var_entry) = self.table.lookup(*var_name) else {
+                    return Err(Message::undefined_id(location, *var_name));
+                };
+
+                let SymbolKind::VarDef(var_data) = &var_entry.kind else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("{var_name} is not an variable"),
+                    ));
+                };
+
+                let Type::Array { .. } = &var_data.var_type else {
+                    return Err(Message::from_string(
+                        location,
+                        format!("{var_name} is not an array"),
+                    ));
+                };
+            }
+            _ => {
+                return Err(Message::from_string(
+                    lhs.location(),
+                    format!("Can't index {}", lhs.name()),
+                ));
+            }
+        }
+
+        let index_ty = self.get_type(index);
+        if !index_ty.ty.is_integer() {
+            return Err(Message::from_string(
+                index.location(),
+                format!("Invalid index type: {}", index_ty.ty),
+            ));
+        }
+
         Ok(())
     }
 
@@ -363,7 +404,7 @@ impl Analyzer {
                 ..
             }) => {
                 if operation.does_mutate() && !var_data.is_mutable {
-                    return Err(Message::const_mutation(location, var_name));
+                    return Err(Message::const_var_mutation(location, var_name));
                 }
 
                 let Ast::Value(Value {
@@ -381,11 +422,11 @@ impl Analyzer {
 
                 let rhs_type = self.get_type(rhs);
 
-                if member_type != rhs_type {
+                if member_type != rhs_type.ty {
                     return Err(Message::from_string(
                                 rhs.location(),
                                 format!(
-                                    "Cannot perform operation on objects with different types: {member_type:?} and {rhs_type:?}",
+                                    "Cannot perform operation on objects with different types: {member_type} and {rhs_type}",
                                 ),
                             ));
                 }
@@ -527,8 +568,8 @@ impl Analyzer {
                         BinaryOperation::BitwiseAnd => "and",
                         _ => return Err(Message::new(location, "Unexpected operation")),
                     },
-                    lhs_type,
-                    rhs_type
+                    lhs_type.ty,
+                    rhs_type.ty
                 );
 
                 let func_id = Ident::from(func_name_str);

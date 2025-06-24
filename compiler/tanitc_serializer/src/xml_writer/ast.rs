@@ -1,8 +1,8 @@
 use tanitc_ast::{
     attributes, AliasDef, Block, Branch, BranchKind, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FieldInfo, FunctionDef, ModuleDef, StructDef,
-    TypeInfo, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind, VariableDef, VariantDef,
-    VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, FieldInfo, FunctionDef, ModuleDef,
+    ParsedTypeInfo, StructDef, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind,
+    VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
@@ -489,7 +489,7 @@ impl XmlWriter<'_> {
 }
 
 impl XmlWriter<'_> {
-    fn serialize_type(&mut self, ty: &Type, info: TypeInfo) -> Result<(), Message> {
+    fn serialize_type(&mut self, ty: &Type, info: ParsedTypeInfo) -> Result<(), Message> {
         match ty {
             Type::Ref { ref_to, is_mutable } => {
                 self.put_param("style", "reference")?;

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Display};
 
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
@@ -12,5 +12,12 @@ pub struct MemberInfo {
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
     pub ty: Type,
+    pub is_mutable: bool,
     pub members: BTreeMap<Ident, MemberInfo>,
+}
+
+impl Display for TypeInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.ty)
+    }
 }
