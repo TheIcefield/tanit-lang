@@ -515,6 +515,19 @@ impl CodeGenStream<'_> {
 
                 write!(self, " }}")?;
             }
+            ValueKind::Tuple { components } => {
+                write!(self, "{{ ")?;
+
+                for (c_idx, c) in components.iter().enumerate() {
+                    self.generate(c)?;
+
+                    if c_idx != components.len() - 1 {
+                        write!(self, ", ")?;
+                    }
+                }
+
+                write!(self, " }}")?;
+            }
             _ => todo!("Unimplemented for ({:?})", val.kind),
         }
 
