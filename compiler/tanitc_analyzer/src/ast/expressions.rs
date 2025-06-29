@@ -117,8 +117,7 @@ impl Analyzer {
                 self.error(Message::from_string(
                     rhs.location(),
                     format!(
-                        "Cannot perform operation on objects with different types: {:?} and {:?}",
-                        lhs_type, rhs_type
+                        "Cannot perform operation on objects with different types: {lhs_type:?} and {rhs_type:?}",
                     ),
                 ));
             }

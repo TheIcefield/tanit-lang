@@ -42,7 +42,7 @@ impl Message {
             text.push_str(&format!("Expected: {}", expected[0]));
 
             for lexem in expected.iter().skip(1) {
-                text.push_str(&format!(", {}", lexem));
+                text.push_str(&format!(", {lexem}"));
             }
 
             text.push('.');
@@ -151,6 +151,6 @@ impl Display for Message {
 
 pub fn print_messages(messages: &[Message]) {
     for msg in messages.iter() {
-        eprintln!("{}", msg);
+        eprintln!("{msg}");
     }
 }

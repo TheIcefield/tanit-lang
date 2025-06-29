@@ -148,34 +148,34 @@ impl std::fmt::Display for Type {
             Self::Ref { ref_to, is_mutable } => {
                 write!(f, "&{}", if *is_mutable { "mut " } else { "" })?;
 
-                write!(f, "{}", ref_to)
+                write!(f, "{ref_to}")
             }
             Self::Ptr(ptr_to) => {
                 write!(f, "*")?;
 
-                write!(f, "{}", ptr_to)
+                write!(f, "{ptr_to}")
             }
             Self::Template {
                 identifier,
                 generics,
             } => {
-                write!(f, "{}<", identifier)?;
+                write!(f, "{identifier}<")?;
                 for generic in generics.iter() {
-                    write!(f, "{}", generic)?;
+                    write!(f, "{generic}")?;
                 }
                 write!(f, ">")
             }
             Self::Tuple(components) => {
                 write!(f, "( ")?;
 
-                for i in components.iter() {
-                    write!(f, "{} ", i)?;
+                for c in components.iter() {
+                    write!(f, "{c} ")?;
                 }
 
                 write!(f, ")")
             }
-            Self::Array { value_type, .. } => write!(f, "[{}]", value_type),
-            Self::Custom(s) => write!(f, "{}", s),
+            Self::Array { value_type, .. } => write!(f, "[{value_type}]"),
+            Self::Custom(s) => write!(f, "{s}"),
 
             Self::Auto => write!(f, "@auto"),
             Self::Bool => write!(f, "bool"),
