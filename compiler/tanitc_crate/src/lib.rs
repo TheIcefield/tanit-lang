@@ -236,7 +236,7 @@ impl Unit {
 
         if let Err(err) = self.ast.as_mut().unwrap().accept(&mut writer) {
             self.process_state = UnitProcessState::Failed;
-            eprintln!("Error: {}", err);
+            eprintln!("Error: {err}");
         } else {
             self.process_state = UnitProcessState::Generated;
             println!("OK!");
@@ -386,7 +386,7 @@ impl Unit {
             .expect("Error: can't create file for serializing symbol table");
 
         if let Err(err) = write!(stream, "{symbol_table:#?}") {
-            eprintln!("Error: {}", err);
+            eprintln!("Error: {err}");
         }
     }
 }

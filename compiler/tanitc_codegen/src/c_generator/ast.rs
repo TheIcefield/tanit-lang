@@ -173,7 +173,7 @@ impl CodeGenStream<'_> {
         writeln!(self, "typedef struct {{")?;
         for (field_id, field_info) in struct_def.fields.iter() {
             self.generate_type_spec(&field_info.ty)?;
-            write!(self, " {}", field_id)?;
+            write!(self, " {field_id}")?;
             writeln!(self, ";")?;
         }
         write!(self, "}} {}", struct_def.identifier)?;
@@ -191,7 +191,7 @@ impl CodeGenStream<'_> {
         writeln!(self, "typedef union {{")?;
         for (field_id, field_info) in union_def.fields.iter() {
             self.generate_type_spec(&field_info.ty)?;
-            write!(self, " {}", field_id)?;
+            write!(self, " {field_id}")?;
             writeln!(self, ";")?;
         }
         write!(self, "}} {}", union_def.identifier)?;
@@ -339,7 +339,7 @@ impl CodeGenStream<'_> {
             } => {
                 // write!(self, "(")?;
                 self.generate(lhs)?;
-                write!(self, " {} ", operation)?;
+                write!(self, " {operation} ")?;
                 self.generate(rhs)?;
                 // write!(self, ")")?;
             }
@@ -463,15 +463,15 @@ impl CodeGenStream<'_> {
 
     fn generate_value(&mut self, val: &Value) -> Result<(), std::io::Error> {
         match &val.kind {
-            ValueKind::Integer(val) => write!(self, "{}", *val)?,
-            ValueKind::Decimal(val) => write!(self, "{}", *val)?,
-            ValueKind::Identifier(val) => write!(self, "{}", val)?,
+            ValueKind::Integer(val) => write!(self, "{val}")?,
+            ValueKind::Decimal(val) => write!(self, "{val}")?,
+            ValueKind::Identifier(val) => write!(self, "{val}")?,
             ValueKind::Call {
                 identifier,
                 arguments,
             } => {
                 /* at this point, all arguments must be converted to positional */
-                write!(self, "{}(", identifier)?;
+                write!(self, "{identifier}(")?;
 
                 if !arguments.is_empty() {
                     self.generate_call_param(&arguments[0])?;

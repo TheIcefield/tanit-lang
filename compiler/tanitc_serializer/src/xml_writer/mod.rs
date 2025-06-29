@@ -86,7 +86,7 @@ impl XmlWriter<'_> {
         self.current_state.name = name.to_string();
 
         self.put_intent()?;
-        write!(self.stream, "<{}", name)?;
+        write!(self.stream, "<{name}")?;
 
         self.increase_intent();
 
@@ -119,7 +119,7 @@ impl XmlWriter<'_> {
                 "Parameters aren\'t allowed after internal tags",
             ));
         }
-        write!(self.stream, " {}=\"{}\"", key, value)?;
+        write!(self.stream, " {key}=\"{value}\"")?;
 
         Ok(())
     }

@@ -54,7 +54,7 @@ impl Lexer {
         let tkn = self.get_next(false);
 
         if self.verbose_tokens {
-            println!("{}", tkn);
+            println!("{tkn}");
         }
 
         tkn
@@ -64,7 +64,7 @@ impl Lexer {
         let tkn = self.get_next(true);
 
         if self.verbose_tokens {
-            println!("{}", tkn);
+            println!("{tkn}");
         }
 
         tkn

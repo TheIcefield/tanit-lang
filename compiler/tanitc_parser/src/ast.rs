@@ -264,9 +264,9 @@ impl Parser {
                     };
 
                     if enum_def.fields.contains_key(&identifier) {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             next.location,
-                            &format!("Enum has already field with identifier \"{}\"", id),
+                            format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
                     }
@@ -279,12 +279,9 @@ impl Parser {
                 Lexem::Lcb => {
                     return Err(Message::new(
                         next.location,
-                        &format!(
-                            "{}\nHelp: {}{}",
-                            "Unexpected token: \"{\" during parsing enum fields.",
-                            "If you tried to declare struct-like field, place \"{\" ",
-                            "in the same line with name of the field."
-                        ),
+                        "Unexpected token: \"{{\" during parsing enum fields.\n\
+                            Help: if you tried to declare struct-like field, place \"{{\" \
+                            in the same line with name of the field.",
                     ));
                 }
 
@@ -521,9 +518,9 @@ impl Parser {
                         self.consume_token(Lexem::Comma)?;
                         components.push(self.parse_expression()?);
                     } else {
-                        return Err(Message::new(
+                        return Err(Message::from_string(
                             next.location,
-                            &format!("Unexpected token \"{}\" within tuple", next),
+                            format!("Unexpected token \"{next}\" within tuple"),
                         ));
                     }
                 }
@@ -536,9 +533,9 @@ impl Parser {
 
             Lexem::Lsb => self.parse_array_value(),
 
-            _ => Err(Message::new(
+            _ => Err(Message::from_string(
                 next.location,
-                &format!("Unexpected token \"{}\" within expression", next),
+                format!("Unexpected token \"{next}\" within expression"),
             )),
         }
     }
@@ -1228,9 +1225,9 @@ impl Parser {
                     let identifier = self.consume_identifier()?;
 
                     if struct_def.fields.contains_key(&identifier) {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             next.location,
-                            &format!("Struct has already field with identifier {}", id),
+                            format!("Struct has already field with identifier {id}"),
                         ));
                         continue;
                     }
@@ -1315,9 +1312,9 @@ impl Parser {
                     let identifier = self.consume_identifier()?;
 
                     if union_def.fields.contains_key(&identifier) {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             next.location,
-                            &format!("Struct has already field with identifier {}", id),
+                            format!("Struct has already field with identifier {id}"),
                         ));
                         continue;
                     }
@@ -1732,21 +1729,19 @@ impl Parser {
         }
 
         if var_type.is_none() && rvalue.is_none() {
-            return Err(Message::new(
+            return Err(Message::from_string(
                 location,
-                &format!(
-                    "Variable {} defined without type. Need to specify type or use with rvalue",
-                    identifier
+                format!(
+                    "Variable \"{identifier}\" defined without type. Need to specify type or use with rvalue"
                 ),
             ));
         }
 
         if var_type.is_none() && is_global {
-            return Err(Message::new(
+            return Err(Message::from_string(
                 location,
-                &format!(
-                    "Variable {} defined without type, but marked as static. Need to specify type",
-                    identifier
+                format!(
+                    "Variable {identifier} defined without type, but marked as static. Need to specify type"
                 ),
             ));
         }
@@ -1828,9 +1823,9 @@ impl Parser {
                     let identifier = self.consume_identifier()?;
 
                     if variant_def.fields.contains_key(&identifier) {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             next.location,
-                            &format!("Enum has already field with identifier \"{}\"", id),
+                            format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
                     }
@@ -1845,12 +1840,9 @@ impl Parser {
                 Lexem::Lcb => {
                     return Err(Message::new(
                         next.location,
-                        &format!(
-                            "{}\nHelp: {}{}",
-                            "Unexpected token: \"{\" during parsing enum fields.",
-                            "If you tried to declare struct-like field, place \"{\" ",
-                            "in the same line with name of the field."
-                        ),
+                        "Unexpected token: \"{\" during parsing enum fields.\n\
+                            Help: If you tried to declare struct-like field, place \"{\" \
+                            in the same line with name of the field.",
                     ));
                 }
 
@@ -1926,9 +1918,9 @@ impl Parser {
                 Ok(())
             }
 
-            _ => Err(Message::new(
+            _ => Err(Message::from_string(
                 next.location,
-                &format!("Unexpected token during parsing enum: {}", next),
+                format!("Unexpected token during parsing enum: {next}"),
             )),
         }
     }
