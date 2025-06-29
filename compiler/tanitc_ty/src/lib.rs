@@ -103,7 +103,17 @@ impl Type {
                 if components.is_empty() {
                     "void".to_string()
                 } else {
-                    unimplemented!()
+                    let mut res = String::new();
+
+                    res.push_str("struct { ");
+
+                    components.iter().enumerate().for_each(|(c_idx, c_type)| {
+                        res.push_str(&format!("{} _{c_idx}; ", c_type.get_c_type()));
+                    });
+
+                    res.push('}');
+
+                    res
                 }
             }
             Self::Array { value_type, .. } => value_type.get_c_type(),
