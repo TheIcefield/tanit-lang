@@ -116,8 +116,6 @@ impl Analyzer {
                     &lhs_type.ty.as_str(),
                 ));
             }
-
-            println!("HELLO, WORLD: {lhs_type:?}");
         }
 
         Ok(None)
