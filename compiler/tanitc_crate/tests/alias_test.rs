@@ -3,7 +3,6 @@ use tanitc_ast::Ast;
 
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_ident::Ident;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 use tanitc_ty::Type;

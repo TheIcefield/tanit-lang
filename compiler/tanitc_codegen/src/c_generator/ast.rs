@@ -5,8 +5,7 @@ use tanitc_ast::{
     UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::location::Location;
-use tanitc_messages::Message;
+use tanitc_messages::{location::Location, Message};
 use tanitc_ty::{ArraySize, Type};
 
 use super::{CodeGenMode, CodeGenStream};
@@ -130,7 +129,7 @@ impl Visitor for CodeGenStream<'_> {
 impl CodeGenStream<'_> {
     fn codegen_err(err: std::io::Error) -> Message {
         Message {
-            location: Location::new(),
+            location: Location::default(),
             text: format!("Codegen error: {err}"),
         }
     }
@@ -267,7 +266,11 @@ impl CodeGenStream<'_> {
 
         let type_str = value_type.get_c_type();
         let var_name = var_def.identifier;
-        let mutable_str = if var_def.is_mutable { " " } else { " const " };
+        let mutable_str = if var_def.mutability.is_mut() {
+            " "
+        } else {
+            " const "
+        };
 
         write!(self, "{type_str}{mutable_str}{var_name}[{size}]")?;
 
@@ -284,7 +287,11 @@ impl CodeGenStream<'_> {
         write!(
             self,
             "{}{}",
-            if var_def.is_mutable { " " } else { " const " },
+            if var_def.mutability.is_mut() {
+                " "
+            } else {
+                " const "
+            },
             var_def.identifier
         )?;
 

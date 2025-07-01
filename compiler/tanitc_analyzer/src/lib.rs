@@ -1,7 +1,6 @@
 use tanitc_ast::attributes::Safety;
 use tanitc_ident::Ident;
-use tanitc_lexer::location::Location;
-use tanitc_messages::{Errors, Message, Warnings};
+use tanitc_messages::{location::Location, Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
 use tanitc_symbol_table::{entry::Entry, table::Table};
 use tanitc_ty::Type;
@@ -71,7 +70,7 @@ impl Analyzer {
 
     pub fn check_main(&self) -> Result<(), Message> {
         if self.table.lookup(Ident::from("main".to_string())).is_none() {
-            return Err(Message::new(Location::new(), "No entry point!"));
+            return Err(Message::new(Location::default(), "No entry point!"));
         }
 
         Ok(())

@@ -5,8 +5,7 @@ use tanitc_ast::{
     Ast, CallArg, CallArgKind, Expression, ExpressionKind, Value, ValueKind,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::location::Location;
-use tanitc_messages::Message;
+use tanitc_messages::{location::Location, Message};
 use tanitc_symbol_table::{
     entry::{EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData},
     type_info::TypeInfo,
@@ -35,7 +34,7 @@ impl Analyzer {
             };
 
             if let SymbolKind::VarDef(var_data) = &entry.kind {
-                if !var_data.is_mutable && does_mutate {
+                if var_data.mutability.is_const() && does_mutate {
                     return Err(Message {
                         location: *location,
                         text: format!("Mutable reference to immutable variable \"{id}\""),
@@ -71,11 +70,11 @@ impl Analyzer {
                         return Err(Message::undefined_variable(node.location, *id));
                     };
 
-                    if let Type::Ref { is_mutable, .. } = &var_data.var_type {
-                        if !*is_mutable && does_mutate {
+                    if let Type::Ref { mutability, .. } = &var_data.var_type {
+                        if mutability.is_const() && does_mutate {
                             return Err(Message::const_ref_mutation(node.location, *id));
                         }
-                    } else if !var_data.is_mutable && does_mutate {
+                    } else if var_data.mutability.is_const() && does_mutate {
                         return Err(Message::const_var_mutation(node.location, *id));
                     }
                 }
@@ -110,7 +109,7 @@ impl Analyzer {
                 ));
             }
 
-            if !lhs_type.is_mutable && does_mutate {
+            if lhs_type.mutability.is_const() && does_mutate {
                 return Err(Message::const_mutation(
                     lhs.location(),
                     &lhs_type.ty.as_str(),
@@ -401,7 +400,7 @@ impl Analyzer {
                     },
                 ..
             }) => {
-                if operation.does_mutate() && !var_data.is_mutable {
+                if operation.does_mutate() && var_data.mutability.is_const() {
                     return Err(Message::const_var_mutation(location, var_name));
                 }
 
@@ -440,16 +439,13 @@ impl Analyzer {
         lhs: &'a Ast,
         rhs: &'a mut Ast,
     ) -> Result<&'a mut Ast, Message> {
-        let mut loc = Location::new();
+        let loc = lhs.location();
 
         let lhs_id = match lhs {
             Ast::Value(Value {
-                location,
                 kind: ValueKind::Identifier(id),
-            }) => {
-                loc = *location;
-                *id
-            }
+                ..
+            }) => *id,
             _ => Ident::default(),
         };
 

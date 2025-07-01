@@ -1,25 +1,11 @@
 use std::fmt::Display;
 
-use tanitc_lexer::token::Lexem;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperation {
     Ref,    // &
     RefMut, // &mut
     Deref,  // *
     Not,    // !
-}
-
-impl TryFrom<Lexem> for UnaryOperation {
-    type Error = String;
-    fn try_from(value: Lexem) -> Result<Self, Self::Error> {
-        Ok(match value {
-            Lexem::Ampersand => UnaryOperation::Ref,
-            Lexem::Not => UnaryOperation::Not,
-            Lexem::Star => UnaryOperation::Deref,
-            _ => return Err(format!("Unexpected lexem: {value}")),
-        })
-    }
 }
 
 impl Display for UnaryOperation {
@@ -81,59 +67,6 @@ pub enum BinaryOperation {
     // Special
     Access, // ::
     Get,    // .
-}
-
-impl TryFrom<Lexem> for BinaryOperation {
-    type Error = String;
-    fn try_from(value: Lexem) -> Result<Self, Self::Error> {
-        Ok(match value {
-            // Arithmetic
-            Lexem::Plus => Self::Add,
-            Lexem::Minus => Self::Sub,
-            Lexem::Star => Self::Mul,
-            Lexem::Slash => Self::Div,
-            Lexem::Percent => Self::Mod,
-
-            // Self arithmetic
-            Lexem::Assign => Self::Assign,
-            Lexem::AddAssign => Self::AddAssign,
-            Lexem::SubAssign => Self::SubAssign,
-            Lexem::MulAssign => Self::MulAssign,
-            Lexem::DivAssign => Self::DivAssign,
-            Lexem::ModAssign => Self::ModAssign,
-
-            // Bitwise arithmetic
-            Lexem::Stick => Self::BitwiseOr,
-            Lexem::Xor => Self::BitwiseXor,
-            Lexem::Ampersand => Self::BitwiseAnd,
-            Lexem::LShift => Self::ShiftL,
-            Lexem::RShift => Self::ShiftR,
-
-            // Bitwise self arithmetic
-            Lexem::OrAssign => Self::BitwiseOrAssign,
-            Lexem::XorAssign => Self::BitwiseXorAssign,
-            Lexem::AndAssign => Self::BitwiseAndAssign,
-            Lexem::LShiftAssign => Self::BitwiseShiftLAssign,
-            Lexem::RShiftAssign => Self::BitwiseShiftRAssign,
-
-            // logical arithmethic
-            Lexem::Or => Self::LogicalOr,
-            Lexem::And => Self::LogicalAnd,
-            Lexem::Eq => Self::LogicalEq,
-            Lexem::Neq => Self::LogicalNe,
-            Lexem::Gt => Self::LogicalGt,
-            Lexem::Gte => Self::LogicalGe,
-            Lexem::Lt => Self::LogicalLt,
-            Lexem::Lte => Self::LogicalLe,
-
-            // Special
-            Lexem::Dcolon => Self::Access,
-            Lexem::Dot => Self::Get,
-
-            // Error
-            _ => return Err(format!("Unexpected lexem: {value}")),
-        })
-    }
 }
 
 impl Display for BinaryOperation {

@@ -1,8 +1,7 @@
 use expression_utils::{BinaryOperation, UnaryOperation};
 use tanitc_ident::Ident;
-use tanitc_lexer::{location::Location, token::Lexem};
-use tanitc_messages::Message;
-use tanitc_ty::Type;
+use tanitc_messages::{location::Location, Message};
+use tanitc_ty::{Mutability, Type};
 
 use std::collections::BTreeMap;
 
@@ -179,16 +178,19 @@ impl From<ModuleDef> for Ast {
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct FieldInfo {
-    pub ty: TypeSpec,
     pub attributes: attributes::FieldAttributes,
+    pub identifier: Ident,
+    pub ty: TypeSpec,
 }
+
+pub type Fields = BTreeMap<Ident, FieldInfo>;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
     pub attributes: attributes::StructAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, FieldInfo>,
+    pub fields: Fields,
     pub internals: Vec<Ast>,
 }
 
@@ -203,7 +205,7 @@ pub struct UnionDef {
     pub location: Location,
     pub attributes: attributes::UnionAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, FieldInfo>,
+    pub fields: Fields,
     pub internals: Vec<Ast>,
 }
 
@@ -295,7 +297,7 @@ pub struct VariableDef {
     pub identifier: Ident,
     pub var_type: TypeSpec,
     pub is_global: bool,
-    pub is_mutable: bool,
+    pub mutability: Mutability,
 }
 
 impl From<VariableDef> for Ast {
@@ -514,36 +516,5 @@ impl Ast {
 impl Default for Ast {
     fn default() -> Self {
         Self::Block(Block::default())
-    }
-}
-
-impl ExpressionKind {
-    pub fn new_unary(operator: Lexem, operand: Box<Ast>) -> Result<Self, Message> {
-        let operation = match UnaryOperation::try_from(operator) {
-            Ok(operation) => operation,
-            Err(err) => return Err(Message::new(operand.location(), &err)),
-        };
-
-        Ok(Self::Unary {
-            operation,
-            node: operand,
-        })
-    }
-
-    pub fn new_binary(operator: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Result<Self, Message> {
-        let operation = match BinaryOperation::try_from(operator) {
-            Ok(operation) => operation,
-            Err(err) => return Err(Message::new(lhs.location(), &err)),
-        };
-
-        Ok(match operation {
-            BinaryOperation::Access => Self::Access { lhs, rhs },
-            BinaryOperation::Get => Self::Get { lhs, rhs },
-            _ => Self::Binary {
-                operation,
-                lhs,
-                rhs,
-            },
-        })
     }
 }

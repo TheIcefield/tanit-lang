@@ -7,7 +7,6 @@ use tanitc_analyzer::{self, Analyzer};
 use tanitc_ast::Ast;
 use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
-use tanitc_lexer::Lexer;
 use tanitc_options::{AstSerializeMode, CompileOptions, CrateType};
 use tanitc_parser::Parser;
 use tanitc_symbol_table::table::Table;
@@ -77,7 +76,7 @@ impl Unit {
     }
 
     fn parse_program(parser: &mut Parser) -> Option<Ast> {
-        let res = parser.parse_global_block();
+        let res = parser.parse();
 
         if let Err(err) = &res {
             parser.error(err.clone());
@@ -110,10 +109,7 @@ impl Unit {
 
         print!("Parsing: \"{}\"... ", &self.path);
 
-        let mut lexer = Lexer::from_file(&self.path)?;
-        lexer.verbose_tokens = get_compile_options().verbose_tokens;
-
-        let mut parser = Parser::new(lexer);
+        let mut parser = Parser::new();
 
         self.ast = Self::parse_program(&mut parser);
 

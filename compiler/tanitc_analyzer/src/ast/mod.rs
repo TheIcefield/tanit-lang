@@ -6,8 +6,7 @@ use tanitc_ast::{
     UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VisitorMut,
 };
 use tanitc_ident::Ident;
-use tanitc_lexer::location::Location;
-use tanitc_messages::Message;
+use tanitc_messages::{location::Location, Message};
 use tanitc_symbol_table::{
     entry::{
         AliasDefData, Entry, EnumData, EnumDefData, FuncDefData, ModuleDefData, StructDefData,
@@ -16,7 +15,7 @@ use tanitc_symbol_table::{
     table::Table,
     type_info::{MemberInfo, TypeInfo},
 };
-use tanitc_ty::{ArraySize, Type};
+use tanitc_ty::{ArraySize, Mutability, Type};
 
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -244,7 +243,7 @@ impl VisitorMut for Analyzer {
             is_static: false,
             kind: SymbolKind::from(VarDefData {
                 var_type: var_def.var_type.get_type(),
-                is_mutable: var_def.is_mutable,
+                mutability: var_def.mutability,
                 is_initialization: false,
                 storage: VarStorageType::Auto,
             }),
@@ -494,7 +493,7 @@ impl Analyzer {
     fn get_alias_def_type(&self, alias_def: &AliasDef) -> TypeInfo {
         TypeInfo {
             ty: alias_def.value.get_type(),
-            is_mutable: false,
+            mutability: Mutability::Immutable,
             members: BTreeMap::new(),
         }
     }
@@ -503,12 +502,12 @@ impl Analyzer {
         let Some(mut type_info) = self.table.lookup_type(&var_def.var_type.ty) else {
             return TypeInfo {
                 ty: var_def.var_type.ty.clone(),
-                is_mutable: var_def.is_mutable,
+                mutability: var_def.mutability,
                 members: BTreeMap::new(),
             };
         };
 
-        type_info.is_mutable = var_def.is_mutable;
+        type_info.mutability = var_def.mutability;
         type_info
     }
 
@@ -526,7 +525,7 @@ impl Analyzer {
                 | BinaryOperation::LogicalGt
                 | BinaryOperation::LogicalGe => TypeInfo {
                     ty: Type::Bool,
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: BTreeMap::new(),
                 },
 
@@ -543,21 +542,21 @@ impl Analyzer {
             ExpressionKind::Unary { operation, node } => {
                 let node_type = self.get_type(node);
 
-                let (is_ref, is_mutable) = if *operation == UnaryOperation::Ref {
-                    (true, false)
+                let (is_ref, mutability) = if *operation == UnaryOperation::Ref {
+                    (true, Mutability::Immutable)
                 } else if *operation == UnaryOperation::RefMut {
-                    (true, true)
+                    (true, Mutability::Mutable)
                 } else {
-                    (false, false)
+                    (false, Mutability::Immutable)
                 };
 
                 if is_ref {
                     return TypeInfo {
                         ty: Type::Ref {
                             ref_to: Box::new(node_type.ty.clone()),
-                            is_mutable,
+                            mutability,
                         },
-                        is_mutable,
+                        mutability,
                         members: node_type.members,
                     };
                 }
@@ -566,7 +565,7 @@ impl Analyzer {
             }
             ExpressionKind::Conversion { ty, .. } => TypeInfo {
                 ty: ty.get_type(),
-                is_mutable: true,
+                mutability: Mutability::Mutable,
                 members: BTreeMap::new(),
             },
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
@@ -582,7 +581,7 @@ impl Analyzer {
             }
             ExpressionKind::Term { ty, .. } => TypeInfo {
                 ty: ty.clone(),
-                is_mutable: false,
+                mutability: Mutability::Immutable,
                 members: BTreeMap::new(),
             },
         }
@@ -593,26 +592,26 @@ impl Analyzer {
             ValueKind::Text(_) => TypeInfo {
                 ty: Type::Ref {
                     ref_to: Box::new(Type::Str),
-                    is_mutable: false,
+                    mutability: Mutability::Immutable,
                 },
-                is_mutable: false,
+                mutability: Mutability::Immutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Decimal(_) => TypeInfo {
                 ty: Type::F32,
-                is_mutable: true,
+                mutability: Mutability::Immutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Integer(_) => TypeInfo {
                 ty: Type::I32,
-                is_mutable: true,
+                mutability: Mutability::Mutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Identifier(id) => {
                 let Some(entry) = self.table.lookup(*id) else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -620,7 +619,7 @@ impl Analyzer {
                 let SymbolKind::VarDef(data) = &entry.kind else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -628,12 +627,12 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&data.var_type) else {
                     return TypeInfo {
                         ty: data.var_type.clone(),
-                        is_mutable: data.is_mutable,
+                        mutability: data.mutability,
                         members: BTreeMap::new(),
                     };
                 };
 
-                type_info.is_mutable = data.is_mutable;
+                type_info.mutability = data.mutability;
                 type_info
             }
             ValueKind::Struct { identifier, .. } => {
@@ -641,11 +640,11 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&ty) else {
                     return TypeInfo {
                         ty,
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
-                type_info.is_mutable = true;
+                type_info.mutability = Mutability::Mutable;
                 type_info
             }
             ValueKind::Tuple { components } => {
@@ -655,7 +654,7 @@ impl Analyzer {
                 }
                 TypeInfo {
                     ty: Type::Tuple(comp_vec.clone()),
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: {
                         let mut members = BTreeMap::<Ident, MemberInfo>::new();
                         for (comp_idx, comp_type) in comp_vec.iter().enumerate() {
@@ -679,7 +678,7 @@ impl Analyzer {
                             size: ArraySize::Unknown,
                             value_type: Box::new(Type::Auto),
                         },
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 }
@@ -689,7 +688,7 @@ impl Analyzer {
                         size: ArraySize::Fixed(len),
                         value_type: Box::new(self.get_type(&components[0]).ty),
                     },
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: BTreeMap::new(),
                 }
             }
@@ -697,7 +696,7 @@ impl Analyzer {
                 let Some(ss) = self.table.lookup(*identifier) else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -705,7 +704,7 @@ impl Analyzer {
                 let SymbolKind::FuncDef(data) = &ss.kind else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -713,12 +712,12 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&data.return_type) else {
                     return TypeInfo {
                         ty: data.return_type.clone(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
 
-                type_info.is_mutable = true;
+                type_info.mutability = Mutability::Mutable;
                 type_info
             }
         }
@@ -1056,9 +1055,9 @@ impl Analyzer {
         struct_comps: &BTreeMap<Ident, StructFieldData>,
     ) -> Result<(), Message> {
         if value_comps.len() != struct_comps.len() {
-            return Err(Message::new(
-                Location::new(),
-                &format!(
+            return Err(Message::from_string(
+                Location::default(),
+                format!(
                     "Struct \"{struct_name}\" consists of {} fields, but {} were supplied",
                     struct_comps.len(),
                     value_comps.len()
@@ -1079,23 +1078,23 @@ impl Analyzer {
             }
 
             if alias_to.is_none() && value_comp_type.ty != *struct_comp_type {
-                return Err(Message {
-                    location: value_comp.1.location(),
-                    text: format!(
+                return Err(Message::from_string(
+                    value_comp.1.location(),
+                    format!(
                         "Struct field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}",
                     ),
-                });
+                ));
             } else if alias_to
                 .as_ref()
                 .is_some_and(|ty| value_comp_type.ty != *ty)
             {
-                return Err(Message {
-                    location: value_comp.1.location(),
-                    text: format!(
+                return Err(Message::from_string(
+                    value_comp.1.location(),
+                    format!(
                         "Struct field named \"{value_comp_name}\" is {struct_comp_type} (aka: {}), but initialized like {value_comp_type}",
                         alias_to.unwrap()
                     ),
-                });
+                ));
             }
         }
 
@@ -1112,18 +1111,18 @@ impl Analyzer {
         let initialized_comp_size = value_comps.len();
 
         if union_comp_size == 0 && initialized_comp_size > 0 {
-            return Err(Message::new(
-                Location::new(),
-                &format!(
+            return Err(Message::from_string(
+                Location::default(),
+                format!(
                     "Union \"{union_name}\" has no fields, but were supplied {initialized_comp_size} fields",
                 ),
             ));
         }
 
         if union_comp_size > 0 && initialized_comp_size > 1 {
-            return Err(Message::new(
-                Location::new(),
-                &format!(
+            return Err(Message::from_string(
+                Location::default(),
+                format!(
                     "Only one union field must be initialized, but {initialized_comp_size} were initialized",
                 ),
             ));
@@ -1143,9 +1142,9 @@ impl Analyzer {
             }
 
             if alias_to.is_none() && value_comp_type.ty != *union_comp_type {
-                return Err(Message::new(
-                    Location::new(),
-                    &format!(
+                return Err(Message::from_string(
+                    Location::default(),
+                    format!(
                         "Union field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
                     ),
                 ));
@@ -1153,9 +1152,9 @@ impl Analyzer {
                 .as_ref()
                 .is_some_and(|ty| value_comp_type.ty != *ty)
             {
-                return Err(Message::new(
-                        Location::new(),
-                        &format!(
+                return Err(Message::from_string(
+                        Location::default(),
+                        format!(
                             "Union field named \"{value_comp_name}\" is {union_comp_type} (aka: {}), but initialized like {value_comp_type}",
                             alias_to.unwrap()
                         ),
@@ -1173,9 +1172,9 @@ impl Analyzer {
         tuple_comps: &BTreeMap<usize, StructFieldData>,
     ) -> Result<(), Message> {
         if value_comps.len() != tuple_comps.len() {
-            return Err(Message::new(
-                Location::new(),
-                &format!(
+            return Err(Message::from_string(
+                Location::default(),
+                format!(
                     "Tuple {} consists of {} fields, but {} were supplied",
                     if let Some(tuple_name) = tuple_name {
                         tuple_name.to_string()
@@ -1200,23 +1199,23 @@ impl Analyzer {
             }
 
             if alias_to.is_none() && value_comp_type.ty != *tuple_comp_type {
-                return Err(Message {
-                    location: value_comp.location(),
-                    text: format!(
+                return Err(Message::from_string(
+                    value_comp.location(),
+                    format!(
                         "Tuple component with index \"{comp_id}\" is {tuple_comp_type}, but initialized like {value_comp_type}",
                     ),
-                });
+                ));
             } else if alias_to
                 .as_ref()
                 .is_some_and(|ty| value_comp_type.ty != *ty)
             {
-                return Err(Message {
-                    location: value_comp.location(),
-                    text: format!(
+                return Err(Message::from_string(
+                    value_comp.location(),
+                    format!(
                         "Tuple component with index \"{comp_id}\" is {tuple_comp_type} (aka: {}), but initialized like {value_comp_type}",
                         alias_to.unwrap()
                     ),
-                });
+                ));
             }
         }
 
@@ -1281,7 +1280,7 @@ impl Analyzer {
             kind: SymbolKind::from(VarDefData {
                 storage: VarStorageType::Auto,
                 var_type: lhs.var_type.get_type(),
-                is_mutable: lhs.is_mutable,
+                mutability: lhs.mutability,
                 is_initialization: true,
             }),
         });

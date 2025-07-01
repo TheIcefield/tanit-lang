@@ -156,7 +156,7 @@ impl Visitor for XmlWriter<'_> {
         self.serialize_variable_attributes(&var_def.attributes)?;
 
         self.put_param("is-global", var_def.is_global)?;
-        self.put_param("is-mutable", var_def.is_mutable)?;
+        self.put_param("is-mutable", var_def.mutability.is_mut())?;
 
         self.visit_type_spec(&var_def.var_type)?;
 
@@ -491,9 +491,9 @@ impl XmlWriter<'_> {
 impl XmlWriter<'_> {
     fn serialize_type(&mut self, ty: &Type, info: ParsedTypeInfo) -> Result<(), Message> {
         match ty {
-            Type::Ref { ref_to, is_mutable } => {
+            Type::Ref { ref_to, mutability } => {
                 self.put_param("style", "reference")?;
-                self.put_param("is-mutable", is_mutable)?;
+                self.put_param("is-mutable", mutability.is_mut())?;
 
                 self.serialize_type(ref_to, info)?;
             }

@@ -10,5 +10,4 @@ tanitc_ident = { path = "../tanitc_ident" }
 tanitc_ty = { path = "../tanitc_ty" }
 tanitc_ast = { path = "../tanitc_ast" }
 tanitc_messages = { path = "../tanitc_messages" }
-tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_options = { path = "../tanitc_options" }

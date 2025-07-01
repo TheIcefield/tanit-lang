@@ -2,6 +2,23 @@ use tanitc_ident::Ident;
 
 use std::str::FromStr;
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mutability {
+    #[default]
+    Immutable,
+    Mutable,
+}
+
+impl Mutability {
+    pub fn is_mut(&self) -> bool {
+        *self == Self::Mutable
+    }
+
+    pub fn is_const(&self) -> bool {
+        *self == Self::Immutable
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ArraySize {
     Unknown,
@@ -12,7 +29,7 @@ pub enum ArraySize {
 pub enum Type {
     Ref {
         ref_to: Box<Type>,
-        is_mutable: bool,
+        mutability: Mutability,
     },
     Ptr(Box<Type>),
     Tuple(Vec<Type>),
@@ -111,9 +128,9 @@ impl Type {
             Self::F32 => "f32".to_string(),
             Self::F64 => "f54".to_string(),
             Self::Custom(id) => id.clone(),
-            Self::Ref { ref_to, is_mutable } => format!(
+            Self::Ref { ref_to, mutability } => format!(
                 "&{}{}",
-                if *is_mutable { "mut " } else { "" },
+                if mutability.is_mut() { "mut " } else { "" },
                 ref_to.as_str(),
             ),
             Self::Tuple(components) => {
@@ -150,10 +167,10 @@ impl Type {
             Self::F32 => "float".to_string(),
             Self::F64 => "double".to_string(),
             Self::Custom(id) => id.clone(),
-            Self::Ref { ref_to, is_mutable } => format!(
+            Self::Ref { ref_to, mutability } => format!(
                 "{}{}*",
                 ref_to.get_c_type(),
-                if !*is_mutable { " const " } else { " " }
+                if !mutability.is_mut() { " const " } else { " " }
             ),
             Self::Tuple(components) => {
                 if components.is_empty() {
@@ -211,16 +228,12 @@ impl Default for Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ref { ref_to, is_mutable } => {
-                write!(f, "&{}", if *is_mutable { "mut " } else { "" })?;
-
-                write!(f, "{ref_to}")
-            }
-            Self::Ptr(ptr_to) => {
-                write!(f, "*")?;
-
-                write!(f, "{ptr_to}")
-            }
+            Self::Ref { ref_to, mutability } => write!(
+                f,
+                "&{}{ref_to}",
+                if mutability.is_mut() { "mut " } else { "" }
+            ),
+            Self::Ptr(ptr_to) => write!(f, "*{ptr_to}"),
             Self::Template {
                 identifier,
                 generics,

@@ -1,5 +1,4 @@
-use tanitc_lexer::location::Location;
-use tanitc_messages::Message;
+use tanitc_messages::{location::Location, Message};
 
 pub mod ast;
 

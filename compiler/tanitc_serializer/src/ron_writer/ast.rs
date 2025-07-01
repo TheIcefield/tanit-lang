@@ -3,8 +3,7 @@ use tanitc_ast::{
     ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
 };
 
-use tanitc_lexer::location::Location;
-use tanitc_messages::Message;
+use tanitc_messages::{location::Location, Message};
 
 use super::RonWriter;
 

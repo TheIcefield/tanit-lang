@@ -9,7 +9,6 @@ pretty_assertions = "1"
 [dependencies]
 lazy_static = "1.5.0"
 tanitc_ast = { path = "../tanitc_ast" }
-tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_parser = { path = "../tanitc_parser" }
 tanitc_codegen = { path = "../tanitc_codegen" }
 tanitc_builder = { path = "../tanitc_builder" }

@@ -3,9 +3,15 @@ use std::fmt::Display;
 use tanitc_messages::Message;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Publicity {
+    #[default]
+    Private,
+    Public,
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Safety {
     #[default]
-    Inherited,
     Safe,
     Unsafe,
 }
@@ -14,13 +20,6 @@ impl Display for Safety {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Publicity {
-    #[default]
-    Private,
-    Public,
 }
 
 impl Display for Publicity {
