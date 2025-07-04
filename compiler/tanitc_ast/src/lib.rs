@@ -46,6 +46,17 @@ pub enum BranchKind {
     Else { body: Box<Ast> },
 }
 
+impl BranchKind {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Self::Loop { .. } => "loop",
+            Self::While { .. } => "while",
+            Self::If { .. } => "if",
+            Self::Else { .. } => "else",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Branch {
     pub location: Location,
@@ -68,9 +79,9 @@ pub enum ControlFlowKind {
 impl ControlFlowKind {
     pub fn to_str(&self) -> &'static str {
         match self {
-            ControlFlowKind::Continue => "continue",
-            ControlFlowKind::Break { .. } => "break",
-            ControlFlowKind::Return { .. } => "return",
+            Self::Continue => "continue",
+            Self::Break { .. } => "break",
+            Self::Return { .. } => "return",
         }
     }
 }
@@ -183,12 +194,14 @@ pub struct FieldInfo {
     pub attributes: attributes::FieldAttributes,
 }
 
+pub type Fields = BTreeMap<Ident, FieldInfo>;
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct StructDef {
     pub location: Location,
     pub attributes: attributes::StructAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, FieldInfo>,
+    pub fields: Fields,
     pub internals: Vec<Ast>,
 }
 
@@ -203,7 +216,7 @@ pub struct UnionDef {
     pub location: Location,
     pub attributes: attributes::UnionAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, FieldInfo>,
+    pub fields: Fields,
     pub internals: Vec<Ast>,
 }
 
@@ -308,16 +321,18 @@ impl From<VariableDef> for Ast {
 pub enum VariantField {
     #[default]
     Common,
-    StructLike(BTreeMap<Ident, TypeSpec>),
+    StructLike(Fields),
     TupleLike(Vec<TypeSpec>),
 }
+
+pub type VariantFields = BTreeMap<Ident, VariantField>;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct VariantDef {
     pub location: Location,
     pub attributes: attributes::VariantAttributes,
     pub identifier: Ident,
-    pub fields: BTreeMap<Ident, VariantField>,
+    pub fields: VariantFields,
     pub internals: Vec<Ast>,
 }
 

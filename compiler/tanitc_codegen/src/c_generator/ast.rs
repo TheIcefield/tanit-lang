@@ -1,8 +1,8 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ModuleDef, StructDef, TypeSpec,
-    UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, ModuleDef, StructDef,
+    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -631,14 +631,14 @@ impl CodeGenStream<'_> {
         &mut self,
         union_id: Ident,
         field_id: Ident,
-        subfields: &BTreeMap<Ident, TypeSpec>,
+        subfields: &Fields,
     ) -> Result<(), std::io::Error> {
         let struct_name = format!("{union_id}{field_id}__");
 
         writeln!(self, "typedef struct {{")?;
 
         for (subfield_id, subfield_type) in subfields.iter() {
-            let subfield_type = subfield_type.get_type().get_c_type();
+            let subfield_type = subfield_type.ty.get_type().get_c_type();
             writeln!(self, "    {subfield_type} {subfield_id};")?;
         }
 

@@ -471,7 +471,7 @@ impl XmlWriter<'_> {
                     self.begin_tag("field")?;
                     self.put_param("name", field_id)?;
 
-                    self.visit_type_spec(field_type)?;
+                    self.visit_type_spec(&field_type.ty)?;
 
                     self.end_tag()?;
                 }
