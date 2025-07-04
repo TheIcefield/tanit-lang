@@ -24,6 +24,14 @@ impl Parser {
         }
     }
 
+    pub fn from_text(src: &'static str) -> Result<Self, &'static str> {
+        Ok(Self {
+            lexer: Lexer::from_text(src)?,
+            errors: Errors::new(),
+            warnings: Warnings::new(),
+        })
+    }
+
     pub fn get_path(&self) -> String {
         self.lexer.get_path()
     }

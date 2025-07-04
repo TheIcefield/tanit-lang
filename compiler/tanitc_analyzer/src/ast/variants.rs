@@ -62,7 +62,7 @@ impl Analyzer {
                                 variant_fields.insert(
                                     *field_name,
                                     StructFieldData {
-                                        ty: field_ty.get_type(),
+                                        ty: field_ty.ty.get_type(),
                                     },
                                 );
                             }
