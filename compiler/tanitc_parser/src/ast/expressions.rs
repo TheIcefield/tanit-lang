@@ -640,3 +640,32 @@ fn binary_expression_test() {
 
     assert_eq!(ast, expected);
 }
+
+#[test]
+fn conversion_test() {
+    use tanitc_ast::{Value, ValueKind};
+    use tanitc_ty::Type;
+
+    const SRC_TEXT: &str = "45 as f32";
+
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Lexer creation failed");
+
+    let res = parser.parse_expression();
+    let Ok(Ast::Expression(expr)) = res else {
+        panic!("Expected expression, actually: {res:?}");
+    };
+
+    let ExpressionKind::Conversion { lhs, ty } = &expr.kind else {
+        panic!("Expected binary expression, actually: {:?}", expr.kind);
+    };
+
+    assert!(matches!(
+        lhs.as_ref(),
+        Ast::Value(Value {
+            kind: ValueKind::Integer(45),
+            ..
+        })
+    ));
+
+    assert!(matches!(ty.get_type(), Type::F32))
+}
