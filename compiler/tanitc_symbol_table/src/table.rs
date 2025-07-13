@@ -147,7 +147,7 @@ impl Table {
                     }
 
                     res = Some(TypeInfo {
-                        ty: Type::Custom(name.to_string()),
+                        ty: Type::Custom(name),
                         is_mutable: false,
                         members,
                     });
@@ -166,7 +166,7 @@ impl Table {
                     }
 
                     res = Some(TypeInfo {
-                        ty: Type::Custom(name.to_string()),
+                        ty: Type::Custom(name),
                         is_mutable: false,
                         members,
                     });
@@ -483,13 +483,11 @@ fn lookup_type_test() {
         }
     }
 
-    let s1 = table.lookup_type(&Type::Custom(s1_id.to_string())).unwrap();
+    let s1 = table.lookup_type(&Type::Custom(s1_id)).unwrap();
     assert_eq!(s1.members.len(), 2);
     assert!(s1.members.get(&f1_id).is_some());
     assert!(s1.members.get(&f2_id).is_some());
     assert!(s1.members.get(&m1_id).is_none());
 
-    assert!(table
-        .lookup_type(&Type::Custom(m2_id.to_string()))
-        .is_none());
+    assert!(table.lookup_type(&Type::Custom(m2_id)).is_none());
 }

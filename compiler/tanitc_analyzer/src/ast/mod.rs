@@ -10,8 +10,8 @@ use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
     entry::{
-        AliasDefData, Entry, EnumData, EnumDefData, FuncDefData, ModuleDefData, StructDefData,
-        StructFieldData, SymbolKind, UnionDefData, VarDefData, VarStorageType,
+        Entry, EnumData, EnumDefData, FuncDefData, ModuleDefData, StructDefData, StructFieldData,
+        SymbolKind, UnionDefData, VarDefData, VarStorageType,
     },
     table::Table,
     type_info::{MemberInfo, TypeInfo},
@@ -22,6 +22,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 
 use crate::Analyzer;
 
+pub mod aliases;
 pub mod expressions;
 pub mod variants;
 
@@ -254,22 +255,7 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_alias_def(&mut self, alias_def: &mut AliasDef) -> Result<(), Message> {
-        if self.has_symbol(alias_def.identifier) {
-            return Err(Message::multiple_ids(
-                alias_def.location,
-                alias_def.identifier,
-            ));
-        }
-
-        self.add_symbol(Entry {
-            name: alias_def.identifier,
-            is_static: true,
-            kind: SymbolKind::AliasDef(AliasDefData {
-                ty: alias_def.value.get_type(),
-            }),
-        });
-
-        Ok(())
+        self.analyze_alias_def(alias_def)
     }
 
     fn visit_expression(&mut self, expr: &mut Expression) -> Result<(), Message> {
@@ -637,7 +623,7 @@ impl Analyzer {
                 type_info
             }
             ValueKind::Struct { identifier, .. } => {
-                let ty = Type::Custom(identifier.to_string());
+                let ty = Type::Custom(*identifier);
                 let Some(mut type_info) = self.table.lookup_type(&ty) else {
                     return TypeInfo {
                         ty,
@@ -885,9 +871,7 @@ impl Analyzer {
 impl Analyzer {
     fn find_alias_value(&self, alias_type: &Type) -> Option<Type> {
         if let Type::Custom(id) = alias_type {
-            let type_id = Ident::from(id.clone());
-
-            let entry = self.table.lookup(type_id)?;
+            let entry = self.table.lookup(*id)?;
 
             let SymbolKind::AliasDef(alias_data) = &entry.kind else {
                 return None;
@@ -996,12 +980,10 @@ impl Analyzer {
             let ty = &alias_data.ty;
             match ty {
                 Type::Custom(id) => {
-                    let alias_to_id = Ident::from(id.clone());
-
-                    if let Some(entry) = self.table.lookup(alias_to_id) {
+                    if let Some(entry) = self.table.lookup(*id) {
                         object = entry.clone();
                     } else {
-                        return Err(Message::undefined_id(value.location, alias_to_id));
+                        return Err(Message::undefined_id(value.location, *id));
                     };
                 }
                 ty if ty.is_common() => {

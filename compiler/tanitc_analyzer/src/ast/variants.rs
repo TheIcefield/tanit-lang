@@ -169,7 +169,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name),
             },
         }))
     }
@@ -246,7 +246,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name),
             },
         }))
     }
@@ -340,7 +340,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name),
             },
         }))
     }

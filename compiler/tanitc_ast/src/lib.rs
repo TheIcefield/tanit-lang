@@ -301,7 +301,7 @@ impl From<Value> for Ast {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct VariableDef {
     pub location: Location,
     pub attributes: attributes::VariableAttributes,

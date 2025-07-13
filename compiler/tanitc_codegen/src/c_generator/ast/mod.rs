@@ -13,6 +13,8 @@ use super::{CodeGenMode, CodeGenStream};
 
 use std::{collections::BTreeMap, io::Write};
 
+pub mod aliases;
+
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         match self.generate_module_def(module_def) {
@@ -287,24 +289,6 @@ impl CodeGenStream<'_> {
             if var_def.is_mutable { " " } else { " const " },
             var_def.identifier
         )?;
-
-        Ok(())
-    }
-
-    fn generate_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        write!(
-            self,
-            "typedef {} {}",
-            alias_def.value.get_c_type(),
-            alias_def.identifier
-        )?;
-
-        writeln!(self, ";")?;
-
-        self.mode = old_mode;
 
         Ok(())
     }

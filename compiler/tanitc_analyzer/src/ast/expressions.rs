@@ -232,7 +232,7 @@ impl Analyzer {
                     location,
                     kind: ValueKind::Integer(enum_data.value),
                 })),
-                ty: Type::Custom(enum_data.enum_name.to_string()),
+                ty: Type::Custom(enum_data.enum_name),
             },
         }))
     }
@@ -296,7 +296,7 @@ impl Analyzer {
             location: node.location(),
             kind: ExpressionKind::Term {
                 node: value,
-                ty: Type::Custom(struct_name.to_string()),
+                ty: Type::Custom(struct_name),
             },
         };
 
@@ -345,7 +345,7 @@ impl Analyzer {
             location: node.location(),
             kind: ExpressionKind::Term {
                 node: value_clone,
-                ty: Type::Custom(union_name.to_string()),
+                ty: Type::Custom(union_name),
             },
         };
 

@@ -24,7 +24,7 @@ pub enum Type {
         identifier: Ident,
         generics: Vec<Type>,
     },
-    Custom(String),
+    Custom(Ident),
     Auto,
     Bool,
     U8,
@@ -110,7 +110,7 @@ impl Type {
             Self::I128 => "i128".to_string(),
             Self::F32 => "f32".to_string(),
             Self::F64 => "f54".to_string(),
-            Self::Custom(id) => id.clone(),
+            Self::Custom(id) => id.to_string(),
             Self::Ref { ref_to, is_mutable } => format!(
                 "&{}{}",
                 if *is_mutable { "mut " } else { "" },
@@ -149,7 +149,7 @@ impl Type {
             Self::I128 => "signed long long".to_string(),
             Self::F32 => "float".to_string(),
             Self::F64 => "double".to_string(),
-            Self::Custom(id) => id.clone(),
+            Self::Custom(id) => id.to_string(),
             Self::Ref { ref_to, is_mutable } => format!(
                 "{}{}*",
                 ref_to.get_c_type(),
@@ -197,7 +197,7 @@ impl std::str::FromStr for Type {
             "f32" => Ok(Type::F32),
             "f64" => Ok(Type::F64),
             "str" => Ok(Type::Str),
-            _ => Ok(Type::Custom(s.to_string())),
+            _ => Ok(Type::Custom(Ident::from(s.to_string()))),
         }
     }
 }
