@@ -24,7 +24,7 @@ impl Parser {
                     self.get_token();
                     UseIdentifier::BuiltInSuper
                 }
-                Lexem::KwSelf => {
+                Lexem::KwSelfT => {
                     self.get_token();
                     UseIdentifier::BuiltInSelf
                 }
@@ -54,7 +54,7 @@ impl Parser {
                         next,
                         &[
                             Lexem::KwSuper,
-                            Lexem::KwSelf,
+                            Lexem::KwSelfT,
                             Lexem::KwCrate,
                             Lexem::Identifier("".into()),
                         ],
@@ -83,5 +83,80 @@ impl Parser {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn use_test() {
+        const SRC_TEXT: &str = "use hello::world";
+
+        let hello_id = Ident::from("hello".to_string());
+        let world_id = Ident::from("world".to_string());
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+
+        let use_node = parser.parse_use().unwrap();
+        {
+            if parser.has_errors() {
+                panic!("{:?}", parser.get_errors());
+            }
+        }
+
+        let Ast::Use(u) = use_node else {
+            panic!("Expected Ast::Use, actually: {}", use_node.name());
+        };
+
+        assert_eq!(
+            u.identifier,
+            [
+                UseIdentifier::Identifier(hello_id),
+                UseIdentifier::Identifier(world_id),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_use_all_test() {
+        const SRC_TEXT: &str = "use crate::mod::*";
+
+        let mod_id = Ident::from("mod".to_string());
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+
+        let use_node = parser.parse_use().unwrap();
+        {
+            if parser.has_errors() {
+                panic!("{:?}", parser.get_errors());
+            }
+        }
+
+        let Ast::Use(u) = use_node else {
+            panic!("Expected Ast::Use, actually: {}", use_node.name());
+        };
+
+        assert_eq!(
+            u.identifier,
+            [
+                UseIdentifier::BuiltInCrate,
+                UseIdentifier::Identifier(mod_id),
+                UseIdentifier::BuiltInAll
+            ]
+        );
+    }
+
+    #[test]
+    fn use_all_wrong_test() {
+        const SRC_TEXT: &str = "use Self::mod::*::hi";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+
+        parser
+            .parse_use()
+            .err()
+            .expect("Expected fail on parse_use");
     }
 }
