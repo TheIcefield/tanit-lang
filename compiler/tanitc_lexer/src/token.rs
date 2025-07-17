@@ -67,7 +67,8 @@ pub enum Lexem {
     KwAlias,
     KwUse,
     KwSuper,
-    KwSelf,
+    KwSelfO, // self
+    KwSelfT, // Self
     KwCrate,
     KwExtern,
     KwStatic,
@@ -201,7 +202,8 @@ impl std::fmt::Display for Lexem {
             Self::KwModule => write!(f, "module"),
             Self::KwUse => write!(f, "use"),
             Self::KwSuper => write!(f, "super"),
-            Self::KwSelf => write!(f, "self"),
+            Self::KwSelfO => write!(f, "self"),
+            Self::KwSelfT => write!(f, "Self"),
             Self::KwCrate => write!(f, "crate"),
             Self::KwExtern => write!(f, "extern"),
             Self::KwStatic => write!(f, "static"),
