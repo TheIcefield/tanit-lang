@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, LinkedList};
 
-use tanitc_ast::attributes::Safety;
+use tanitc_attributes::{Mutability, Safety};
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
@@ -124,7 +124,7 @@ impl Table {
         if ty.is_common() {
             return Some(TypeInfo {
                 ty: ty.clone(),
-                is_mutable: false,
+                mutability: Mutability::default(),
                 members: BTreeMap::new(),
             });
         }
@@ -148,7 +148,7 @@ impl Table {
 
                     res = Some(TypeInfo {
                         ty: Type::Custom(name.to_string()),
-                        is_mutable: false,
+                        mutability: Mutability::default(),
                         members,
                     });
                 }
@@ -167,7 +167,7 @@ impl Table {
 
                     res = Some(TypeInfo {
                         ty: Type::Custom(name.to_string()),
-                        is_mutable: false,
+                        mutability: Mutability::default(),
                         members,
                     });
                 }
@@ -296,7 +296,7 @@ fn table_test() {
                 kind: SymbolKind::from(VarDefData {
                     storage: VarStorageType::Auto,
                     var_type: Type::I32,
-                    is_mutable: false,
+                    mutability: Mutability::default(),
                     is_initialization: true,
                 }),
             });

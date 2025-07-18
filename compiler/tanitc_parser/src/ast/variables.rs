@@ -2,6 +2,7 @@ use tanitc_ast::{
     attributes::VariableAttributes, Ast, Expression, ExpressionKind, ParsedTypeInfo, TypeSpec,
     VariableDef,
 };
+use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -33,18 +34,18 @@ impl Parser {
         };
 
         let next = self.peek_token();
-        let is_mutable = match next.lexem {
+        let mutability = match next.lexem {
             Lexem::KwMut => {
                 self.get_token();
-                true
+                Mutability::Mutable
             }
 
             Lexem::KwConst => {
                 self.get_token();
-                false
+                Mutability::Immutable
             }
 
-            _ => false,
+            _ => Mutability::default(),
         };
 
         let identifier = self.consume_identifier()?;
@@ -96,7 +97,7 @@ impl Parser {
                 ty: Type::Auto,
             }),
             is_global,
-            is_mutable,
+            mutability,
         });
 
         if let Some(rhs) = rvalue {

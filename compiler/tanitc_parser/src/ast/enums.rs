@@ -106,7 +106,7 @@ impl Parser {
 
 #[test]
 fn parse_enum_def_test() {
-    use tanitc_ast::attributes::Publicity;
+    use tanitc_attributes::Publicity;
     use tanitc_ident::Ident;
 
     const SRC_TEXT: &str = "\nenum MyEnum {\
@@ -142,7 +142,7 @@ fn parse_enum_def_test() {
 
 #[test]
 fn parse_empty_enum_def_test() {
-    use tanitc_ast::attributes::Publicity;
+    use tanitc_attributes::Publicity;
     const SRC_TEXT: &str = "\nenum EmptyEnum { }";
 
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
@@ -159,7 +159,7 @@ fn parse_empty_enum_def_test() {
 
 #[test]
 fn parse_enum_with_one_field_def_test() {
-    use tanitc_ast::attributes::Publicity;
+    use tanitc_attributes::Publicity;
     use tanitc_ident::Ident;
 
     const SRC_TEXT: &str = "\nenum MyEnum { MinsInHour: 60\n }";

@@ -45,7 +45,7 @@ fn extern_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"res\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"res\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n        <call-statement name=\"hello\"/>\

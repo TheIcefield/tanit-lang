@@ -158,7 +158,7 @@ fn alias_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"v\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"Vec\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"Vec\">\
@@ -270,7 +270,7 @@ fn alias_common_type_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"A\"/>\
                                 \n        </variable-definition>\
                                 \n        <literal style=\"integer-number\" value=\"100\"/>\
@@ -369,7 +369,7 @@ fn alias_custom_type_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"A\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"S\"/>\
@@ -475,7 +475,7 @@ fn alias_to_alias_type_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"B\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"S\"/>\

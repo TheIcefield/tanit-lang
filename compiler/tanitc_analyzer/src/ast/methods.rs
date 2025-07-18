@@ -1,4 +1,4 @@
-use tanitc_ast::{FunctionDef, ImplDef, VisitorMut};
+use tanitc_ast::{FunctionDef, ImplDef};
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
 
@@ -21,7 +21,9 @@ impl Analyzer {
 
     fn analyze_impl_methods(&mut self, methods: &mut [FunctionDef]) -> Result<(), Message> {
         for method in methods.iter_mut() {
-            match self.visit_func_def(method) {
+            const IS_METHOD: bool = true;
+
+            match self.analyze_func_def(method, IS_METHOD) {
                 Ok(_) => {}
                 Err(err) => self.error(err),
             }

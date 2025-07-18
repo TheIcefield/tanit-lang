@@ -1,4 +1,4 @@
-use tanitc_ast::attributes::Safety;
+use tanitc_attributes::Safety;
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::{Errors, Message, Warnings};

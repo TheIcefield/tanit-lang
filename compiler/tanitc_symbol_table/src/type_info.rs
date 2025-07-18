@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display};
 
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
@@ -12,7 +13,7 @@ pub struct MemberInfo {
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
     pub ty: Type,
-    pub is_mutable: bool,
+    pub mutability: Mutability,
     pub members: BTreeMap<Ident, MemberInfo>,
 }
 

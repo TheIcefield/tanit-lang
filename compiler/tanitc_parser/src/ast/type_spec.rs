@@ -1,4 +1,5 @@
 use tanitc_ast::{ParsedTypeInfo, TypeSpec};
+use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::{ArraySize, Type};
@@ -19,7 +20,7 @@ impl Parser {
         let mut info = ParsedTypeInfo::default();
 
         if matches!(self.peek_token().lexem, Lexem::KwMut) {
-            info.is_mut = true;
+            info.mutability = Mutability::Mutable;
             self.get_token();
         }
 
@@ -28,7 +29,7 @@ impl Parser {
         Ok((
             Type::Ref {
                 ref_to: Box::new(ref_to),
-                is_mutable: info.is_mut,
+                mutability: info.mutability,
             },
             info,
         ))
@@ -40,7 +41,7 @@ impl Parser {
         let mut info = ParsedTypeInfo::default();
 
         if matches!(self.peek_token().lexem, Lexem::KwMut) {
-            info.is_mut = true;
+            info.mutability = Mutability::Mutable;
             self.get_token();
         }
 

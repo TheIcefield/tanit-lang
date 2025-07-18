@@ -165,7 +165,7 @@ fn enum_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"automatic\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation style=\"access\">\
@@ -261,7 +261,7 @@ fn enum_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"Color\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\

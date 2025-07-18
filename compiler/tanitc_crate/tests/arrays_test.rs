@@ -37,14 +37,14 @@ fn array_work_test() {
                                 \n    <return-type>\
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
-                                \n    <variable-definition name=\"arr_1\" is-global=\"false\" is-mutable=\"true\">\
+                                \n    <variable-definition name=\"arr_1\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n        <type style=\"array\">\
                                 \n            <size value=\"6\"/>\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </type>\
                                 \n    </variable-definition>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"arr_2\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"arr_2\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"array\">\
                                 \n                <size value=\"3\"/>\
                                 \n                <type style=\"primitive\" name=\"i32\"/>\
@@ -57,7 +57,7 @@ fn array_work_test() {
                                 \n        </array-initialization>\
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"arr_3\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"arr_3\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"array\">\
                                 \n                <size value=\"3\"/>\
                                 \n                <type style=\"primitive\" name=\"f32\"/>\

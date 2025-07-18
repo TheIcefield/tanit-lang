@@ -1,9 +1,9 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, ImplDef, ModuleDef,
-    StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VariantField,
-    Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, FunctionParam, ImplDef,
+    ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef,
+    VariantField, Visitor,
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -240,42 +240,6 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 
-    fn generate_func_def(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = if func_def.body.is_some() {
-            CodeGenMode::Both
-        } else {
-            CodeGenMode::HeaderOnly
-        };
-
-        self.generate_type_spec(&func_def.return_type)?;
-
-        write!(self, " {}", func_def.identifier)?;
-
-        // generate parameters
-        write!(self, "(")?;
-        if !func_def.parameters.is_empty() {
-            self.generate(&func_def.parameters[0])?;
-        }
-
-        for param in func_def.parameters.iter().skip(1) {
-            write!(self, ", ")?;
-            self.generate(param)?;
-        }
-        write!(self, ")")?;
-
-        self.mode = CodeGenMode::HeaderOnly;
-        writeln!(self, ";")?;
-
-        if let Some(body) = &func_def.body {
-            self.mode = CodeGenMode::SourceOnly;
-            self.generate(body)?;
-        }
-
-        self.mode = old_mode;
-        Ok(())
-    }
-
     fn generate_variable_array_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {
         let ty = var_def.var_type.get_type();
         let Type::Array { size, value_type } = ty else {
@@ -288,7 +252,11 @@ impl CodeGenStream<'_> {
 
         let type_str = value_type.get_c_type();
         let var_name = var_def.identifier;
-        let mutable_str = if var_def.is_mutable { " " } else { " const " };
+        let mutable_str = if var_def.mutability.is_mutable() {
+            " "
+        } else {
+            " const "
+        };
 
         write!(self, "{type_str}{mutable_str}{var_name}[{size}]")?;
 
@@ -305,7 +273,11 @@ impl CodeGenStream<'_> {
         write!(
             self,
             "{}{}",
-            if var_def.is_mutable { " " } else { " const " },
+            if var_def.mutability.is_mutable() {
+                " "
+            } else {
+                " const "
+            },
             var_def.identifier
         )?;
 
@@ -551,6 +523,72 @@ impl CodeGenStream<'_> {
             }
             _ => todo!("Unimplemented for ({:?})", val.kind),
         }
+
+        Ok(())
+    }
+}
+
+// Function
+impl CodeGenStream<'_> {
+    fn generate_func_def(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
+        let old_mode = self.mode;
+        self.mode = if func_def.body.is_some() {
+            CodeGenMode::Both
+        } else {
+            CodeGenMode::HeaderOnly
+        };
+
+        self.generate_type_spec(&func_def.return_type)?;
+
+        write!(self, " {}", func_def.identifier)?;
+
+        self.generate_func_def_params(func_def)?;
+
+        self.mode = CodeGenMode::HeaderOnly;
+        writeln!(self, ";")?;
+
+        if let Some(body) = &func_def.body {
+            self.mode = CodeGenMode::SourceOnly;
+            self.generate(body)?;
+        }
+
+        self.mode = old_mode;
+        Ok(())
+    }
+
+    fn generate_func_def_param(&mut self, param: &FunctionParam) -> Result<(), std::io::Error> {
+        match param {
+            FunctionParam::SelfVal(mutability) => write!(
+                self,
+                "{}self",
+                if mutability.is_mutable() { "mut " } else { "" }
+            ),
+            FunctionParam::SelfRef(mutability) => write!(
+                self,
+                "&{}self",
+                if mutability.is_mutable() { "mut " } else { "" }
+            ),
+            FunctionParam::SelfPtr(mutability) => write!(
+                self,
+                "*{}self",
+                if mutability.is_mutable() { "mut " } else { "" }
+            ),
+            FunctionParam::Common(var_def) => self.generate_variable_def(var_def),
+        }
+    }
+
+    fn generate_func_def_params(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
+        write!(self, "(")?;
+        if !func_def.parameters.is_empty() {
+            let param = func_def.parameters.first().unwrap();
+            self.generate_func_def_param(param)?;
+        }
+
+        for param in func_def.parameters.iter().skip(1) {
+            write!(self, ", ")?;
+            self.generate_func_def_param(param)?;
+        }
+        write!(self, ")")?;
 
         Ok(())
     }

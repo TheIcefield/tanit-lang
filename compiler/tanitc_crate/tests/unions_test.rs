@@ -54,7 +54,7 @@ fn union_work_test() {
                                 \n    <block>\
                                 \n        <attributes safety=\"Unsafe\"/>\
                                 \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <variable-definition name=\"s\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n                <type style=\"named\" name=\"MyUnion\"/>\
                                 \n            </variable-definition>\
                                 \n            <struct-initialization name=\"MyUnion\">\
@@ -152,7 +152,7 @@ fn union_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"u\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"u\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"MyUnion\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\

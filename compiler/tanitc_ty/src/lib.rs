@@ -1,3 +1,4 @@
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 
 use std::str::FromStr;
@@ -12,7 +13,7 @@ pub enum ArraySize {
 pub enum Type {
     Ref {
         ref_to: Box<Type>,
-        is_mutable: bool,
+        mutability: Mutability,
     },
     Ptr(Box<Type>),
     Tuple(Vec<Type>),
@@ -111,9 +112,9 @@ impl Type {
             Self::F32 => "f32".to_string(),
             Self::F64 => "f54".to_string(),
             Self::Custom(id) => id.clone(),
-            Self::Ref { ref_to, is_mutable } => format!(
+            Self::Ref { ref_to, mutability } => format!(
                 "&{}{}",
-                if *is_mutable { "mut " } else { "" },
+                if mutability.is_mutable() { "mut " } else { "" },
                 ref_to.as_str(),
             ),
             Self::Tuple(components) => {
@@ -150,10 +151,14 @@ impl Type {
             Self::F32 => "float".to_string(),
             Self::F64 => "double".to_string(),
             Self::Custom(id) => id.clone(),
-            Self::Ref { ref_to, is_mutable } => format!(
+            Self::Ref { ref_to, mutability } => format!(
                 "{}{}*",
                 ref_to.get_c_type(),
-                if !*is_mutable { " const " } else { " " }
+                if mutability.is_const() {
+                    " const "
+                } else {
+                    " "
+                }
             ),
             Self::Tuple(components) => {
                 if components.is_empty() {
@@ -211,8 +216,8 @@ impl Default for Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ref { ref_to, is_mutable } => {
-                write!(f, "&{}", if *is_mutable { "mut " } else { "" })?;
+            Self::Ref { ref_to, mutability } => {
+                write!(f, "&{}", if mutability.is_mutable() { "mut " } else { "" })?;
 
                 write!(f, "{ref_to}")
             }

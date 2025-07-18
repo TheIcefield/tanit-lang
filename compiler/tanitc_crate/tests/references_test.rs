@@ -72,14 +72,14 @@ fn mutable_deref_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"value\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"value\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n        <literal style=\"integer-number\" value=\"50\"/>\
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"ref\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"reference\" is-mutable=\"true\" style=\"primitive\" name=\"i32\"/>\
+                                \n        <variable-definition name=\"ref\" is-global=\"false\" mutability=\"Immutable\">\
+                                \n            <type style=\"reference\" mutability=\"Mutable\" style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation style=\"unary\" operation=\"&mut\">\
                                 \n            <identifier name=\"value\"/>\
@@ -234,8 +234,8 @@ fn mutable_deref_param_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <parameters>\
-                                \n        <variable-definition name=\"p\" is-global=\"false\" is-mutable=\"false\">\
-                                \n            <type style=\"reference\" is-mutable=\"true\" style=\"primitive\" name=\"i32\"/>\
+                                \n        <variable-definition name=\"p\" is-global=\"false\" mutability=\"Immutable\">\
+                                \n            <type style=\"reference\" mutability=\"Mutable\" style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
                                 \n    <operation style=\"unary\" operation=\"*\">\
@@ -250,7 +250,7 @@ fn mutable_deref_param_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"value\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"value\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n        <literal style=\"integer-number\" value=\"50\"/>\
