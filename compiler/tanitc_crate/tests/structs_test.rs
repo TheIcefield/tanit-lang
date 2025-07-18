@@ -54,7 +54,7 @@ fn struct_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"s\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"s\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"named\" name=\"MyStruct\"/>\
                                 \n        </variable-definition>\
                                 \n        <struct-initialization name=\"MyStruct\">\
@@ -164,7 +164,7 @@ fn struct_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"vec\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"vec\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"named\" name=\"Vector2\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
@@ -321,7 +321,7 @@ fn internal_struct_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"pnt\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"pnt\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"named\" name=\"Point2\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\

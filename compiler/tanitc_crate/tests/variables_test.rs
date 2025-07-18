@@ -51,7 +51,7 @@ fn variables_test() {
 
     if let Ast::VariableDef(node) = &res[0] {
         assert!(node.identifier == pi_id);
-        assert!(!node.is_mutable);
+        assert!(node.mutability.is_const());
         assert!(!node.is_global);
         assert_eq!(node.var_type.get_type(), Type::F32);
     } else {
@@ -74,7 +74,7 @@ fn variables_test() {
         if let Ast::VariableDef(node) = lhs {
             assert!(node.identifier == radian_id);
             assert!(!node.is_global);
-            assert!(!node.is_mutable);
+            assert!(node.mutability.is_const());
         } else {
             panic!("Expected variable definition")
         }
@@ -109,7 +109,7 @@ fn variables_test() {
                 if let Ast::VariableDef(node) = lhs.as_ref() {
                     assert!(node.identifier == ceil_id);
                     assert!(!node.is_global);
-                    assert!(!node.is_mutable);
+                    assert!(node.mutability.is_const());
                 } else {
                     panic!("Expected variable definition")
                 }

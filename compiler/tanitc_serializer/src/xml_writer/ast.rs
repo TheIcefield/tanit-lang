@@ -1,9 +1,10 @@
 use tanitc_ast::{
     attributes, AliasDef, Block, Branch, BranchKind, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FieldInfo, FunctionDef, ImplDef, ModuleDef,
-    ParsedTypeInfo, StructDef, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind,
+    EnumDef, Expression, ExpressionKind, ExternDef, FieldInfo, FunctionDef, FunctionParam, ImplDef,
+    ModuleDef, ParsedTypeInfo, StructDef, TypeSpec, UnionDef, Use, UseIdentifier, Value, ValueKind,
     VariableDef, VariantDef, VariantField, Visitor,
 };
+use tanitc_attributes::{Mutability, Publicity, Safety};
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
 use tanitc_ty::{ArraySize, Type};
@@ -122,30 +123,7 @@ impl Visitor for XmlWriter<'_> {
     }
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
-        self.begin_tag("function-definition")?;
-        self.put_param("name", func_def.identifier)?;
-
-        self.serialize_func_attributes(&func_def.attributes)?;
-
-        self.begin_tag("return-type")?;
-        self.visit_type_spec(&func_def.return_type)?;
-        self.end_tag()?;
-
-        if !func_def.parameters.is_empty() {
-            self.begin_tag("parameters")?;
-            for param in func_def.parameters.iter() {
-                param.accept(self)?;
-            }
-            self.end_tag()?;
-        }
-
-        if let Some(body) = &func_def.body {
-            body.accept(self)?;
-        }
-
-        self.end_tag()?;
-
-        Ok(())
+        self.serialize_func_def(func_def)
     }
 
     fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
@@ -169,7 +147,7 @@ impl Visitor for XmlWriter<'_> {
         self.serialize_variable_attributes(&var_def.attributes)?;
 
         self.put_param("is-global", var_def.is_global)?;
-        self.put_param("is-mutable", var_def.is_mutable)?;
+        self.serialize_mutability(&var_def.mutability)?;
 
         self.visit_type_spec(&var_def.var_type)?;
 
@@ -504,15 +482,15 @@ impl XmlWriter<'_> {
 impl XmlWriter<'_> {
     fn serialize_type(&mut self, ty: &Type, info: ParsedTypeInfo) -> Result<(), Message> {
         match ty {
-            Type::Ref { ref_to, is_mutable } => {
+            Type::Ref { ref_to, mutability } => {
                 self.put_param("style", "reference")?;
-                self.put_param("is-mutable", is_mutable)?;
+                self.serialize_mutability(mutability)?;
 
                 self.serialize_type(ref_to, info)?;
             }
             Type::Ptr(ptr_to) => {
                 self.put_param("style", "pointer")?;
-                self.put_param("is-mutable", info.is_mut)?;
+                self.serialize_mutability(&info.mutability)?;
 
                 self.serialize_type(ptr_to, info)?;
             }
@@ -637,14 +615,20 @@ impl XmlWriter<'_> {
 
 // Attributes
 impl XmlWriter<'_> {
-    fn serialize_safety(&mut self, safety: &attributes::Safety) -> Result<(), Message> {
+    fn serialize_safety(&mut self, safety: &Safety) -> Result<(), Message> {
         self.put_param("safety", safety)?;
 
         Ok(())
     }
 
-    fn serialize_publicity(&mut self, publicity: &attributes::Publicity) -> Result<(), Message> {
+    fn serialize_publicity(&mut self, publicity: &Publicity) -> Result<(), Message> {
         self.put_param("publicity", publicity)?;
+
+        Ok(())
+    }
+
+    fn serialize_mutability(&mut self, mutability: &Mutability) -> Result<(), Message> {
+        self.put_param("mutability", mutability)?;
 
         Ok(())
     }
@@ -802,6 +786,66 @@ impl XmlWriter<'_> {
         self.end_tag()?;
 
         Ok(())
+    }
+}
+
+// Functions
+impl XmlWriter<'_> {
+    fn serialize_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
+        self.begin_tag("function-definition")?;
+        self.put_param("name", func_def.identifier)?;
+
+        self.serialize_func_attributes(&func_def.attributes)?;
+
+        self.begin_tag("return-type")?;
+        self.visit_type_spec(&func_def.return_type)?;
+        self.end_tag()?;
+
+        if !func_def.parameters.is_empty() {
+            self.begin_tag("parameters")?;
+            for param in func_def.parameters.iter() {
+                self.serialize_func_def_param(param)?;
+            }
+            self.end_tag()?;
+        }
+
+        if let Some(body) = &func_def.body {
+            body.accept(self)?;
+        }
+
+        self.end_tag()?;
+
+        Ok(())
+    }
+
+    fn serialize_func_def_param(&mut self, param: &FunctionParam) -> Result<(), Message> {
+        match param {
+            FunctionParam::SelfVal(mutability) => {
+                self.begin_tag("self")?;
+                self.put_param("style", "value")?;
+                self.serialize_mutability(mutability)?;
+                self.end_tag()?;
+
+                Ok(())
+            }
+            FunctionParam::SelfRef(mutability) => {
+                self.begin_tag("self")?;
+                self.put_param("style", "reference")?;
+                self.serialize_mutability(mutability)?;
+                self.end_tag()?;
+
+                Ok(())
+            }
+            FunctionParam::SelfPtr(mutability) => {
+                self.begin_tag("self")?;
+                self.put_param("style", "pointer")?;
+                self.serialize_mutability(mutability)?;
+                self.end_tag()?;
+
+                Ok(())
+            }
+            FunctionParam::Common(var_def) => self.visit_variable_def(var_def),
+        }
     }
 }
 

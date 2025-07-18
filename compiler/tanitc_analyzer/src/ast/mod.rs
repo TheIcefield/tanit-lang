@@ -5,6 +5,7 @@ use tanitc_ast::{
     EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ImplDef, ModuleDef, StructDef,
     TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, VisitorMut,
 };
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
@@ -23,6 +24,7 @@ use std::{cmp::Ordering, collections::BTreeMap};
 use crate::Analyzer;
 
 pub mod expressions;
+pub mod functions;
 pub mod methods;
 pub mod variants;
 
@@ -179,54 +181,7 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
-        if self.has_symbol(func_def.identifier) {
-            return Err(Message::multiple_ids(
-                func_def.location,
-                func_def.identifier,
-            ));
-        }
-
-        let mut scope_info = self.table.get_scope_info();
-        scope_info.safety = func_def.attributes.safety;
-        scope_info.is_in_func = true;
-
-        self.table.enter_scope(scope_info);
-
-        let mut parameters = Vec::<(Ident, Type)>::new();
-        for p in func_def.parameters.iter_mut() {
-            let Ast::VariableDef(param_def) = p else {
-                return Err(Message::from_string(
-                    p.location(),
-                    format!("Unexpected param node type: {}", p.name()),
-                ));
-            };
-
-            if let Err(err) = self.visit_variable_def(param_def) {
-                self.error(err);
-            } else {
-                parameters.push((param_def.identifier, param_def.var_type.get_type()));
-            }
-        }
-
-        if let Some(body) = &mut func_def.body {
-            body.accept_mut(self)?;
-        }
-
-        self.table.exit_scope();
-
-        self.add_symbol(Entry {
-            name: func_def.identifier,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters,
-                return_type: func_def.return_type.get_type(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: func_def.return_type.get_type() == Type::unit(),
-            }),
-        });
-
-        Ok(())
+        self.analyze_func_def(func_def, true)
     }
 
     fn visit_extern_def(&mut self, extern_def: &mut ExternDef) -> Result<(), Message> {
@@ -249,7 +204,7 @@ impl VisitorMut for Analyzer {
             is_static: false,
             kind: SymbolKind::from(VarDefData {
                 var_type: var_def.var_type.get_type(),
-                is_mutable: var_def.is_mutable,
+                mutability: var_def.mutability,
                 is_initialization: false,
                 storage: VarStorageType::Auto,
             }),
@@ -499,7 +454,7 @@ impl Analyzer {
     fn get_alias_def_type(&self, alias_def: &AliasDef) -> TypeInfo {
         TypeInfo {
             ty: alias_def.value.get_type(),
-            is_mutable: false,
+            mutability: Mutability::default(),
             members: BTreeMap::new(),
         }
     }
@@ -508,12 +463,12 @@ impl Analyzer {
         let Some(mut type_info) = self.table.lookup_type(&var_def.var_type.ty) else {
             return TypeInfo {
                 ty: var_def.var_type.ty.clone(),
-                is_mutable: var_def.is_mutable,
+                mutability: var_def.mutability,
                 members: BTreeMap::new(),
             };
         };
 
-        type_info.is_mutable = var_def.is_mutable;
+        type_info.mutability = var_def.mutability;
         type_info
     }
 
@@ -531,7 +486,7 @@ impl Analyzer {
                 | BinaryOperation::LogicalGt
                 | BinaryOperation::LogicalGe => TypeInfo {
                     ty: Type::Bool,
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: BTreeMap::new(),
                 },
 
@@ -548,21 +503,21 @@ impl Analyzer {
             ExpressionKind::Unary { operation, node } => {
                 let node_type = self.get_type(node);
 
-                let (is_ref, is_mutable) = if *operation == UnaryOperation::Ref {
-                    (true, false)
+                let (is_ref, mutability) = if *operation == UnaryOperation::Ref {
+                    (true, Mutability::Immutable)
                 } else if *operation == UnaryOperation::RefMut {
-                    (true, true)
+                    (true, Mutability::Mutable)
                 } else {
-                    (false, false)
+                    (false, Mutability::Immutable)
                 };
 
                 if is_ref {
                     return TypeInfo {
                         ty: Type::Ref {
                             ref_to: Box::new(node_type.ty.clone()),
-                            is_mutable,
+                            mutability,
                         },
-                        is_mutable,
+                        mutability,
                         members: node_type.members,
                     };
                 }
@@ -571,7 +526,7 @@ impl Analyzer {
             }
             ExpressionKind::Conversion { ty, .. } => TypeInfo {
                 ty: ty.get_type(),
-                is_mutable: true,
+                mutability: Mutability::Mutable,
                 members: BTreeMap::new(),
             },
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
@@ -587,7 +542,7 @@ impl Analyzer {
             }
             ExpressionKind::Term { ty, .. } => TypeInfo {
                 ty: ty.clone(),
-                is_mutable: false,
+                mutability: Mutability::Immutable,
                 members: BTreeMap::new(),
             },
         }
@@ -598,26 +553,26 @@ impl Analyzer {
             ValueKind::Text(_) => TypeInfo {
                 ty: Type::Ref {
                     ref_to: Box::new(Type::Str),
-                    is_mutable: false,
+                    mutability: Mutability::Immutable,
                 },
-                is_mutable: false,
+                mutability: Mutability::Immutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Decimal(_) => TypeInfo {
                 ty: Type::F32,
-                is_mutable: true,
+                mutability: Mutability::Mutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Integer(_) => TypeInfo {
                 ty: Type::I32,
-                is_mutable: true,
+                mutability: Mutability::Mutable,
                 members: BTreeMap::new(),
             },
             ValueKind::Identifier(id) => {
                 let Some(entry) = self.table.lookup(*id) else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -625,7 +580,7 @@ impl Analyzer {
                 let SymbolKind::VarDef(data) = &entry.kind else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -633,12 +588,12 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&data.var_type) else {
                     return TypeInfo {
                         ty: data.var_type.clone(),
-                        is_mutable: data.is_mutable,
+                        mutability: data.mutability,
                         members: BTreeMap::new(),
                     };
                 };
 
-                type_info.is_mutable = data.is_mutable;
+                type_info.mutability = data.mutability;
                 type_info
             }
             ValueKind::Struct { identifier, .. } => {
@@ -646,11 +601,11 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&ty) else {
                     return TypeInfo {
                         ty,
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
-                type_info.is_mutable = true;
+                type_info.mutability = Mutability::Mutable;
                 type_info
             }
             ValueKind::Tuple { components } => {
@@ -660,7 +615,7 @@ impl Analyzer {
                 }
                 TypeInfo {
                     ty: Type::Tuple(comp_vec.clone()),
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: {
                         let mut members = BTreeMap::<Ident, MemberInfo>::new();
                         for (comp_idx, comp_type) in comp_vec.iter().enumerate() {
@@ -684,7 +639,7 @@ impl Analyzer {
                             size: ArraySize::Unknown,
                             value_type: Box::new(Type::Auto),
                         },
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 }
@@ -694,7 +649,7 @@ impl Analyzer {
                         size: ArraySize::Fixed(len),
                         value_type: Box::new(self.get_type(&components[0]).ty),
                     },
-                    is_mutable: true,
+                    mutability: Mutability::Mutable,
                     members: BTreeMap::new(),
                 }
             }
@@ -702,7 +657,7 @@ impl Analyzer {
                 let Some(ss) = self.table.lookup(*identifier) else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -710,7 +665,7 @@ impl Analyzer {
                 let SymbolKind::FuncDef(data) = &ss.kind else {
                     return TypeInfo {
                         ty: Type::new(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
@@ -718,12 +673,12 @@ impl Analyzer {
                 let Some(mut type_info) = self.table.lookup_type(&data.return_type) else {
                     return TypeInfo {
                         ty: data.return_type.clone(),
-                        is_mutable: true,
+                        mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                     };
                 };
 
-                type_info.is_mutable = true;
+                type_info.mutability = Mutability::Mutable;
                 type_info
             }
         }
@@ -1286,7 +1241,7 @@ impl Analyzer {
             kind: SymbolKind::from(VarDefData {
                 storage: VarStorageType::Auto,
                 var_type: lhs.var_type.get_type(),
-                is_mutable: lhs.is_mutable,
+                mutability: lhs.mutability,
                 is_initialization: true,
             }),
         });

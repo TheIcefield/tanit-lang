@@ -70,7 +70,7 @@ fn variant_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v1\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"v1\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"MyVariant\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
@@ -89,7 +89,7 @@ fn variant_work_test() {
                                 \n        </operation>\
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v3\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"v3\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"MyVariant\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
@@ -256,7 +256,7 @@ fn variant_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v1\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"v1\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"MyVariant\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\
@@ -275,7 +275,7 @@ fn variant_in_module_work_test() {
                                 \n        </operation>\
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v3\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"v3\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"named\" name=\"MyVariant\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation>\

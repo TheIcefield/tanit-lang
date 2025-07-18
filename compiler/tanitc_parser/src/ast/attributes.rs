@@ -1,4 +1,5 @@
-use tanitc_ast::attributes::{ParsedAttributes, Publicity, Safety};
+use tanitc_ast::attributes::ParsedAttributes;
+use tanitc_attributes::{Publicity, Safety};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 

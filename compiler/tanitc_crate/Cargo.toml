@@ -5,6 +5,7 @@ edition = "2021"
 
 [dev-dependencies]
 pretty_assertions = "1"
+tanitc_attributes = { path = "../tanitc_attributes" }
 
 [dependencies]
 lazy_static = "1.5.0"

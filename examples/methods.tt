@@ -5,10 +5,9 @@ struct MyStruct
 }
 impl MyStruct
 {
-
+    func new(): MyStruct {
+        return MyStruct { f1: 1, f2: 2.0 }
+    }
 }
 func main() {
-    var s = MyStruct {
-              f1: 1, f2: 2.0
-            }
 }

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
@@ -27,7 +28,7 @@ pub enum VarStorageType {
 pub struct VarDefData {
     pub storage: VarStorageType,
     pub var_type: Type,
-    pub is_mutable: bool,
+    pub mutability: Mutability,
     pub is_initialization: bool,
 }
 

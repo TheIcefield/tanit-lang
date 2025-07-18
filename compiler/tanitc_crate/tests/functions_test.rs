@@ -26,10 +26,10 @@ fn function_def_test() {
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
                                 \n    <parameters>\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"true\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Mutable\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
@@ -46,7 +46,7 @@ fn function_def_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"ret\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"ret\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n        <call-statement name=\"sum\">\
@@ -133,10 +133,10 @@ fn functions_test() {
                                 \n        <type style=\"primitive\" name=\"f32\"/>\
                                 \n    </return-type>\
                                 \n    <parameters>\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n    </parameters>\
@@ -157,13 +157,13 @@ fn functions_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"param\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"param\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"i32\"/>\
                                 \n        </variable-definition>\
                                 \n        <literal style=\"integer-number\" value=\"34\"/>\
                                 \n    </operation>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"res\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"res\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"primitive\" name=\"f32\"/>\
                                 \n        </variable-definition>\
                                 \n        <call-statement name=\"f\">\
@@ -265,7 +265,7 @@ fn function_in_module_work_test() {
                                 \n            <type style=\"named\" name=\"Color\"/>\
                                 \n        </return-type>\
                                 \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <variable-definition name=\"ret\" is-global=\"false\" is-mutable=\"false\">\
+                                \n            <variable-definition name=\"ret\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n                <type style=\"named\" name=\"Color\"/>\
                                 \n            </variable-definition>\
                                 \n            <operation>\
@@ -282,7 +282,7 @@ fn function_in_module_work_test() {
                                 \n        <type style=\"tuple\"/>\
                                 \n    </return-type>\
                                 \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"green\" is-global=\"false\" is-mutable=\"false\">\
+                                \n        <variable-definition name=\"green\" is-global=\"false\" mutability=\"Immutable\">\
                                 \n            <type style=\"tuple\"/>\
                                 \n        </variable-definition>\
                                 \n        <operation style=\"access\">\

@@ -1,4 +1,5 @@
-use tanitc_ast::{Ast, FunctionDef, ParsedTypeInfo, TypeSpec, VariableDef};
+use tanitc_ast::{Ast, FunctionDef, FunctionParam, ParsedTypeInfo, TypeSpec, VariableDef};
+use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -28,39 +29,99 @@ impl Parser {
         Ok(())
     }
 
+    fn parse_func_self_val_param(
+        &mut self,
+        mutability: Mutability,
+    ) -> Result<FunctionParam, Message> {
+        self.consume_token(Lexem::KwSelfO)?;
+
+        Ok(FunctionParam::SelfVal(mutability))
+    }
+
+    fn parse_func_self_ref_param(
+        &mut self,
+        mutability: Mutability,
+    ) -> Result<FunctionParam, Message> {
+        let location = self.consume_token(Lexem::Ampersand)?.location;
+
+        if mutability.is_mutable() {
+            return Err(Message::new(
+                location,
+                "\"Mut\" must be followed named binding",
+            ));
+        }
+
+        let mutability = if self.peek_token().lexem == Lexem::KwMut {
+            self.get_token(); // mut
+            Mutability::Mutable
+        } else {
+            Mutability::default()
+        };
+
+        self.consume_token(Lexem::KwSelfO)?;
+
+        Ok(FunctionParam::SelfRef(mutability))
+    }
+
+    fn parse_func_common_param(
+        &mut self,
+        mutability: Mutability,
+    ) -> Result<FunctionParam, Message> {
+        let location = self.peek_token().location;
+        let identifier = self.consume_identifier()?;
+
+        self.consume_token(Lexem::Colon)?;
+
+        let var_type = self.parse_type_spec()?;
+
+        Ok(FunctionParam::Common(VariableDef {
+            location,
+            attributes: tanitc_ast::attributes::VariableAttributes::default(),
+            identifier,
+            var_type,
+            is_global: false,
+            mutability,
+        }))
+    }
+
+    fn parse_func_header_param(&mut self) -> Result<FunctionParam, Message> {
+        let next = self.peek_token();
+
+        let mut mutability = Mutability::default();
+        if next.lexem == Lexem::KwMut {
+            self.get_token();
+            mutability = Mutability::Mutable;
+        }
+
+        let next = self.peek_token();
+        match next.lexem {
+            Lexem::KwSelfO => self.parse_func_self_val_param(mutability),
+            Lexem::Ampersand => self.parse_func_self_ref_param(mutability),
+            Lexem::Identifier(_) => self.parse_func_common_param(mutability),
+            _ => Err(Message::unexpected_token(next, &[])),
+        }
+    }
+
     fn parse_func_header_params(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
         self.consume_token(Lexem::LParen)?;
 
         loop {
             let next = self.peek_token();
-
-            let mut is_mutable = false;
-            if next.lexem == Lexem::KwMut {
+            if next.lexem == Lexem::RParen {
                 self.get_token();
-                is_mutable = true;
+                break;
+            }
+
+            match self.parse_func_header_param() {
+                Ok(param) => func_def.parameters.push(param),
+                Err(err) => {
+                    self.error(Message::in_func_def(func_def.identifier, err));
+                }
             }
 
             let next = self.peek_token();
-
-            if next.is_identifier() {
-                let mut param = self.parse_func_param()?;
-                param.is_mutable = is_mutable;
-
-                func_def.parameters.push(Ast::VariableDef(param));
-
-                let next = self.peek_token();
-                if next.lexem == Lexem::Comma {
-                    self.get_token();
-                } else if next.lexem == Lexem::RParen {
-                    continue;
-                } else {
-                    return Err(Message::unexpected_token(next, &[]));
-                }
-            } else if next.lexem == Lexem::RParen {
+            if next.lexem == Lexem::Comma {
                 self.get_token();
-                break;
-            } else {
-                return Err(Message::unexpected_token(next, &[]));
             }
         }
 
@@ -97,24 +158,6 @@ impl Parser {
         }
 
         Ok(())
-    }
-
-    fn parse_func_param(&mut self) -> Result<VariableDef, Message> {
-        let location = self.peek_token().location;
-        let identifier = self.consume_identifier()?;
-
-        self.consume_token(Lexem::Colon)?;
-
-        let var_type = self.parse_type_spec()?;
-
-        Ok(VariableDef {
-            location,
-            attributes: tanitc_ast::attributes::VariableAttributes::default(),
-            identifier,
-            var_type,
-            is_global: false,
-            is_mutable: false,
-        })
     }
 
     fn parse_func_return_type(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {

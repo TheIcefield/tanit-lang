@@ -1,4 +1,5 @@
 use expression_utils::{BinaryOperation, UnaryOperation};
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
@@ -157,13 +158,21 @@ impl From<Expression> for Ast {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionParam {
+    SelfVal(Mutability),
+    SelfRef(Mutability),
+    SelfPtr(Mutability),
+    Common(VariableDef),
+}
+
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct FunctionDef {
     pub location: Location,
     pub attributes: attributes::FunctionAttributes,
     pub identifier: Ident,
     pub return_type: TypeSpec,
-    pub parameters: Vec<Ast>,
+    pub parameters: Vec<FunctionParam>,
     pub body: Option<Box<Ast>>,
 }
 
@@ -228,7 +237,7 @@ impl From<UnionDef> for Ast {
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct ParsedTypeInfo {
-    pub is_mut: bool,
+    pub mutability: Mutability,
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -308,7 +317,7 @@ pub struct VariableDef {
     pub identifier: Ident,
     pub var_type: TypeSpec,
     pub is_global: bool,
-    pub is_mutable: bool,
+    pub mutability: Mutability,
 }
 
 impl From<VariableDef> for Ast {

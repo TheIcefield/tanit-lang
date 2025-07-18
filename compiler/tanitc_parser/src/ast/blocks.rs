@@ -113,7 +113,7 @@ impl Parser {
 
 #[test]
 fn parse_local_block_test() {
-    use tanitc_ast::attributes::Safety;
+    use tanitc_attributes::Safety;
 
     const SRC_TEXT: &str = "{\
                           \n    unsafe {\

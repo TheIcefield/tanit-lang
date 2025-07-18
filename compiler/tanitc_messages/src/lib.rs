@@ -76,6 +76,11 @@ impl Message {
         }
     }
 
+    pub fn in_func_def(func_name: Ident, mut msg: Self) -> Self {
+        msg.text = format!("In definition of function \"{func_name}\": {}", msg.text);
+        msg
+    }
+
     pub fn undefined_func(location: Location, func_name: Ident) -> Self {
         Self {
             location,
