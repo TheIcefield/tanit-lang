@@ -181,7 +181,9 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_func_def(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
-        self.analyze_func_def(func_def, true)
+        const NOT_METHOD: bool = false;
+
+        self.analyze_func_def(func_def, NOT_METHOD)
     }
 
     fn visit_extern_def(&mut self, extern_def: &mut ExternDef) -> Result<(), Message> {
