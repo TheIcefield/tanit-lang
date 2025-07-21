@@ -12,7 +12,12 @@ use tanitc_ty::{ArraySize, Type};
 
 use super::{CodeGenMode, CodeGenStream};
 
-use std::{collections::BTreeMap, io::Write};
+use std::{
+    collections::BTreeMap,
+    io::{ErrorKind, Write},
+};
+
+pub mod methods;
 
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
@@ -58,7 +63,7 @@ impl Visitor for CodeGenStream<'_> {
     }
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
-        match self.generate_func_def(func_def) {
+        match self.generate_func_def(func_def, None) {
             Ok(_) => Ok(()),
             Err(e) => Err(Self::codegen_err(e)),
         }
@@ -153,7 +158,7 @@ impl CodeGenStream<'_> {
             Ast::VariantDef(node) => self.generate_variant_def(node),
             Ast::ImplDef(node) => self.generate_impl_def(node),
             Ast::EnumDef(node) => self.generate_enum_def(node),
-            Ast::FuncDef(node) => self.generate_func_def(node),
+            Ast::FuncDef(node) => self.generate_func_def(node, None),
             Ast::VariableDef(node) => self.generate_variable_def(node),
             Ast::AliasDef(node) => self.generate_alias_def(node),
             Ast::ExternDef(node) => self.generate_extern_def(node),
@@ -206,18 +211,6 @@ impl CodeGenStream<'_> {
         write!(self, "}} {}", union_def.identifier)?;
 
         writeln!(self, ";")?;
-
-        self.mode = old_mode;
-        Ok(())
-    }
-
-    fn generate_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        for method in impl_def.methods.iter() {
-            self.generate_func_def(method)?;
-        }
 
         self.mode = old_mode;
         Ok(())
@@ -530,7 +523,11 @@ impl CodeGenStream<'_> {
 
 // Function
 impl CodeGenStream<'_> {
-    fn generate_func_def(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
+    fn generate_func_def(
+        &mut self,
+        func_def: &FunctionDef,
+        struct_name: Option<Ident>,
+    ) -> Result<(), std::io::Error> {
         let old_mode = self.mode;
         self.mode = if func_def.body.is_some() {
             CodeGenMode::Both
@@ -540,9 +537,15 @@ impl CodeGenStream<'_> {
 
         self.generate_type_spec(&func_def.return_type)?;
 
-        write!(self, " {}", func_def.identifier)?;
+        let full_name = if let Some(struct_name) = struct_name {
+            format!("{struct_name}__{}", func_def.identifier)
+        } else {
+            format!("{}", func_def.identifier)
+        };
 
-        self.generate_func_def_params(func_def)?;
+        write!(self, " {}", full_name)?;
+
+        self.generate_func_def_params(func_def, struct_name)?;
 
         self.mode = CodeGenMode::HeaderOnly;
         writeln!(self, ";")?;
@@ -556,37 +559,52 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 
-    fn generate_func_def_param(&mut self, param: &FunctionParam) -> Result<(), std::io::Error> {
+    fn generate_func_def_param(
+        &mut self,
+        param: &FunctionParam,
+        struct_name: Option<Ident>,
+    ) -> Result<(), std::io::Error> {
         match param {
-            FunctionParam::SelfVal(mutability) => write!(
-                self,
-                "{}self",
-                if mutability.is_mutable() { "mut " } else { "" }
-            ),
-            FunctionParam::SelfRef(mutability) => write!(
-                self,
-                "&{}self",
-                if mutability.is_mutable() { "mut " } else { "" }
-            ),
-            FunctionParam::SelfPtr(mutability) => write!(
-                self,
-                "*{}self",
-                if mutability.is_mutable() { "mut " } else { "" }
-            ),
+            FunctionParam::SelfVal(mutability) => {
+                let Some(struct_name) = struct_name else {
+                    return Err(std::io::Error::from(ErrorKind::InvalidData));
+                };
+
+                write!(
+                    self,
+                    "{struct_name} {}self",
+                    if mutability.is_const() { "const " } else { "" }
+                )
+            }
+            FunctionParam::SelfRef(mutability) | FunctionParam::SelfPtr(mutability) => {
+                let Some(struct_name) = struct_name else {
+                    return Err(std::io::Error::from(ErrorKind::InvalidData));
+                };
+
+                write!(
+                    self,
+                    "{struct_name} {} * const self",
+                    if mutability.is_const() { "const " } else { "" }
+                )
+            }
             FunctionParam::Common(var_def) => self.generate_variable_def(var_def),
         }
     }
 
-    fn generate_func_def_params(&mut self, func_def: &FunctionDef) -> Result<(), std::io::Error> {
+    fn generate_func_def_params(
+        &mut self,
+        func_def: &FunctionDef,
+        struct_name: Option<Ident>,
+    ) -> Result<(), std::io::Error> {
         write!(self, "(")?;
         if !func_def.parameters.is_empty() {
             let param = func_def.parameters.first().unwrap();
-            self.generate_func_def_param(param)?;
+            self.generate_func_def_param(param, struct_name)?;
         }
 
         for param in func_def.parameters.iter().skip(1) {
             write!(self, ", ")?;
-            self.generate_func_def_param(param)?;
+            self.generate_func_def_param(param, struct_name)?;
         }
         write!(self, ")")?;
 
@@ -795,7 +813,7 @@ impl CodeGenStream<'_> {
         self.mode = CodeGenMode::HeaderOnly;
 
         for func_def in extern_def.functions.iter() {
-            self.generate_func_def(func_def)?;
+            self.generate_func_def(func_def, None)?;
         }
 
         self.mode = mode;

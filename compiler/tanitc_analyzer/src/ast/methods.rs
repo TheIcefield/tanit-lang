@@ -1,5 +1,4 @@
 use tanitc_ast::{FunctionDef, ImplDef};
-use tanitc_ident::Ident;
 use tanitc_messages::Message;
 
 use crate::Analyzer;
@@ -14,7 +13,6 @@ impl Analyzer {
         };
 
         self.analyze_impl_methods(&mut impl_def.methods)?;
-        self.rename_impl_methods(&mut impl_def.methods, impl_def.identifier)?;
 
         Ok(())
     }
@@ -27,18 +25,6 @@ impl Analyzer {
                 Ok(_) => {}
                 Err(err) => self.error(err),
             }
-        }
-
-        Ok(())
-    }
-
-    fn rename_impl_methods(
-        &mut self,
-        methods: &mut [FunctionDef],
-        prefix: Ident,
-    ) -> Result<(), Message> {
-        for method in methods.iter_mut() {
-            method.identifier = Ident::from(format!("{prefix}__{}", method.identifier));
         }
 
         Ok(())

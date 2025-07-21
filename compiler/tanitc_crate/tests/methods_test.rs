@@ -54,7 +54,7 @@ fn struct_with_methods_test() {
                                 \n    </field>\
                                 \n</struct-definition>\
                                 \n<impl-definition name=\"MyStruct\">\
-                                \n    <function-definition name=\"MyStruct__new\">\
+                                \n    <function-definition name=\"new\">\
                                 \n        <return-type>\
                                 \n            <type style=\"named\" name=\"MyStruct\"/>\
                                 \n        </return-type>\
