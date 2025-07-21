@@ -151,4 +151,29 @@ mod tests {
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].text, EXPECTED_ERR);
     }
+
+    #[test]
+    fn self_in_func_test() {
+        const EXPECTED_ERR: &str = "Semantic error: In definition of function \"by_self\": \"self\" parameter is allowed only in associated functions";
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_func(
+                "by_self",
+                vec![
+                    FunctionParam::SelfVal(Mutability::Immutable),
+                    get_common_param("hello"),
+                ],
+            )
+            .into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
 }
