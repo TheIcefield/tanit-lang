@@ -95,6 +95,34 @@ mod tests {
     }
 
     #[test]
+    fn self_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_self",
+                vec![
+                    FunctionParam::SelfVal(Mutability::Immutable),
+                    get_common_param("hello"),
+                ],
+            )],
+        );
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert!(errors.is_empty());
+    }
+
+    #[test]
     fn self_in_middle_test() {
         const STRUCT_NAME: &str = "MyStruct";
         const EXPECTED_ERR: &str = "Semantic error: In definition of function \"by_self\": Unexpected \"self\" parameter. Must be the first parameter of the associated function";
