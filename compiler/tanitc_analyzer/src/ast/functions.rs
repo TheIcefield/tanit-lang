@@ -68,16 +68,21 @@ impl Analyzer {
                 | FunctionParam::SelfRef(_)
                 | FunctionParam::SelfVal(_) => {
                     if !is_method {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             func_def.location,
-                            "\"self\" parameter is allowed only in associated functions",
+                            format!(
+                                "In definition of function \"{}\": \"self\" parameter is allowed only in associated functions",
+                                func_def.identifier),
                         ));
                     }
 
                     if index > 0 {
-                        self.error(Message::new(
+                        self.error(Message::from_string(
                             func_def.location,
-                            "Unexpected \"self\" parameter. Must be the first parameter of the associated function"));
+                            format!(
+                                "In definition of function \"{}\": Unexpected \"self\" parameter. Must be the first parameter of the associated function",
+                                func_def.identifier
+                            )));
                     }
                 }
             }
