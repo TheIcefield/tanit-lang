@@ -561,82 +561,120 @@ impl Parser {
     }
 }
 
-#[test]
-fn binary_expression_test() {
-    use tanitc_ident::Ident;
-    use tanitc_lexer::location::Location;
+#[cfg(test)]
+mod tests {
+    use tanitc_ast::{
+        expression_utils::BinaryOperation, Ast, Expression, ExpressionKind, Value, ValueKind,
+    };
+    use tanitc_ty::Type;
 
-    const SRC_TEXT: &str = "a += 1 * 4 / (1 + a) == 3\n";
+    use crate::Parser;
 
-    let a_id = Ident::from("a".to_string());
+    #[test]
+    fn binary_expression_test() {
+        use tanitc_ident::Ident;
+        use tanitc_lexer::location::Location;
 
-    let expected = Ast::from(Expression {
-        location: Location { row: 1, col: 5 },
-        kind: ExpressionKind::Binary {
-            operation: BinaryOperation::Assign,
-            lhs: Box::new(Ast::from(Value {
-                location: Location { row: 1, col: 2 },
-                kind: ValueKind::Identifier(a_id),
-            })),
-            rhs: Box::new(Ast::from(Expression {
-                location: Location { row: 1, col: 5 },
-                kind: ExpressionKind::Binary {
-                    operation: BinaryOperation::Add,
-                    lhs: Box::new(Ast::from(Value {
-                        location: Location { row: 1, col: 2 },
-                        kind: ValueKind::Identifier(a_id),
-                    })),
-                    rhs: Box::new(Ast::from(Expression {
-                        location: Location { row: 1, col: 10 },
-                        kind: ExpressionKind::Binary {
-                            operation: BinaryOperation::Mul,
-                            lhs: Box::new(Ast::from(Value {
-                                location: Location { row: 1, col: 7 },
-                                kind: ValueKind::Integer(1),
-                            })),
-                            rhs: Box::new(Ast::from(Expression {
-                                location: Location { row: 1, col: 24 },
-                                kind: ExpressionKind::Binary {
-                                    operation: BinaryOperation::LogicalEq,
-                                    lhs: Box::new(Ast::from(Expression {
-                                        location: Location { row: 1, col: 14 },
-                                        kind: ExpressionKind::Binary {
-                                            operation: BinaryOperation::Div,
-                                            lhs: Box::new(Ast::from(Value {
-                                                location: Location { row: 1, col: 11 },
-                                                kind: ValueKind::Integer(4),
-                                            })),
-                                            rhs: Box::new(Ast::from(Expression {
-                                                location: Location { row: 1, col: 19 },
-                                                kind: ExpressionKind::Binary {
-                                                    operation: BinaryOperation::Add,
-                                                    lhs: Box::new(Ast::from(Value {
-                                                        location: Location { row: 1, col: 16 },
-                                                        kind: ValueKind::Integer(1),
-                                                    })),
-                                                    rhs: Box::new(Ast::from(Value {
-                                                        location: Location { row: 1, col: 20 },
-                                                        kind: ValueKind::Identifier(a_id),
-                                                    })),
-                                                },
-                                            })),
-                                        },
-                                    })),
-                                    rhs: Box::new(Ast::from(Value {
-                                        location: Location { row: 1, col: 26 },
-                                        kind: ValueKind::Integer(3),
-                                    })),
-                                },
-                            })),
-                        },
-                    })),
-                },
-            })),
-        },
-    });
+        const SRC_TEXT: &str = "a += 1 * 4 / (1 + a) == 3\n";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
-    let ast = parser.parse_expression().unwrap();
+        let a_id = Ident::from("a".to_string());
 
-    assert_eq!(ast, expected);
+        let expected = Ast::from(Expression {
+            location: Location { row: 1, col: 5 },
+            kind: ExpressionKind::Binary {
+                operation: BinaryOperation::Assign,
+                lhs: Box::new(Ast::from(Value {
+                    location: Location { row: 1, col: 2 },
+                    kind: ValueKind::Identifier(a_id),
+                })),
+                rhs: Box::new(Ast::from(Expression {
+                    location: Location { row: 1, col: 5 },
+                    kind: ExpressionKind::Binary {
+                        operation: BinaryOperation::Add,
+                        lhs: Box::new(Ast::from(Value {
+                            location: Location { row: 1, col: 2 },
+                            kind: ValueKind::Identifier(a_id),
+                        })),
+                        rhs: Box::new(Ast::from(Expression {
+                            location: Location { row: 1, col: 10 },
+                            kind: ExpressionKind::Binary {
+                                operation: BinaryOperation::Mul,
+                                lhs: Box::new(Ast::from(Value {
+                                    location: Location { row: 1, col: 7 },
+                                    kind: ValueKind::Integer(1),
+                                })),
+                                rhs: Box::new(Ast::from(Expression {
+                                    location: Location { row: 1, col: 24 },
+                                    kind: ExpressionKind::Binary {
+                                        operation: BinaryOperation::LogicalEq,
+                                        lhs: Box::new(Ast::from(Expression {
+                                            location: Location { row: 1, col: 14 },
+                                            kind: ExpressionKind::Binary {
+                                                operation: BinaryOperation::Div,
+                                                lhs: Box::new(Ast::from(Value {
+                                                    location: Location { row: 1, col: 11 },
+                                                    kind: ValueKind::Integer(4),
+                                                })),
+                                                rhs: Box::new(Ast::from(Expression {
+                                                    location: Location { row: 1, col: 19 },
+                                                    kind: ExpressionKind::Binary {
+                                                        operation: BinaryOperation::Add,
+                                                        lhs: Box::new(Ast::from(Value {
+                                                            location: Location { row: 1, col: 16 },
+                                                            kind: ValueKind::Integer(1),
+                                                        })),
+                                                        rhs: Box::new(Ast::from(Value {
+                                                            location: Location { row: 1, col: 20 },
+                                                            kind: ValueKind::Identifier(a_id),
+                                                        })),
+                                                    },
+                                                })),
+                                            },
+                                        })),
+                                        rhs: Box::new(Ast::from(Value {
+                                            location: Location { row: 1, col: 26 },
+                                            kind: ValueKind::Integer(3),
+                                        })),
+                                    },
+                                })),
+                            },
+                        })),
+                    },
+                })),
+            },
+        });
+
+        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let ast = parser.parse_expression().unwrap();
+
+        assert_eq!(ast, expected);
+    }
+
+    #[test]
+    fn conversion_test() {
+        use tanitc_ast::{Value, ValueKind};
+
+        const SRC_TEXT: &str = "45 as f32";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+
+        let expr = parser.parse_expression().unwrap();
+        let Ast::Expression(node) = expr else {
+            panic!("Expected Ast::Expression, actually: {}", expr.name());
+        };
+
+        let ExpressionKind::Conversion { lhs, ty } = &node.kind else {
+            panic!("Expected ExpressionKind::Conversion");
+        };
+
+        assert!(matches!(
+            lhs.as_ref(),
+            Ast::Value(Value {
+                kind: ValueKind::Integer(45),
+                ..
+            })
+        ));
+
+        assert!(matches!(ty.get_type(), Type::F32));
+    }
 }
