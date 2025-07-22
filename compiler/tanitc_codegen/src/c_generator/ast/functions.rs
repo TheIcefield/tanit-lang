@@ -18,6 +18,8 @@ impl CodeGenStream<'_> {
             CodeGenMode::HeaderOnly
         };
 
+        write!(self, "{}", self.indentation())?;
+
         self.generate_type_spec(&func_def.return_type)?;
 
         let full_name = if let Some(struct_name) = struct_name {

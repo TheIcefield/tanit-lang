@@ -174,16 +174,15 @@ impl CodeGenStream<'_> {
     fn generate_struct_def(&mut self, struct_def: &StructDef) -> Result<(), std::io::Error> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
+        let indentation = self.indentation();
 
-        writeln!(self, "typedef struct {{")?;
+        writeln!(self, "{indentation}typedef struct {{")?;
         for (field_id, field_info) in struct_def.fields.iter() {
+            write!(self, "{indentation}    ")?;
             self.generate_type_spec(&field_info.ty)?;
-            write!(self, " {field_id}")?;
-            writeln!(self, ";")?;
+            writeln!(self, " {field_id};")?;
         }
-        write!(self, "}} {}", struct_def.identifier)?;
-
-        writeln!(self, ";")?;
+        writeln!(self, "{indentation}}} {};", struct_def.identifier)?;
 
         self.mode = old_mode;
         Ok(())
@@ -192,16 +191,15 @@ impl CodeGenStream<'_> {
     fn generate_union_def(&mut self, union_def: &UnionDef) -> Result<(), std::io::Error> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
+        let indentation = self.indentation();
 
-        writeln!(self, "typedef union {{")?;
+        writeln!(self, "{indentation}typedef union {{")?;
         for (field_id, field_info) in union_def.fields.iter() {
+            write!(self, "{indentation}    ")?;
             self.generate_type_spec(&field_info.ty)?;
-            write!(self, " {field_id}")?;
-            writeln!(self, ";")?;
+            writeln!(self, " {field_id};")?;
         }
-        write!(self, "}} {}", union_def.identifier)?;
-
-        writeln!(self, ";")?;
+        writeln!(self, "}} {};", union_def.identifier)?;
 
         self.mode = old_mode;
         Ok(())
@@ -211,13 +209,20 @@ impl CodeGenStream<'_> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
 
-        writeln!(self, "typedef enum {{")?;
+        let indentation = self.indentation();
+
+        writeln!(self, "{indentation}typedef enum {{")?;
 
         for field in enum_def.fields.iter() {
-            writeln!(self, "    {} = {},", field.0, field.1.unwrap_or_default())?;
+            writeln!(
+                self,
+                "{indentation}    {} = {},",
+                field.0,
+                field.1.unwrap_or_default()
+            )?;
         }
 
-        writeln!(self, "}} {};", enum_def.identifier)?;
+        writeln!(self, "{indentation}}} {};", enum_def.identifier)?;
 
         self.mode = old_mode;
 
@@ -411,11 +416,15 @@ impl CodeGenStream<'_> {
     }
 
     fn generate_block(&mut self, block: &Block) -> Result<(), std::io::Error> {
+        let indentation = self.indentation();
+
         if !block.is_global {
-            writeln!(self, "{{")?;
+            writeln!(self, "{indentation}{{")?;
+            self.indent += 1;
         }
 
         for stmt in block.statements.iter() {
+            write!(self, "{indentation}    ")?;
             self.generate(stmt)?;
 
             match stmt {
@@ -433,8 +442,10 @@ impl CodeGenStream<'_> {
         }
 
         if !block.is_global {
-            writeln!(self, "}}")?;
+            writeln!(self, "{indentation}}}")?;
+            self.indent -= 1;
         }
+
         Ok(())
     }
 

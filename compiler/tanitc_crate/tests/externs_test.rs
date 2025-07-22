@@ -66,7 +66,7 @@ fn extern_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                         \nsigned int const res = hello();\
+                                     \n    signed int const res = hello();\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

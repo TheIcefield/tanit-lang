@@ -158,14 +158,14 @@ fn variant_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nMyVariant const v1 = (MyVariant){\
+                                     \n    MyVariant const v1 = (MyVariant){\
                                             \n.__kind__=__MyVariant__kind__f1__,\
                                             \n.__data__=(__MyVariant__data__){\
                                                \n.f1=(__MyVariant__data__f1__){\
                                                    \n},\
                                                \n},\
                                             \n};\
-                                            \nMyVariant const v3 = (MyVariant){\
+                                     \n    MyVariant const v3 = (MyVariant){\
                                                 \n.__kind__=__MyVariant__kind__f3__,\
                                                 \n.__data__=(__MyVariant__data__){\
                                                     \n.f3=(__MyVariant__data__f3__){\
@@ -345,14 +345,14 @@ fn variant_in_module_work_test() {
 
         // TODO: correct data field initialization
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nMyVariant const v1 = (MyVariant){\
+                                     \n    MyVariant const v1 = (MyVariant){\
                                             \n.__kind__=__MyVariant__kind__f1__,\
                                             \n.__data__=(__MyVariant__data__){\
                                                 \n.f1=(__MyVariant__data__f1__){\
                                                 \n},\
                                             \n},\
                                         \n};\
-                                        \nMyVariant const v3 = (MyVariant){\
+                                     \n    MyVariant const v3 = (MyVariant){\
                                             \n.__kind__=__MyVariant__kind__f3__,\
                                             \n.__data__=(__MyVariant__data__){\
                                                 \n.f3=(__MyVariant__data__f3__){\

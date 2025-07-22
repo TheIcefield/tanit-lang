@@ -201,7 +201,7 @@ fn enum_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                         \nMyEnum const a = 2;\
+                                     \n    MyEnum const a = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -288,7 +288,7 @@ fn enum_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nColor const a = 0;\
+                                     \n    Color const a = 0;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

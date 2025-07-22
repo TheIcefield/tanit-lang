@@ -89,17 +89,17 @@ fn struct_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
-                                        \nsigned int f1;\
-                                        \nfloat f2;\
+                                     \n    signed int f1;\
+                                     \n    float f2;\
                                      \n} MyStruct;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nMyStruct s = (MyStruct){\
+                                     \n    MyStruct s = (MyStruct){\
                                             \n.f1=1,\
                                             \n.f2={ 2, 3 },\
                                         \n};\
-                                        \ns.f1 = 2;\
+                                     \n    s.f1 = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -198,17 +198,17 @@ fn struct_in_module_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
-                                     \nfloat x;\
-                                     \nfloat y;\
+                                     \n    float x;\
+                                     \n    float y;\
                                      \n} Vector2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nVector2 vec = (Vector2){\
+                                     \n    Vector2 vec = (Vector2){\
                                             \n.x=0,\
                                             \n.y=2,\
                                         \n};\
-                                        \nvec.x = 2;\
+                                     \n    vec.x = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -366,16 +366,16 @@ fn internal_struct_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
-                                        \nfloat value;\
+                                     \n    float value;\
                                      \n} Unit;\
                                      \ntypedef struct {\
-                                        \nUnit x;\
-                                        \nUnit y;\
+                                     \n    Unit x;\
+                                     \n    Unit y;\
                                      \n} Point2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nPoint2 pnt = (Point2){\
+                                     \n    Point2 pnt = (Point2){\
                                             \n.x=(Unit){\
                                                 \n.value=1,\
                                             \n},\
@@ -383,7 +383,7 @@ fn internal_struct_work_test() {
                                                 \n.value=2,\
                                             \n},\
                                         \n};\
-                                        \npnt.x.value = 2;\
+                                     \n    pnt.x.value = 2;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

@@ -94,10 +94,10 @@ fn array_work_test() {
         const HEADER_EXPECTED: &str = "void main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nfloat arr_1[6];\
-                                        \nsigned int const arr_2[3] = { 4, 5, 6 };\
-                                        \nfloat const arr_3[3] = { 1, 2, 3 };\
-                                        \narr_1[1 + 1] = 7;\
+                                     \n    float arr_1[6];\
+                                     \n    signed int const arr_2[3] = { 4, 5, 6 };\
+                                     \n    float const arr_3[3] = { 1, 2, 3 };\
+                                     \n    arr_1[1 + 1] = 7;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
