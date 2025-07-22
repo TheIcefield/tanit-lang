@@ -107,4 +107,119 @@ mod tests {
         let source_res = String::from_utf8(source_buffer).unwrap();
         assert_str_eq!(source_res, SOURCE_EXPECTED);
     }
+
+    #[test]
+    fn mut_self_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_mut_self(MyStruct self);\n";
+
+        const SOURCE_EXPECTED: &str = "void MyStruct__by_mut_self(MyStruct self){\
+           \n}\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_mut_self",
+                vec![FunctionParam::SelfVal(Mutability::Mutable)],
+            )],
+        );
+
+        let program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn self_ref_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_self_ref(MyStruct const * const self);\n";
+
+        const SOURCE_EXPECTED: &str = "void MyStruct__by_self_ref(MyStruct const * const self){\
+           \n}\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_self_ref",
+                vec![FunctionParam::SelfRef(Mutability::Immutable)],
+            )],
+        );
+
+        let program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn mut_self_ref_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello);\n";
+
+        const SOURCE_EXPECTED: &str =
+            "void MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello){\
+           \n}\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_mut_self_ref",
+                vec![
+                    FunctionParam::SelfRef(Mutability::Mutable),
+                    get_common_param("hello"),
+                ],
+            )],
+        );
+
+        let program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
 }
