@@ -66,7 +66,7 @@ impl CodeGenStream<'_> {
 
                 write!(
                     self,
-                    "{struct_name} {} * const self",
+                    "{struct_name} {}* const self",
                     if mutability.is_const() { "const " } else { "" }
                 )
             }
