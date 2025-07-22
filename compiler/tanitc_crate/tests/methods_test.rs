@@ -100,24 +100,24 @@ fn struct_with_methods_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
-                                        \nsigned int f1;\
-                                        \nfloat f2;\
+                                     \n    signed int f1;\
+                                     \n    float f2;\
                                      \n} MyStruct;\
                                      \nMyStruct MyStruct__new();\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "MyStruct MyStruct__new(){\
-                                        \nreturn (MyStruct){\
+                                     \n    return (MyStruct){\
                                             \n.f1=0,\
                                             \n.f2=0,\
                                         \n};\
-                                    \n}\
+                                     \n}\
                                     \nvoid main(){\
-                                     \nMyStruct const s = (MyStruct){\
-                                     \n.f1=1,\
-                                     \n.f2=2,\
-                                     \n};\
-                                     \n}\n";
+                                    \n    MyStruct const s = (MyStruct){\
+                                    \n.f1=1,\
+                                    \n.f2=2,\
+                                    \n};\
+                                    \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();

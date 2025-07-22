@@ -77,19 +77,19 @@ fn union_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef union {\
-                                     \nsigned int f1;\
-                                     \nfloat f2;\
+                                     \n    signed int f1;\
+                                     \n    float f2;\
                                      \n} MyUnion;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                            \n{\
-                                                \nMyUnion const s = (MyUnion){\
+                                     \n        {\
+                                     \n        MyUnion const s = (MyUnion){\
                                                     \n.f2=2,\
                                                 \n};\
-                                            \n}\
-                                            \n\
-                                        \n}\n";
+                                     \n    }\
+                                     \n\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -176,13 +176,13 @@ fn union_in_module_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef union {\
-                                     \nsigned int x;\
-                                     \nfloat y;\
+                                     \n    signed int x;\
+                                     \n    float y;\
                                      \n} MyUnion;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \nMyUnion const u = (MyUnion){\
+                                     \n    MyUnion const u = (MyUnion){\
                                      \n.y=2,\
                                      \n};\
                                      \n}\n";

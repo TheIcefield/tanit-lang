@@ -75,10 +75,10 @@ fn function_def_test() {
         const HEADER_EXPECTED: &str = "float sum(float a, float const b);\
                                      \nvoid main();\n";
         const SOURCE_EXPECTED: &str = "float sum(float a, float const b){\
-                                     \nreturn a + b;\
+                                     \n    return a + b;\
                                      \n}\
                                      \nvoid main(){\
-                                     \nfloat const ret = sum(a, b);\
+                                     \n    float const ret = sum(a, b);\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -195,15 +195,15 @@ fn functions_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "float f(signed int const a, signed int const b){\
-                                        \nreturn a + b;\
-                                      \n}\
-                                      \nvoid void_func(){\
-                                      \n}\
-                                      \nvoid main(){\
-                                        \nsigned int const param = 34;\
-                                        \nfloat const res = f(56, param);\
-                                        \nvoid_func();\
-                                      \n}\n";
+                                     \n    return a + b;\
+                                     \n}\
+                                     \nvoid void_func(){\
+                                     \n}\
+                                     \nvoid main(){\
+                                     \n    signed int const param = 34;\
+                                     \n    float const res = f(56, param);\
+                                     \n    void_func();\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -311,11 +311,11 @@ fn function_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "Color get_green(){\
-                                     \nColor const ret = 1;\
-                                     \nreturn ret;\
+                                     \n    Color const ret = 1;\
+                                     \n    return ret;\
                                      \n}\
                                      \nvoid main(){\
-                                     \nvoid const green = color.get_green();\
+                                     \n    void const green = color.get_green();\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

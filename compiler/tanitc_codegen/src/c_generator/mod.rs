@@ -12,6 +12,7 @@ pub struct CodeGenStream<'a> {
     header_stream: &'a mut dyn std::io::Write,
     source_stream: &'a mut dyn std::io::Write,
     pub mode: CodeGenMode,
+    pub indent: usize,
 }
 
 impl<'a> CodeGenStream<'a> {
@@ -23,7 +24,16 @@ impl<'a> CodeGenStream<'a> {
             header_stream,
             source_stream,
             mode: CodeGenMode::Unset,
+            indent: 0,
         })
+    }
+
+    pub fn indentation(&self) -> String {
+        let mut s = String::new();
+        for _ in 0..self.indent {
+            s.push_str("    ");
+        }
+        s
     }
 }
 

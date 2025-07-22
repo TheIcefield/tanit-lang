@@ -184,18 +184,18 @@ fn alias_test() {
     {
         const HEADER_EXPECTED: &str = "typedef float VecUnit;\
                                      \ntypedef struct {\
-                                        \nVecUnit x;\
-                                        \nVecUnit y;\
+                                     \n    VecUnit x;\
+                                     \n    VecUnit y;\
                                      \n} Vec2;\
                                      \ntypedef Vec2 Vec;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nVec const v = (Vec){\
+                                     \n    Vec const v = (Vec){\
                                             \n.x=10,\
                                             \n.y=10,\
                                         \n};\
-                                      \n}\n";
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -291,8 +291,8 @@ fn alias_common_type_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nA const a = 100;\
-                                      \n}\n";
+                                     \n    A const a = 100;\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -392,8 +392,8 @@ fn alias_custom_type_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nA const a = (S){\n};\
-                                      \n}\n";
+                                     \n    A const a = (S){\n};\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -499,8 +499,8 @@ fn alias_to_alias_type_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                        \nB const b = (S){\n};\
-                                      \n}\n";
+                                     \n    B const b = (S){\n};\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
