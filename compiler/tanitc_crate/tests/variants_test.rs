@@ -158,23 +158,27 @@ fn variant_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    MyVariant const v1 = (MyVariant){\
-                                            \n.__kind__=__MyVariant__kind__f1__,\
-                                            \n.__data__=(__MyVariant__data__){\
-                                               \n.f1=(__MyVariant__data__f1__){\
-                                                   \n},\
-                                               \n},\
-                                            \n};\
-                                     \n    MyVariant const v3 = (MyVariant){\
-                                                \n.__kind__=__MyVariant__kind__f3__,\
-                                                \n.__data__=(__MyVariant__data__){\
-                                                    \n.f3=(__MyVariant__data__f3__){\
-                                                        \n.x=4,\
-                                                        \n.y=7.5,\
-                                                    \n},\
-                                                \n},\
-                                            \n};\
-                                        \n}\n";
+                                     \n    MyVariant const v1 = (MyVariant)\
+                                     \n    {\
+                                     \n        .__kind__=__MyVariant__kind__f1__,\
+                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        {\
+                                     \n            .f1=(__MyVariant__data__f1__) { },\
+                                     \n        },\
+                                     \n    };\
+                                     \n    MyVariant const v3 = (MyVariant)\
+                                     \n    {\
+                                     \n        .__kind__=__MyVariant__kind__f3__,\
+                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        {\
+                                     \n            .f3=(__MyVariant__data__f3__)\
+                                     \n            {\
+                                     \n                .x=4,\
+                                     \n                .y=7.5,\
+                                     \n            },\
+                                     \n        },\
+                                     \n    };\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
@@ -345,23 +349,27 @@ fn variant_in_module_work_test() {
 
         // TODO: correct data field initialization
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    MyVariant const v1 = (MyVariant){\
-                                            \n.__kind__=__MyVariant__kind__f1__,\
-                                            \n.__data__=(__MyVariant__data__){\
-                                                \n.f1=(__MyVariant__data__f1__){\
-                                                \n},\
-                                            \n},\
-                                        \n};\
-                                     \n    MyVariant const v3 = (MyVariant){\
-                                            \n.__kind__=__MyVariant__kind__f3__,\
-                                            \n.__data__=(__MyVariant__data__){\
-                                                \n.f3=(__MyVariant__data__f3__){\
-                                                    \n.x=4,\
-                                                    \n.y=7.5,\
-                                                \n},\
-                                            \n},\
-                                        \n};\
-                                       \n}\n";
+                                     \n    MyVariant const v1 = (MyVariant)\
+                                     \n    {\
+                                     \n        .__kind__=__MyVariant__kind__f1__,\
+                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        {\
+                                     \n            .f1=(__MyVariant__data__f1__) { },\
+                                     \n        },\
+                                     \n    };\
+                                     \n    MyVariant const v3 = (MyVariant)\
+                                     \n    {\
+                                     \n        .__kind__=__MyVariant__kind__f3__,\
+                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        {\
+                                     \n            .f3=(__MyVariant__data__f3__)\
+                                     \n            {\
+                                     \n                .x=4,\
+                                     \n                .y=7.5,\
+                                     \n            },\
+                                     \n        },\
+                                     \n    };\
+                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();

@@ -477,18 +477,27 @@ impl CodeGenStream<'_> {
                 components,
             } => {
                 // create anonimous variable
-                writeln!(self, "({identifier}){{")?;
+                write!(self, "({identifier})")?;
 
-                for (i, (field_name, field_val)) in components.iter().enumerate() {
-                    write!(self, ".{field_name}=")?;
-                    self.generate(field_val)?;
+                if components.is_empty() {
+                    write!(self, " {{ }}")?;
+                } else {
+                    let indentation = self.indentation();
+                    self.indent += 1;
 
-                    if i < components.len() {
-                        writeln!(self, ",")?;
+                    writeln!(self, "\n{indentation}{{")?;
+                    for (i, (field_name, field_val)) in components.iter().enumerate() {
+                        write!(self, "{indentation}    .{field_name}=")?;
+                        self.generate(field_val)?;
+
+                        if i < components.len() {
+                            writeln!(self, ",")?;
+                        }
                     }
-                }
 
-                write!(self, "}}")?;
+                    self.indent -= 1;
+                    write!(self, "{indentation}}}")?;
+                }
             }
             ValueKind::Array { components } => {
                 write!(self, "{{ ")?;

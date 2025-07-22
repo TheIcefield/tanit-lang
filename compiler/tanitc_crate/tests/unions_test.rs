@@ -84,9 +84,10 @@ fn union_work_test() {
 
         const SOURCE_EXPECTED: &str = "void main(){\
                                      \n        {\
-                                     \n        MyUnion const s = (MyUnion){\
-                                                    \n.f2=2,\
-                                                \n};\
+                                     \n        MyUnion const s = (MyUnion)\
+                                     \n        {\
+                                     \n            .f2=2,\
+                                     \n        };\
                                      \n    }\
                                      \n\
                                      \n}\n";
@@ -182,9 +183,10 @@ fn union_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    MyUnion const u = (MyUnion){\
-                                     \n.y=2,\
-                                     \n};\
+                                     \n    MyUnion const u = (MyUnion)\
+                                     \n    {\
+                                     \n        .y=2,\
+                                     \n    };\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

@@ -95,10 +95,11 @@ fn struct_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    MyStruct s = (MyStruct){\
-                                            \n.f1=1,\
-                                            \n.f2={ 2, 3 },\
-                                        \n};\
+                                     \n    MyStruct s = (MyStruct)\
+                                     \n    {\
+                                     \n        .f1=1,\
+                                     \n        .f2={ 2, 3 },\
+                                     \n    };\
                                      \n    s.f1 = 2;\
                                      \n}\n";
 
@@ -204,10 +205,11 @@ fn struct_in_module_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    Vector2 vec = (Vector2){\
-                                            \n.x=0,\
-                                            \n.y=2,\
-                                        \n};\
+                                     \n    Vector2 vec = (Vector2)\
+                                     \n    {\
+                                     \n        .x=0,\
+                                     \n        .y=2,\
+                                     \n    };\
                                      \n    vec.x = 2;\
                                      \n}\n";
 
@@ -375,14 +377,17 @@ fn internal_struct_work_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n    Point2 pnt = (Point2){\
-                                            \n.x=(Unit){\
-                                                \n.value=1,\
-                                            \n},\
-                                            \n.y=(Unit){\
-                                                \n.value=2,\
-                                            \n},\
-                                        \n};\
+                                     \n    Point2 pnt = (Point2)\
+                                     \n    {\
+                                     \n        .x=(Unit)\
+                                     \n        {\
+                                     \n            .value=1,\
+                                     \n        },\
+                                     \n        .y=(Unit)\
+                                     \n        {\
+                                     \n            .value=2,\
+                                     \n        },\
+                                     \n    };\
                                      \n    pnt.x.value = 2;\
                                      \n}\n";
 
