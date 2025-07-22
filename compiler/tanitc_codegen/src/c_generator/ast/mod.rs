@@ -1,23 +1,22 @@
 use tanitc_ast::{
     expression_utils::{BinaryOperation, UnaryOperation},
     AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, Fields, FunctionDef, FunctionParam, ImplDef,
-    ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef,
-    VariantField, Visitor,
+    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ImplDef, ModuleDef, StructDef,
+    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, Visitor,
 };
-use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_ty::{ArraySize, Type};
 
 use super::{CodeGenMode, CodeGenStream};
 
-use std::{
-    collections::BTreeMap,
-    io::{ErrorKind, Write},
-};
+use std::io::Write;
 
+pub mod externs;
+pub mod functions;
 pub mod methods;
+pub mod modules;
+pub mod variants;
 
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
@@ -169,14 +168,6 @@ impl CodeGenStream<'_> {
             Ast::Use(node) => self.generate_use(node),
             Ast::Block(node) => self.generate_block(node),
             Ast::Value(node) => self.generate_value(node),
-        }
-    }
-
-    fn generate_module_def(&mut self, module_def: &ModuleDef) -> Result<(), std::io::Error> {
-        if module_def.body.is_none() {
-            self.generate_external_module(module_def)
-        } else {
-            self.generate_internal_module(module_def)
         }
     }
 
@@ -521,119 +512,6 @@ impl CodeGenStream<'_> {
     }
 }
 
-// Function
-impl CodeGenStream<'_> {
-    fn generate_func_def(
-        &mut self,
-        func_def: &FunctionDef,
-        struct_name: Option<Ident>,
-    ) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = if func_def.body.is_some() {
-            CodeGenMode::Both
-        } else {
-            CodeGenMode::HeaderOnly
-        };
-
-        self.generate_type_spec(&func_def.return_type)?;
-
-        let full_name = if let Some(struct_name) = struct_name {
-            format!("{struct_name}__{}", func_def.identifier)
-        } else {
-            format!("{}", func_def.identifier)
-        };
-
-        write!(self, " {}", full_name)?;
-
-        self.generate_func_def_params(func_def, struct_name)?;
-
-        self.mode = CodeGenMode::HeaderOnly;
-        writeln!(self, ";")?;
-
-        if let Some(body) = &func_def.body {
-            self.mode = CodeGenMode::SourceOnly;
-            self.generate(body)?;
-        }
-
-        self.mode = old_mode;
-        Ok(())
-    }
-
-    fn generate_func_def_param(
-        &mut self,
-        param: &FunctionParam,
-        struct_name: Option<Ident>,
-    ) -> Result<(), std::io::Error> {
-        match param {
-            FunctionParam::SelfVal(mutability) => {
-                let Some(struct_name) = struct_name else {
-                    return Err(std::io::Error::from(ErrorKind::InvalidData));
-                };
-
-                write!(
-                    self,
-                    "{struct_name} {}self",
-                    if mutability.is_const() { "const " } else { "" }
-                )
-            }
-            FunctionParam::SelfRef(mutability) | FunctionParam::SelfPtr(mutability) => {
-                let Some(struct_name) = struct_name else {
-                    return Err(std::io::Error::from(ErrorKind::InvalidData));
-                };
-
-                write!(
-                    self,
-                    "{struct_name} {} * const self",
-                    if mutability.is_const() { "const " } else { "" }
-                )
-            }
-            FunctionParam::Common(var_def) => self.generate_variable_def(var_def),
-        }
-    }
-
-    fn generate_func_def_params(
-        &mut self,
-        func_def: &FunctionDef,
-        struct_name: Option<Ident>,
-    ) -> Result<(), std::io::Error> {
-        write!(self, "(")?;
-        if !func_def.parameters.is_empty() {
-            let param = func_def.parameters.first().unwrap();
-            self.generate_func_def_param(param, struct_name)?;
-        }
-
-        for param in func_def.parameters.iter().skip(1) {
-            write!(self, ", ")?;
-            self.generate_func_def_param(param, struct_name)?;
-        }
-        write!(self, ")")?;
-
-        Ok(())
-    }
-}
-
-// Modules
-impl CodeGenStream<'_> {
-    fn generate_internal_module(&mut self, module_def: &ModuleDef) -> std::io::Result<()> {
-        if let Some(body) = &module_def.body {
-            self.generate_block(body)?;
-        }
-
-        Ok(())
-    }
-
-    fn generate_external_module(&mut self, module_def: &ModuleDef) -> std::io::Result<()> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        writeln!(self, "#include \"./{}.tt.h\"", module_def.identifier)?;
-
-        self.mode = old_mode;
-
-        Ok(())
-    }
-}
-
 // Call args
 impl CodeGenStream<'_> {
     fn generate_call_param(&mut self, arg: &CallArg) -> Result<(), std::io::Error> {
@@ -643,181 +521,5 @@ impl CodeGenStream<'_> {
                 unreachable!("Notified CallParam is not allowed in codegen")
             }
         }
-    }
-}
-
-// Variants
-impl CodeGenStream<'_> {
-    fn generate_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        self.generate_variant_kind(variant_def.identifier, &variant_def.fields)?;
-        self.generate_variant_data(variant_def.identifier, &variant_def.fields)?;
-
-        writeln!(self, "typedef struct {{")?;
-
-        self.generate_variant_kind_field(variant_def.identifier)?;
-        self.generate_variant_data_field(variant_def.identifier)?;
-
-        writeln!(self, "}} {};\n", variant_def.identifier)?;
-
-        self.mode = old_mode;
-        Ok(())
-    }
-
-    fn generate_variant_kind(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-    ) -> Result<(), std::io::Error> {
-        let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
-
-        // Enum definition
-        writeln!(self, "typedef enum {{")?;
-        for (field_id, _) in fields.iter() {
-            writeln!(self, "    {enum_id}{field_id}__,")?;
-        }
-        writeln!(self, "}} {enum_id};\n")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_kind_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
-        let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
-        let field_id = Ident::from("__kind__".to_string());
-
-        writeln!(self, "    {enum_id} {field_id};")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_common_field(
-        &mut self,
-        union_id: Ident,
-        field_id: Ident,
-    ) -> Result<(), std::io::Error> {
-        let struct_name = format!("{union_id}{field_id}__");
-
-        writeln!(self, "typedef struct {{ }} {struct_name};")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_struct_field(
-        &mut self,
-        union_id: Ident,
-        field_id: Ident,
-        subfields: &Fields,
-    ) -> Result<(), std::io::Error> {
-        let struct_name = format!("{union_id}{field_id}__");
-
-        writeln!(self, "typedef struct {{")?;
-
-        for (subfield_id, subfield_type) in subfields.iter() {
-            let subfield_type = subfield_type.ty.get_type().get_c_type();
-            writeln!(self, "    {subfield_type} {subfield_id};")?;
-        }
-
-        writeln!(self, "}} {struct_name};")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_tuple_field(
-        &mut self,
-        union_id: Ident,
-        field_id: Ident,
-        components: &[TypeSpec],
-    ) -> Result<(), std::io::Error> {
-        let struct_name = format!("{union_id}{field_id}__");
-
-        writeln!(self, "typedef struct {{")?;
-
-        for (field_num, field_type) in components.iter().enumerate() {
-            let field_type = field_type.get_type().get_c_type();
-            writeln!(self, "    {field_type} _{field_num};")?;
-        }
-
-        writeln!(self, "}} {struct_name};")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_data_types(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-    ) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
-
-        for (field_id, field_data) in fields.iter() {
-            match field_data {
-                VariantField::Common => self.generate_variant_common_field(union_id, *field_id)?,
-                VariantField::StructLike(subfields) => {
-                    self.generate_variant_struct_field(union_id, *field_id, subfields)?
-                }
-                VariantField::TupleLike(components) => {
-                    self.generate_variant_tuple_field(union_id, *field_id, components)?
-                }
-            }
-            writeln!(self)?;
-        }
-
-        Ok(())
-    }
-
-    fn generate_variant_data_fields(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-    ) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
-
-        writeln!(self, "typedef union {union_id} {{")?;
-
-        for (field_id, _) in fields.iter() {
-            writeln!(self, "    {union_id}{field_id}__ {field_id};")?;
-        }
-
-        writeln!(self, "}} {union_id};\n")?;
-
-        Ok(())
-    }
-
-    fn generate_variant_data(
-        &mut self,
-        variant_id: Ident,
-        fields: &BTreeMap<Ident, VariantField>,
-    ) -> Result<(), std::io::Error> {
-        self.generate_variant_data_types(variant_id, fields)?;
-        self.generate_variant_data_fields(variant_id, fields)?;
-
-        Ok(())
-    }
-
-    fn generate_variant_data_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
-        let field_id = Ident::from("__data__".to_string());
-
-        writeln!(self, "    {union_id} {field_id};")?;
-
-        Ok(())
-    }
-}
-
-// Externs
-impl CodeGenStream<'_> {
-    fn generate_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), std::io::Error> {
-        let mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        for func_def in extern_def.functions.iter() {
-            self.generate_func_def(func_def, None)?;
-        }
-
-        self.mode = mode;
-
-        Ok(())
     }
 }
