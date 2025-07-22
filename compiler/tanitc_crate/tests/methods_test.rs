@@ -107,16 +107,18 @@ fn struct_with_methods_test() {
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "MyStruct MyStruct__new(){\
-                                     \n    return (MyStruct){\
-                                            \n.f1=0,\
-                                            \n.f2=0,\
-                                        \n};\
+                                     \n    return (MyStruct)\
+                                     \n    {\
+                                     \n        .f1=0,\
+                                     \n        .f2=0,\
+                                     \n    };\
                                      \n}\
                                     \nvoid main(){\
-                                    \n    MyStruct const s = (MyStruct){\
-                                    \n.f1=1,\
-                                    \n.f2=2,\
-                                    \n};\
+                                    \n    MyStruct const s = (MyStruct)\
+                                    \n    {\
+                                    \n        .f1=1,\
+                                    \n        .f2=2,\
+                                    \n    };\
                                     \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
