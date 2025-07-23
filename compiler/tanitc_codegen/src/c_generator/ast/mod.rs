@@ -424,7 +424,10 @@ impl CodeGenStream<'_> {
         }
 
         for stmt in block.statements.iter() {
-            write!(self, "{indentation}    ")?;
+            if !matches!(stmt, Ast::Block(_)) {
+                write!(self, "{indentation}    ")?;
+            }
+
             self.generate(stmt)?;
 
             match stmt {

@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -15,7 +14,7 @@ fn extern_test() {
                             \n    var res = hello()\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -65,7 +64,8 @@ fn extern_test() {
         const HEADER_EXPECTED: &str = "signed int hello();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    signed int const res = hello();\
                                      \n}\n";
 

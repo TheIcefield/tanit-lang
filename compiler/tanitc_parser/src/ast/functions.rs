@@ -146,7 +146,11 @@ impl Parser {
             Lexem::EndOfLine => {}
 
             Lexem::Lcb => {
-                func_def.body = Some(Box::new(self.parse_local_block()?));
+                let Ast::Block(block) = self.parse_local_block()? else {
+                    unreachable!();
+                };
+
+                func_def.body = Some(Box::new(block));
             }
 
             _ => {

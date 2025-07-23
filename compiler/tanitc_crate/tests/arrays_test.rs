@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -15,7 +14,7 @@ fn array_work_test() {
                             \n    arr_1[1 + 1] = 7.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -93,7 +92,8 @@ fn array_work_test() {
     {
         const HEADER_EXPECTED: &str = "void main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    float arr_1[6];\
                                      \n    signed int const arr_2[3] = { 4, 5, 6 };\
                                      \n    float const arr_3[3] = { 1, 2, 3 };\
@@ -121,7 +121,7 @@ fn immutable_array_bad_test() {
                             \n    arr[0] = 7.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -148,7 +148,7 @@ fn strange_index_array_bad_test() {
                             \n    arr[3.14] = 7.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {

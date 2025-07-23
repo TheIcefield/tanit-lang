@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -27,7 +26,7 @@ fn struct_with_methods_test() {
                             \n            }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -106,14 +105,16 @@ fn struct_with_methods_test() {
                                      \nMyStruct MyStruct__new();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "MyStruct MyStruct__new(){\
+        const SOURCE_EXPECTED: &str = "MyStruct MyStruct__new()\
+                                     \n{\
                                      \n    return (MyStruct)\
                                      \n    {\
                                      \n        .f1=0,\
                                      \n        .f2=0,\
                                      \n    };\
                                      \n}\
-                                    \nvoid main(){\
+                                    \nvoid main()\
+                                    \n{\
                                     \n    MyStruct const s = (MyStruct)\
                                     \n    {\
                                     \n        .f1=1,\

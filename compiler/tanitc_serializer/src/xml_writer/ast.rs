@@ -810,7 +810,7 @@ impl XmlWriter<'_> {
         }
 
         if let Some(body) = &func_def.body {
-            body.accept(self)?;
+            self.visit_block(body)?;
         }
 
         self.end_tag()?;

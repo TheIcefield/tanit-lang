@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -21,7 +20,7 @@ fn union_work_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -82,8 +81,9 @@ fn union_work_test() {
                                      \n} MyUnion;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
-                                     \n        {\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
+                                     \n    {\
                                      \n        MyUnion const s = (MyUnion)\
                                      \n        {\
                                      \n            .f2=2,\
@@ -120,7 +120,7 @@ fn union_in_module_work_test() {
                             \n              }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -182,7 +182,8 @@ fn union_in_module_work_test() {
                                      \n} MyUnion;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    MyUnion const u = (MyUnion)\
                                      \n    {\
                                      \n        .y=2,\

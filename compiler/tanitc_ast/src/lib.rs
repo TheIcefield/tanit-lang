@@ -173,7 +173,7 @@ pub struct FunctionDef {
     pub identifier: Ident,
     pub return_type: TypeSpec,
     pub parameters: Vec<FunctionParam>,
-    pub body: Option<Box<Ast>>,
+    pub body: Option<Box<Block>>,
 }
 
 impl From<FunctionDef> for Ast {

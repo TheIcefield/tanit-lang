@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -15,7 +14,7 @@ fn function_def_test() {
                             \n    var ret: f32 = sum(a, b)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let node = parser.parse_global_block().unwrap();
 
@@ -74,10 +73,12 @@ fn function_def_test() {
     {
         const HEADER_EXPECTED: &str = "float sum(float a, float const b);\
                                      \nvoid main();\n";
-        const SOURCE_EXPECTED: &str = "float sum(float a, float const b){\
+        const SOURCE_EXPECTED: &str = "float sum(float a, float const b)\
+                                     \n{\
                                      \n    return a + b;\
                                      \n}\
-                                     \nvoid main(){\
+                                     \nvoid main()\
+                                     \n{\
                                      \n    float const ret = sum(a, b);\
                                      \n}\n";
 
@@ -110,7 +111,7 @@ fn functions_test() {
                             \n   void_func()
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -194,12 +195,13 @@ fn functions_test() {
                                      \nvoid void_func();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "float f(signed int const a, signed int const b){\
+        const SOURCE_EXPECTED: &str = "float f(signed int const a, signed int const b)\
+                                     \n{\
                                      \n    return a + b;\
                                      \n}\
-                                     \nvoid void_func(){\
-                                     \n}\
-                                     \nvoid main(){\
+                                     \nvoid void_func() { }\
+                                     \nvoid main()\
+                                     \n{\
                                      \n    signed int const param = 34;\
                                      \n    float const res = f(56, param);\
                                      \n    void_func();\
@@ -236,7 +238,7 @@ fn function_in_module_work_test() {
                             \n    var green = color::get_green()\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -310,11 +312,13 @@ fn function_in_module_work_test() {
                                      \nColor get_green();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "Color get_green(){\
+        const SOURCE_EXPECTED: &str = "Color get_green()\
+                                     \n{\
                                      \n    Color const ret = 1;\
                                      \n    return ret;\
                                      \n}\
-                                     \nvoid main(){\
+                                     \nvoid main()\
+                                     \n{\
                                      \n    void const green = color.get_green();\
                                      \n}\n";
 
@@ -343,7 +347,7 @@ fn incorrect_call_test() {
                             \n   var res = f(5.6, b: pi)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -375,7 +379,7 @@ fn incorrect_notified_call_test() {
                             \n   var res = f(a: 44, 56)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -408,7 +412,7 @@ fn incorrect_module_func_call_test() {
                             \n   var res = math::f(5.6, b: pi)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {

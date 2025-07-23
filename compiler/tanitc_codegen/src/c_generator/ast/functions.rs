@@ -18,7 +18,9 @@ impl CodeGenStream<'_> {
             CodeGenMode::HeaderOnly
         };
 
-        write!(self, "{}", self.indentation())?;
+        let indentation = self.indentation();
+
+        write!(self, "{indentation}")?;
 
         self.generate_type_spec(&func_def.return_type)?;
 
@@ -37,7 +39,12 @@ impl CodeGenStream<'_> {
 
         if let Some(body) = &func_def.body {
             self.mode = CodeGenMode::SourceOnly;
-            self.generate(body)?;
+            if body.statements.is_empty() {
+                writeln!(self, " {{ }}")?;
+            } else {
+                writeln!(self)?;
+                self.generate_block(body)?;
+            }
         }
 
         self.mode = old_mode;

@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -20,7 +19,7 @@ fn struct_work_test() {
                             \n    s.f1 = 2\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -94,7 +93,8 @@ fn struct_work_test() {
                                      \n} MyStruct;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    MyStruct s = (MyStruct)\
                                      \n    {\
                                      \n        .f1=1,\
@@ -132,7 +132,7 @@ fn struct_in_module_work_test() {
                             \n    vec.x = 2.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -204,7 +204,8 @@ fn struct_in_module_work_test() {
                                      \n} Vector2;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    Vector2 vec = (Vector2)\
                                      \n    {\
                                      \n        .x=0,\
@@ -243,7 +244,7 @@ fn incorrect_struct_work_test() {
                             \n    s.f3 = 1.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -285,7 +286,7 @@ fn internal_struct_work_test() {
                             \n    pnt.x.value = 2.0\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -376,7 +377,8 @@ fn internal_struct_work_test() {
                                      \n} Point2;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    Point2 pnt = (Point2)\
                                      \n    {\
                                      \n        .x=(Unit)\
