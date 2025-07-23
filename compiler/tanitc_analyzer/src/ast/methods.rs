@@ -75,7 +75,7 @@ mod tests {
             identifier: Ident::from(name.to_string()),
             return_type: TypeSpec::default(),
             parameters,
-            body: Some(Box::new(Ast::from(Block::default()))),
+            body: Some(Box::new(Block::default())),
             ..Default::default()
         }
     }

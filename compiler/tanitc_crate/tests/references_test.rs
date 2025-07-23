@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -16,7 +15,7 @@ fn immutable_deref_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -49,7 +48,7 @@ fn mutable_deref_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -111,7 +110,8 @@ fn mutable_deref_test() {
 
     {
         const HEADER_EXPECTED: &str = "void main();\n";
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    signed int value = 50;\
                                      \n    signed int * const ref = &value;\
                                      \n    if (1)\
@@ -145,7 +145,7 @@ fn mutable_ref_to_immutable_var_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -178,7 +178,7 @@ fn immutable_deref_param_test() {
                             \n    bar(&value)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -211,7 +211,7 @@ fn mutable_deref_param_test() {
                             \n    bar(&mut value)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -278,10 +278,12 @@ fn mutable_deref_param_test() {
     {
         const HEADER_EXPECTED: &str = "void bar(signed int * const p);\
                                      \nvoid main();\n";
-        const SOURCE_EXPECTED: &str = "void bar(signed int * const p){\
+        const SOURCE_EXPECTED: &str = "void bar(signed int * const p)\
+                                     \n{\
                                      \n    *p = 10;\
                                      \n}\
-                                     \nvoid main(){\
+                                     \nvoid main()\
+                                     \n{\
                                      \n    signed int value = 50;\
                                      \n    bar(&value);\
                                      \n}\n";

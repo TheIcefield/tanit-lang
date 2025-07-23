@@ -1,7 +1,6 @@
 use tanitc_ast::{expression_utils::BinaryOperation, Ast, ExpressionKind, ValueKind};
 
 use tanitc_ident::Ident;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_ty::Type;
 
@@ -19,7 +18,7 @@ fn variables_test() {
                             \n    ceil <<= 3\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).unwrap());
+    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
 
     let res = parser.parse_func_def().unwrap();
     {
@@ -43,11 +42,7 @@ fn variables_test() {
         panic!("res has to be \'FuncDef\'");
     };
 
-    let res = if let Ast::Block(node) = res.unwrap().as_ref() {
-        &node.statements
-    } else {
-        panic!("res has to be \'LScope\'");
-    };
+    let res = &res.unwrap().as_ref().statements;
 
     if let Ast::VariableDef(node) = &res[0] {
         assert!(node.identifier == pi_id);

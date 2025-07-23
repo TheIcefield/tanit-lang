@@ -3,7 +3,6 @@ use tanitc_ast::Ast;
 
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_ident::Ident;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 use tanitc_ty::Type;
@@ -14,7 +13,7 @@ use pretty_assertions::assert_str_eq;
 fn alias_def_test() {
     const SRC_TEXT: &str = "alias MyAlias = f32";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let alias_node = parser.parse_alias_def().unwrap();
     {
@@ -61,7 +60,7 @@ fn alias_in_func_test() {
                                 alias Items = Vec<Item>\
                             }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let res = if let Ast::FuncDef(node) = parser.parse_func_def().unwrap() {
         assert!(node.identifier == Ident::from("main".to_string()));
@@ -78,11 +77,7 @@ fn alias_in_func_test() {
         panic!("res has to be \'function definition\'");
     };
 
-    let statements = if let Ast::Block(node) = res.as_ref() {
-        &node.statements
-    } else {
-        panic!("node has to be \'local scope\'");
-    };
+    let statements = &res.as_ref().statements;
 
     if let Ast::AliasDef(node) = &statements[0] {
         assert!(node.identifier == Ident::from("Items".to_string()));
@@ -119,7 +114,7 @@ fn alias_test() {
                             \n    var v = Vec { x: 10.0, y: 10.0 }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -190,7 +185,8 @@ fn alias_test() {
                                      \ntypedef Vec2 Vec;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    Vec const v = (Vec)\
                                      \n    {\
                                      \n        .x=10,\
@@ -219,7 +215,7 @@ fn incorrect_alias_object_test() {
                             \n    var v = Vec { x: 10.0, y: 10.0 }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -245,7 +241,7 @@ fn alias_common_type_test() {
                             \n    var a: A = 100\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -291,7 +287,8 @@ fn alias_common_type_test() {
         const HEADER_EXPECTED: &str = "typedef signed int A;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    A const a = 100;\
                                      \n}\n";
 
@@ -316,7 +313,7 @@ fn incorrect_alias_common_type_test() {
                             \n    var a: A = 3.14\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -343,7 +340,7 @@ fn alias_custom_type_test() {
                             \n    var a: A = S {}\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -392,7 +389,8 @@ fn alias_custom_type_test() {
                                      \ntypedef S A;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    A const a = (S) { };\
                                      \n}\n";
 
@@ -418,7 +416,7 @@ fn incorrect_alias_custom_type_test() {
                             \n    var a: A = 100\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -446,7 +444,7 @@ fn alias_to_alias_type_test() {
                             \n    var b: B = S {}\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -499,7 +497,8 @@ fn alias_to_alias_type_test() {
                                      \ntypedef A B;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    B const b = (S) { };\
                                      \n}\n";
 
@@ -526,7 +525,7 @@ fn incorrect_alias_to_alias_type_test() {
                             \n    var b: B = 50\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {

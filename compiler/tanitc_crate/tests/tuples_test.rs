@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 
 use pretty_assertions::assert_str_eq;
@@ -11,7 +10,7 @@ fn tuple_parse_test() {
                             \n    var t = (1.0, 2, 3.0)\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -31,7 +30,8 @@ fn tuple_parse_test() {
     {
         const HEADER_EXPECTED: &str = "void main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    struct { float _0; signed int _1; float _2; } const t = { 1, 2, 3 };\
                                      \n}\n";
 
@@ -42,9 +42,9 @@ fn tuple_parse_test() {
         program.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
-        let source_res = String::from_utf8(source_buffer).unwrap();
-
         assert_str_eq!(HEADER_EXPECTED, header_res);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
         assert_str_eq!(SOURCE_EXPECTED, source_res);
     }
 }

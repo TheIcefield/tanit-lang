@@ -1,6 +1,5 @@
 use pretty_assertions::assert_str_eq;
 use tanitc_analyzer::Analyzer;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 
 #[test]
@@ -16,7 +15,7 @@ fn struct_in_local_scope_test() {
                             \n            }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -40,7 +39,7 @@ fn if_in_global_scope_test() {
                             \n    var b = 2\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {

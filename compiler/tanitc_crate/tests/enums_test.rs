@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
 
@@ -14,7 +13,7 @@ fn enum_def_test() {
                             \n    Max\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -59,7 +58,7 @@ fn enum_def_test() {
 fn empty_enum_def_test() {
     const SRC_TEXT: &str = "\nenum EmptyEnum { }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -85,9 +84,9 @@ fn empty_enum_def_test() {
         enum_node.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
-        let source_res = String::from_utf8(source_buffer).unwrap();
-
         assert_str_eq!(HEADER_EXPECTED, header_res);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
         assert!(source_res.is_empty());
     }
 }
@@ -96,7 +95,7 @@ fn empty_enum_def_test() {
 fn enum_with_one_field_def_test() {
     const SRC_TEXT: &str = "\nenum MyEnum { MinsInHour: 60\n }";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -144,7 +143,7 @@ fn enum_work_test() {
                             \n    var a = MyEnum::Second\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -200,7 +199,8 @@ fn enum_work_test() {
                                      \n} MyEnum;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    MyEnum const a = 2;\
                                      \n}\n";
 
@@ -231,7 +231,7 @@ fn enum_in_module_work_test() {
                             \n    var a = color::Color::Red\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Lexer creation failed"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -287,7 +287,8 @@ fn enum_in_module_work_test() {
                                      \n} Color;\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    Color const a = 0;\
                                      \n}\n";
 

@@ -28,7 +28,7 @@ impl Analyzer {
         let parameters = self.analyze_func_def_params(func_def, is_method)?;
 
         if let Some(body) = &mut func_def.body {
-            body.accept_mut(self)?;
+            self.visit_block(body)?;
         }
 
         self.table.exit_scope();

@@ -1,6 +1,5 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
-use tanitc_lexer::Lexer;
 use tanitc_options::CompileOptions;
 use tanitc_parser::Parser;
 use tanitc_serializer::xml_writer::XmlWriter;
@@ -26,7 +25,7 @@ fn variant_work_test() {
                             \n             }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -157,7 +156,8 @@ fn variant_work_test() {
                                      \n\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    MyVariant const v1 = (MyVariant)\
                                      \n    {\
                                      \n        .__kind__=__MyVariant__kind__f1__,\
@@ -215,7 +215,7 @@ fn variant_in_module_work_test() {
                             \n             }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -348,7 +348,8 @@ fn variant_in_module_work_test() {
                                      \nvoid main();\n";
 
         // TODO: correct data field initialization
-        const SOURCE_EXPECTED: &str = "void main(){\
+        const SOURCE_EXPECTED: &str = "void main()\
+                                     \n{\
                                      \n    MyVariant const v1 = (MyVariant)\
                                      \n    {\
                                      \n        .__kind__=__MyVariant__kind__f1__,\
@@ -404,7 +405,7 @@ fn denied_variants_test() {
                             \n             }\
                             \n}";
 
-    let mut parser = Parser::new(Lexer::from_text(SRC_TEXT).expect("Failed to create lexer"));
+    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
 
     let mut program = parser.parse_global_block().unwrap();
     {

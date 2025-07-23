@@ -62,7 +62,7 @@ mod tests {
             identifier: Ident::from(name.to_string()),
             return_type: TypeSpec::default(),
             parameters,
-            body: Some(Box::new(Ast::from(Block::default()))),
+            body: Some(Box::new(Block::default())),
             ..Default::default()
         }
     }
@@ -75,8 +75,7 @@ mod tests {
                                      \nvoid MyStruct__by_self(MyStruct const self, signed int const hello);\n";
 
         const SOURCE_EXPECTED: &str =
-            "void MyStruct__by_self(MyStruct const self, signed int const hello){\
-           \n}\n";
+            "void MyStruct__by_self(MyStruct const self, signed int const hello) { }\n";
 
         let impl_def_node = get_impl_def(
             STRUCT_NAME,
@@ -115,8 +114,7 @@ mod tests {
                                      \n} MyStruct;\
                                      \nvoid MyStruct__by_mut_self(MyStruct self);\n";
 
-        const SOURCE_EXPECTED: &str = "void MyStruct__by_mut_self(MyStruct self){\
-           \n}\n";
+        const SOURCE_EXPECTED: &str = "void MyStruct__by_mut_self(MyStruct self) { }\n";
 
         let impl_def_node = get_impl_def(
             STRUCT_NAME,
@@ -152,8 +150,8 @@ mod tests {
                                      \n} MyStruct;\
                                      \nvoid MyStruct__by_self_ref(MyStruct const * const self);\n";
 
-        const SOURCE_EXPECTED: &str = "void MyStruct__by_self_ref(MyStruct const * const self){\
-           \n}\n";
+        const SOURCE_EXPECTED: &str =
+            "void MyStruct__by_self_ref(MyStruct const * const self) { }\n";
 
         let impl_def_node = get_impl_def(
             STRUCT_NAME,
@@ -190,8 +188,7 @@ mod tests {
                                      \nvoid MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello);\n";
 
         const SOURCE_EXPECTED: &str =
-            "void MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello){\
-           \n}\n";
+            "void MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello) { }\n";
 
         let impl_def_node = get_impl_def(
             STRUCT_NAME,
