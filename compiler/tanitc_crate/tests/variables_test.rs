@@ -28,7 +28,7 @@ fn variables_test() {
     }
 
     let res = if let Ast::FuncDef(node) = &res {
-        assert!(node.identifier == main_id);
+        assert_eq!(node.name.id, main_id);
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple(components) = &node.return_type.get_type() {

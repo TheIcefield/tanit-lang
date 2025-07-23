@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use tanitc_ast::name::Name;
 use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
@@ -86,7 +87,7 @@ pub enum VariantKind {
 
 #[derive(Debug, Clone)]
 pub struct VariantData {
-    pub variant_name: Ident,
+    pub variant_name: Name,
     pub variant_kind: VariantKind,
     pub variant_kind_num: usize,
 }

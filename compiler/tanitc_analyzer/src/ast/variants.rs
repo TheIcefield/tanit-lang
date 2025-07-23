@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use tanitc_ast::{
-    variant_utils, Ast, Expression, ExpressionKind, Value, ValueKind, VariantDef, VariantField,
+    name::Name, variant_utils, Ast, Expression, ExpressionKind, Value, ValueKind, VariantDef,
+    VariantField,
 };
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
@@ -16,22 +17,23 @@ use crate::Analyzer;
 // Variant
 impl Analyzer {
     pub fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        if self.has_symbol(variant_def.identifier) {
+        if self.has_symbol(variant_def.name.id) {
             return Err(Message::multiple_ids(
                 variant_def.location,
-                variant_def.identifier,
+                variant_def.name.id,
             ));
         }
+
+        variant_def.name.prefix = self.prefix.clone();
 
         for internal in variant_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
 
-        let variants =
-            self.get_variants_from_definition(variant_def.identifier, &variant_def.fields)?;
+        let variants = self.get_variants_from_definition(&variant_def.name, &variant_def.fields)?;
 
         self.add_symbol(Entry {
-            name: variant_def.identifier,
+            name: variant_def.name.id,
             is_static: true,
             kind: SymbolKind::from(VariantDefData { variants }),
         });
@@ -41,7 +43,7 @@ impl Analyzer {
 
     fn get_variants_from_definition(
         &mut self,
-        variant_def_name: Ident,
+        variant_def_name: &Name,
         variants: &BTreeMap<Ident, VariantField>,
     ) -> Result<BTreeMap<Ident, Entry>, Message> {
         let mut res: BTreeMap<Ident, Entry> = BTreeMap::new();
@@ -49,12 +51,12 @@ impl Analyzer {
         for (variant_kind_num, (variant_name, variant)) in variants.iter().enumerate() {
             let variant_data = match variant {
                 VariantField::Common => VariantData {
-                    variant_name: variant_def_name,
+                    variant_name: variant_def_name.clone(),
                     variant_kind: VariantKind::EnumKind,
                     variant_kind_num,
                 },
                 VariantField::StructLike(fields) => VariantData {
-                    variant_name: variant_def_name,
+                    variant_name: variant_def_name.clone(),
                     variant_kind: VariantKind::VariantStructKind(VariantStructKind {
                         fields: {
                             let mut variant_fields = BTreeMap::<Ident, StructFieldData>::new();
@@ -72,7 +74,7 @@ impl Analyzer {
                     variant_kind_num,
                 },
                 VariantField::TupleLike(fields) => VariantData {
-                    variant_name: variant_def_name,
+                    variant_name: variant_def_name.clone(),
                     variant_kind: VariantKind::VariantTupleKind(VariantTupleKind {
                         fields: {
                             let mut variant_fields = BTreeMap::<usize, StructFieldData>::new();
@@ -119,7 +121,7 @@ impl Analyzer {
         else {
             return Err(Message::no_id_in_namespace(
                 location,
-                variant_data.variant_name,
+                variant_data.variant_name.id,
                 variant_name,
             ));
         };
@@ -130,7 +132,7 @@ impl Analyzer {
                 node: Box::new(Ast::Value(Value {
                     location,
                     kind: ValueKind::Struct {
-                        identifier: variant_data.variant_name,
+                        identifier: variant_data.variant_name.id,
                         components: vec![
                             (
                                 Ident::from("__kind__".to_string()),
@@ -138,7 +140,8 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
-                                        variant_data.variant_name, variant_name
+                                        variant_data.variant_name.full_name(),
+                                        variant_name
                                     ))),
                                 }),
                             ),
@@ -148,7 +151,7 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Struct {
                                         identifier: variant_utils::get_variant_data_type_id(
-                                            variant_data.variant_name,
+                                            &variant_data.variant_name,
                                         ),
                                         components: vec![(
                                             variant_name,
@@ -157,7 +160,8 @@ impl Analyzer {
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
                                                         "__{}__data__{}__",
-                                                        variant_data.variant_name, variant_name
+                                                        variant_data.variant_name.full_name(),
+                                                        variant_name
                                                     )),
                                                     components: vec![],
                                                 },
@@ -169,7 +173,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name.short_name()),
             },
         }))
     }
@@ -194,7 +198,7 @@ impl Analyzer {
         else {
             return Err(Message::no_id_in_namespace(
                 location,
-                variant_data.variant_name,
+                variant_data.variant_name.id,
                 variant_name,
             ));
         };
@@ -207,7 +211,7 @@ impl Analyzer {
                 node: Box::new(Ast::Value(Value {
                     location,
                     kind: ValueKind::Struct {
-                        identifier: variant_data.variant_name,
+                        identifier: variant_data.variant_name.id,
                         components: vec![
                             (
                                 Ident::from("__kind__".to_string()),
@@ -215,7 +219,8 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
-                                        variant_data.variant_name, variant_name
+                                        variant_data.variant_name.full_name(),
+                                        variant_name
                                     ))),
                                 }),
                             ),
@@ -225,7 +230,7 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Struct {
                                         identifier: variant_utils::get_variant_data_type_id(
-                                            variant_data.variant_name,
+                                            &variant_data.variant_name,
                                         ),
                                         components: vec![(
                                             variant_name,
@@ -234,7 +239,8 @@ impl Analyzer {
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
                                                         "__{}__data__{}__",
-                                                        variant_data.variant_name, variant_name
+                                                        variant_data.variant_name.full_name(),
+                                                        variant_name
                                                     )),
                                                     components: value_comps.clone(),
                                                 },
@@ -246,7 +252,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name.short_name()),
             },
         }))
     }
@@ -271,7 +277,7 @@ impl Analyzer {
         else {
             return Err(Message::no_id_in_namespace(
                 location,
-                variant_data.variant_name,
+                variant_data.variant_name.id,
                 variant_name,
             ));
         };
@@ -284,7 +290,7 @@ impl Analyzer {
                 node: Box::new(Ast::Value(Value {
                     location,
                     kind: ValueKind::Struct {
-                        identifier: variant_data.variant_name,
+                        identifier: variant_data.variant_name.id,
                         components: vec![
                             (
                                 Ident::from("__kind__".to_string()),
@@ -292,7 +298,8 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
-                                        variant_data.variant_name, variant_name
+                                        variant_data.variant_name.full_name(),
+                                        variant_name
                                     ))),
                                 }),
                             ),
@@ -302,7 +309,7 @@ impl Analyzer {
                                     location,
                                     kind: ValueKind::Struct {
                                         identifier: variant_utils::get_variant_data_type_id(
-                                            variant_data.variant_name,
+                                            &variant_data.variant_name,
                                         ),
                                         components: vec![(
                                             variant_name,
@@ -311,7 +318,8 @@ impl Analyzer {
                                                 kind: ValueKind::Struct {
                                                     identifier: Ident::from(format!(
                                                         "__{}__data__{}__",
-                                                        variant_data.variant_name, variant_name
+                                                        variant_data.variant_name.full_name(),
+                                                        variant_name
                                                     )),
                                                     components: {
                                                         let mut res: Vec<(Ident, Ast)> =
@@ -340,7 +348,7 @@ impl Analyzer {
                         ],
                     },
                 })),
-                ty: Type::Custom(variant_data.variant_name.to_string()),
+                ty: Type::Custom(variant_data.variant_name.short_name()),
             },
         }))
     }

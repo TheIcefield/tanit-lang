@@ -201,7 +201,7 @@ fn struct_in_module_work_test() {
         const HEADER_EXPECTED: &str = "typedef struct {\
                                      \n    float x;\
                                      \n    float y;\
-                                     \n} Vector2;\
+                                     \n} math__Vector2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\
@@ -370,11 +370,11 @@ fn internal_struct_work_test() {
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
                                      \n    float value;\
-                                     \n} Unit;\
+                                     \n} math__Unit;\
                                      \ntypedef struct {\
                                      \n    Unit x;\
                                      \n    Unit y;\
-                                     \n} Point2;\
+                                     \n} math__Point2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\

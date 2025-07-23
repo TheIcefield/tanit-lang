@@ -11,10 +11,9 @@ use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
     entry::{
-        AliasDefData, Entry, EnumData, EnumDefData, FuncDefData, ModuleDefData, StructDefData,
-        StructFieldData, SymbolKind, UnionDefData, VarDefData, VarStorageType,
+        AliasDefData, Entry, EnumData, EnumDefData, FuncDefData, StructDefData, StructFieldData,
+        SymbolKind, UnionDefData, VarDefData, VarStorageType,
     },
-    table::Table,
     type_info::{MemberInfo, TypeInfo},
 };
 use tanitc_ty::{ArraySize, Type};
@@ -26,47 +25,23 @@ use crate::Analyzer;
 pub mod expressions;
 pub mod functions;
 pub mod methods;
+pub mod modules;
 pub mod variants;
 
 impl VisitorMut for Analyzer {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
-        if self.has_symbol(module_def.identifier) {
-            return Err(Message::multiple_ids(
-                module_def.location,
-                module_def.identifier,
-            ));
-        }
-
-        self.table.insert(Entry {
-            name: module_def.identifier,
-            is_static: true,
-            kind: SymbolKind::from(ModuleDefData {
-                table: Box::new(Table::new()),
-            }),
-        });
-
-        let mut analyzer = Analyzer::with_options(self.compile_options.clone());
-
-        if let Some(body) = &mut module_def.body {
-            analyzer.visit_block(body)?;
-            let entry = self.table.lookup_mut(module_def.identifier).unwrap();
-            let SymbolKind::ModuleDef(ref mut data) = &mut entry.kind else {
-                unreachable!();
-            };
-
-            data.table = analyzer.table;
-        }
-
-        Ok(())
+        self.analyze_module_def(module_def)
     }
 
     fn visit_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
-        if self.has_symbol(struct_def.identifier) {
+        if self.has_symbol(struct_def.name.id) {
             return Err(Message::multiple_ids(
                 struct_def.location,
-                struct_def.identifier,
+                struct_def.name.id,
             ));
         }
+
+        struct_def.name.prefix = self.prefix.clone();
 
         for internal in struct_def.internals.iter_mut() {
             internal.accept_mut(self)?;
@@ -83,7 +58,7 @@ impl VisitorMut for Analyzer {
         }
 
         self.add_symbol(Entry {
-            name: struct_def.identifier,
+            name: struct_def.name.id,
             is_static: true,
             kind: SymbolKind::from(StructDefData { fields }),
         });
@@ -92,12 +67,11 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
-        if self.has_symbol(union_def.identifier) {
-            return Err(Message::multiple_ids(
-                union_def.location,
-                union_def.identifier,
-            ));
+        if self.has_symbol(union_def.name.id) {
+            return Err(Message::multiple_ids(union_def.location, union_def.name.id));
         }
+
+        union_def.name.prefix = self.prefix.clone();
 
         for internal in union_def.internals.iter_mut() {
             internal.accept_mut(self)?;
@@ -114,7 +88,7 @@ impl VisitorMut for Analyzer {
         }
 
         self.add_symbol(Entry {
-            name: union_def.identifier,
+            name: union_def.name.id,
             is_static: true,
             kind: SymbolKind::from(UnionDefData { fields }),
         });
@@ -135,12 +109,11 @@ impl VisitorMut for Analyzer {
     }
 
     fn visit_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
-        if self.has_symbol(enum_def.identifier) {
-            return Err(Message::multiple_ids(
-                enum_def.location,
-                enum_def.identifier,
-            ));
+        if self.has_symbol(enum_def.name.id) {
+            return Err(Message::multiple_ids(enum_def.location, enum_def.name.id));
         }
+
+        enum_def.name.prefix = self.prefix.clone();
 
         let mut counter = 0usize;
         let mut enums = BTreeMap::<Ident, Entry>::new();
@@ -158,7 +131,7 @@ impl VisitorMut for Analyzer {
                     name: *field.0,
                     is_static: true,
                     kind: SymbolKind::Enum(EnumData {
-                        enum_name: enum_def.identifier,
+                        enum_name: enum_def.name.id,
                         value: counter,
                     }),
                 },
@@ -168,7 +141,7 @@ impl VisitorMut for Analyzer {
         }
 
         self.add_symbol(Entry {
-            name: enum_def.identifier,
+            name: enum_def.name.id,
             is_static: true,
             kind: SymbolKind::from(EnumDefData { enums }),
         });

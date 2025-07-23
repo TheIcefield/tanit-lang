@@ -7,8 +7,11 @@ use tanitc_ty::Type;
 
 use std::collections::BTreeMap;
 
+use crate::name::Name;
+
 pub mod attributes;
 pub mod expression_utils;
+pub mod name;
 pub mod variant_utils;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -103,7 +106,7 @@ impl From<ControlFlow> for Ast {
 pub struct EnumDef {
     pub location: Location,
     pub attributes: attributes::EnumAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: BTreeMap<Ident, Option<usize>>,
 }
 
@@ -170,7 +173,7 @@ pub enum FunctionParam {
 pub struct FunctionDef {
     pub location: Location,
     pub attributes: attributes::FunctionAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub return_type: TypeSpec,
     pub parameters: Vec<FunctionParam>,
     pub body: Option<Box<Block>>,
@@ -209,7 +212,7 @@ pub type Fields = BTreeMap<Ident, FieldInfo>;
 pub struct StructDef {
     pub location: Location,
     pub attributes: attributes::StructAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: Fields,
     pub internals: Vec<Ast>,
 }
@@ -224,7 +227,7 @@ impl From<StructDef> for Ast {
 pub struct UnionDef {
     pub location: Location,
     pub attributes: attributes::UnionAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: Fields,
     pub internals: Vec<Ast>,
 }
@@ -340,7 +343,7 @@ pub type VariantFields = BTreeMap<Ident, VariantField>;
 pub struct VariantDef {
     pub location: Location,
     pub attributes: attributes::VariantAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: VariantFields,
     pub internals: Vec<Ast>,
 }

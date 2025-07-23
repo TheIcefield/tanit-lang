@@ -12,12 +12,11 @@ impl Analyzer {
         func_def: &mut FunctionDef,
         is_method: bool,
     ) -> Result<(), Message> {
-        if self.has_symbol(func_def.identifier) {
-            return Err(Message::multiple_ids(
-                func_def.location,
-                func_def.identifier,
-            ));
+        if self.has_symbol(func_def.name.id) {
+            return Err(Message::multiple_ids(func_def.location, func_def.name.id));
         }
+
+        func_def.name.prefix = self.prefix.clone();
 
         let mut scope_info = self.table.get_scope_info();
         scope_info.safety = func_def.attributes.safety;
@@ -34,7 +33,7 @@ impl Analyzer {
         self.table.exit_scope();
 
         self.add_symbol(Entry {
-            name: func_def.identifier,
+            name: func_def.name.id,
             is_static: false,
             kind: SymbolKind::from(FuncDefData {
                 parameters,
@@ -72,7 +71,7 @@ impl Analyzer {
                             func_def.location,
                             format!(
                                 "In definition of function \"{}\": \"self\" parameter is allowed only in associated functions",
-                                func_def.identifier),
+                                func_def.name.short_name()),
                         ));
                     }
 
@@ -81,7 +80,7 @@ impl Analyzer {
                             func_def.location,
                             format!(
                                 "In definition of function \"{}\": Unexpected \"self\" parameter. Must be the first parameter of the associated function",
-                                func_def.identifier
+                                func_def.name.short_name()
                             )));
                     }
                 }

@@ -1,9 +1,11 @@
 use tanitc_ident::Ident;
 
-pub fn get_variant_data_kind_id(variant_id: Ident) -> Ident {
-    Ident::from(format!("__{variant_id}__kind__"))
+use crate::name::Name;
+
+pub fn get_variant_data_kind_id(variant_name: &Name) -> Ident {
+    Ident::from(format!("__{}__kind__", variant_name.full_name()))
 }
 
-pub fn get_variant_data_type_id(variant_id: Ident) -> Ident {
-    Ident::from(format!("__{variant_id}__data__"))
+pub fn get_variant_data_type_id(variant_name: &Name) -> Ident {
+    Ident::from(format!("__{}__data__", variant_name.full_name()))
 }

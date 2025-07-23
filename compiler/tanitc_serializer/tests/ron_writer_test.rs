@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use pretty_assertions::assert_str_eq;
-use tanitc_ast::{Ast, Block, FieldInfo, FunctionDef, StructDef, TypeSpec};
+use tanitc_ast::{name::Name, Ast, Block, FieldInfo, FunctionDef, StructDef, TypeSpec};
 use tanitc_ident::Ident;
 use tanitc_serializer::ron_writer::RonWriter;
 use tanitc_ty::Type;
@@ -11,7 +11,10 @@ fn ast_write_test() {
     let ast = Ast::from(Block {
         statements: vec![
             Ast::from(StructDef {
-                identifier: Ident::from("MyStruct".to_string()),
+                name: Name {
+                    id: Ident::from("MyStruct".to_string()),
+                    ..Default::default()
+                },
                 fields: {
                     let mut fields = BTreeMap::new();
                     fields.insert(
@@ -39,7 +42,10 @@ fn ast_write_test() {
                 ..Default::default()
             }),
             Ast::from(FunctionDef {
-                identifier: Ident::from(format!("MyFunction")),
+                name: Name {
+                    id: Ident::from(format!("MyFunction")),
+                    ..Default::default()
+                },
                 ..Default::default()
             }),
         ],

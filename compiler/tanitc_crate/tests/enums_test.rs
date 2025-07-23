@@ -284,7 +284,7 @@ fn enum_in_module_work_test() {
                                      \n    Red = 0,\
                                      \n    Green = 1,\
                                      \n    Blue = 2,\
-                                     \n} Color;\
+                                     \n} color__Color;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\

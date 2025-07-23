@@ -182,7 +182,7 @@ impl CodeGenStream<'_> {
             self.generate_type_spec(&field_info.ty)?;
             writeln!(self, " {field_id};")?;
         }
-        writeln!(self, "{indentation}}} {};", struct_def.identifier)?;
+        writeln!(self, "{indentation}}} {};", struct_def.name.full_name())?;
 
         self.mode = old_mode;
         Ok(())
@@ -199,7 +199,7 @@ impl CodeGenStream<'_> {
             self.generate_type_spec(&field_info.ty)?;
             writeln!(self, " {field_id};")?;
         }
-        writeln!(self, "}} {};", union_def.identifier)?;
+        writeln!(self, "}} {};", union_def.name.full_name())?;
 
         self.mode = old_mode;
         Ok(())
@@ -222,7 +222,7 @@ impl CodeGenStream<'_> {
             )?;
         }
 
-        writeln!(self, "{indentation}}} {};", enum_def.identifier)?;
+        writeln!(self, "{indentation}}} {};", enum_def.name.full_name())?;
 
         self.mode = old_mode;
 

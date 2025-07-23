@@ -25,9 +25,9 @@ impl CodeGenStream<'_> {
         self.generate_type_spec(&func_def.return_type)?;
 
         let full_name = if let Some(struct_name) = struct_name {
-            format!("{struct_name}__{}", func_def.identifier)
+            format!("{struct_name}__{}", func_def.name.full_name())
         } else {
-            format!("{}", func_def.identifier)
+            func_def.name.full_name().to_string()
         };
 
         write!(self, " {full_name}")?;

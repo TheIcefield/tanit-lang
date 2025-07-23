@@ -63,7 +63,7 @@ fn alias_in_func_test() {
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let res = if let Ast::FuncDef(node) = parser.parse_func_def().unwrap() {
-        assert!(node.identifier == Ident::from("main".to_string()));
+        assert_eq!(node.name.short_name(), "main");
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple(components) = &node.return_type.get_type() {

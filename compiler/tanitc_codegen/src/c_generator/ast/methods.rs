@@ -19,7 +19,8 @@ impl CodeGenStream<'_> {
 #[cfg(test)]
 mod tests {
     use tanitc_ast::{
-        Ast, Block, FunctionDef, FunctionParam, ImplDef, StructDef, TypeSpec, VariableDef,
+        name::Name, Ast, Block, FunctionDef, FunctionParam, ImplDef, StructDef, TypeSpec,
+        VariableDef,
     };
     use tanitc_attributes::Mutability;
     use tanitc_ident::Ident;
@@ -31,7 +32,10 @@ mod tests {
 
     fn get_struct_def(name: &str) -> StructDef {
         StructDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name {
+                id: Ident::from(name.to_string()),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -59,7 +63,10 @@ mod tests {
 
     fn get_func(name: &str, parameters: Vec<FunctionParam>) -> FunctionDef {
         FunctionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name {
+                id: Ident::from(name.to_string()),
+                ..Default::default()
+            },
             return_type: TypeSpec::default(),
             parameters,
             body: Some(Box::new(Block::default())),

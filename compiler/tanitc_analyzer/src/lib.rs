@@ -20,6 +20,7 @@ pub trait Analyze {
 
 pub struct Analyzer {
     pub table: Box<Table>,
+    pub prefix: Vec<Ident>,
     compile_options: CompileOptions,
     counter: Counter,
     errors: Errors,
@@ -30,6 +31,7 @@ impl Analyzer {
     pub fn new() -> Self {
         Self {
             table: Box::new(Table::new()),
+            prefix: Vec::new(),
             counter: 0,
             errors: Errors::new(),
             warnings: Warnings::new(),
@@ -38,13 +40,10 @@ impl Analyzer {
     }
 
     pub fn with_options(compile_options: CompileOptions) -> Self {
-        Self {
-            table: Box::new(Table::new()),
-            counter: 0,
-            errors: Errors::new(),
-            warnings: Warnings::new(),
-            compile_options,
-        }
+        let mut analyzer = Self::new();
+        analyzer.compile_options = compile_options;
+
+        analyzer
     }
 
     pub fn counter(&mut self) -> Counter {

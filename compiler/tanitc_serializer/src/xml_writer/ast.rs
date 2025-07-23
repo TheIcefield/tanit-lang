@@ -22,7 +22,7 @@ impl Visitor for XmlWriter<'_> {
 
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
         self.begin_tag("struct-definition")?;
-        self.put_param("name", struct_def.identifier)?;
+        self.put_param("name", struct_def.name.id)?;
 
         self.serialize_struct_attributes(&struct_def.attributes)?;
 
@@ -41,7 +41,7 @@ impl Visitor for XmlWriter<'_> {
 
     fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message> {
         self.begin_tag("union-definition")?;
-        self.put_param("name", union_def.identifier)?;
+        self.put_param("name", union_def.name.id)?;
 
         self.serialize_union_attributes(&union_def.attributes)?;
 
@@ -60,7 +60,7 @@ impl Visitor for XmlWriter<'_> {
 
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
         self.begin_tag("variant-definition")?;
-        self.put_param("name", variant_def.identifier)?;
+        self.put_param("name", variant_def.name.id)?;
 
         self.serialize_variant_attributes(&variant_def.attributes)?;
 
@@ -102,7 +102,7 @@ impl Visitor for XmlWriter<'_> {
 
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message> {
         self.begin_tag("enum-definition")?;
-        self.put_param("name", enum_def.identifier)?;
+        self.put_param("name", enum_def.name.id)?;
 
         self.serialize_enum_attributes(&enum_def.attributes)?;
 
@@ -793,7 +793,7 @@ impl XmlWriter<'_> {
 impl XmlWriter<'_> {
     fn serialize_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
         self.begin_tag("function-definition")?;
-        self.put_param("name", func_def.identifier)?;
+        self.put_param("name", func_def.name.id)?;
 
         self.serialize_func_attributes(&func_def.attributes)?;
 

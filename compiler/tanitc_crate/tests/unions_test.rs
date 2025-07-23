@@ -179,7 +179,7 @@ fn union_in_module_work_test() {
         const HEADER_EXPECTED: &str = "typedef union {\
                                      \n    signed int x;\
                                      \n    float y;\
-                                     \n} MyUnion;\
+                                     \n} mod__MyUnion;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\
