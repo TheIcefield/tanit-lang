@@ -4,7 +4,6 @@ use tanitc_ast::Ast;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_ident::Ident;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 use tanitc_ty::Type;
 
 use pretty_assertions::assert_str_eq;
@@ -20,20 +19,6 @@ fn alias_def_test() {
         if parser.has_errors() {
             panic!("{:?}", parser.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<alias-definition name=\"MyAlias\">\
-                                \n    <type style=\"primitive\" name=\"f32\"/>\
-                                \n</alias-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        alias_node.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_eq!(EXPECTED, res);
     }
 
     {
@@ -132,51 +117,6 @@ fn alias_test() {
     }
 
     {
-        const EXPECTED: &str = "\n<alias-definition name=\"VecUnit\">\
-                                \n    <attributes publicity=\"Public\"/>\
-                                \n    <type style=\"primitive\" name=\"f32\"/>\
-                                \n</alias-definition>\
-                                \n<struct-definition name=\"Vec2\">\
-                                \n    <attributes publicity=\"Public\"/>\
-                                \n    <field name=\"x\" publicity=\"Private\">\
-                                \n        <type style=\"named\" name=\"VecUnit\"/>\
-                                \n    </field>\
-                                \n    <field name=\"y\" publicity=\"Private\">\
-                                \n        <type style=\"named\" name=\"VecUnit\"/>\
-                                \n    </field>\
-                                \n</struct-definition>\
-                                \n<alias-definition name=\"Vec\">\
-                                \n    <type style=\"named\" name=\"Vec2\"/>\
-                                \n</alias-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"Vec\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"Vec\">\
-                                \n            <field name=\"x\">\
-                                \n                <literal style=\"decimal-number\" value=\"10\"/>\
-                                \n            </field>\
-                                \n            <field name=\"y\">\
-                                \n                <literal style=\"decimal-number\" value=\"10\"/>\
-                                \n            </field>\
-                                \n        </struct-initialization>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
-    }
-
-    {
         const HEADER_EXPECTED: &str = "typedef float VecUnit;\
                                      \ntypedef struct {\
                                      \n    VecUnit x;\
@@ -259,31 +199,6 @@ fn alias_common_type_test() {
     }
 
     {
-        const EXPECTED: &str = "\n<alias-definition name=\"A\">\
-                                \n    <type style=\"primitive\" name=\"i32\"/>\
-                                \n</alias-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"A\"/>\
-                                \n        </variable-definition>\
-                                \n        <literal style=\"integer-number\" value=\"100\"/>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
-    }
-
-    {
         const HEADER_EXPECTED: &str = "typedef signed int A;\
                                      \nvoid main();\n";
 
@@ -355,32 +270,6 @@ fn alias_custom_type_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<struct-definition name=\"S\"/>\
-                                \n<alias-definition name=\"A\">\
-                                \n    <type style=\"named\" name=\"S\"/>\
-                                \n</alias-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"A\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"S\"/>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -459,35 +348,6 @@ fn alias_to_alias_type_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<struct-definition name=\"S\"/>\
-                                \n<alias-definition name=\"A\">\
-                                \n    <type style=\"named\" name=\"S\"/>\
-                                \n</alias-definition>\
-                                \n<alias-definition name=\"B\">\
-                                \n    <type style=\"named\" name=\"A\"/>\
-                                \n</alias-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"B\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"S\"/>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -29,35 +28,6 @@ fn extern_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<extern-definition abi-name=\"C\">\
-                                \n    <function-definition name=\"hello\">\
-                                \n        <return-type>\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </return-type>\
-                                \n    </function-definition>\
-                                \n</extern-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"res\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <call-statement name=\"hello\"/>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

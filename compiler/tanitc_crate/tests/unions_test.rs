@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -35,43 +34,6 @@ fn union_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<union-definition name=\"MyUnion\">\
-                                \n    <field name=\"f1\" publicity=\"Private\">\
-                                \n        <type style=\"primitive\" name=\"i32\"/>\
-                                \n    </field>\
-                                \n    <field name=\"f2\" publicity=\"Private\">\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
-                                \n    </field>\
-                                \n</union-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <block>\
-                                \n        <attributes safety=\"Unsafe\"/>\
-                                \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <variable-definition name=\"s\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n                <type style=\"named\" name=\"MyUnion\"/>\
-                                \n            </variable-definition>\
-                                \n            <struct-initialization name=\"MyUnion\">\
-                                \n                <field name=\"f2\">\
-                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </block>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -135,44 +97,6 @@ fn union_in_module_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"mod\">\
-                                \n    <union-definition name=\"MyUnion\">\
-                                \n        <field name=\"x\" publicity=\"Private\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </field>\
-                                \n        <field name=\"y\" publicity=\"Public\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </field>\
-                                \n    </union-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"u\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyUnion\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"MyUnion\">\
-                                \n                <field name=\"y\">\
-                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use tanitc_options::{AstSerializeMode, Backend, CompileOptions, CrateType};
+use tanitc_options::{Backend, CompileOptions, CrateType, SerializationOption};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Argument {
@@ -141,11 +141,14 @@ impl CommandLineParser {
                 self.options.verbose_tokens = true;
                 Ok(())
             }
+            "--dump-ast" => {
+                self.options.dump_ast_mode = SerializationOption::Enabled;
+                Ok(())
+            }
             "--variants" => {
                 self.options.allow_variants = true;
                 Ok(())
             }
-            "--dump-ast" => self.parse_dump_ast(),
             "--crate-type" => self.parse_crate_type(),
             "--crate-name" => self.parse_crate_name(),
             "--backend" => self.parse_backend(),
@@ -155,24 +158,6 @@ impl CommandLineParser {
 }
 
 impl CommandLineParser {
-    fn parse_dump_ast(&mut self) -> Result<(), String> {
-        let Some(next) = self.next_token() else {
-            self.options.dump_ast_mode = AstSerializeMode::Ron;
-            return Ok(());
-        };
-
-        match &next[..] {
-            "xml" => self.options.dump_ast_mode = AstSerializeMode::Xml,
-            "ron" => self.options.dump_ast_mode = AstSerializeMode::Ron,
-            "json" => self.options.dump_ast_mode = AstSerializeMode::Json,
-            _ => {
-                return Err(format!("Unknown AST format: {next}"));
-            }
-        }
-
-        Ok(())
-    }
-
     fn parse_crate_type(&mut self) -> Result<(), String> {
         let Some(next) = self.next_token() else {
             return Err("Crate type is not set".to_string());
@@ -276,16 +261,12 @@ fn parser_argument_test() {
 
 #[test]
 fn parser_dump_ast_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "--dump-ast".to_string(),
-        "xml".to_string(),
-    ];
+    let args = vec!["tanitc".to_string(), "--dump-ast".to_string()];
 
     let mut parser = CommandLineParser::new(args);
 
     let options = parser.parse().unwrap();
-    assert_eq!(options.dump_ast_mode, AstSerializeMode::Xml);
+    assert_eq!(options.dump_ast_mode, SerializationOption::Enabled);
 }
 
 #[test]

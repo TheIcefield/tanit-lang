@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -34,56 +33,6 @@ fn struct_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<struct-definition name=\"MyStruct\">\
-                                \n    <field name=\"f1\" publicity=\"Public\">\
-                                \n        <type style=\"primitive\" name=\"i32\"/>\
-                                \n    </field>\
-                                \n    <field name=\"f2\" publicity=\"Private\">\
-                                \n        <type style=\"array\">\
-                                \n            <size value=\"2\"/>\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </type>\
-                                \n    </field>\
-                                \n</struct-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"s\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"named\" name=\"MyStruct\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"MyStruct\">\
-                                \n            <field name=\"f1\">\
-                                \n                <literal style=\"integer-number\" value=\"1\"/>\
-                                \n            </field>\
-                                \n            <field name=\"f2\">\
-                                \n                <array-initialization>\
-                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n                    <literal style=\"decimal-number\" value=\"3\"/>\
-                                \n                </array-initialization>\
-                                \n            </field>\
-                                \n        </struct-initialization>\
-                                \n    </operation>\
-                                \n    <operation style=\"get\">\
-                                \n        <identifier name=\"s\"/>\
-                                \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <identifier name=\"f1\"/>\
-                                \n            <literal style=\"integer-number\" value=\"2\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -147,54 +96,6 @@ fn struct_in_module_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"math\">\
-                                \n    <struct-definition name=\"Vector2\">\
-                                \n        <field name=\"x\" publicity=\"Private\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </field>\
-                                \n        <field name=\"y\" publicity=\"Private\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </field>\
-                                \n    </struct-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"vec\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"named\" name=\"Vector2\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"Vector2\">\
-                                \n                <field name=\"x\">\
-                                \n                    <literal style=\"decimal-number\" value=\"0\"/>\
-                                \n                </field>\
-                                \n                <field name=\"y\">\
-                                \n                    <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n    <operation style=\"get\">\
-                                \n        <identifier name=\"vec\"/>\
-                                \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <identifier name=\"x\"/>\
-                                \n            <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -301,70 +202,6 @@ fn internal_struct_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"math\">\
-                                \n    <struct-definition name=\"Unit\">\
-                                \n        <field name=\"value\" publicity=\"Private\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </field>\
-                                \n    </struct-definition>\
-                                \n    <struct-definition name=\"Point2\">\
-                                \n        <field name=\"x\" publicity=\"Private\">\
-                                \n            <type style=\"named\" name=\"Unit\"/>\
-                                \n        </field>\
-                                \n        <field name=\"y\" publicity=\"Private\">\
-                                \n            <type style=\"named\" name=\"Unit\"/>\
-                                \n        </field>\
-                                \n    </struct-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"pnt\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"named\" name=\"Point2\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"Point2\">\
-                                \n                <field name=\"x\">\
-                                \n                    <struct-initialization name=\"Unit\">\
-                                \n                        <field name=\"value\">\
-                                \n                            <literal style=\"decimal-number\" value=\"1\"/>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n                <field name=\"y\">\
-                                \n                    <struct-initialization name=\"Unit\">\
-                                \n                        <field name=\"value\">\
-                                \n                            <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n    <operation style=\"get\">\
-                                \n        <identifier name=\"pnt\"/>\
-                                \n        <operation style=\"get\">\
-                                \n            <identifier name=\"x\"/>\
-                                \n            <operation style=\"binary\" operation=\"=\">\
-                                \n                <identifier name=\"value\"/>\
-                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n            </operation>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

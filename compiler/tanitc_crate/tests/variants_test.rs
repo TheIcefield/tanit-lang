@@ -2,7 +2,6 @@ use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_options::CompileOptions;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -45,83 +44,6 @@ fn variant_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<variant-definition name=\"MyVariant\">\
-                                \n    <attributes publicity=\"Public\"/>\
-                                \n    <field name=\"f1\"/>\
-                                \n    <field name=\"f2\">\
-                                \n        <type style=\"primitive\" name=\"i32\"/>\
-                                \n        <type style=\"primitive\" name=\"i32\"/>\
-                                \n    </field>\
-                                \n    <field name=\"f3\">\
-                                \n        <field name=\"x\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </field>\
-                                \n        <field name=\"y\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </field>\
-                                \n    </field>\
-                                \n</variant-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v1\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyVariant\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"MyVariant\">\
-                                \n                <field name=\"__kind__\">\
-                                \n                    <identifier name=\"__MyVariant__kind__f1__\"/>\
-                                \n                </field>\
-                                \n                <field name=\"__data__\">\
-                                \n                    <struct-initialization name=\"__MyVariant__data__\">\
-                                \n                        <field name=\"f1\">\
-                                \n                            <struct-initialization name=\"__MyVariant__data__f1__\"/>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v3\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyVariant\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"MyVariant\">\
-                                \n                <field name=\"__kind__\">\
-                                \n                    <identifier name=\"__MyVariant__kind__f3__\"/>\
-                                \n                </field>\
-                                \n                <field name=\"__data__\">\
-                                \n                    <struct-initialization name=\"__MyVariant__data__\">\
-                                \n                        <field name=\"f3\">\
-                                \n                            <struct-initialization name=\"__MyVariant__data__f3__\">\
-                                \n                                <field name=\"x\">\
-                                \n                                    <literal style=\"integer-number\" value=\"4\"/>\
-                                \n                                </field>\
-                                \n                                <field name=\"y\">\
-                                \n                                    <literal style=\"decimal-number\" value=\"7.5\"/>\
-                                \n                                </field>\
-                                \n                            </struct-initialization>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -235,84 +157,6 @@ fn variant_in_module_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"math\">\
-                                \n    <variant-definition name=\"MyVariant\">\
-                                \n        <field name=\"f1\"/>\
-                                \n        <field name=\"f2\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </field>\
-                                \n        <field name=\"f3\">\
-                                \n            <field name=\"x\">\
-                                \n                <type style=\"primitive\" name=\"i32\"/>\
-                                \n            </field>\
-                                \n            <field name=\"y\">\
-                                \n                <type style=\"primitive\" name=\"f32\"/>\
-                                \n            </field>\
-                                \n        </field>\
-                                \n    </variant-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v1\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyVariant\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"MyVariant\">\
-                                \n                <field name=\"__kind__\">\
-                                \n                    <identifier name=\"__MyVariant__kind__f1__\"/>\
-                                \n                </field>\
-                                \n                <field name=\"__data__\">\
-                                \n                    <struct-initialization name=\"__MyVariant__data__\">\
-                                \n                        <field name=\"f1\">\
-                                \n                            <struct-initialization name=\"__MyVariant__data__f1__\"/>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"v3\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyVariant\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <struct-initialization name=\"MyVariant\">\
-                                \n                <field name=\"__kind__\">\
-                                \n                    <identifier name=\"__MyVariant__kind__f3__\"/>\
-                                \n                </field>\
-                                \n                <field name=\"__data__\">\
-                                \n                    <struct-initialization name=\"__MyVariant__data__\">\
-                                \n                        <field name=\"f3\">\
-                                \n                            <struct-initialization name=\"__MyVariant__data__f3__\">\
-                                \n                                <field name=\"x\">\
-                                \n                                    <literal style=\"integer-number\" value=\"4\"/>\
-                                \n                                </field>\
-                                \n                                <field name=\"y\">\
-                                \n                                    <literal style=\"decimal-number\" value=\"7.5\"/>\
-                                \n                                </field>\
-                                \n                            </struct-initialization>\
-                                \n                        </field>\
-                                \n                    </struct-initialization>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -16,22 +15,6 @@ fn enum_def_test() {
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let enum_node = parser.parse_enum_def().unwrap();
-
-    {
-        const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
-                                \n    <field name=\"One\" value=\"1\"/>\
-                                \n    <field name=\"Second\"/>\
-                                \n    <field name=\"Max\"/>\
-                                \n</enum-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        enum_node.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
-    }
 
     {
         const HEADER_EXPECTED: &str = "typedef enum {\
@@ -63,18 +46,6 @@ fn empty_enum_def_test() {
     let enum_node = parser.parse_enum_def().unwrap();
 
     {
-        const EXPECTED: &str = "\n<enum-definition name=\"EmptyEnum\"/>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        enum_node.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_eq!(EXPECTED, res);
-    }
-
-    {
         const HEADER_EXPECTED: &str = "typedef enum {\n} EmptyEnum;\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -98,20 +69,6 @@ fn enum_with_one_field_def_test() {
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let enum_node = parser.parse_enum_def().unwrap();
-
-    {
-        const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
-                                \n    <field name=\"MinsInHour\" value=\"60\"/>\
-                                \n</enum-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        enum_node.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
-    }
 
     {
         const HEADER_EXPECTED: &str = "typedef enum {\
@@ -150,37 +107,6 @@ fn enum_work_test() {
         if parser.has_errors() {
             panic!("{:?}", parser.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<enum-definition name=\"MyEnum\">\
-                                \n    <attributes publicity=\"Public\"/>\
-                                \n    <field name=\"One\" value=\"1\"/>\
-                                \n    <field name=\"Second\"/>\
-                                \n    <field name=\"Max\"/>\
-                                \n</enum-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"automatic\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation style=\"access\">\
-                                \n            <identifier name=\"MyEnum\"/>\
-                                \n            <identifier name=\"Second\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -246,37 +172,6 @@ fn enum_in_module_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"color\">\
-                                \n    <enum-definition name=\"Color\">\
-                                \n        <field name=\"Red\" value=\"0\"/>\
-                                \n        <field name=\"Green\" value=\"1\"/>\
-                                \n        <field name=\"Blue\" value=\"2\"/>\
-                                \n    </enum-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"Color\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation>\
-                                \n            <literal style=\"integer-number\" value=\"0\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
