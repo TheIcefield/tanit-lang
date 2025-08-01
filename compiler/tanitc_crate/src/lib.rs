@@ -8,7 +8,7 @@ use tanitc_ast::Ast;
 use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
-use tanitc_options::{AstSerializeMode, CompileOptions, CrateType};
+use tanitc_options::{CompileOptions, CrateType, SerializationOption};
 use tanitc_parser::Parser;
 use tanitc_symbol_table::table::Table;
 
@@ -185,15 +185,9 @@ impl Unit {
 
         let compile_options = get_compile_options();
 
-        if AstSerializeMode::None != compile_options.dump_ast_mode {
+        if SerializationOption::Enabled == compile_options.dump_ast_mode {
             print!("Serializing AST: \"{}\"... ", &self.path);
-            self.serialize_ast(compile_options.dump_ast_mode);
-            println!("OK!");
-        }
-
-        if compile_options.dump_symbol_table {
-            print!("Serializing symbol table: \"{}\"... ", &self.path);
-            self.serialize_symbol_table(self.symbol_table.as_ref().unwrap());
+            self.serialize_ast();
             println!("OK!");
         }
 
@@ -336,57 +330,17 @@ impl Unit {
         Ok(())
     }
 
-    fn serialize_ron(&mut self, file: &mut dyn std::io::Write) {
-        use tanitc_serializer::ron_writer::RonWriter;
-        let mut writer = RonWriter::new(file).expect("Error: can't create AST serializer");
+    fn serialize_ast(&mut self) {
+        use tanitc_serializer::writer::RonWriter;
+
+        let mut file = std::fs::File::create(format!("{}.ast.ron", &self.name))
+            .expect("Error: can't create file for dumping AST");
+
+        let mut writer = RonWriter::new(&mut file).expect("Error: can't create AST serializer");
 
         match self.ast.as_mut().unwrap().accept(&mut writer) {
             Ok(_) => {}
             Err(err) => eprintln!("Error: {err}"),
-        }
-    }
-
-    fn serialize_xml(&mut self, file: &mut dyn std::io::Write) {
-        use tanitc_serializer::xml_writer::XmlWriter;
-        let mut writer = XmlWriter::new(file).expect("Error: can't create AST serializer");
-
-        match self.ast.as_mut().unwrap().accept(&mut writer) {
-            Ok(_) => writer.close(),
-            Err(err) => eprintln!("Error: {err}"),
-        }
-    }
-
-    fn serialize_json(&mut self, _file: &mut dyn std::io::Write) {
-        eprintln!("JSON serialization is not yet supported");
-    }
-
-    fn serialize_ast(&mut self, mode: AstSerializeMode) {
-        let suffix = match mode {
-            AstSerializeMode::None => "",
-            AstSerializeMode::Ron => "ron",
-            AstSerializeMode::Xml => "xml",
-            AstSerializeMode::Json => "json",
-        };
-
-        let mut file = std::fs::File::create(format!("{}.ast.{suffix}", &self.name))
-            .expect("Error: can't create file for dumping AST");
-
-        match mode {
-            AstSerializeMode::None => {}
-            AstSerializeMode::Ron => self.serialize_ron(&mut file),
-            AstSerializeMode::Xml => self.serialize_xml(&mut file),
-            AstSerializeMode::Json => self.serialize_json(&mut file),
-        }
-    }
-
-    fn serialize_symbol_table(&self, symbol_table: &Table) {
-        use std::io::Write;
-
-        let mut stream = std::fs::File::create(format!("{}.symbol_table.txt", &self.name))
-            .expect("Error: can't create file for serializing symbol table");
-
-        if let Err(err) = write!(stream, "{symbol_table:#?}") {
-            eprintln!("Error: {err}");
         }
     }
 }

@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -63,49 +62,6 @@ fn mutable_deref_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"value\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <literal style=\"integer-number\" value=\"50\"/>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"ref\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"reference\" mutability=\"Mutable\" style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation style=\"unary\" operation=\"&mut\">\
-                                \n            <identifier name=\"value\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n    <if>\
-                                \n        <condition>\
-                                \n            <literal style=\"integer-number\" value=\"1\"/>\
-                                \n        </condition>\
-                                \n        <than>\
-                                \n            <operation style=\"unary\" operation=\"*\">\
-                                \n                <operation style=\"binary\" operation=\"=\">\
-                                \n                    <identifier name=\"ref\"/>\
-                                \n                    <literal style=\"integer-number\" value=\"10\"/>\
-                                \n                </operation>\
-                                \n            </operation>\
-                                \n        </than>\
-                                \n    </if>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -226,53 +182,6 @@ fn mutable_deref_param_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<function-definition name=\"bar\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <parameters>\
-                                \n        <variable-definition name=\"p\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"reference\" mutability=\"Mutable\" style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n    </parameters>\
-                                \n    <operation style=\"unary\" operation=\"*\">\
-                                \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <identifier name=\"p\"/>\
-                                \n            <literal style=\"integer-number\" value=\"10\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"value\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <literal style=\"integer-number\" value=\"50\"/>\
-                                \n    </operation>\
-                                \n    <call-statement name=\"bar\">\
-                                \n        <parameters>\
-                                \n            <parameter index=\"0\">\
-                                \n                <operation style=\"unary\" operation=\"&mut\">\
-                                \n                    <identifier name=\"value\"/>\
-                                \n                </operation>\
-                                \n            </parameter>\
-                                \n        </parameters>\
-                                \n    </call-statement>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

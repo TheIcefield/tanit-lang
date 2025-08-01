@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -17,58 +16,6 @@ fn function_def_test() {
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let node = parser.parse_global_block().unwrap();
-
-    {
-        const EXPECTED: &str = "\n<function-definition name=\"sum\">\
-                                \n    <attributes safety=\"Safe\" publicity=\"Public\"/>\
-                                \n    <return-type>\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
-                                \n    </return-type>\
-                                \n    <parameters>\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </variable-definition>\
-                                \n    </parameters>\
-                                \n    <return-statement>\
-                                \n        <operation style=\"binary\" operation=\"+\">\
-                                \n            <identifier name=\"a\"/>\
-                                \n            <identifier name=\"b\"/>\
-                                \n        </operation>\
-                                \n    </return-statement>\
-                                \n</function-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <attributes safety=\"Unsafe\" publicity=\"Private\"/>\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"ret\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </variable-definition>\
-                                \n        <call-statement name=\"sum\">\
-                                \n            <parameters>\
-                                \n                <parameter index=\"0\">\
-                                \n                    <identifier name=\"a\"/>\
-                                \n                </parameter>\
-                                \n                <parameter index=\"1\">\
-                                \n                    <identifier name=\"b\"/>\
-                                \n                </parameter>\
-                                \n            </parameters>\
-                                \n        </call-statement>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        node.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
-    }
 
     {
         const HEADER_EXPECTED: &str = "float sum(float a, float const b);\
@@ -126,68 +73,6 @@ fn functions_test() {
         if analyzer.has_errors() {
             panic!("{:#?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<function-definition name=\"f\">\
-                                \n    <return-type>\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
-                                \n    </return-type>\
-                                \n    <parameters>\
-                                \n        <variable-definition name=\"a\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <variable-definition name=\"b\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n    </parameters>\
-                                \n    <return-statement>\
-                                \n        <operation style=\"binary\" operation=\"+\">\
-                                \n            <identifier name=\"a\"/>\
-                                \n            <identifier name=\"b\"/>\
-                                \n        </operation>\
-                                \n    </return-statement>\
-                                \n</function-definition>\
-                                \n<function-definition name=\"void_func\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n</function-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"param\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"i32\"/>\
-                                \n        </variable-definition>\
-                                \n        <literal style=\"integer-number\" value=\"34\"/>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"res\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </variable-definition>\
-                                \n        <call-statement name=\"f\">\
-                                \n            <parameters>\
-                                \n                <parameter index=\"0\">\
-                                \n                    <literal style=\"integer-number\" value=\"56\"/>\
-                                \n                </parameter>\
-                                \n                <parameter index=\"1\">\
-                                \n                    <identifier name=\"param\"/>\
-                                \n                </parameter>\
-                                \n            </parameters>\
-                                \n        </call-statement>\
-                                \n    </operation>\
-                                \n    <call-statement name=\"void_func\"/>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {
@@ -253,54 +138,6 @@ fn function_in_module_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<module-definition name=\"color\">\
-                                \n    <enum-definition name=\"Color\">\
-                                \n        <field name=\"Red\" value=\"0\"/>\
-                                \n        <field name=\"Green\" value=\"1\"/>\
-                                \n        <field name=\"Blue\" value=\"2\"/>\
-                                \n    </enum-definition>\
-                                \n    <function-definition name=\"get_green\">\
-                                \n        <return-type>\
-                                \n            <type style=\"named\" name=\"Color\"/>\
-                                \n        </return-type>\
-                                \n        <operation style=\"binary\" operation=\"=\">\
-                                \n            <variable-definition name=\"ret\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n                <type style=\"named\" name=\"Color\"/>\
-                                \n            </variable-definition>\
-                                \n            <operation>\
-                                \n                <literal style=\"integer-number\" value=\"1\"/>\
-                                \n            </operation>\
-                                \n        </operation>\
-                                \n        <return-statement>\
-                                \n            <identifier name=\"ret\"/>\
-                                \n        </return-statement>\
-                                \n    </function-definition>\
-                                \n</module-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"green\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"tuple\"/>\
-                                \n        </variable-definition>\
-                                \n        <operation style=\"access\">\
-                                \n            <identifier name=\"color\"/>\
-                                \n            <call-statement name=\"get_green\"/>\
-                                \n        </operation>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

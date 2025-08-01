@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -41,60 +40,6 @@ fn struct_with_methods_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<struct-definition name=\"MyStruct\">\
-                                \n    <field name=\"f1\" publicity=\"Private\">\
-                                \n        <type style=\"primitive\" name=\"i32\"/>\
-                                \n    </field>\
-                                \n    <field name=\"f2\" publicity=\"Private\">\
-                                \n        <type style=\"primitive\" name=\"f32\"/>\
-                                \n    </field>\
-                                \n</struct-definition>\
-                                \n<impl-definition name=\"MyStruct\">\
-                                \n    <function-definition name=\"new\">\
-                                \n        <return-type>\
-                                \n            <type style=\"named\" name=\"MyStruct\"/>\
-                                \n        </return-type>\
-                                \n        <return-statement>\
-                                \n            <struct-initialization name=\"MyStruct\">\
-                                \n                <field name=\"f1\">\
-                                \n                    <literal style=\"integer-number\" value=\"0\"/>\
-                                \n                </field>\
-                                \n                <field name=\"f2\">\
-                                \n                    <literal style=\"decimal-number\" value=\"0\"/>\
-                                \n                </field>\
-                                \n            </struct-initialization>\
-                                \n        </return-statement>\
-                                \n    </function-definition>\
-                                \n</impl-definition>\
-                                \n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"s\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"named\" name=\"MyStruct\"/>\
-                                \n        </variable-definition>\
-                                \n        <struct-initialization name=\"MyStruct\">\
-                                \n            <field name=\"f1\">\
-                                \n                <literal style=\"integer-number\" value=\"1\"/>\
-                                \n            </field>\
-                                \n            <field name=\"f2\">\
-                                \n                <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n            </field>\
-                                \n        </struct-initialization>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

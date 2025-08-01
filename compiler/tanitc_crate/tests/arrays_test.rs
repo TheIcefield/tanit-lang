@@ -1,7 +1,6 @@
 use tanitc_analyzer::Analyzer;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_parser::Parser;
-use tanitc_serializer::xml_writer::XmlWriter;
 
 use pretty_assertions::assert_str_eq;
 
@@ -29,64 +28,6 @@ fn array_work_test() {
         if analyzer.has_errors() {
             panic!("{:?}", analyzer.get_errors());
         }
-    }
-
-    {
-        const EXPECTED: &str = "\n<function-definition name=\"main\">\
-                                \n    <return-type>\
-                                \n        <type style=\"tuple\"/>\
-                                \n    </return-type>\
-                                \n    <variable-definition name=\"arr_1\" is-global=\"false\" mutability=\"Mutable\">\
-                                \n        <type style=\"array\">\
-                                \n            <size value=\"6\"/>\
-                                \n            <type style=\"primitive\" name=\"f32\"/>\
-                                \n        </type>\
-                                \n    </variable-definition>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"arr_2\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"array\">\
-                                \n                <size value=\"3\"/>\
-                                \n                <type style=\"primitive\" name=\"i32\"/>\
-                                \n            </type>\
-                                \n        </variable-definition>\
-                                \n        <array-initialization>\
-                                \n            <literal style=\"integer-number\" value=\"4\"/>\
-                                \n            <literal style=\"integer-number\" value=\"5\"/>\
-                                \n            <literal style=\"integer-number\" value=\"6\"/>\
-                                \n        </array-initialization>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <variable-definition name=\"arr_3\" is-global=\"false\" mutability=\"Immutable\">\
-                                \n            <type style=\"array\">\
-                                \n                <size value=\"3\"/>\
-                                \n                <type style=\"primitive\" name=\"f32\"/>\
-                                \n            </type>\
-                                \n        </variable-definition>\
-                                \n        <array-initialization>\
-                                \n            <literal style=\"decimal-number\" value=\"1\"/>\
-                                \n            <literal style=\"decimal-number\" value=\"2\"/>\
-                                \n            <literal style=\"decimal-number\" value=\"3\"/>\
-                                \n        </array-initialization>\
-                                \n    </operation>\
-                                \n    <operation style=\"binary\" operation=\"=\">\
-                                \n        <operation style=\"indexing\">\
-                                \n            <identifier name=\"arr_1\"/>\
-                                \n            <operation style=\"binary\" operation=\"+\">\
-                                \n                <literal style=\"integer-number\" value=\"1\"/>\
-                                \n                <literal style=\"integer-number\" value=\"1\"/>\
-                                \n            </operation>\
-                                \n        </operation>\
-                                \n        <literal style=\"decimal-number\" value=\"7\"/>\
-                                \n    </operation>\
-                                \n</function-definition>";
-
-        let mut buffer = Vec::<u8>::new();
-        let mut writer = XmlWriter::new(&mut buffer).unwrap();
-
-        program.accept(&mut writer).unwrap();
-        let res = String::from_utf8(buffer).unwrap();
-
-        assert_str_eq!(EXPECTED, res);
     }
 
     {

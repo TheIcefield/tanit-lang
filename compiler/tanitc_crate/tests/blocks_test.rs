@@ -1,6 +1,7 @@
-use pretty_assertions::assert_str_eq;
 use tanitc_analyzer::Analyzer;
 use tanitc_parser::Parser;
+
+use pretty_assertions::assert_str_eq;
 
 #[test]
 fn struct_in_local_scope_test() {

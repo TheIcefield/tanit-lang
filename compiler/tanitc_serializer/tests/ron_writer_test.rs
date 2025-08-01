@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use pretty_assertions::assert_str_eq;
 use tanitc_ast::{Ast, Block, FieldInfo, FunctionDef, StructDef, TypeSpec};
 use tanitc_ident::Ident;
-use tanitc_serializer::ron_writer::RonWriter;
+use tanitc_serializer::writer::RonWriter;
 use tanitc_ty::Type;
 
 #[test]
