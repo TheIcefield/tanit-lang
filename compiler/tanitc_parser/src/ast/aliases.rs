@@ -1,4 +1,4 @@
-use tanitc_ast::Ast;
+use tanitc_ast::ast::{aliases::AliasDef, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -6,7 +6,6 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_alias_def(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::AliasDef;
         let mut node = AliasDef {
             location: self.consume_token(Lexem::KwAlias)?.location,
             identifier: self.consume_identifier()?,

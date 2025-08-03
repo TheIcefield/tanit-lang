@@ -1,4 +1,7 @@
-use tanitc_ast::{attributes::FieldAttributes, Ast, FieldInfo, StructDef};
+use tanitc_ast::ast::{
+    structs::{StructDef, StructFieldAttributes, StructFieldInfo},
+    Ast,
+};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -68,9 +71,9 @@ impl Parser {
 
                     struct_def.fields.insert(
                         identifier,
-                        FieldInfo {
+                        StructFieldInfo {
                             ty: self.parse_type_spec()?,
-                            attributes: FieldAttributes {
+                            attributes: StructFieldAttributes {
                                 publicity: attrs.publicity.unwrap_or_default(),
                             },
                         },

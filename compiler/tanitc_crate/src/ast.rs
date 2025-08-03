@@ -1,6 +1,11 @@
 use tanitc_ast::{
-    AliasDef, Block, Branch, ControlFlow, EnumDef, Expression, ExternDef, FunctionDef, ImplDef,
-    ModuleDef, StructDef, TypeSpec, UnionDef, Use, Value, VariableDef, VariantDef, Visitor,
+    ast::{
+        aliases::AliasDef, blocks::Block, branches::Branch, control_flows::ControlFlow,
+        enums::EnumDef, expressions::Expression, externs::ExternDef, functions::FunctionDef,
+        methods::ImplDef, modules::ModuleDef, structs::StructDef, types::TypeSpec,
+        unions::UnionDef, uses::Use, values::Value, variables::VariableDef, variants::VariantDef,
+    },
+    visitor::Visitor,
 };
 use tanitc_messages::Message;
 

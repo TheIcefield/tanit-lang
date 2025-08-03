@@ -1,4 +1,12 @@
-use tanitc_ast::{FunctionDef, FunctionParam, VisitorMut};
+use tanitc_ast::{
+    ast::{
+        expressions::Expression,
+        functions::{FunctionDef, FunctionParam},
+        values::{Value, ValueKind},
+        Ast,
+    },
+    visitor::VisitorMut,
+};
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
 use tanitc_symbol_table::entry::{Entry, FuncDefData, SymbolKind};
@@ -88,5 +96,28 @@ impl Analyzer {
             }
         }
         Ok(parameters)
+    }
+
+    pub fn access_func_def(
+        &mut self,
+        func_name: Ident,
+        func_data: &FuncDefData,
+        rhs: &mut Ast,
+    ) -> Result<Option<Expression>, Message> {
+        let Ast::Value(Value {
+            location,
+            kind:
+                ValueKind::Call {
+                    arguments: call_args,
+                    ..
+                },
+        }) = rhs
+        else {
+            todo!("Unexpected rhs: {rhs:#?}");
+        };
+
+        self.analyze_call(func_name, func_data, call_args, *location)?;
+
+        Ok(None)
     }
 }

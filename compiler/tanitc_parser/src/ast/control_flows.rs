@@ -1,4 +1,7 @@
-use tanitc_ast::Ast;
+use tanitc_ast::ast::{
+    control_flows::{ControlFlow, ControlFlowKind},
+    Ast,
+};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -19,8 +22,6 @@ impl Parser {
     }
 
     fn parse_break(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{ControlFlow, ControlFlowKind};
-
         let location = self.consume_token(Lexem::KwBreak)?.location;
 
         let old_opt = self.does_ignore_nl();
@@ -49,8 +50,6 @@ impl Parser {
     }
 
     fn parse_continue(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{ControlFlow, ControlFlowKind};
-
         let location = self.consume_token(Lexem::KwContinue)?.location;
 
         Ok(Ast::from(ControlFlow {
@@ -60,8 +59,6 @@ impl Parser {
     }
 
     fn parse_return(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{ControlFlow, ControlFlowKind};
-
         let location = self.consume_token(Lexem::KwReturn)?.location;
 
         let mut node = ControlFlow {
@@ -92,7 +89,7 @@ impl Parser {
 
 #[test]
 fn parse_return_value_test() {
-    use tanitc_ast::{ControlFlowKind, Value, ValueKind};
+    use tanitc_ast::ast::values::{Value, ValueKind};
 
     const SRC_TEXT: &str = "return 10\n";
 
@@ -118,8 +115,6 @@ fn parse_return_value_test() {
 
 #[test]
 fn parse_return_test() {
-    use tanitc_ast::ControlFlowKind;
-
     const SRC_TEXT: &str = "return\n";
 
     let mut parser = Parser::from_text(SRC_TEXT).unwrap();
@@ -138,8 +133,6 @@ fn parse_return_test() {
 
 #[test]
 fn parse_break_test() {
-    use tanitc_ast::ControlFlowKind;
-
     const SRC_TEXT: &str = "break\n";
 
     let mut parser = Parser::from_text(SRC_TEXT).unwrap();
@@ -158,8 +151,6 @@ fn parse_break_test() {
 
 #[test]
 fn parse_continue_test() {
-    use tanitc_ast::ControlFlowKind;
-
     const SRC_TEXT: &str = "continue\n";
 
     let mut parser = Parser::from_text(SRC_TEXT).unwrap();

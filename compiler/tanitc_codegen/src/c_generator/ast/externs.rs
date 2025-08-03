@@ -1,4 +1,4 @@
-use tanitc_ast::ExternDef;
+use tanitc_ast::ast::externs::ExternDef;
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};
 

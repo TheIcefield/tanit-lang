@@ -1,4 +1,4 @@
-use tanitc_ast::Ast;
+use tanitc_ast::ast::{modules::ModuleDef, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -6,8 +6,6 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_module_def(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::ModuleDef;
-
         let mut node = ModuleDef::default();
 
         self.parse_module_header(&mut node)?;
@@ -16,7 +14,7 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
-    fn parse_module_header(&mut self, mod_def: &mut tanitc_ast::ModuleDef) -> Result<(), Message> {
+    fn parse_module_header(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
         let next = self.peek_token();
         mod_def.location = next.location;
 
@@ -32,7 +30,7 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_module_body(&mut self, mod_def: &mut tanitc_ast::ModuleDef) -> Result<(), Message> {
+    fn parse_module_body(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
         if !mod_def.is_external {
             self.parse_module_body_internal(mod_def)
         } else {
@@ -40,10 +38,7 @@ impl Parser {
         }
     }
 
-    fn parse_module_body_internal(
-        &mut self,
-        mod_def: &mut tanitc_ast::ModuleDef,
-    ) -> Result<(), Message> {
+    fn parse_module_body_internal(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
         self.consume_token(Lexem::Lcb)?;
 
         let block = self.parse_global_block()?;

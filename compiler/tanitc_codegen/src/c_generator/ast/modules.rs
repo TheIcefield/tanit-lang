@@ -1,4 +1,4 @@
-use tanitc_ast::ModuleDef;
+use tanitc_ast::ast::modules::ModuleDef;
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};
 

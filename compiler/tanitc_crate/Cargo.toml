@@ -15,7 +15,6 @@ tanitc_parser = { path = "../tanitc_parser" }
 tanitc_codegen = { path = "../tanitc_codegen" }
 tanitc_builder = { path = "../tanitc_builder" }
 tanitc_analyzer = { path = "../tanitc_analyzer" }
-tanitc_serializer = { path = "../tanitc_serializer" }
 tanitc_symbol_table = { path = "../tanitc_symbol_table" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_ident = { path = "../tanitc_ident" }

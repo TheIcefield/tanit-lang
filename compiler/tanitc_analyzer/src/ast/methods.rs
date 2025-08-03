@@ -1,4 +1,4 @@
-use tanitc_ast::{FunctionDef, ImplDef};
+use tanitc_ast::ast::{functions::FunctionDef, methods::ImplDef};
 use tanitc_messages::Message;
 
 use crate::Analyzer;
@@ -33,8 +33,14 @@ impl Analyzer {
 
 #[cfg(test)]
 mod tests {
-    use tanitc_ast::{
-        Ast, Block, FunctionDef, FunctionParam, ImplDef, StructDef, TypeSpec, VariableDef,
+    use tanitc_ast::ast::{
+        blocks::Block,
+        functions::{FunctionDef, FunctionParam},
+        methods::ImplDef,
+        structs::StructDef,
+        types::TypeSpec,
+        variables::VariableDef,
+        Ast,
     };
     use tanitc_attributes::Mutability;
     use tanitc_ident::Ident;

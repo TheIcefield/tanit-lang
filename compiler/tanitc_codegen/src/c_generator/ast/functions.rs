@@ -1,4 +1,4 @@
-use tanitc_ast::{FunctionDef, FunctionParam};
+use tanitc_ast::ast::functions::{FunctionDef, FunctionParam};
 use tanitc_ident::Ident;
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};

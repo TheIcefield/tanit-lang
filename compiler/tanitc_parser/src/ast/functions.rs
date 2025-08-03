@@ -1,4 +1,9 @@
-use tanitc_ast::{Ast, FunctionDef, FunctionParam, ParsedTypeInfo, TypeSpec, VariableDef};
+use tanitc_ast::ast::{
+    functions::{FunctionDef, FunctionParam},
+    types::{ParsedTypeInfo, TypeSpec},
+    variables::{VariableAttributes, VariableDef},
+    Ast,
+};
 use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -76,7 +81,7 @@ impl Parser {
 
         Ok(FunctionParam::Common(VariableDef {
             location,
-            attributes: tanitc_ast::attributes::VariableAttributes::default(),
+            attributes: VariableAttributes::default(),
             identifier,
             var_type,
             is_global: false,

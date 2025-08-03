@@ -1,6 +1,6 @@
 use tanitc_analyzer::Analyzer;
-use tanitc_ast::Ast;
 
+use tanitc_ast::ast::Ast;
 use tanitc_codegen::c_generator::CodeGenStream;
 use tanitc_ident::Ident;
 use tanitc_parser::Parser;

@@ -1,4 +1,7 @@
-use tanitc_ast::{Ast, CallArg, CallArgKind, Value, ValueKind};
+use tanitc_ast::ast::{
+    values::{CallArg, CallArgKind, Value, ValueKind},
+    Ast,
+};
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;

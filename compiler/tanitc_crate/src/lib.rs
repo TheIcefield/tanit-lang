@@ -4,7 +4,7 @@ use std::{
 };
 
 use tanitc_analyzer::{self, Analyzer};
-use tanitc_ast::Ast;
+use tanitc_ast::ast::Ast;
 use tanitc_builder::{build_object_file, link_crate_objects};
 use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
 use tanitc_lexer::Lexer;
@@ -331,17 +331,12 @@ impl Unit {
     }
 
     fn serialize_ast(&mut self) {
-        use tanitc_serializer::writer::RonWriter;
+        use std::io::Write;
 
         let mut file = std::fs::File::create(format!("{}.ast.ron", &self.name))
             .expect("Error: can't create file for dumping AST");
 
-        let mut writer = RonWriter::new(&mut file).expect("Error: can't create AST serializer");
-
-        match self.ast.as_mut().unwrap().accept(&mut writer) {
-            Ok(_) => {}
-            Err(err) => eprintln!("Error: {err}"),
-        }
+        writeln!(file, "{:#?}", self.ast.as_mut().unwrap()).expect("Error: can't serialize ast")
     }
 }
 

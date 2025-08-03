@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dev.dependencies]
+pretty_assertions = "1"
+
 [dependencies]
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_messages = { path = "../tanitc_messages" }

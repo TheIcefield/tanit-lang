@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
-use tanitc_ast::{
-    variant_utils, Ast, Expression, ExpressionKind, Value, ValueKind, VariantDef, VariantField,
+use tanitc_ast::ast::{
+    expressions::{Expression, ExpressionKind},
+    values::{Value, ValueKind},
+    variants::{get_variant_data_type_id, VariantDef, VariantField},
+    Ast,
 };
 use tanitc_ident::Ident;
 use tanitc_messages::Message;
@@ -13,9 +16,15 @@ use tanitc_ty::Type;
 
 use crate::Analyzer;
 
-// Variant
 impl Analyzer {
     pub fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
+        if !self.compile_options.allow_variants {
+            return Err(Message::new(
+                variant_def.location,
+                "Variants not supported in 0.1.0 (use \"--variants\" to enable variants)",
+            ));
+        }
+
         if self.has_symbol(variant_def.identifier) {
             return Err(Message::multiple_ids(
                 variant_def.location,
@@ -147,7 +156,7 @@ impl Analyzer {
                                 Ast::Value(Value {
                                     location,
                                     kind: ValueKind::Struct {
-                                        identifier: variant_utils::get_variant_data_type_id(
+                                        identifier: get_variant_data_type_id(
                                             variant_data.variant_name,
                                         ),
                                         components: vec![(
@@ -224,7 +233,7 @@ impl Analyzer {
                                 Ast::Value(Value {
                                     location,
                                     kind: ValueKind::Struct {
-                                        identifier: variant_utils::get_variant_data_type_id(
+                                        identifier: get_variant_data_type_id(
                                             variant_data.variant_name,
                                         ),
                                         components: vec![(
@@ -301,7 +310,7 @@ impl Analyzer {
                                 Ast::Value(Value {
                                     location,
                                     kind: ValueKind::Struct {
-                                        identifier: variant_utils::get_variant_data_type_id(
+                                        identifier: get_variant_data_type_id(
                                             variant_data.variant_name,
                                         ),
                                         components: vec![(

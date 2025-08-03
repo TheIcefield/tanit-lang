@@ -1,9 +1,10 @@
 use std::fmt::Display;
 
-use tanitc_lexer::token::Lexem;
+use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
+use tanitc_ty::Type;
 
-use crate::{Ast, ExpressionKind};
+use crate::ast::{types::TypeSpec, Ast};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperation {
@@ -236,5 +237,50 @@ impl ExpressionKind {
                 rhs,
             },
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExpressionKind {
+    Unary {
+        operation: UnaryOperation,
+        node: Box<Ast>,
+    },
+    Binary {
+        operation: BinaryOperation,
+        lhs: Box<Ast>,
+        rhs: Box<Ast>,
+    },
+    Conversion {
+        lhs: Box<Ast>,
+        ty: TypeSpec,
+    },
+    Access {
+        lhs: Box<Ast>,
+        rhs: Box<Ast>,
+    },
+    Get {
+        lhs: Box<Ast>,
+        rhs: Box<Ast>,
+    },
+    Indexing {
+        lhs: Box<Ast>,
+        index: Box<Ast>,
+    },
+    Term {
+        node: Box<Ast>,
+        ty: Type,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Expression {
+    pub location: Location,
+    pub kind: ExpressionKind,
+}
+
+impl From<Expression> for Ast {
+    fn from(value: Expression) -> Self {
+        Self::Expression(value)
     }
 }
