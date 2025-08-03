@@ -1,4 +1,4 @@
-use tanitc_ast::{Ast, ExternDef};
+use tanitc_ast::ast::{externs::ExternDef, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 

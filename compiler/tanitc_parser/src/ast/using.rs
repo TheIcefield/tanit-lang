@@ -1,4 +1,7 @@
-use tanitc_ast::{Ast, Use, UseIdentifier};
+use tanitc_ast::ast::{
+    uses::{Use, UseIdentifier},
+    Ast,
+};
 use tanitc_ident::Ident;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;

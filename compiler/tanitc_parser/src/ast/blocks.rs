@@ -1,4 +1,4 @@
-use tanitc_ast::{Ast, Block};
+use tanitc_ast::ast::{blocks::Block, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 

@@ -1,4 +1,4 @@
-use tanitc_ast::Ast;
+use tanitc_ast::ast::{enums::EnumDef, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -6,8 +6,6 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_enum_def(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::EnumDef;
-
         let mut node = EnumDef::default();
 
         self.parse_enum_header(&mut node)?;
@@ -16,14 +14,14 @@ impl Parser {
         Ok(Ast::from(node))
     }
 
-    fn parse_enum_header(&mut self, enum_def: &mut tanitc_ast::EnumDef) -> Result<(), Message> {
+    fn parse_enum_header(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         enum_def.location = self.consume_token(Lexem::KwEnum)?.location;
         enum_def.identifier = self.consume_identifier()?;
 
         Ok(())
     }
 
-    fn parse_enum_body(&mut self, enum_def: &mut tanitc_ast::EnumDef) -> Result<(), Message> {
+    fn parse_enum_body(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         self.consume_token(Lexem::Lcb)?;
         let old_opt = self.does_ignore_nl();
 
@@ -36,10 +34,7 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_enum_body_internal(
-        &mut self,
-        enum_def: &mut tanitc_ast::EnumDef,
-    ) -> Result<(), Message> {
+    fn parse_enum_body_internal(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         loop {
             let next = self.peek_token();
 

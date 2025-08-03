@@ -1,4 +1,7 @@
-use tanitc_ast::Ast;
+use tanitc_ast::ast::{
+    branches::{Branch, BranchKind},
+    Ast,
+};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -20,8 +23,6 @@ impl Parser {
     }
 
     fn parse_loop(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{Branch, BranchKind};
-
         let location = self.consume_token(Lexem::KwLoop)?.location;
 
         let body = Box::new(self.parse_local_block()?);
@@ -33,8 +34,6 @@ impl Parser {
     }
 
     fn parse_while(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{Branch, BranchKind};
-
         let location = self.consume_token(Lexem::KwWhile)?.location;
 
         let condition = Box::new(self.parse_expression()?);
@@ -47,8 +46,6 @@ impl Parser {
     }
 
     fn parse_if(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{Branch, BranchKind};
-
         let location = self.consume_token(Lexem::KwIf)?.location;
 
         let condition = Box::new(self.parse_expression()?);
@@ -61,8 +58,6 @@ impl Parser {
     }
 
     fn parse_else(&mut self) -> Result<Ast, Message> {
-        use tanitc_ast::{Branch, BranchKind};
-
         let location = self.consume_token(Lexem::KwElse)?.location;
 
         let body = Box::new(if Lexem::KwIf == self.peek_token().lexem {
@@ -80,8 +75,6 @@ impl Parser {
 
 #[test]
 fn parse_loop_test() {
-    use tanitc_ast::BranchKind;
-
     const SRC_TEXT: &str = "loop {\
                           \n   # come code here ...\
                           \n}";
@@ -102,7 +95,7 @@ fn parse_loop_test() {
 
 #[test]
 fn parse_while_test() {
-    use tanitc_ast::{BranchKind, Value, ValueKind};
+    use tanitc_ast::ast::values::{Value, ValueKind};
 
     const SRC_TEXT: &str = "while 1 {\
                           \n   # come code here ...\
@@ -131,7 +124,7 @@ fn parse_while_test() {
 
 #[test]
 fn parse_if_test() {
-    use tanitc_ast::{BranchKind, Value, ValueKind};
+    use tanitc_ast::ast::values::{Value, ValueKind};
 
     const SRC_TEXT: &str = "if 1 {\
                           \n   # come code here ...\
@@ -161,7 +154,7 @@ fn parse_if_test() {
 
 #[test]
 fn parse_if_else_test() {
-    use tanitc_ast::{BranchKind, Value, ValueKind};
+    use tanitc_ast::ast::values::{Value, ValueKind};
 
     const SRC_TEXT: &str = "if 1 { } else { }";
 
@@ -208,7 +201,7 @@ fn parse_if_else_test() {
 
 #[test]
 fn parse_if_else_if_test() {
-    use tanitc_ast::{BranchKind, Value, ValueKind};
+    use tanitc_ast::ast::values::{Value, ValueKind};
 
     const SRC_TEXT: &str = "if 1 { }\
                           \nelse\

@@ -1,4 +1,4 @@
-use tanitc_ast::ImplDef;
+use tanitc_ast::ast::methods::ImplDef;
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};
 
@@ -18,8 +18,14 @@ impl CodeGenStream<'_> {
 
 #[cfg(test)]
 mod tests {
-    use tanitc_ast::{
-        Ast, Block, FunctionDef, FunctionParam, ImplDef, StructDef, TypeSpec, VariableDef,
+    use tanitc_ast::ast::{
+        blocks::Block,
+        functions::{FunctionDef, FunctionParam},
+        methods::ImplDef,
+        structs::StructDef,
+        types::TypeSpec,
+        variables::VariableDef,
+        Ast,
     };
     use tanitc_attributes::Mutability;
     use tanitc_ident::Ident;

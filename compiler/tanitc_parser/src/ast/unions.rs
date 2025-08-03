@@ -1,4 +1,7 @@
-use tanitc_ast::{attributes::FieldAttributes, Ast, FieldInfo, UnionDef};
+use tanitc_ast::ast::{
+    unions::{UnionDef, UnionFieldAttributes, UnionFieldInfo},
+    Ast,
+};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -65,9 +68,9 @@ impl Parser {
 
                     union_def.fields.insert(
                         identifier,
-                        FieldInfo {
+                        UnionFieldInfo {
                             ty: self.parse_type_spec()?,
-                            attributes: FieldAttributes {
+                            attributes: UnionFieldAttributes {
                                 publicity: attrs.publicity.unwrap_or_default(),
                             },
                         },

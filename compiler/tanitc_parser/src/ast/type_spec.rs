@@ -1,4 +1,4 @@
-use tanitc_ast::{ParsedTypeInfo, TypeSpec};
+use tanitc_ast::ast::types::{ParsedTypeInfo, TypeSpec};
 use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;

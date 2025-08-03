@@ -1,14 +1,18 @@
-use std::{iter::Peekable, slice::Iter};
+use std::{collections::BTreeMap, iter::Peekable, slice::Iter};
 
 use tanitc_ast::{
-    expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, CallArg, CallArgKind, Expression, ExpressionKind, Value, ValueKind,
+    ast::expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
+    ast::{
+        values::{CallArg, CallArgKind, Value, ValueKind},
+        Ast,
+    },
 };
+use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
-    entry::{EnumData, FuncDefData, StructDefData, SymbolKind, UnionDefData, VarDefData},
+    entry::{SymbolKind, VarDefData},
     type_info::TypeInfo,
 };
 use tanitc_ty::Type;
@@ -16,6 +20,33 @@ use tanitc_ty::Type;
 use crate::Analyzer;
 
 impl Analyzer {
+    pub fn analyze_expression(&mut self, expr: &mut Expression) -> Result<(), Message> {
+        let ret = match &mut expr.kind {
+            ExpressionKind::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => self.analyze_binary_expr(operation, lhs, rhs),
+            ExpressionKind::Unary { operation, node } => self.analyze_unary_expr(operation, node),
+            ExpressionKind::Access { lhs, rhs } => self.analyze_access_expr(lhs, rhs),
+            ExpressionKind::Conversion { .. } => self.analyze_conversion_expr(),
+            ExpressionKind::Get { lhs, rhs } => return self.analyze_member_access(lhs, rhs),
+            ExpressionKind::Indexing { lhs, index } => return self.analyze_indexing(lhs, index),
+            ExpressionKind::Term { node, .. } => self.analyze_term_expr(node),
+        };
+
+        match ret {
+            Ok(Some(processed_node)) => *expr = processed_node,
+            Err(mut msg) => {
+                msg.location = expr.location;
+                return Err(msg);
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
     pub fn analyze_unary_expr(
         &mut self,
         operation: &UnaryOperation,
@@ -59,7 +90,7 @@ impl Analyzer {
         let does_mutate = operation.does_mutate();
 
         if let Ast::VariableDef(node) = lhs {
-            self.analyze_variable_def(node, Some(rhs))?;
+            self.check_variable_def_types(node, Some(rhs))?;
         } else if let Ast::Value(node) = lhs {
             match &node.kind {
                 ValueKind::Identifier(id) => {
@@ -148,6 +179,82 @@ impl Analyzer {
         Ok(processed_node)
     }
 
+    pub fn get_expr_type(&self, expr: &Expression) -> TypeInfo {
+        match &expr.kind {
+            ExpressionKind::Binary {
+                operation,
+                lhs,
+                rhs,
+            } => match operation {
+                BinaryOperation::LogicalNe
+                | BinaryOperation::LogicalEq
+                | BinaryOperation::LogicalLt
+                | BinaryOperation::LogicalLe
+                | BinaryOperation::LogicalGt
+                | BinaryOperation::LogicalGe => TypeInfo {
+                    ty: Type::Bool,
+                    mutability: Mutability::Mutable,
+                    members: BTreeMap::new(),
+                },
+
+                _ => {
+                    let lhs_type = self.get_type(lhs);
+
+                    if let Type::Auto = lhs_type.ty {
+                        return self.get_type(rhs);
+                    }
+
+                    lhs_type
+                }
+            },
+            ExpressionKind::Unary { operation, node } => {
+                let node_type = self.get_type(node);
+
+                let (is_ref, mutability) = if *operation == UnaryOperation::Ref {
+                    (true, Mutability::Immutable)
+                } else if *operation == UnaryOperation::RefMut {
+                    (true, Mutability::Mutable)
+                } else {
+                    (false, Mutability::Immutable)
+                };
+
+                if is_ref {
+                    return TypeInfo {
+                        ty: Type::Ref {
+                            ref_to: Box::new(node_type.ty.clone()),
+                            mutability,
+                        },
+                        mutability,
+                        members: node_type.members,
+                    };
+                }
+
+                node_type
+            }
+            ExpressionKind::Conversion { ty, .. } => TypeInfo {
+                ty: ty.get_type(),
+                mutability: Mutability::Mutable,
+                members: BTreeMap::new(),
+            },
+            ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
+            ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
+            ExpressionKind::Indexing { lhs, .. } => {
+                let mut lhs_type = self.get_type(lhs);
+                let Type::Array { ref value_type, .. } = &lhs_type.ty else {
+                    unreachable!()
+                };
+
+                lhs_type.ty = value_type.as_ref().clone();
+                lhs_type
+            }
+            ExpressionKind::Term { ty, .. } => TypeInfo {
+                ty: ty.clone(),
+                mutability: Mutability::Immutable,
+                members: BTreeMap::new(),
+            },
+        }
+    }
+
     pub fn analyze_member_access(&mut self, lhs: &mut Ast, rhs: &mut Ast) -> Result<(), Message> {
         let mut ids = Vec::<Ident>::new();
 
@@ -216,140 +323,6 @@ impl Analyzer {
         }
 
         Ok(())
-    }
-
-    fn access_enum(
-        &mut self,
-        enum_data: &EnumData,
-        rhs: &Ast,
-    ) -> Result<Option<Expression>, Message> {
-        let location = rhs.location();
-
-        Ok(Some(Expression {
-            location,
-            kind: ExpressionKind::Term {
-                node: Box::new(Ast::Value(Value {
-                    location,
-                    kind: ValueKind::Integer(enum_data.value),
-                })),
-                ty: Type::Custom(enum_data.enum_name.to_string()),
-            },
-        }))
-    }
-
-    fn access_func_def(
-        &mut self,
-        func_name: Ident,
-        func_data: &FuncDefData,
-        rhs: &mut Ast,
-    ) -> Result<Option<Expression>, Message> {
-        if let Ast::Value(Value {
-            location,
-            kind:
-                ValueKind::Call {
-                    arguments: call_args,
-                    ..
-                },
-        }) = rhs
-        {
-            self.analyze_call(func_name, func_data, call_args, *location)?;
-        } else {
-            todo!("Unexpected rhs: {rhs:#?}");
-        };
-
-        Ok(None)
-    }
-
-    fn access_struct_def(
-        &mut self,
-        struct_name: Ident,
-        struct_data: &StructDefData,
-        node: &Ast,
-    ) -> Result<Option<Expression>, Message> {
-        let mut value = Box::new(node.clone());
-
-        let struct_comps = &struct_data.fields;
-
-        if let Ast::Value(Value {
-            kind:
-                ValueKind::Struct {
-                    components: value_comps,
-                    ..
-                },
-            ..
-        }) = value.as_mut()
-        {
-            if let Err(mut msg) =
-                self.check_struct_components(value_comps, struct_name, struct_comps)
-            {
-                msg.location = node.location();
-                return Err(msg);
-            }
-        } else {
-            return Err(Message::unreachable(
-                node.location(),
-                format!("expected ValueKind::Struct, actually: {node:?}"),
-            ));
-        }
-
-        let node = Expression {
-            location: node.location(),
-            kind: ExpressionKind::Term {
-                node: value,
-                ty: Type::Custom(struct_name.to_string()),
-            },
-        };
-
-        Ok(Some(node))
-    }
-
-    fn access_union_def(
-        &mut self,
-        union_name: Ident,
-        union_data: &UnionDefData,
-        node: &Ast,
-    ) -> Result<Option<Expression>, Message> {
-        let mut value_clone = Box::new(node.clone());
-
-        let union_comps = &union_data.fields;
-
-        let Ast::Value(value) = value_clone.as_mut() else {
-            return Err(Message::unreachable(
-                node.location(),
-                format!("expected Ast::Value, actually: {}", node.name()),
-            ));
-        };
-
-        let ValueKind::Struct {
-            identifier: union_id,
-            components: value_comps,
-        } = &mut value.kind
-        else {
-            return Err(Message::unreachable(
-                value.location,
-                format!("expected ValueKind::Struct, actually: {:?}", value.kind),
-            ));
-        };
-
-        if let Err(mut msg) = self.check_union_components(value_comps, union_name, union_comps) {
-            msg.location = node.location();
-            return Err(msg);
-        }
-
-        value.kind = ValueKind::Struct {
-            identifier: *union_id,
-            components: std::mem::take(value_comps),
-        };
-
-        let node = Expression {
-            location: node.location(),
-            kind: ExpressionKind::Term {
-                node: value_clone,
-                ty: Type::Custom(union_name.to_string()),
-            },
-        };
-
-        Ok(Some(node))
     }
 
     fn check_members(
@@ -536,65 +509,68 @@ impl Analyzer {
 
     #[allow(dead_code)]
     fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
-        if let Ast::Expression(node) = expr_node {
-            let location = node.location;
+        let Ast::Expression(node) = expr_node else {
+            return Err(Message::from_string(
+                expr_node.location(),
+                format!("Expected Ast::Expression, actually: {}", expr_node.name()),
+            ));
+        };
 
-            if let ExpressionKind::Binary {
-                operation,
-                lhs,
-                rhs,
-            } = &mut node.kind
-            {
-                self.convert_expr_node(lhs)?;
-                self.convert_expr_node(rhs)?;
+        let location = node.location;
 
-                let lhs_type = self.get_type(lhs);
+        if let ExpressionKind::Binary {
+            operation,
+            lhs,
+            rhs,
+        } = &mut node.kind
+        {
+            self.convert_expr_node(lhs)?;
+            self.convert_expr_node(rhs)?;
 
-                let rhs_type = self.get_type(rhs);
+            let lhs_type = self.get_type(lhs);
 
-                let func_name_str = format!(
-                    "__tanit_compiler__{}_{}_{}",
-                    match operation {
-                        BinaryOperation::Add => "add",
-                        BinaryOperation::Sub => "sub",
-                        BinaryOperation::Mul => "mul",
-                        BinaryOperation::Div => "div",
-                        BinaryOperation::Mod => "mod",
-                        BinaryOperation::ShiftL => "lshift",
-                        BinaryOperation::ShiftR => "rshift",
-                        BinaryOperation::BitwiseOr => "or",
-                        BinaryOperation::BitwiseAnd => "and",
-                        _ => return Err(Message::new(location, "Unexpected operation")),
-                    },
-                    lhs_type.ty,
-                    rhs_type.ty
-                );
+            let rhs_type = self.get_type(rhs);
 
-                let func_id = Ident::from(func_name_str);
+            let func_name_str = format!(
+                "__tanit_compiler__{}_{}_{}",
+                match operation {
+                    BinaryOperation::Add => "add",
+                    BinaryOperation::Sub => "sub",
+                    BinaryOperation::Mul => "mul",
+                    BinaryOperation::Div => "div",
+                    BinaryOperation::Mod => "mod",
+                    BinaryOperation::ShiftL => "lshift",
+                    BinaryOperation::ShiftR => "rshift",
+                    BinaryOperation::BitwiseOr => "or",
+                    BinaryOperation::BitwiseAnd => "and",
+                    _ => return Err(Message::new(location, "Unexpected operation")),
+                },
+                lhs_type.ty,
+                rhs_type.ty
+            );
 
-                *expr_node = Ast::from(Value {
-                    location,
-                    kind: ValueKind::Call {
-                        identifier: func_id,
-                        arguments: vec![
-                            CallArg {
-                                location,
-                                identifier: None,
-                                kind: CallArgKind::Positional(0, lhs.clone()),
-                            },
-                            CallArg {
-                                location,
-                                identifier: None,
-                                kind: CallArgKind::Positional(1, rhs.clone()),
-                            },
-                        ],
-                    },
-                });
-            }
+            let func_id = Ident::from(func_name_str);
 
-            Ok(())
-        } else {
-            unreachable!()
+            *expr_node = Ast::from(Value {
+                location,
+                kind: ValueKind::Call {
+                    identifier: func_id,
+                    arguments: vec![
+                        CallArg {
+                            location,
+                            identifier: None,
+                            kind: CallArgKind::Positional(0, lhs.clone()),
+                        },
+                        CallArg {
+                            location,
+                            identifier: None,
+                            kind: CallArgKind::Positional(1, rhs.clone()),
+                        },
+                    ],
+                },
+            });
         }
+
+        Ok(())
     }
 }

@@ -1,4 +1,9 @@
-use tanitc_ast::{Ast, Fields, StructDef, TypeSpec, VariantDef, VariantField};
+use tanitc_ast::ast::{
+    structs::{StructDef, StructFields},
+    types::TypeSpec,
+    variants::{VariantDef, VariantField},
+    Ast,
+};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -140,7 +145,7 @@ impl Parser {
                 let mut node = StructDef::default();
                 self.parse_struct_body(&mut node)?;
 
-                let mut fields = Fields::new();
+                let mut fields = StructFields::new();
                 for (field_name, field_info) in node.fields.iter() {
                     fields.insert(*field_name, field_info.clone());
                 }

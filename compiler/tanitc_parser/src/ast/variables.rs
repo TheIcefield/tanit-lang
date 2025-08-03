@@ -1,6 +1,8 @@
-use tanitc_ast::{
-    attributes::VariableAttributes, Ast, Expression, ExpressionKind, ParsedTypeInfo, TypeSpec,
-    VariableDef,
+use tanitc_ast::ast::{
+    expressions::{Expression, ExpressionKind},
+    types::{ParsedTypeInfo, TypeSpec},
+    variables::{VariableAttributes, VariableDef},
+    Ast,
 };
 use tanitc_attributes::Mutability;
 use tanitc_lexer::token::Lexem;
@@ -113,8 +115,10 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use tanitc_ast::{
-        expression_utils::BinaryOperation, Ast, Expression, ExpressionKind, Value, ValueKind,
+    use tanitc_ast::ast::{
+        expressions::{BinaryOperation, Expression, ExpressionKind},
+        values::{Value, ValueKind},
+        Ast,
     };
     use tanitc_ty::Type;
 

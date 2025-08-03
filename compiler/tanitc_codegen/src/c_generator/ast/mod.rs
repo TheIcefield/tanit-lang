@@ -1,8 +1,25 @@
 use tanitc_ast::{
-    expression_utils::{BinaryOperation, UnaryOperation},
-    AliasDef, Ast, Block, Branch, BranchKind, CallArg, CallArgKind, ControlFlow, ControlFlowKind,
-    EnumDef, Expression, ExpressionKind, ExternDef, FunctionDef, ImplDef, ModuleDef, StructDef,
-    TypeSpec, UnionDef, Use, Value, ValueKind, VariableDef, VariantDef, Visitor,
+    ast::{
+        aliases::AliasDef,
+        blocks::Block,
+        branches::{Branch, BranchKind},
+        control_flows::{ControlFlow, ControlFlowKind},
+        enums::EnumDef,
+        expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
+        externs::ExternDef,
+        functions::FunctionDef,
+        methods::ImplDef,
+        modules::ModuleDef,
+        structs::StructDef,
+        types::TypeSpec,
+        unions::UnionDef,
+        uses::Use,
+        values::{CallArg, CallArgKind, Value, ValueKind},
+        variables::VariableDef,
+        variants::VariantDef,
+        Ast,
+    },
+    visitor::Visitor,
 };
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;

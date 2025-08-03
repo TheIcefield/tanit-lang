@@ -1,4 +1,10 @@
-use tanitc_ast::{Fields, TypeSpec, VariantDef, VariantField, VariantFields};
+use tanitc_ast::ast::{
+    structs::StructFields,
+    types::TypeSpec,
+    variants::{
+        get_variant_data_kind_id, get_variant_data_type_id, VariantDef, VariantField, VariantFields,
+    },
+};
 use tanitc_ident::Ident;
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};
@@ -29,7 +35,7 @@ impl CodeGenStream<'_> {
         variant_id: Ident,
         fields: &VariantFields,
     ) -> Result<(), std::io::Error> {
-        let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
+        let enum_id = get_variant_data_kind_id(variant_id);
 
         // Enum definition
         writeln!(self, "typedef enum {{")?;
@@ -42,7 +48,7 @@ impl CodeGenStream<'_> {
     }
 
     fn generate_variant_kind_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
-        let enum_id = tanitc_ast::variant_utils::get_variant_data_kind_id(variant_id);
+        let enum_id = get_variant_data_kind_id(variant_id);
         let field_id = Ident::from("__kind__".to_string());
 
         writeln!(self, "    {enum_id} {field_id};")?;
@@ -66,7 +72,7 @@ impl CodeGenStream<'_> {
         &mut self,
         union_id: Ident,
         field_id: Ident,
-        subfields: &Fields,
+        subfields: &StructFields,
     ) -> Result<(), std::io::Error> {
         let struct_name = format!("{union_id}{field_id}__");
 
@@ -107,7 +113,7 @@ impl CodeGenStream<'_> {
         variant_id: Ident,
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
+        let union_id = get_variant_data_type_id(variant_id);
 
         for (field_id, field_data) in fields.iter() {
             match field_data {
@@ -130,7 +136,7 @@ impl CodeGenStream<'_> {
         variant_id: Ident,
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
+        let union_id = get_variant_data_type_id(variant_id);
 
         writeln!(self, "typedef union {union_id} {{")?;
 
@@ -155,7 +161,7 @@ impl CodeGenStream<'_> {
     }
 
     fn generate_variant_data_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
-        let union_id = tanitc_ast::variant_utils::get_variant_data_type_id(variant_id);
+        let union_id = get_variant_data_type_id(variant_id);
         let field_id = Ident::from("__data__".to_string());
 
         writeln!(self, "    {union_id} {field_id};")?;

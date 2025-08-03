@@ -1,4 +1,4 @@
-use tanitc_ast::{Ast, ImplDef};
+use tanitc_ast::ast::{methods::ImplDef, Ast};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -54,8 +54,11 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use crate::Parser;
-    use tanitc_ast::{
-        attributes::VariableAttributes, Ast, FunctionParam, ParsedTypeInfo, TypeSpec, VariableDef,
+    use tanitc_ast::ast::{
+        functions::FunctionParam,
+        types::{ParsedTypeInfo, TypeSpec},
+        variables::{VariableAttributes, VariableDef},
+        Ast,
     };
     use tanitc_attributes::Mutability;
     use tanitc_ident::Ident;

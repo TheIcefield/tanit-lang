@@ -1,6 +1,7 @@
-use tanitc_ast::{
-    expression_utils::{BinaryOperation, UnaryOperation},
-    Ast, Expression, ExpressionKind, Value, ValueKind,
+use tanitc_ast::ast::{
+    expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
+    values::{Value, ValueKind},
+    Ast,
 };
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
@@ -563,8 +564,10 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use tanitc_ast::{
-        expression_utils::BinaryOperation, Ast, Expression, ExpressionKind, Value, ValueKind,
+    use tanitc_ast::ast::{
+        expressions::{BinaryOperation, Expression, ExpressionKind},
+        values::{Value, ValueKind},
+        Ast,
     };
     use tanitc_ty::Type;
 
@@ -652,8 +655,6 @@ mod tests {
 
     #[test]
     fn conversion_test() {
-        use tanitc_ast::{Value, ValueKind};
-
         const SRC_TEXT: &str = "45 as f32";
 
         let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
