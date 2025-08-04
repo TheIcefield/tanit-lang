@@ -2,7 +2,7 @@ use tanitc_ast::{
     ast::{
         aliases::AliasDef,
         blocks::Block,
-        branches::{Branch, BranchKind},
+        branches::Branch,
         control_flows::{ControlFlow, ControlFlowKind},
         enums::EnumDef,
         expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
@@ -29,15 +29,16 @@ use super::{CodeGenMode, CodeGenStream};
 
 use std::io::Write;
 
-pub mod aliases;
-pub mod enums;
-pub mod externs;
-pub mod functions;
-pub mod methods;
-pub mod modules;
-pub mod structs;
-pub mod unions;
-pub mod variants;
+mod aliases;
+mod branches;
+mod enums;
+mod externs;
+mod functions;
+mod methods;
+mod modules;
+mod structs;
+mod unions;
+mod variants;
 
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
@@ -161,15 +162,6 @@ impl Visitor for CodeGenStream<'_> {
 }
 
 impl CodeGenStream<'_> {
-    fn codegen_err(err: std::io::Error) -> Message {
-        Message {
-            location: Location::new(),
-            text: format!("Codegen error: {err}"),
-        }
-    }
-}
-
-impl CodeGenStream<'_> {
     fn generate(&mut self, node: &Ast) -> Result<(), std::io::Error> {
         match node {
             Ast::ModuleDef(node) => self.generate_module_def(node),
@@ -192,6 +184,15 @@ impl CodeGenStream<'_> {
         }
     }
 
+    fn codegen_err(err: std::io::Error) -> Message {
+        Message {
+            location: Location::new(),
+            text: format!("Codegen error: {err}"),
+        }
+    }
+}
+
+impl CodeGenStream<'_> {
     fn generate_variable_array_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {
         let ty = var_def.var_type.get_type();
         let Type::Array { size, value_type } = ty else {
@@ -297,41 +298,6 @@ impl CodeGenStream<'_> {
             }
         }
 
-        self.mode = old_mode;
-        Ok(())
-    }
-
-    fn generate_branch(&mut self, branch: &Branch) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::SourceOnly;
-
-        match &branch.kind {
-            BranchKind::Loop { body } => {
-                write!(self, "while (1)")?;
-
-                self.generate(body)?;
-            }
-            BranchKind::While { body, condition } => {
-                write!(self, "while (")?;
-
-                self.generate(condition)?;
-
-                writeln!(self, ")")?;
-
-                self.generate(body)?;
-            }
-            BranchKind::If { condition, body } => {
-                write!(self, "if (")?;
-                self.generate(condition)?;
-                writeln!(self, ")")?;
-
-                self.generate(body)?;
-            }
-            BranchKind::Else { body } => {
-                writeln!(self, "else")?;
-                self.generate(body)?;
-            }
-        }
         self.mode = old_mode;
         Ok(())
     }
