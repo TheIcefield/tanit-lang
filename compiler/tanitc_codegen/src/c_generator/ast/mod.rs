@@ -29,6 +29,7 @@ use super::{CodeGenMode, CodeGenStream};
 
 use std::io::Write;
 
+pub mod aliases;
 pub mod enums;
 pub mod externs;
 pub mod functions;
@@ -231,24 +232,6 @@ impl CodeGenStream<'_> {
             },
             var_def.identifier
         )?;
-
-        Ok(())
-    }
-
-    fn generate_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        write!(
-            self,
-            "typedef {} {}",
-            alias_def.value.get_c_type(),
-            alias_def.identifier
-        )?;
-
-        writeln!(self, ";")?;
-
-        self.mode = old_mode;
 
         Ok(())
     }
