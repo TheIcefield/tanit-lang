@@ -82,7 +82,7 @@ mod tests {
     }
 
     #[test]
-    fn union_with_1_field_struct() {
+    fn union_with_1_field() {
         const UNION_NAME: &str = "MyUnion";
         const FIELD_1_NAME: &str = "a";
         const HEADER_EXPECTED: &str = "typedef union {\
@@ -108,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn union_with_3_fields_struct() {
+    fn union_with_3_fields() {
         const UNION_NAME: &str = "MyUnion";
         const FIELD_1_NAME: &str = "a";
         const FIELD_2_NAME: &str = "b";
