@@ -49,3 +49,26 @@ impl Display for Publicity {
         write!(f, "{self:?}")
     }
 }
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Visibility {
+    #[default]
+    Local,
+    Global,
+}
+
+impl Visibility {
+    pub fn is_global(&self) -> bool {
+        *self == Self::Global
+    }
+
+    pub fn is_local(&self) -> bool {
+        *self == Self::Local
+    }
+}
+
+impl Display for Visibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}

@@ -4,7 +4,7 @@ use tanitc_ast::ast::{
     variables::{VariableAttributes, VariableDef},
     Ast,
 };
-use tanitc_attributes::Mutability;
+use tanitc_attributes::{Mutability, Visibility};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -16,15 +16,15 @@ impl Parser {
         let next = self.peek_token();
         let location = next.location;
 
-        let is_global = match next.lexem {
+        let visibility = match next.lexem {
             Lexem::KwVar => {
                 self.get_token();
-                false
+                Visibility::Local
             }
 
             Lexem::KwStatic => {
                 self.get_token();
-                true
+                Visibility::Global
             }
 
             _ => {
@@ -80,7 +80,7 @@ impl Parser {
             ));
         }
 
-        if var_type.is_none() && is_global {
+        if var_type.is_none() && visibility.is_global() {
             return Err(Message::from_string(
                 location,
                 format!(
@@ -98,7 +98,7 @@ impl Parser {
                 info: ParsedTypeInfo::default(),
                 ty: Type::Auto,
             }),
-            is_global,
+            visibility,
             mutability,
         });
 
@@ -164,7 +164,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "a");
         assert_eq!(var_def.mutability.is_mutable(), false);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::I32);
     }
 
@@ -208,7 +208,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "b");
         assert_eq!(var_def.mutability.is_mutable(), true);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::I32);
     }
 
@@ -252,7 +252,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "c");
         assert_eq!(var_def.mutability.is_mutable(), false);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::Auto);
     }
 
@@ -296,7 +296,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "d");
         assert_eq!(var_def.mutability.is_mutable(), true);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::Auto);
     }
 
@@ -317,7 +317,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "e");
         assert_eq!(var_def.mutability.is_mutable(), false);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::I32);
     }
 
@@ -338,7 +338,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "f");
         assert_eq!(var_def.mutability.is_mutable(), true);
-        assert_eq!(var_def.is_global, false);
+        assert_eq!(var_def.visibility.is_global(), false);
         assert_eq!(var_def.var_type.get_type(), Type::F32);
     }
 
@@ -394,7 +394,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "A");
         assert_eq!(var_def.mutability.is_mutable(), false);
-        assert_eq!(var_def.is_global, true);
+        assert_eq!(var_def.visibility.is_global(), true);
         assert_eq!(var_def.var_type.get_type(), Type::I32);
     }
 
@@ -438,7 +438,7 @@ mod tests {
 
         assert_eq!(var_def.identifier.to_string(), "B");
         assert_eq!(var_def.mutability.is_mutable(), true);
-        assert_eq!(var_def.is_global, true);
+        assert_eq!(var_def.visibility.is_global(), true);
         assert_eq!(var_def.var_type.get_type(), Type::I32);
     }
 

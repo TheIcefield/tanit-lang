@@ -60,7 +60,7 @@ mod tests {
         variables::{VariableAttributes, VariableDef},
         Ast,
     };
-    use tanitc_attributes::Mutability;
+    use tanitc_attributes::{Mutability, Visibility};
     use tanitc_ident::Ident;
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
@@ -178,7 +178,7 @@ mod tests {
                             },
                             ty: Type::I32
                         },
-                        is_global: false,
+                        visibility: Visibility::Local,
                         mutability: Mutability::Immutable
                     })
                 );
