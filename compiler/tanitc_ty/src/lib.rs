@@ -150,6 +150,7 @@ impl Type {
             Self::I128 => "signed long long".to_string(),
             Self::F32 => "float".to_string(),
             Self::F64 => "double".to_string(),
+            Self::Str => "char".to_string(),
             Self::Custom(id) => id.clone(),
             Self::Ref { ref_to, mutability } => format!(
                 "{}{}*",
