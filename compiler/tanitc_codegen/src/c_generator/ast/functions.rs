@@ -103,3 +103,150 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tanitc_ast::ast::{
+        blocks::Block,
+        functions::{FunctionDef, FunctionParam},
+        types::{ParsedTypeInfo, TypeSpec},
+        variables::VariableDef,
+        Ast,
+    };
+    use tanitc_attributes::Mutability;
+    use tanitc_ident::Ident;
+    use tanitc_ty::Type;
+
+    use pretty_assertions::assert_str_eq;
+
+    use crate::c_generator::CodeGenStream;
+
+    fn get_func_param(name: &str, ty: Type) -> FunctionParam {
+        FunctionParam::Common(VariableDef {
+            identifier: Ident::from(name.to_string()),
+            var_type: TypeSpec {
+                info: ParsedTypeInfo::default(),
+                ty,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+    }
+
+    fn get_func(name: &str, parameters: Vec<FunctionParam>, return_type: Type) -> FunctionDef {
+        FunctionDef {
+            parameters,
+            identifier: Ident::from(name.to_string()),
+            return_type: TypeSpec {
+                ty: return_type,
+                ..Default::default()
+            },
+            body: Some(Box::new(Block::default())),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn func_codegen_test() {
+        const FUNC_NAME: &str = "hello";
+        const PARAM_1_NAME: &str = "a";
+
+        const HEADER_EXPECTED: &str = "unsigned char hello(signed long long const a);\n";
+        const SOURCE_EXPECTED: &str = "unsigned char hello(signed long long const a) { }\n";
+
+        let node = Ast::from(get_func(
+            FUNC_NAME,
+            vec![get_func_param(PARAM_1_NAME, Type::I128)],
+            Type::Bool,
+        ));
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        node.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn empty_func_codegen_test() {
+        const FUNC_NAME: &str = "empty_func";
+
+        const HEADER_EXPECTED: &str = "signed long empty_func();\n";
+        const SOURCE_EXPECTED: &str = "signed long empty_func() { }\n";
+
+        let node = Ast::from(get_func(FUNC_NAME, vec![], Type::I64));
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        node.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn full_func_codegen_test() {
+        const FUNC_NAME: &str = "full_func";
+        const PARAM_1_NAME: &str = "ref";
+        const PARAM_2_NAME: &str = "mut_ref";
+        const PARAM_3_NAME: &str = "integer";
+        const PARAM_4_NAME: &str = "string";
+
+        const HEADER_EXPECTED: &str =
+            "void full_func(signed int const * const ref, signed int * const mut_ref, unsigned int const integer, char const * const string);\n";
+        const SOURCE_EXPECTED: &str =
+            "void full_func(signed int const * const ref, signed int * const mut_ref, unsigned int const integer, char const * const string) { }\n";
+
+        let node = Ast::from(get_func(
+            FUNC_NAME,
+            vec![
+                get_func_param(
+                    PARAM_1_NAME,
+                    Type::Ref {
+                        ref_to: Box::new(Type::I32),
+                        mutability: Mutability::Immutable,
+                    },
+                ),
+                get_func_param(
+                    PARAM_2_NAME,
+                    Type::Ref {
+                        ref_to: Box::new(Type::I32),
+                        mutability: Mutability::Mutable,
+                    },
+                ),
+                get_func_param(PARAM_3_NAME, Type::I8),
+                get_func_param(
+                    PARAM_4_NAME,
+                    Type::Ref {
+                        ref_to: Box::new(Type::Str),
+                        mutability: Mutability::Immutable,
+                    },
+                ),
+            ],
+            Type::unit(),
+        ));
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        node.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+}
