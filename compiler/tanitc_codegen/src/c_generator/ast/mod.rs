@@ -29,6 +29,7 @@ use super::{CodeGenMode, CodeGenStream};
 
 use std::io::Write;
 
+pub mod enums;
 pub mod externs;
 pub mod functions;
 pub mod methods;
@@ -188,30 +189,6 @@ impl CodeGenStream<'_> {
             Ast::Block(node) => self.generate_block(node),
             Ast::Value(node) => self.generate_value(node),
         }
-    }
-
-    fn generate_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-
-        let indentation = self.indentation();
-
-        writeln!(self, "{indentation}typedef enum {{")?;
-
-        for field in enum_def.fields.iter() {
-            writeln!(
-                self,
-                "{indentation}    {} = {},",
-                field.0,
-                field.1.unwrap_or_default()
-            )?;
-        }
-
-        writeln!(self, "{indentation}}} {};", enum_def.identifier)?;
-
-        self.mode = old_mode;
-
-        Ok(())
     }
 
     fn generate_variable_array_def(&mut self, var_def: &VariableDef) -> Result<(), std::io::Error> {
