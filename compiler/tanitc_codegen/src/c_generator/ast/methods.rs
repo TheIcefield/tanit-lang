@@ -57,8 +57,6 @@ mod tests {
                 ty: Type::I32,
                 ..Default::default()
             },
-            is_global: false,
-            mutability: Mutability::Immutable,
             ..Default::default()
         })
     }

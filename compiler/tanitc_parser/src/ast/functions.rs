@@ -4,7 +4,7 @@ use tanitc_ast::ast::{
     variables::{VariableAttributes, VariableDef},
     Ast,
 };
-use tanitc_attributes::Mutability;
+use tanitc_attributes::{Mutability, Visibility};
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::Type;
@@ -84,7 +84,7 @@ impl Parser {
             attributes: VariableAttributes::default(),
             identifier,
             var_type,
-            is_global: false,
+            visibility: Visibility::Local,
             mutability,
         }))
     }

@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use tanitc_ast::ast::{
     blocks::Block,
     functions::FunctionDef,
@@ -9,6 +7,10 @@ use tanitc_ast::ast::{
 };
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
+
+use pretty_assertions::assert_str_eq;
+
+use std::collections::BTreeMap;
 
 #[test]
 fn ast_write_test() {
@@ -130,5 +132,5 @@ fn ast_write_test() {
                           \n}";
 
     let res = format!("{ast:#?}");
-    assert_eq!(EXPECTED, res);
+    assert_str_eq!(EXPECTED, res);
 }

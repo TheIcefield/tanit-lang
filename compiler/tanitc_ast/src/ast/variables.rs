@@ -1,4 +1,4 @@
-use tanitc_attributes::{Mutability, Publicity};
+use tanitc_attributes::{Mutability, Publicity, Visibility};
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
@@ -15,7 +15,7 @@ pub struct VariableDef {
     pub attributes: VariableAttributes,
     pub identifier: Ident,
     pub var_type: TypeSpec,
-    pub is_global: bool,
+    pub visibility: Visibility,
     pub mutability: Mutability,
 }
 
