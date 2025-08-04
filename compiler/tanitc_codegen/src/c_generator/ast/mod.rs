@@ -33,6 +33,7 @@ pub mod externs;
 pub mod functions;
 pub mod methods;
 pub mod modules;
+pub mod structs;
 pub mod variants;
 
 impl Visitor for CodeGenStream<'_> {
@@ -186,23 +187,6 @@ impl CodeGenStream<'_> {
             Ast::Block(node) => self.generate_block(node),
             Ast::Value(node) => self.generate_value(node),
         }
-    }
-
-    fn generate_struct_def(&mut self, struct_def: &StructDef) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::HeaderOnly;
-        let indentation = self.indentation();
-
-        writeln!(self, "{indentation}typedef struct {{")?;
-        for (field_id, field_info) in struct_def.fields.iter() {
-            write!(self, "{indentation}    ")?;
-            self.generate_type_spec(&field_info.ty)?;
-            writeln!(self, " {field_id};")?;
-        }
-        writeln!(self, "{indentation}}} {};", struct_def.identifier)?;
-
-        self.mode = old_mode;
-        Ok(())
     }
 
     fn generate_union_def(&mut self, union_def: &UnionDef) -> Result<(), std::io::Error> {
