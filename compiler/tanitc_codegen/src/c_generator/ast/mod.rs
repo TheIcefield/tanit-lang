@@ -14,7 +14,7 @@ use tanitc_ast::{
         types::TypeSpec,
         unions::UnionDef,
         uses::Use,
-        values::{CallArg, CallArgKind, Value, ValueKind},
+        values::Value,
         variables::VariableDef,
         variants::VariantDef,
         Ast,
@@ -41,6 +41,7 @@ mod modules;
 mod structs;
 mod unions;
 mod uses;
+mod values;
 mod variants;
 
 impl Visitor for CodeGenStream<'_> {
@@ -307,99 +308,5 @@ impl CodeGenStream<'_> {
 
     fn generate_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), std::io::Error> {
         write!(self, "{}", type_spec.get_c_type())
-    }
-
-    fn generate_value(&mut self, val: &Value) -> Result<(), std::io::Error> {
-        match &val.kind {
-            ValueKind::Integer(val) => write!(self, "{val}")?,
-            ValueKind::Decimal(val) => write!(self, "{val}")?,
-            ValueKind::Identifier(val) => write!(self, "{val}")?,
-            ValueKind::Call {
-                identifier,
-                arguments,
-            } => {
-                /* at this point, all arguments must be converted to positional */
-                write!(self, "{identifier}(")?;
-
-                if !arguments.is_empty() {
-                    self.generate_call_param(&arguments[0])?;
-                }
-
-                for arg in arguments.iter().skip(1) {
-                    write!(self, ", ")?;
-                    self.generate_call_param(arg)?;
-                }
-
-                write!(self, ")")?;
-            }
-            ValueKind::Struct {
-                identifier,
-                components,
-            } => {
-                // create anonimous variable
-                write!(self, "({identifier})")?;
-
-                if components.is_empty() {
-                    write!(self, " {{ }}")?;
-                } else {
-                    let indentation = self.indentation();
-                    self.indent += 1;
-
-                    writeln!(self, "\n{indentation}{{")?;
-                    for (i, (field_name, field_val)) in components.iter().enumerate() {
-                        write!(self, "{indentation}    .{field_name}=")?;
-                        self.generate(field_val)?;
-
-                        if i < components.len() {
-                            writeln!(self, ",")?;
-                        }
-                    }
-
-                    self.indent -= 1;
-                    write!(self, "{indentation}}}")?;
-                }
-            }
-            ValueKind::Array { components } => {
-                write!(self, "{{ ")?;
-
-                for (c_idx, c) in components.iter().enumerate() {
-                    self.generate(c)?;
-
-                    if c_idx != components.len() - 1 {
-                        write!(self, ", ")?;
-                    }
-                }
-
-                write!(self, " }}")?;
-            }
-            ValueKind::Tuple { components } => {
-                write!(self, "{{ ")?;
-
-                for (c_idx, c) in components.iter().enumerate() {
-                    self.generate(c)?;
-
-                    if c_idx != components.len() - 1 {
-                        write!(self, ", ")?;
-                    }
-                }
-
-                write!(self, " }}")?;
-            }
-            _ => todo!("Unimplemented for ({:?})", val.kind),
-        }
-
-        Ok(())
-    }
-}
-
-// Call args
-impl CodeGenStream<'_> {
-    fn generate_call_param(&mut self, arg: &CallArg) -> Result<(), std::io::Error> {
-        match &arg.kind {
-            CallArgKind::Positional(_, node) => self.generate(node.as_ref()),
-            CallArgKind::Notified(..) => {
-                unreachable!("Notified CallParam is not allowed in codegen")
-            }
-        }
     }
 }

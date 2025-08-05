@@ -129,8 +129,8 @@ fn alias_test() {
                                      \n{\
                                      \n    Vec const v = (Vec)\
                                      \n    {\
-                                     \n        .x=10,\
-                                     \n        .y=10,\
+                                     \n        .x=10.0,\
+                                     \n        .y=10.0,\
                                      \n    };\
                                      \n}\n";
 
