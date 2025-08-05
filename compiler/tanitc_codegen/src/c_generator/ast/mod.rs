@@ -40,6 +40,7 @@ mod methods;
 mod modules;
 mod structs;
 mod unions;
+mod uses;
 mod variants;
 
 impl Visitor for CodeGenStream<'_> {
@@ -306,10 +307,6 @@ impl CodeGenStream<'_> {
 
     fn generate_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), std::io::Error> {
         write!(self, "{}", type_spec.get_c_type())
-    }
-
-    fn generate_use(&mut self, _u: &Use) -> Result<(), std::io::Error> {
-        Ok(())
     }
 
     fn generate_value(&mut self, val: &Value) -> Result<(), std::io::Error> {
