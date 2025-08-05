@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use tanitc_ast::ast::{variables::VariableDef, Ast};
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
@@ -35,7 +33,7 @@ impl Analyzer {
             return TypeInfo {
                 ty: var_def.var_type.ty.clone(),
                 mutability: var_def.mutability,
-                members: BTreeMap::new(),
+                ..Default::default()
             };
         };
 

@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, iter::Peekable, slice::Iter};
+use std::{iter::Peekable, slice::Iter};
 
 use tanitc_ast::{
     ast::expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
@@ -7,7 +7,7 @@ use tanitc_ast::{
         Ast,
     },
 };
-use tanitc_attributes::Mutability;
+use tanitc_attributes::{Mutability, Safety};
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
@@ -194,7 +194,7 @@ impl Analyzer {
                 | BinaryOperation::LogicalGe => TypeInfo {
                     ty: Type::Bool,
                     mutability: Mutability::Mutable,
-                    members: BTreeMap::new(),
+                    ..Default::default()
                 },
 
                 _ => {
@@ -226,6 +226,7 @@ impl Analyzer {
                         },
                         mutability,
                         members: node_type.members,
+                        ..Default::default()
                     };
                 }
 
@@ -234,7 +235,7 @@ impl Analyzer {
             ExpressionKind::Conversion { ty, .. } => TypeInfo {
                 ty: ty.get_type(),
                 mutability: Mutability::Mutable,
-                members: BTreeMap::new(),
+                ..Default::default()
             },
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
             ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
@@ -250,7 +251,7 @@ impl Analyzer {
             ExpressionKind::Term { ty, .. } => TypeInfo {
                 ty: ty.clone(),
                 mutability: Mutability::Immutable,
-                members: BTreeMap::new(),
+                ..Default::default()
             },
         }
     }
@@ -336,6 +337,13 @@ impl Analyzer {
             return Ok(type_info.ty.clone());
         };
 
+        if type_info.is_union && self.table.get_safety() != Safety::Unsafe {
+            return Err(Message::new(
+                location,
+                "Access to union field is unsafe and requires an unsafe function or block",
+            ));
+        }
+
         if let Some(member) = type_info.members.get(next) {
             let member_type = self.table.lookup_type(&member.ty).unwrap();
 
@@ -402,6 +410,10 @@ impl Analyzer {
                             ));
                 }
             }
+            Ast::Value(Value {
+                kind: ValueKind::Identifier(_),
+                ..
+            }) => {}
             _ => todo!("{node:?}"),
         }
 

@@ -370,24 +370,24 @@ impl Analyzer {
                     mutability: Mutability::Immutable,
                 },
                 mutability: Mutability::Immutable,
-                members: BTreeMap::new(),
+                ..Default::default()
             },
             ValueKind::Decimal(_) => TypeInfo {
                 ty: Type::F32,
                 mutability: Mutability::Mutable,
-                members: BTreeMap::new(),
+                ..Default::default()
             },
             ValueKind::Integer(_) => TypeInfo {
                 ty: Type::I32,
                 mutability: Mutability::Mutable,
-                members: BTreeMap::new(),
+                ..Default::default()
             },
             ValueKind::Identifier(id) => {
                 let Some(entry) = self.table.lookup(*id) else {
                     return TypeInfo {
                         ty: Type::new(),
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 
@@ -395,7 +395,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty: Type::new(),
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 
@@ -403,7 +403,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty: data.var_type.clone(),
                         mutability: data.mutability,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 
@@ -416,7 +416,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty,
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
                 type_info.mutability = Mutability::Mutable;
@@ -443,6 +443,7 @@ impl Analyzer {
                         }
                         members
                     },
+                    ..Default::default()
                 }
             }
             ValueKind::Array { components } => {
@@ -455,6 +456,7 @@ impl Analyzer {
                         },
                         mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 }
 
@@ -464,7 +466,7 @@ impl Analyzer {
                         value_type: Box::new(self.get_type(&components[0]).ty),
                     },
                     mutability: Mutability::Mutable,
-                    members: BTreeMap::new(),
+                    ..Default::default()
                 }
             }
             ValueKind::Call { identifier, .. } => {
@@ -472,7 +474,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty: Type::new(),
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 
@@ -480,7 +482,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty: Type::new(),
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 
@@ -488,7 +490,7 @@ impl Analyzer {
                     return TypeInfo {
                         ty: data.return_type.clone(),
                         mutability: Mutability::Mutable,
-                        members: BTreeMap::new(),
+                        ..Default::default()
                     };
                 };
 

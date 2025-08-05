@@ -10,9 +10,10 @@ pub struct MemberInfo {
     pub ty: Type,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct TypeInfo {
     pub ty: Type,
+    pub is_union: bool,
     pub mutability: Mutability,
     pub members: BTreeMap<Ident, MemberInfo>,
 }
