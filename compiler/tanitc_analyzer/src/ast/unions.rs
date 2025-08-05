@@ -94,3 +94,142 @@ impl Analyzer {
         Ok(Some(node))
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use tanitc_ast::ast::{
+        blocks::Block,
+        expressions::{Expression, ExpressionKind},
+        functions::FunctionDef,
+        types::TypeSpec,
+        unions::{UnionDef, UnionFieldInfo, UnionFields},
+        values::{Value, ValueKind},
+        variables::VariableDef,
+        Ast,
+    };
+    use tanitc_attributes::Safety;
+    use tanitc_ident::Ident;
+    use tanitc_lexer::location::Location;
+    use tanitc_ty::Type;
+
+    use crate::Analyzer;
+
+    const FIELD_NAME: &str = "field";
+
+    fn get_union(name: &str) -> UnionDef {
+        let mut fields = UnionFields::new();
+        fields.insert(
+            Ident::from(FIELD_NAME.to_string()),
+            UnionFieldInfo {
+                ty: TypeSpec {
+                    ty: Type::I32,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+
+        UnionDef {
+            identifier: Ident::from(name.to_string()),
+            fields,
+            ..Default::default()
+        }
+    }
+
+    fn get_func(name: &str, statements: Vec<Ast>) -> FunctionDef {
+        FunctionDef {
+            identifier: Ident::from(name.to_string()),
+            body: Some(Box::new(Block {
+                statements,
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+    }
+
+    fn get_var(name: &str, ty: Type) -> VariableDef {
+        VariableDef {
+            identifier: Ident::from(name.to_string()),
+            var_type: TypeSpec {
+                ty,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    fn get_access(var_name: &str) -> Expression {
+        Expression {
+            location: Location::new(),
+            kind: ExpressionKind::Get {
+                lhs: Box::new(Ast::from(Value {
+                    kind: ValueKind::Identifier(Ident::from(var_name.to_string())),
+                    location: Location::new(),
+                })),
+                rhs: Box::new(Ast::from(Value {
+                    kind: ValueKind::Identifier(Ident::from(FIELD_NAME.to_string())),
+                    location: Location::new(),
+                })),
+            },
+        }
+    }
+
+    #[test]
+    fn union_unsafe_access_good_test() {
+        const UNION_NAME: &str = "UnionName";
+        const FUNC_NAME: &str = "safe_func";
+        const VAR_NAME: &str = "my_union";
+
+        let mut func_def = get_func(
+            FUNC_NAME,
+            vec![
+                get_var(VAR_NAME, Type::Custom(UNION_NAME.to_string())).into(),
+                get_access(VAR_NAME).into(),
+            ],
+        );
+        func_def.attributes.safety = Safety::Unsafe;
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_union(UNION_NAME).into(), func_def.into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+        if analyzer.has_errors() {
+            panic!("{:?}", analyzer.get_errors());
+        }
+    }
+
+    #[test]
+    fn union_safe_access_bad_test() {
+        const UNION_NAME: &str = "UnionName";
+        const FUNC_NAME: &str = "safe_func";
+        const VAR_NAME: &str = "my_union";
+
+        const EXPECTED_ERR: &str = "Semantic error: Access to union field is unsafe and requires an unsafe function or block";
+
+        let func_def = get_func(
+            FUNC_NAME,
+            vec![
+                get_var(VAR_NAME, Type::Custom(UNION_NAME.to_string())).into(),
+                get_access(VAR_NAME).into(),
+            ],
+        );
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_union(UNION_NAME).into(), func_def.into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert!(!errors.is_empty());
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+}

@@ -38,6 +38,12 @@ impl Table {
         let mut table = Table::new();
         table.scope_info = scope_info;
 
+        let current_safety = self.get_safety();
+
+        if scope_info.safety == Safety::Inherited {
+            table.scope_info.safety = current_safety;
+        }
+
         self.stack.push_back(table);
     }
 
@@ -126,6 +132,7 @@ impl Table {
                 ty: ty.clone(),
                 mutability: Mutability::default(),
                 members: BTreeMap::new(),
+                is_union: false,
             });
         }
 
@@ -150,6 +157,7 @@ impl Table {
                         ty: Type::Custom(name.to_string()),
                         mutability: Mutability::default(),
                         members,
+                        is_union: false,
                     });
                 }
                 SymbolKind::UnionDef(data) => {
@@ -169,6 +177,7 @@ impl Table {
                         ty: Type::Custom(name.to_string()),
                         mutability: Mutability::default(),
                         members,
+                        is_union: true,
                     });
                 }
                 _ => {}
@@ -197,6 +206,14 @@ impl Table {
 
     pub fn get_safety(&self) -> Safety {
         self.get_scope_info().safety
+    }
+
+    pub fn set_safety(&mut self, safety: Safety) {
+        if let Some(back) = self.stack.back_mut() {
+            back.scope_info.safety = safety;
+        } else {
+            self.scope_info.safety = safety
+        }
     }
 }
 

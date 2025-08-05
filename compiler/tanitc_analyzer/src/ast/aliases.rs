@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use tanitc_ast::ast::aliases::AliasDef;
 use tanitc_attributes::Mutability;
 use tanitc_ident::Ident;
@@ -36,7 +34,7 @@ impl Analyzer {
         TypeInfo {
             ty: alias_def.value.get_type(),
             mutability: Mutability::default(),
-            members: BTreeMap::new(),
+            ..Default::default()
         }
     }
 

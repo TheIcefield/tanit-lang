@@ -1,4 +1,5 @@
 use tanitc_ast::ast::{blocks::Block, Ast};
+use tanitc_attributes::Safety;
 use tanitc_messages::Message;
 
 use crate::Analyzer;
@@ -15,6 +16,8 @@ impl Analyzer {
     }
 
     fn analyze_global_block(&mut self, block: &mut Block) -> Result<(), Message> {
+        self.table.set_safety(Safety::Safe);
+
         for n in block.statements.iter_mut() {
             let is_denied = matches!(
                 n,
