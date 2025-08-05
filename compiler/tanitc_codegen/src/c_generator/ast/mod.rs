@@ -1,22 +1,9 @@
 use tanitc_ast::{
     ast::{
-        aliases::AliasDef,
-        blocks::Block,
-        branches::Branch,
-        control_flows::ControlFlow,
-        enums::EnumDef,
-        expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
-        externs::ExternDef,
-        functions::FunctionDef,
-        methods::ImplDef,
-        modules::ModuleDef,
-        structs::StructDef,
-        types::TypeSpec,
-        unions::UnionDef,
-        uses::Use,
-        values::Value,
-        variables::VariableDef,
-        variants::VariantDef,
+        aliases::AliasDef, blocks::Block, branches::Branch, control_flows::ControlFlow,
+        enums::EnumDef, expressions::Expression, externs::ExternDef, functions::FunctionDef,
+        methods::ImplDef, modules::ModuleDef, structs::StructDef, types::TypeSpec,
+        unions::UnionDef, uses::Use, values::Value, variables::VariableDef, variants::VariantDef,
         Ast,
     },
     visitor::Visitor,
@@ -24,15 +11,14 @@ use tanitc_ast::{
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
-use super::{CodeGenMode, CodeGenStream};
-
-use std::io::Write;
+use super::CodeGenStream;
 
 mod aliases;
 mod blocks;
 mod branches;
 mod control_flows;
 mod enums;
+mod expressions;
 mod externs;
 mod functions;
 mod methods;
@@ -194,72 +180,5 @@ impl CodeGenStream<'_> {
             location: Location::new(),
             text: format!("Codegen error: {err}"),
         }
-    }
-}
-
-impl CodeGenStream<'_> {
-    fn generate_expression(&mut self, expr: &Expression) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::SourceOnly;
-
-        match &expr.kind {
-            ExpressionKind::Unary { operation, node } => {
-                match operation {
-                    UnaryOperation::RefMut | UnaryOperation::Ref => write!(self, "&")?,
-                    UnaryOperation::Not => write!(self, "~")?,
-                    UnaryOperation::Deref => write!(self, "*")?,
-                };
-
-                self.generate(node)?;
-            }
-            ExpressionKind::Binary {
-                operation: BinaryOperation::Assign,
-                lhs,
-                rhs,
-            } => {
-                self.generate(lhs)?;
-                write!(self, " = ")?;
-                self.generate(rhs)?;
-            }
-            ExpressionKind::Binary {
-                operation,
-                lhs,
-                rhs,
-            } => {
-                // write!(self, "(")?;
-                self.generate(lhs)?;
-                write!(self, " {operation} ")?;
-                self.generate(rhs)?;
-                // write!(self, ")")?;
-            }
-            ExpressionKind::Conversion { lhs, ty } => {
-                write!(self, "(({})", ty.get_c_type())?;
-                self.generate(lhs)?;
-                write!(self, ")")?;
-            }
-            ExpressionKind::Access { lhs, rhs } => {
-                self.generate(lhs)?;
-                write!(self, ".")?;
-                self.generate(rhs)?;
-            }
-            ExpressionKind::Get { lhs, rhs } => {
-                self.generate(lhs)?;
-                write!(self, ".")?;
-                self.generate(rhs)?;
-            }
-            ExpressionKind::Indexing { lhs, index } => {
-                self.generate(lhs)?;
-
-                write!(self, "[")?;
-                self.generate(index)?;
-                write!(self, "]")?;
-            }
-            ExpressionKind::Term { node, .. } => {
-                self.generate(node)?;
-            }
-        }
-
-        self.mode = old_mode;
-        Ok(())
     }
 }
