@@ -30,6 +30,7 @@ use super::{CodeGenMode, CodeGenStream};
 use std::io::Write;
 
 mod aliases;
+mod blocks;
 mod branches;
 mod control_flows;
 mod enums;
@@ -308,43 +309,6 @@ impl CodeGenStream<'_> {
     }
 
     fn generate_use(&mut self, _u: &Use) -> Result<(), std::io::Error> {
-        Ok(())
-    }
-
-    fn generate_block(&mut self, block: &Block) -> Result<(), std::io::Error> {
-        let indentation = self.indentation();
-
-        if !block.is_global {
-            writeln!(self, "{indentation}{{")?;
-            self.indent += 1;
-        }
-
-        for stmt in block.statements.iter() {
-            if !matches!(stmt, Ast::Block(_)) {
-                write!(self, "{indentation}    ")?;
-            }
-
-            self.generate(stmt)?;
-
-            match stmt {
-                Ast::Expression(_)
-                | Ast::ControlFlow(_)
-                | Ast::VariableDef(_)
-                | Ast::Value(Value {
-                    kind: ValueKind::Call { .. },
-                    ..
-                }) => write!(self, ";")?,
-                _ => {}
-            }
-
-            writeln!(self)?;
-        }
-
-        if !block.is_global {
-            writeln!(self, "{indentation}}}")?;
-            self.indent -= 1;
-        }
-
         Ok(())
     }
 
