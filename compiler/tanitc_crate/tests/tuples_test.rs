@@ -32,7 +32,7 @@ fn tuple_parse_test() {
 
         const SOURCE_EXPECTED: &str = "void main()\
                                      \n{\
-                                     \n    struct { float _0; signed int _1; float _2; } const t = { 1, 2, 3 };\
+                                     \n    struct { float _0; signed int _1; float _2; } const t = { 1.0, 2, 3.0 };\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

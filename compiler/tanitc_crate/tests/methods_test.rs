@@ -55,7 +55,7 @@ fn struct_with_methods_test() {
                                      \n    return (MyStruct)\
                                      \n    {\
                                      \n        .f1=0,\
-                                     \n        .f2=0,\
+                                     \n        .f2=0.0,\
                                      \n    };\
                                      \n}\
                                     \nvoid main()\
@@ -63,7 +63,7 @@ fn struct_with_methods_test() {
                                     \n    MyStruct const s = (MyStruct)\
                                     \n    {\
                                     \n        .f1=1,\
-                                    \n        .f2=2,\
+                                    \n        .f2=2.0,\
                                     \n    };\
                                     \n}\n";
 

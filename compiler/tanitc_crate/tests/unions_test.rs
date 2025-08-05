@@ -48,7 +48,7 @@ fn union_work_test() {
                                      \n    {\
                                      \n        MyUnion const s = (MyUnion)\
                                      \n        {\
-                                     \n            .f2=2,\
+                                     \n            .f2=2.0,\
                                      \n        };\
                                      \n    }\
                                      \n\
@@ -110,7 +110,7 @@ fn union_in_module_work_test() {
                                      \n{\
                                      \n    MyUnion const u = (MyUnion)\
                                      \n    {\
-                                     \n        .y=2,\
+                                     \n        .y=2.0,\
                                      \n    };\
                                      \n}\n";
 

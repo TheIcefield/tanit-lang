@@ -37,8 +37,8 @@ fn array_work_test() {
                                      \n{\
                                      \n    float arr_1[6];\
                                      \n    signed int const arr_2[3] = { 4, 5, 6 };\
-                                     \n    float const arr_3[3] = { 1, 2, 3 };\
-                                     \n    arr_1[1 + 1] = 7;\
+                                     \n    float const arr_3[3] = { 1.0, 2.0, 3.0 };\
+                                     \n    arr_1[1 + 1] = 7.0;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

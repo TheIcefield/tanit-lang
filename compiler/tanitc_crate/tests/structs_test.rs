@@ -47,7 +47,7 @@ fn struct_work_test() {
                                      \n    MyStruct s = (MyStruct)\
                                      \n    {\
                                      \n        .f1=1,\
-                                     \n        .f2={ 2, 3 },\
+                                     \n        .f2={ 2.0, 3.0 },\
                                      \n    };\
                                      \n    s.f1 = 2;\
                                      \n}\n";
@@ -109,10 +109,10 @@ fn struct_in_module_work_test() {
                                      \n{\
                                      \n    Vector2 vec = (Vector2)\
                                      \n    {\
-                                     \n        .x=0,\
-                                     \n        .y=2,\
+                                     \n        .x=0.0,\
+                                     \n        .y=2.0,\
                                      \n    };\
-                                     \n    vec.x = 2;\
+                                     \n    vec.x = 2.0;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
@@ -220,14 +220,14 @@ fn internal_struct_work_test() {
                                      \n    {\
                                      \n        .x=(Unit)\
                                      \n        {\
-                                     \n            .value=1,\
+                                     \n            .value=1.0,\
                                      \n        },\
                                      \n        .y=(Unit)\
                                      \n        {\
-                                     \n            .value=2,\
+                                     \n            .value=2.0,\
                                      \n        },\
                                      \n    };\
-                                     \n    pnt.x.value = 2;\
+                                     \n    pnt.x.value = 2.0;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();
