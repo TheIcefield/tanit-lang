@@ -38,6 +38,7 @@ mod functions;
 mod methods;
 mod modules;
 mod structs;
+mod types;
 mod unions;
 mod uses;
 mod values;
@@ -260,9 +261,5 @@ impl CodeGenStream<'_> {
 
         self.mode = old_mode;
         Ok(())
-    }
-
-    fn generate_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), std::io::Error> {
-        write!(self, "{}", type_spec.get_c_type())
     }
 }
