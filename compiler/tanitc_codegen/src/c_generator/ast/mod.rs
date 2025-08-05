@@ -3,7 +3,7 @@ use tanitc_ast::{
         aliases::AliasDef,
         blocks::Block,
         branches::Branch,
-        control_flows::{ControlFlow, ControlFlowKind},
+        control_flows::ControlFlow,
         enums::EnumDef,
         expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
         externs::ExternDef,
@@ -31,6 +31,7 @@ use std::io::Write;
 
 mod aliases;
 mod branches;
+mod control_flows;
 mod enums;
 mod externs;
 mod functions;
@@ -295,22 +296,6 @@ impl CodeGenStream<'_> {
             }
             ExpressionKind::Term { node, .. } => {
                 self.generate(node)?;
-            }
-        }
-
-        self.mode = old_mode;
-        Ok(())
-    }
-
-    fn generate_control_flow(&mut self, cf: &ControlFlow) -> Result<(), std::io::Error> {
-        let old_mode = self.mode;
-        self.mode = CodeGenMode::SourceOnly;
-
-        write!(self, "return ")?;
-
-        if let ControlFlowKind::Return { ret } = &cf.kind {
-            if let Some(expr) = ret.as_ref() {
-                self.generate(expr)?;
             }
         }
 
