@@ -636,3 +636,106 @@ fn get_ordinal_number_suffix(num: usize) -> &'static str {
         _ => "th",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tanitc_ast::ast::{
+        blocks::{Block, BlockAttributes},
+        functions::{FunctionAttributes, FunctionDef},
+        values::{Value, ValueKind},
+        Ast,
+    };
+    use tanitc_attributes::Safety;
+    use tanitc_ident::Ident;
+    use tanitc_lexer::location::Location;
+
+    use crate::Analyzer;
+
+    fn get_func_def(name: &str, statements: Vec<Ast>, safety: Safety) -> FunctionDef {
+        FunctionDef {
+            attributes: FunctionAttributes {
+                safety,
+                ..Default::default()
+            },
+            identifier: Ident::from(name.to_string()),
+            body: Some(Box::new(Block {
+                statements,
+                is_global: false,
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+    }
+
+    fn get_call(name: &str) -> Value {
+        Value {
+            location: Location::new(),
+            kind: ValueKind::Call {
+                identifier: Ident::from(name.to_string()),
+                arguments: Vec::new(),
+            },
+        }
+    }
+
+    #[test]
+    fn unsafe_call_bad_test() {
+        const FUNC_NAME: &str = "unsafe_func";
+        const MAIN_FUNC_NAME: &str = "main";
+        const EXPECTED_ERR: &str = "Expected unsafe block";
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![
+                get_func_def(FUNC_NAME, vec![], Safety::Unsafe).into(),
+                get_func_def(
+                    MAIN_FUNC_NAME,
+                    vec![get_call(FUNC_NAME).into()],
+                    Safety::Safe,
+                )
+                .into(),
+            ],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert!(!errors.is_empty());
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+
+    #[test]
+    fn unsafe_call_good_test() {
+        const FUNC_NAME: &str = "unsafe_func";
+        const MAIN_FUNC_NAME: &str = "main";
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![
+                get_func_def(FUNC_NAME, vec![], Safety::Unsafe).into(),
+                get_func_def(
+                    MAIN_FUNC_NAME,
+                    vec![Block {
+                        attributes: BlockAttributes {
+                            safety: Safety::Unsafe,
+                        },
+                        ..Default::default()
+                    }
+                    .into()],
+                    Safety::Safe,
+                )
+                .into(),
+            ],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        if !errors.is_empty() {
+            panic!("{errors:#?}")
+        }
+    }
+}
