@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use tanitc_attributes::Mutability;
+use tanitc_attributes::{Mutability, Safety};
 use tanitc_ident::Ident;
 use tanitc_ty::Type;
 
@@ -39,6 +39,7 @@ pub struct FuncDefData {
     pub is_virtual: bool,
     pub is_inline: bool,
     pub no_return: bool,
+    pub safety: Safety,
 }
 
 #[derive(Debug, Clone)]

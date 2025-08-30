@@ -4,7 +4,7 @@ use tanitc_ast::ast::{
     values::{CallArg, CallArgKind, Value, ValueKind},
     Ast,
 };
-use tanitc_attributes::Mutability;
+use tanitc_attributes::{Mutability, Safety};
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
@@ -108,6 +108,15 @@ impl Analyzer {
             {
                 self.error(err);
             }
+        }
+
+        if func_data.safety == Safety::Unsafe && self.get_current_safety() == Safety::Safe {
+            self.error(Message::from_string(
+                location,
+                format!(
+                    "Call unsafe function \"{func_name}\" is unsafe and requires an unsafe function or block"
+                ),
+            ));
         }
 
         Ok(())
@@ -681,7 +690,7 @@ mod tests {
     fn unsafe_call_bad_test() {
         const FUNC_NAME: &str = "unsafe_func";
         const MAIN_FUNC_NAME: &str = "main";
-        const EXPECTED_ERR: &str = "Expected unsafe block";
+        const EXPECTED_ERR: &str = "Semantic error: Call unsafe function \"unsafe_func\" is unsafe and requires an unsafe function or block";
 
         let mut program = Ast::from(Block {
             is_global: true,

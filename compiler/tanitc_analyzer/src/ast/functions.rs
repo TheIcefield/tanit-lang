@@ -50,6 +50,7 @@ impl Analyzer {
                 is_virtual: false,
                 is_inline: false,
                 no_return: func_def.return_type.get_type() == Type::unit(),
+                safety: func_def.attributes.safety,
             }),
         });
 
