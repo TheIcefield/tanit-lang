@@ -269,6 +269,7 @@ fn table_test() {
                 is_virtual: false,
                 is_inline: false,
                 no_return: true,
+                safety: Safety::Safe,
             }),
         });
 
@@ -297,6 +298,7 @@ fn table_test() {
                 is_virtual: false,
                 is_inline: false,
                 no_return: true,
+                safety: Safety::Safe,
             }),
         });
 
@@ -380,6 +382,7 @@ fn qualified_symbol_test() {
                 is_virtual: false,
                 is_inline: false,
                 no_return: true,
+                safety: Safety::Safe,
             }),
         });
 
@@ -392,6 +395,7 @@ fn qualified_symbol_test() {
                 is_virtual: false,
                 is_inline: false,
                 no_return: true,
+                safety: Safety::Safe,
             }),
         });
     }
@@ -419,6 +423,7 @@ fn qualified_symbol_test() {
                 is_virtual: false,
                 is_inline: false,
                 no_return: true,
+                safety: Safety::Safe,
             }),
         });
     }
