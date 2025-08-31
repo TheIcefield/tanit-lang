@@ -1,7 +1,8 @@
 pub mod ast;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeGenMode {
+    #[default]
     Unset,
     Both,
     HeaderOnly,

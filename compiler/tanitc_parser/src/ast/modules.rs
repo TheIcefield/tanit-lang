@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use tanitc_ast::ast::{modules::ModuleDef, Ast};
-use tanitc_lexer::token::Lexem;
+use tanitc_lexer::{token::Lexem, Lexer};
 use tanitc_messages::Message;
 
 use crate::Parser;
@@ -34,7 +36,7 @@ impl Parser {
         if !mod_def.is_external {
             self.parse_module_body_internal(mod_def)
         } else {
-            Ok(())
+            self.parse_module_body_external(mod_def)
         }
     }
 
@@ -45,14 +47,92 @@ impl Parser {
 
         self.consume_token(Lexem::Rcb)?;
 
-        if let Ast::Block(node) = block {
-            mod_def.body = Some(node);
-        } else {
+        let Ast::Block(block) = block else {
             return Err(Message::unreachable(
                 mod_def.location,
-                "expected Block".to_string(),
+                format!("expected Block, actually {}", block.name()),
+            ));
+        };
+
+        mod_def.body = Box::new(block);
+
+        Ok(())
+    }
+
+    fn get_external_module_path(&mut self, mod_def: &mut ModuleDef) -> Result<PathBuf, Message> {
+        let name: String = mod_def.identifier.into();
+
+        let Some(current_path_str) = self.get_path().to_str() else {
+            return Err(Message::new(mod_def.location, "Failed to get path"));
+        };
+
+        let mut path = current_path_str
+            .chars()
+            .rev()
+            .collect::<String>()
+            .splitn(2, '/')
+            .collect::<Vec<&str>>()[1]
+            .chars()
+            .rev()
+            .collect::<String>();
+
+        path.push('/');
+        path.push_str(&name);
+
+        let mut file_exists: bool;
+
+        {
+            // Try to search in external_module.tt
+            let mut path = path.clone();
+            path.push_str(".tt");
+
+            file_exists = std::path::Path::new(&path).exists();
+            if file_exists {
+                return Ok(PathBuf::from(path));
+            }
+        }
+
+        if !file_exists {
+            // Try to search in external_module/mod.tt
+            let mut path = path.clone();
+            path.push_str("/mod.tt");
+
+            file_exists = std::path::Path::new(&path).exists();
+            if file_exists {
+                return Ok(PathBuf::from(path));
+            }
+        }
+
+        if !file_exists {
+            return Err(Message::from_string(
+                mod_def.location,
+                format!("Module \"{name}\" not found"),
             ));
         }
+
+        Ok(PathBuf::from(path))
+    }
+
+    fn parse_module_body_external(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
+        let path = self.get_external_module_path(mod_def)?;
+
+        let lexer = match Lexer::from_file(&path) {
+            Ok(lexer) => lexer,
+            Err(msg) => return Err(Message::from_string(mod_def.location, msg)),
+        };
+
+        let mut parser = Parser::new(lexer);
+
+        let block = parser.parse_global_block()?;
+
+        let Ast::Block(block) = block else {
+            return Err(Message::unreachable(
+                mod_def.location,
+                format!("expected Block, actually {}", block.name()),
+            ));
+        };
+
+        mod_def.body = Box::new(block);
 
         Ok(())
     }
@@ -76,9 +156,8 @@ fn module_test() {
     };
 
     assert_eq!(node.identifier.to_string(), "M1");
-    assert!(node.body.is_some());
 
-    let body = node.body.as_ref().unwrap();
+    let body = node.body.as_ref();
     let Ast::ModuleDef(node) = &body.statements[0] else {
         panic!(
             "Expected ModuleDef, actually: {}",

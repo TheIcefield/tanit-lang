@@ -54,7 +54,63 @@ impl CommandLineParser {
             }
         }
 
-        Ok(self.options.clone())
+        self.fill_missed_options()?;
+
+        Ok(std::mem::take(&mut self.options))
+    }
+
+    fn fill_missed_crate_name(&mut self) -> Result<(), String> {
+        if !self.options.crate_name.is_empty() {
+            return Ok(());
+        }
+
+        let input_file = self.options.input_file.clone();
+        let Some(mut crate_name) = input_file.to_str().map(|s| {
+            s.chars()
+                .rev()
+                .collect::<String>()
+                .splitn(2, '/')
+                .collect::<Vec<&str>>()[0]
+                .chars()
+                .rev()
+                .collect::<String>()
+        }) else {
+            return Err("Failed to recognise crate name".to_string());
+        };
+
+        if crate_name.ends_with(".tt") {
+            for _ in 0..".tt".len() {
+                crate_name.pop();
+            }
+        }
+
+        self.options.crate_name = crate_name;
+
+        Ok(())
+    }
+
+    fn fill_missed_output_file(&mut self) -> Result<(), String> {
+        let output_file = self.options.output_file.to_string_lossy();
+        if !output_file.is_empty() {
+            return Ok(());
+        }
+
+        let suffix = match self.options.crate_type {
+            CrateType::Bin => "",
+            CrateType::StaticLib => ".a",
+            CrateType::DynamicLib => ".so",
+        };
+
+        self.options.output_file = PathBuf::from(format!("{}{suffix}", self.options.crate_name));
+
+        Ok(())
+    }
+
+    fn fill_missed_options(&mut self) -> Result<(), String> {
+        self.fill_missed_crate_name()?;
+        self.fill_missed_output_file()?;
+
+        Ok(())
     }
 
     fn current_token(&self) -> Option<String> {
@@ -110,7 +166,7 @@ impl CommandLineParser {
                     return Err("Library path is not set".to_string());
                 };
 
-                self.options.output_file = output;
+                self.options.output_file = PathBuf::from(output);
 
                 Ok(())
             }
@@ -119,7 +175,7 @@ impl CommandLineParser {
                     return Err("Library path is not set".to_string());
                 };
 
-                self.options.input_file = input;
+                self.options.input_file = PathBuf::from(input);
 
                 Ok(())
             }
@@ -199,128 +255,134 @@ impl CommandLineParser {
     }
 }
 
-#[test]
-fn parser_token_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "-i".to_string(),
-        "examples/colors/mod.tt".to_string(),
-        "--crate-type".to_string(),
-        "static-lib".to_string(),
-    ];
+#[cfg(test)]
+mod tests {
+    use crate::options::{Argument, CommandLineParser};
+    use tanitc_options::{CrateType, SerializationOption};
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_token_test() {
+        let args = vec![
+            "tanitc".to_string(),
+            "-i".to_string(),
+            "examples/colors/mod.tt".to_string(),
+            "--crate-type".to_string(),
+            "static-lib".to_string(),
+        ];
 
-    assert_eq!(parser.current_token().unwrap(), "-i");
-    assert_eq!(parser.next_token().unwrap(), "-i");
-    assert_eq!(parser.current_token().unwrap(), "examples/colors/mod.tt");
-    assert_eq!(parser.next_token().unwrap(), "examples/colors/mod.tt");
-    assert_eq!(parser.current_token().unwrap(), "--crate-type");
-    assert_eq!(parser.next_token().unwrap(), "--crate-type");
-    assert_eq!(parser.current_token().unwrap(), "static-lib");
-    assert_eq!(parser.next_token().unwrap(), "static-lib");
-}
+        let mut parser = CommandLineParser::new(args);
 
-#[test]
-fn parser_argument_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "-i".to_string(),
-        "examples/colors/mod.tt".to_string(),
-        "--crate-type".to_string(),
-        "static-lib".to_string(),
-    ];
+        assert_eq!(parser.current_token().unwrap(), "-i");
+        assert_eq!(parser.next_token().unwrap(), "-i");
+        assert_eq!(parser.current_token().unwrap(), "examples/colors/mod.tt");
+        assert_eq!(parser.next_token().unwrap(), "examples/colors/mod.tt");
+        assert_eq!(parser.current_token().unwrap(), "--crate-type");
+        assert_eq!(parser.next_token().unwrap(), "--crate-type");
+        assert_eq!(parser.current_token().unwrap(), "static-lib");
+        assert_eq!(parser.next_token().unwrap(), "static-lib");
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_argument_test() {
+        let args = vec![
+            "tanitc".to_string(),
+            "-i".to_string(),
+            "examples/colors/mod.tt".to_string(),
+            "--crate-type".to_string(),
+            "static-lib".to_string(),
+        ];
 
-    assert_eq!(
-        parser.current_argument().unwrap(),
-        Argument::Short("-i".to_string())
-    );
-    assert_eq!(
-        parser.next_argument().unwrap(),
-        Argument::Short("-i".to_string())
-    );
-    assert_eq!(parser.current_token().unwrap(), "examples/colors/mod.tt");
-    assert_eq!(parser.next_token().unwrap(), "examples/colors/mod.tt");
-    assert_eq!(
-        parser.current_argument().unwrap(),
-        Argument::Long("--crate-type".to_string())
-    );
-    assert_eq!(
-        parser.next_argument().unwrap(),
-        Argument::Long("--crate-type".to_string())
-    );
-    assert_eq!(
-        parser.current_argument().unwrap(),
-        Argument::Unknown("static-lib".to_string())
-    );
-    assert_eq!(parser.current_token().unwrap(), "static-lib");
-    assert_eq!(parser.next_token().unwrap(), "static-lib");
-}
+        let mut parser = CommandLineParser::new(args);
 
-#[test]
-fn parser_dump_ast_test() {
-    let args = vec!["tanitc".to_string(), "--dump-ast".to_string()];
+        assert_eq!(
+            parser.current_argument().unwrap(),
+            Argument::Short("-i".to_string())
+        );
+        assert_eq!(
+            parser.next_argument().unwrap(),
+            Argument::Short("-i".to_string())
+        );
+        assert_eq!(parser.current_token().unwrap(), "examples/colors/mod.tt");
+        assert_eq!(parser.next_token().unwrap(), "examples/colors/mod.tt");
+        assert_eq!(
+            parser.current_argument().unwrap(),
+            Argument::Long("--crate-type".to_string())
+        );
+        assert_eq!(
+            parser.next_argument().unwrap(),
+            Argument::Long("--crate-type".to_string())
+        );
+        assert_eq!(
+            parser.current_argument().unwrap(),
+            Argument::Unknown("static-lib".to_string())
+        );
+        assert_eq!(parser.current_token().unwrap(), "static-lib");
+        assert_eq!(parser.next_token().unwrap(), "static-lib");
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_dump_ast_test() {
+        let args = vec!["tanitc".to_string(), "--dump-ast".to_string()];
 
-    let options = parser.parse().unwrap();
-    assert_eq!(options.dump_ast_mode, SerializationOption::Enabled);
-}
+        let mut parser = CommandLineParser::new(args);
 
-#[test]
-fn parser_dump_tokens_test() {
-    let args = vec!["tanitc".to_string(), "--dump-tokens".to_string()];
+        let options = parser.parse().unwrap();
+        assert_eq!(options.dump_ast_mode, SerializationOption::Enabled);
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_dump_tokens_test() {
+        let args = vec!["tanitc".to_string(), "--dump-tokens".to_string()];
 
-    let options = parser.parse().unwrap();
+        let mut parser = CommandLineParser::new(args);
 
-    assert_eq!(options.verbose_tokens, true);
-}
+        let options = parser.parse().unwrap();
 
-#[test]
-fn parser_crate_type_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "--crate-type".to_string(),
-        "bin".to_string(),
-    ];
+        assert_eq!(options.verbose_tokens, true);
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_crate_type_test() {
+        let args = vec![
+            "tanitc".to_string(),
+            "--crate-type".to_string(),
+            "bin".to_string(),
+        ];
 
-    let options = parser.parse().unwrap();
-    assert_eq!(options.crate_type, CrateType::Bin);
-}
+        let mut parser = CommandLineParser::new(args);
 
-#[test]
-fn parser_crate_name_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "--crate-name".to_string(),
-        "hello".to_string(),
-    ];
+        let options = parser.parse().unwrap();
+        assert_eq!(options.crate_type, CrateType::Bin);
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_crate_name_test() {
+        let args = vec![
+            "tanitc".to_string(),
+            "--crate-name".to_string(),
+            "hello".to_string(),
+        ];
 
-    let options = parser.parse().unwrap();
-    assert_eq!(options.crate_name, "hello");
-}
+        let mut parser = CommandLineParser::new(args);
 
-#[test]
-fn parser_input_output_files_test() {
-    let args = vec![
-        "tanitc".to_string(),
-        "-i".to_string(),
-        "hello.tt".to_string(),
-        "-o".to_string(),
-        "hello".to_string(),
-    ];
+        let options = parser.parse().unwrap();
+        assert_eq!(options.crate_name, "hello");
+    }
 
-    let mut parser = CommandLineParser::new(args);
+    #[test]
+    fn parser_input_output_files_test() {
+        let args = vec![
+            "tanitc".to_string(),
+            "-i".to_string(),
+            "hello.tt".to_string(),
+            "-o".to_string(),
+            "hello".to_string(),
+        ];
 
-    let options = parser.parse().unwrap();
-    assert_eq!(options.input_file, "hello.tt");
-    assert_eq!(options.output_file, "hello");
+        let mut parser = CommandLineParser::new(args);
+
+        let options = parser.parse().unwrap();
+        assert_eq!(options.input_file.to_str(), Some("hello.tt"));
+        assert_eq!(options.output_file.to_str(), Some("hello"));
+    }
 }

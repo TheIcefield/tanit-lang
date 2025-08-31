@@ -8,14 +8,12 @@ pretty_assertions = "1"
 tanitc_attributes = { path = "../tanitc_attributes" }
 
 [dependencies]
-lazy_static = "1.5.0"
 tanitc_ast = { path = "../tanitc_ast" }
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_parser = { path = "../tanitc_parser" }
 tanitc_codegen = { path = "../tanitc_codegen" }
 tanitc_builder = { path = "../tanitc_builder" }
 tanitc_analyzer = { path = "../tanitc_analyzer" }
-tanitc_symbol_table = { path = "../tanitc_symbol_table" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_ident = { path = "../tanitc_ident" }
 tanitc_ty = { path = "../tanitc_ty" }

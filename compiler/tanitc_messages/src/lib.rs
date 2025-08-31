@@ -176,9 +176,3 @@ impl Display for Message {
         Ok(())
     }
 }
-
-pub fn print_messages(messages: &[Message]) {
-    for msg in messages.iter() {
-        eprintln!("{msg}");
-    }
-}
