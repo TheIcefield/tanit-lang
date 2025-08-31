@@ -26,15 +26,13 @@ impl Analyzer {
 
         let mut analyzer = Analyzer::with_options(self.compile_options.clone());
 
-        if let Some(body) = &mut module_def.body {
-            analyzer.visit_block(body)?;
-            let entry = self.table.lookup_mut(module_def.identifier).unwrap();
-            let SymbolKind::ModuleDef(ref mut data) = &mut entry.kind else {
-                unreachable!();
-            };
+        analyzer.visit_block(module_def.body.as_mut())?;
+        let entry = self.table.lookup_mut(module_def.identifier).unwrap();
+        let SymbolKind::ModuleDef(ref mut data) = &mut entry.kind else {
+            unreachable!();
+        };
 
-            data.table = analyzer.table;
-        }
+        data.table = analyzer.table;
 
         Ok(())
     }

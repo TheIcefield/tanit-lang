@@ -1,9 +1,6 @@
 use tanitc_options::{Backend, CompileOptions, CrateType};
 
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{path::Path, process::Command};
 
 fn get_utility_name(backend: Backend) -> &'static str {
     match backend {
@@ -34,7 +31,7 @@ pub fn build_object_file(
     execute_command(&mut cmd)
 }
 
-fn build_executable(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), String> {
+fn build_executable(inputs: &[&Path], options: &CompileOptions) -> Result<(), String> {
     let utility = get_utility_name(options.backend);
 
     let mut cmd = Command::new(utility);
@@ -53,7 +50,7 @@ fn build_executable(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), 
     execute_command(&mut cmd)
 }
 
-fn build_static_lib(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), String> {
+fn build_static_lib(inputs: &[&Path], options: &CompileOptions) -> Result<(), String> {
     const UTILITY: &str = "ar";
     const OPTIONS: &str = "rcs";
 
@@ -65,7 +62,7 @@ fn build_static_lib(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), 
     execute_command(&mut cmd)
 }
 
-fn build_dynamic_lib(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), String> {
+fn build_dynamic_lib(inputs: &[&Path], options: &CompileOptions) -> Result<(), String> {
     let utility = get_utility_name(options.backend);
 
     let mut cmd = Command::new(utility);
@@ -77,7 +74,7 @@ fn build_dynamic_lib(inputs: &[PathBuf], options: &CompileOptions) -> Result<(),
     execute_command(&mut cmd)
 }
 
-pub fn link_crate_objects(inputs: &[PathBuf], options: &CompileOptions) -> Result<(), String> {
+pub fn link_crate_objects(inputs: &[&Path], options: &CompileOptions) -> Result<(), String> {
     match options.crate_type {
         CrateType::Bin => build_executable(inputs, options),
         CrateType::StaticLib => build_static_lib(inputs, options),
@@ -86,8 +83,6 @@ pub fn link_crate_objects(inputs: &[PathBuf], options: &CompileOptions) -> Resul
 }
 
 fn execute_command(cmd: &mut Command) -> Result<(), String> {
-    println!("cmd: {cmd:?}");
-
     match cmd.output() {
         Ok(out) => {
             if !out.status.success() {

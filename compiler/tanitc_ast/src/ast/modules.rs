@@ -16,7 +16,7 @@ pub struct ModuleDef {
     pub attributes: ModuleAttributes,
     pub identifier: Ident,
     pub is_external: bool,
-    pub body: Option<Block>,
+    pub body: Box<Block>,
 }
 
 impl From<ModuleDef> for Ast {

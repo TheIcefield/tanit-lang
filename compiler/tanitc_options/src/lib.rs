@@ -25,8 +25,8 @@ pub enum Backend {
 #[derive(Debug, Clone)]
 pub struct CompileOptions {
     pub crate_name: String,
-    pub input_file: String,
-    pub output_file: String,
+    pub input_file: PathBuf,
+    pub output_file: PathBuf,
     pub verbose_tokens: bool,
     pub dump_ast_mode: SerializationOption,
     pub allow_variants: bool,
@@ -40,8 +40,8 @@ impl Default for CompileOptions {
     fn default() -> Self {
         Self {
             crate_name: "".to_string(),
-            input_file: "main.tt".to_string(),
-            output_file: "".to_string(),
+            input_file: PathBuf::from(""),
+            output_file: PathBuf::from(""),
             verbose_tokens: false,
             dump_ast_mode: SerializationOption::default(),
             allow_variants: false,

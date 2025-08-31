@@ -1,13 +1,13 @@
 pub mod location;
 pub mod token;
 
+use std::path::{Path, PathBuf};
+
 use location::Location;
 use token::{Lexem, Token};
 
-static FILE_ERROR_MSG: &str = "Cannot open file";
-
 pub struct Lexer {
-    path: String,
+    path: PathBuf,
     location: Location,
     next_token: Option<Token>,
     next_char: Option<char>,
@@ -18,15 +18,15 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn from_file(path: &str) -> Result<Self, &'static str> {
+    pub fn from_file(path: &Path) -> Result<Self, String> {
         let file = std::fs::File::open(path);
 
-        if file.is_err() {
-            return Err(FILE_ERROR_MSG);
+        if let Err(err) = file {
+            return Err(format!("Failed to open {path:?}: {err}"));
         }
 
         Ok(Self {
-            path: path.to_string(),
+            path: path.to_path_buf(),
             location: Location::new(),
             next_token: None,
             next_char: None,
@@ -39,7 +39,7 @@ impl Lexer {
 
     pub fn from_text(src: &'static str) -> Result<Self, &'static str> {
         Ok(Self {
-            path: String::new(),
+            path: PathBuf::new(),
             location: Location::new(),
             next_token: None,
             next_char: None,
@@ -96,12 +96,12 @@ impl Lexer {
         self.location
     }
 
-    pub fn get_path(&self) -> String {
-        if self.path.is_empty() {
+    pub fn get_path(&self) -> &Path {
+        if self.path.as_os_str().is_empty() {
             panic!("Lexer input stream is not a file");
         }
 
-        self.path.clone()
+        self.path.as_path()
     }
 }
 

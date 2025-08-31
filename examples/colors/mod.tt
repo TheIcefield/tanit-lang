@@ -7,8 +7,7 @@ enum Color {
     Black
 }
 
-func get_color(x: u16) : Color
-{
+func get_color(x: u16) : Color {
     var c_yellow: Color = Color::Yellow
     var c_black: Color = Color::Black
 

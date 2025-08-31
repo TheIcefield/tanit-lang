@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use tanitc_ident::Ident;
 use tanitc_messages::{Errors, Message, Warnings};
 
@@ -32,7 +34,7 @@ impl Parser {
         })
     }
 
-    pub fn get_path(&self) -> String {
+    pub fn get_path(&self) -> &Path {
         self.lexer.get_path()
     }
 
