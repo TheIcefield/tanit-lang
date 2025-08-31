@@ -597,3 +597,181 @@ impl Analyzer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tanitc_ast::ast::{
+        blocks::{Block, BlockAttributes},
+        expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
+        functions::FunctionDef,
+        types::TypeSpec,
+        values::{Value, ValueKind},
+        variables::VariableDef,
+        Ast,
+    };
+    use tanitc_attributes::Safety;
+    use tanitc_ident::Ident;
+    use tanitc_lexer::location::Location;
+    use tanitc_ty::Type;
+
+    use crate::Analyzer;
+
+    fn get_func_def(name: &str, statements: Vec<Ast>) -> FunctionDef {
+        FunctionDef {
+            identifier: Ident::from(name.to_string()),
+            parameters: vec![],
+            body: Some(Box::new(Block {
+                statements,
+                is_global: false,
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+    }
+
+    fn get_var_init(var_name: &str, ty: Type) -> Expression {
+        Expression {
+            location: Location::new(),
+            kind: ExpressionKind::Binary {
+                operation: BinaryOperation::Assign,
+                lhs: Box::new(
+                    VariableDef {
+                        identifier: Ident::from(var_name.to_string()),
+                        var_type: TypeSpec {
+                            ty,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                rhs: Box::new(
+                    Value {
+                        location: Location::new(),
+                        kind: ValueKind::Integer(0),
+                    }
+                    .into(),
+                ),
+            },
+        }
+    }
+
+    fn get_raw_ptr_init(ptr_name: &str, var_name: &str) -> Expression {
+        Expression {
+            location: Location::new(),
+            kind: ExpressionKind::Binary {
+                operation: BinaryOperation::Assign,
+                lhs: Box::new(
+                    VariableDef {
+                        identifier: Ident::from(ptr_name.to_string()),
+                        var_type: TypeSpec {
+                            ty: Type::Ptr(Box::new(Type::I32)),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }
+                    .into(),
+                ),
+                rhs: Box::new(
+                    Expression {
+                        location: Location::new(),
+                        kind: ExpressionKind::Unary {
+                            operation: UnaryOperation::Ref,
+                            node: Box::new(
+                                Value {
+                                    location: Location::new(),
+                                    kind: ValueKind::Identifier(Ident::from(var_name.to_string())),
+                                }
+                                .into(),
+                            ),
+                        },
+                    }
+                    .into(),
+                ),
+            },
+        }
+    }
+
+    fn get_raw_ptr_deref(ptr_name: &str) -> Expression {
+        Expression {
+            location: Location::new(),
+            kind: ExpressionKind::Unary {
+                operation: UnaryOperation::Deref,
+                node: Box::new(
+                    Value {
+                        location: Location::new(),
+                        kind: ValueKind::Identifier(Ident::from(ptr_name.to_string())),
+                    }
+                    .into(),
+                ),
+            },
+        }
+    }
+
+    #[test]
+    fn check_deref_ptr_safety_good_test() {
+        const MAIN_FUNC_NAME: &str = "main";
+        const VAR_NAME: &str = "my_var";
+        const PTR_NAME: &str = "my_ptr";
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_func_def(
+                MAIN_FUNC_NAME,
+                vec![
+                    get_var_init(VAR_NAME, Type::I32).into(),
+                    get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
+                    Block {
+                        is_global: false,
+                        attributes: BlockAttributes {
+                            safety: Safety::Unsafe,
+                        },
+                        statements: vec![get_raw_ptr_deref(PTR_NAME).into()],
+                        ..Default::default()
+                    }
+                    .into(),
+                ],
+            )
+            .into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        if !errors.is_empty() {
+            panic!("{errors:#?}");
+        }
+    }
+
+    #[test]
+    fn check_deref_ptr_safety_bad_test() {
+        const MAIN_FUNC_NAME: &str = "main";
+        const VAR_NAME: &str = "my_var";
+        const PTR_NAME: &str = "my_ptr";
+        const EXPECTED_ERR: &str =
+            "Semantic error: Dereferencing raw pointer require unsafe function or block";
+
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_func_def(
+                MAIN_FUNC_NAME,
+                vec![
+                    get_var_init(VAR_NAME, Type::I32).into(),
+                    get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
+                    get_raw_ptr_deref(PTR_NAME).into(),
+                ],
+            )
+            .into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        assert!(!errors.is_empty());
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+}
