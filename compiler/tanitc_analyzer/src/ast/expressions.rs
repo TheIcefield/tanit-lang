@@ -53,6 +53,7 @@ impl Analyzer {
         node: &mut Box<Ast>,
     ) -> Result<Option<Expression>, Message> {
         node.accept_mut(self)?;
+        let node_type = self.get_type(node);
 
         let does_mutate = *operation == UnaryOperation::RefMut;
 
@@ -73,6 +74,16 @@ impl Analyzer {
                     });
                 }
             }
+        }
+
+        if node_type.ty.is_pointer()
+            && *operation == UnaryOperation::Deref
+            && self.get_current_safety() != Safety::Unsafe
+        {
+            return Err(Message::new(
+                node.location(),
+                "Dereferencing raw pointer require unsafe function or block",
+            ));
         }
 
         Ok(None)
