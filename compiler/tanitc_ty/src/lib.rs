@@ -95,6 +95,14 @@ impl Type {
         )
     }
 
+    pub fn is_reference(&self) -> bool {
+        matches!(self, Self::Ref { .. })
+    }
+
+    pub fn is_pointer(&self) -> bool {
+        matches!(self, Self::Ptr(_))
+    }
+
     pub fn as_str(&self) -> String {
         match self {
             Self::Auto => "auto".to_string(),
