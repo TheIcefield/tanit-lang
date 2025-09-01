@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_lexer::location::Location;
 
 use crate::ast::Ast;
@@ -17,7 +17,7 @@ pub struct EnumAttributes {
 pub struct EnumDef {
     pub location: Location,
     pub attributes: EnumAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: EnumUnits,
 }
 

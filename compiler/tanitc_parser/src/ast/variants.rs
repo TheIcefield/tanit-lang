@@ -22,7 +22,7 @@ impl Parser {
 
     fn parse_variant_header(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
         variant_def.location = self.consume_token(Lexem::KwVariant)?.location;
-        variant_def.identifier = self.consume_identifier()?;
+        variant_def.name.id = self.consume_identifier()?;
 
         Ok(())
     }

@@ -24,6 +24,7 @@ pub mod functions;
 pub mod methods;
 pub mod modules;
 pub mod structs;
+pub mod types;
 pub mod unions;
 pub mod values;
 pub mod variables;

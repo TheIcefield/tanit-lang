@@ -179,12 +179,12 @@ fn enum_in_module_work_test() {
                                      \n    Red = 0,\
                                      \n    Green = 1,\
                                      \n    Blue = 2,\
-                                     \n} Color;\
+                                     \n} color__Color;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\
                                      \n{\
-                                     \n    Color const a = 0;\
+                                     \n    color__Color const a = 0;\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

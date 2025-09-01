@@ -54,6 +54,7 @@ impl Analyzer {
     ) -> Result<Option<Expression>, Message> {
         node.accept_mut(self)?;
         let node_type = self.get_type(node);
+        println!("UNARY: ty({}), operation({operation})", node_type.ty);
 
         let does_mutate = *operation == UnaryOperation::RefMut;
 
@@ -180,10 +181,10 @@ impl Analyzer {
 
         let processed_node = match &entry.kind {
             SymbolKind::Enum(data) => self.access_enum(data, rhs)?,
-            SymbolKind::Variant(data) => self.access_variant(entry.name, data, rhs)?,
-            SymbolKind::StructDef(data) => self.access_struct_def(entry.name, data, rhs)?,
-            SymbolKind::UnionDef(data) => self.access_union_def(entry.name, data, rhs)?,
-            SymbolKind::FuncDef(data) => self.access_func_def(entry.name, data, rhs)?,
+            SymbolKind::Variant(data) => self.access_variant(data, rhs)?,
+            SymbolKind::StructDef(data) => self.access_struct_def(data, rhs)?,
+            SymbolKind::UnionDef(data) => self.access_union_def(data, rhs)?,
+            SymbolKind::FuncDef(data) => self.access_func_def(data, rhs)?,
             _ => todo!("Unaccessible: {:?}", entry.kind),
         };
 
@@ -380,7 +381,7 @@ impl Analyzer {
         let member_type = if let Some(type_info) = self.table.lookup_type(var_type) {
             self.check_members(var_name, &type_info, &mut members, location)?
         } else {
-            unreachable!()
+            unreachable!("Can't find {var_type}")
         };
 
         match node {
@@ -505,10 +506,10 @@ impl Analyzer {
                 Ok(rhs)
             }
             Ast::Value(Value {
-                kind: ValueKind::Struct { identifier, .. },
+                kind: ValueKind::Struct { name, .. },
                 ..
             }) => {
-                ids.push(*identifier);
+                ids.push(name.id);
                 Ok(rhs)
             }
             _ => Err(Message::unreachable(
@@ -610,15 +611,20 @@ mod tests {
         Ast,
     };
     use tanitc_attributes::Safety;
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
     use crate::Analyzer;
 
+    /* Creates:
+     * func name() {
+     *     <statements>
+     * }
+     */
     fn get_func_def(name: &str, statements: Vec<Ast>) -> FunctionDef {
         FunctionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             parameters: vec![],
             body: Some(Box::new(Block {
                 statements,
@@ -629,7 +635,10 @@ mod tests {
         }
     }
 
-    fn get_var_init(var_name: &str, ty: Type) -> Expression {
+    /* Creates:
+     * var var_name: i32 = 0
+     */
+    fn get_var_init(var_name: &str) -> Expression {
         Expression {
             location: Location::new(),
             kind: ExpressionKind::Binary {
@@ -638,7 +647,7 @@ mod tests {
                     VariableDef {
                         identifier: Ident::from(var_name.to_string()),
                         var_type: TypeSpec {
-                            ty,
+                            ty: Type::I32,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -656,6 +665,9 @@ mod tests {
         }
     }
 
+    /* Creates:
+     * var ptr_name: *i32 = &var_name
+     */
     fn get_raw_ptr_init(ptr_name: &str, var_name: &str) -> Expression {
         Expression {
             location: Location::new(),
@@ -692,6 +704,9 @@ mod tests {
         }
     }
 
+    /* Creates:
+     * *ptr_name
+     */
     fn get_raw_ptr_deref(ptr_name: &str) -> Expression {
         Expression {
             location: Location::new(),
@@ -714,12 +729,19 @@ mod tests {
         const VAR_NAME: &str = "my_var";
         const PTR_NAME: &str = "my_ptr";
 
+        /*
+         * func main() {
+         *    var my_var: i32 = 0
+         *    var my_ptr: *i32 = &my_var
+         *    unsafe { *my_ptr }
+         * }
+         */
         let mut program = Ast::from(Block {
             is_global: true,
             statements: vec![get_func_def(
                 MAIN_FUNC_NAME,
                 vec![
-                    get_var_init(VAR_NAME, Type::I32).into(),
+                    get_var_init(VAR_NAME).into(),
                     get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
                     Block {
                         is_global: false,
@@ -758,7 +780,7 @@ mod tests {
             statements: vec![get_func_def(
                 MAIN_FUNC_NAME,
                 vec![
-                    get_var_init(VAR_NAME, Type::I32).into(),
+                    get_var_init(VAR_NAME).into(),
                     get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
                     get_raw_ptr_deref(PTR_NAME).into(),
                 ],

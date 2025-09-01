@@ -29,7 +29,7 @@ mod tests {
     use tanitc_ast::ast::{
         aliases::AliasDef, blocks::Block, structs::StructDef, types::TypeSpec, Ast,
     };
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_ty::Type;
 
     use pretty_assertions::assert_str_eq;
@@ -38,7 +38,7 @@ mod tests {
 
     fn get_struct(name: &str) -> StructDef {
         StructDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             ..Default::default()
         }
     }
@@ -68,8 +68,16 @@ mod tests {
             is_global: true,
             statements: vec![
                 get_struct(STRUCT_NAME).into(),
-                get_alias(ALIAS_1_NAME, Type::Custom(STRUCT_NAME.to_string())).into(),
-                get_alias(ALIAS_2_NAME, Type::Custom(ALIAS_1_NAME.to_string())).into(),
+                get_alias(
+                    ALIAS_1_NAME,
+                    Type::Custom(Name::from(STRUCT_NAME.to_string())),
+                )
+                .into(),
+                get_alias(
+                    ALIAS_2_NAME,
+                    Type::Custom(Name::from(ALIAS_1_NAME.to_string())),
+                )
+                .into(),
             ],
             ..Default::default()
         });

@@ -15,12 +15,11 @@ use crate::Analyzer;
 
 impl Analyzer {
     pub fn analyze_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
-        if self.has_symbol(enum_def.identifier) {
-            return Err(Message::multiple_ids(
-                enum_def.location,
-                enum_def.identifier,
-            ));
+        if self.has_symbol(enum_def.name.id) {
+            return Err(Message::multiple_ids(enum_def.location, enum_def.name.id));
         }
+
+        enum_def.name.prefix = self.table.get_id();
 
         let mut counter = 0usize;
         let mut enums = BTreeMap::<Ident, Entry>::new();
@@ -38,7 +37,7 @@ impl Analyzer {
                     name: *field.0,
                     is_static: true,
                     kind: SymbolKind::Enum(EnumData {
-                        enum_name: enum_def.identifier,
+                        enum_name: enum_def.name,
                         value: counter,
                     }),
                 },
@@ -48,9 +47,12 @@ impl Analyzer {
         }
 
         self.add_symbol(Entry {
-            name: enum_def.identifier,
+            name: enum_def.name.id,
             is_static: true,
-            kind: SymbolKind::from(EnumDefData { enums }),
+            kind: SymbolKind::from(EnumDefData {
+                name: enum_def.name,
+                enums,
+            }),
         });
 
         Ok(())
@@ -70,7 +72,7 @@ impl Analyzer {
                     location,
                     kind: ValueKind::Integer(enum_data.value),
                 })),
-                ty: Type::Custom(enum_data.enum_name.to_string()),
+                ty: Type::Custom(enum_data.enum_name),
             },
         }))
     }

@@ -20,7 +20,7 @@ impl CodeGenStream<'_> {
 #[cfg(test)]
 mod tests {
     use tanitc_ast::ast::{externs::ExternDef, functions::FunctionDef, types::TypeSpec, Ast};
-    use tanitc_ident::Ident;
+    use tanitc_ident::Name;
     use tanitc_ty::Type;
 
     use pretty_assertions::assert_str_eq;
@@ -34,7 +34,7 @@ mod tests {
         let extern_node = Ast::from(ExternDef {
             abi_name: "C".to_string(),
             functions: vec![FunctionDef {
-                identifier: Ident::from("c_func".to_string()),
+                name: Name::from("c_func".to_string()),
                 parameters: vec![],
                 return_type: TypeSpec {
                     ty: Type::I32,

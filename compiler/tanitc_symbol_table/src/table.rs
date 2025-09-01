@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, LinkedList};
 
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_ty::Type;
 
 use super::{
@@ -18,6 +18,7 @@ pub struct ScopeInfo {
 
 #[derive(Default, Debug, Clone)]
 pub struct Table {
+    table_id: Option<Ident>,
     entries: BTreeMap<Ident, Entry>,
     stack: LinkedList<Table>,
     scope_info: ScopeInfo,
@@ -26,6 +27,7 @@ pub struct Table {
 impl Table {
     pub fn new() -> Self {
         Self {
+            table_id: None,
             entries: BTreeMap::new(),
             stack: LinkedList::new(),
             scope_info: ScopeInfo::default(),
@@ -34,6 +36,22 @@ impl Table {
 }
 
 impl Table {
+    pub fn set_id(&mut self, id: Ident) {
+        self.table_id = Some(id);
+    }
+
+    pub fn get_id(&self) -> Option<Ident> {
+        self.table_id
+    }
+
+    pub fn get_joined_id(&self, id: Ident) -> Ident {
+        if let Some(prefix) = &self.table_id {
+            Ident::from(format!("{prefix}__{id}"))
+        } else {
+            id
+        }
+    }
+
     pub fn enter_scope(&mut self, scope_info: ScopeInfo) {
         let mut table = Table::new();
         table.scope_info = scope_info;
@@ -127,18 +145,42 @@ impl Table {
     pub fn lookup_type(&self, ty: &Type) -> Option<TypeInfo> {
         let mut res: Option<TypeInfo> = None;
 
-        if ty.is_common() {
-            return Some(TypeInfo {
-                ty: ty.clone(),
-                mutability: Mutability::default(),
-                members: BTreeMap::new(),
-                is_union: false,
-            });
+        match ty {
+            ty if ty.is_common() || ty.is_unit() => {
+                return Some(TypeInfo {
+                    ty: ty.clone(),
+                    mutability: Mutability::default(),
+                    members: BTreeMap::new(),
+                    is_union: false,
+                });
+            }
+            Type::Array { value_type, size } => {
+                let mut internal = self.lookup_type(value_type)?;
+                internal.ty = Type::Array {
+                    value_type: Box::new(internal.ty),
+                    size: *size,
+                };
+                return Some(internal);
+            }
+            Type::Ref { ref_to, mutability } => {
+                let mut internal = self.lookup_type(ref_to.as_ref())?;
+                internal.ty = Type::Ref {
+                    ref_to: Box::new(internal.ty),
+                    mutability: *mutability,
+                };
+                return Some(internal);
+            }
+            Type::Ptr(ptr_to) => {
+                let mut internal = self.lookup_type(ptr_to.as_ref())?;
+                internal.ty = Type::Ptr(Box::new(internal.ty));
+                return Some(internal);
+            }
+            _ => {}
         }
 
-        let name = Ident::from(ty.to_string());
+        let name = Name::from(ty.as_str());
 
-        if let Some(entry) = self.lookup(name) {
+        if let Some(entry) = self.lookup(name.id) {
             match &entry.kind {
                 SymbolKind::StructDef(data) => {
                     let mut members = BTreeMap::<Ident, MemberInfo>::new();
@@ -154,7 +196,7 @@ impl Table {
                     }
 
                     res = Some(TypeInfo {
-                        ty: Type::Custom(name.to_string()),
+                        ty: Type::Custom(data.name),
                         mutability: Mutability::default(),
                         members,
                         is_union: false,
@@ -174,10 +216,28 @@ impl Table {
                     }
 
                     res = Some(TypeInfo {
-                        ty: Type::Custom(name.to_string()),
+                        ty: Type::Custom(name),
                         mutability: Mutability::default(),
                         members,
                         is_union: true,
+                    });
+                }
+                SymbolKind::AliasDef(data) => {
+                    if let Some(info) = self.lookup_type(&data.ty) {
+                        res = Some(TypeInfo {
+                            ty: Type::Custom(name),
+                            mutability: info.mutability,
+                            members: info.members,
+                            is_union: info.is_union,
+                        });
+                    }
+                }
+                SymbolKind::EnumDef(data) => {
+                    res = Some(TypeInfo {
+                        ty: Type::Custom(data.name),
+                        mutability: Mutability::default(),
+                        members: BTreeMap::new(),
+                        is_union: false,
                     });
                 }
                 _ => {}
@@ -217,264 +277,218 @@ impl Table {
     }
 }
 
-#[test]
-fn table_test() {
-    /* example:
-     * Module Main {       # Main: @s
-     *     func bar() { }  # bar:  @s/Main
-     *     func main() {   # main: @s/Main
-     *         let var = 5 # var:  @s/Main/main
-     *     }
-     * }
-     */
-    use tanitc_ty::Type;
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
 
-    use crate::entry::{FuncDefData, ModuleDefData, VarDefData, VarStorageType};
+    use tanitc_attributes::{Mutability, Safety};
+    use tanitc_ident::{Ident, Name};
 
-    let main_mod_id = Ident::from("Main".to_string());
-    let main_fn_id = Ident::from("main".to_string());
-    let bar_id = Ident::from("bar".to_string());
-    let var_id = Ident::from("var".to_string());
-    let baz_id = Ident::from("baz".to_string());
-
-    let mut table = Table::new();
-
-    table.insert(Entry {
-        name: main_mod_id,
-        is_static: true,
-        kind: SymbolKind::ModuleDef(ModuleDefData {
-            table: Box::new(Table::new()),
-        }),
-    });
-
-    let main_mod = table.lookup_mut(main_mod_id).unwrap();
-    let SymbolKind::ModuleDef(ref mut data) = &mut main_mod.kind else {
-        unreachable!()
+    use crate::{
+        entry::{Entry, SymbolKind},
+        table::{ScopeInfo, Table},
     };
 
-    let table = &mut data.table;
+    #[test]
+    fn table_test() {
+        /* example:
+         * Module Main {       # Main: @s
+         *     func bar() { }  # bar:  @s/Main
+         *     func main() {   # main: @s/Main
+         *         let var = 5 # var:  @s/Main/main
+         *     }
+         * }
+         */
+        use tanitc_ty::Type;
 
-    {
-        table.enter_scope(ScopeInfo {
-            safety: Safety::Safe,
-            ..Default::default()
-        }); // enter Main
+        use crate::entry::{FuncDefData, ModuleDefData, VarDefData, VarStorageType};
+
+        let main_mod_id = Ident::from("Main".to_string());
+        let main_fn_id = Ident::from("main".to_string());
+        let bar_id = Ident::from("bar".to_string());
+        let var_id = Ident::from("var".to_string());
+        let baz_id = Ident::from("baz".to_string());
+
+        let mut table = Table::new();
 
         table.insert(Entry {
-            name: bar_id,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters: vec![],
-                return_type: Type::unit(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: true,
-                safety: Safety::Safe,
+            name: main_mod_id,
+            is_static: true,
+            kind: SymbolKind::ModuleDef(ModuleDefData {
+                table: Box::new(Table::new()),
             }),
         });
+
+        let main_mod = table.lookup_mut(main_mod_id).unwrap();
+        let SymbolKind::ModuleDef(ref mut data) = &mut main_mod.kind else {
+            unreachable!()
+        };
+
+        let table = &mut data.table;
 
         {
             table.enter_scope(ScopeInfo {
                 safety: Safety::Safe,
-                is_in_func: true,
                 ..Default::default()
-            }); // enter bar
-
-            // check if var not visible in bar
-            assert!(table.lookup(var_id).is_none());
-
-            // check if baz not defined in bar
-            assert!(table.lookup(baz_id).is_none());
-
-            table.exit_scope(); // exit bar
-        }
-
-        table.insert(Entry {
-            name: main_fn_id,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters: vec![],
-                return_type: Type::unit(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: true,
-                safety: Safety::Safe,
-            }),
-        });
-
-        {
-            table.enter_scope(ScopeInfo {
-                safety: Safety::Safe,
-                is_in_func: true,
-                ..Default::default()
-            }); // enter main
+            }); // enter Main
 
             table.insert(Entry {
-                name: var_id,
+                name: bar_id,
                 is_static: false,
-                kind: SymbolKind::from(VarDefData {
-                    storage: VarStorageType::Auto,
-                    var_type: Type::I32,
-                    mutability: Mutability::default(),
-                    is_initialization: true,
+                kind: SymbolKind::from(FuncDefData {
+                    name: Name {
+                        id: bar_id,
+                        prefix: table.get_id(),
+                    },
+                    parameters: vec![],
+                    return_type: Type::unit(),
+                    is_virtual: false,
+                    is_inline: false,
+                    no_return: true,
+                    safety: Safety::Safe,
                 }),
             });
 
-            // check if var visible in main
-            assert!(table.lookup(var_id).is_some());
+            {
+                table.enter_scope(ScopeInfo {
+                    safety: Safety::Safe,
+                    is_in_func: true,
+                    ..Default::default()
+                }); // enter bar
 
-            table.exit_scope(); // exit main
+                // check if var not visible in bar
+                assert!(table.lookup(var_id).is_none());
+
+                // check if baz not defined in bar
+                assert!(table.lookup(baz_id).is_none());
+
+                table.exit_scope(); // exit bar
+            }
+
+            table.insert(Entry {
+                name: main_fn_id,
+                is_static: false,
+                kind: SymbolKind::from(FuncDefData {
+                    name: Name {
+                        id: main_fn_id,
+                        prefix: table.get_id(),
+                    },
+                    parameters: vec![],
+                    return_type: Type::unit(),
+                    is_virtual: false,
+                    is_inline: false,
+                    no_return: true,
+                    safety: Safety::Safe,
+                }),
+            });
+
+            {
+                table.enter_scope(ScopeInfo {
+                    safety: Safety::Safe,
+                    is_in_func: true,
+                    ..Default::default()
+                }); // enter main
+
+                table.insert(Entry {
+                    name: var_id,
+                    is_static: false,
+                    kind: SymbolKind::from(VarDefData {
+                        storage: VarStorageType::Auto,
+                        var_type: Type::I32,
+                        mutability: Mutability::default(),
+                        is_initialization: true,
+                    }),
+                });
+
+                // check if var visible in main
+                assert!(table.lookup(var_id).is_some());
+
+                table.exit_scope(); // exit main
+            }
+
+            // check if main visible in Main
+            assert!(table.lookup(main_fn_id).is_some());
+
+            // check if var not visible in Main
+            assert!(table.lookup(var_id).is_none());
+
+            // check if baz not visible in Main
+            assert!(table.lookup(baz_id).is_none());
+        }
+    }
+
+    #[test]
+    fn qualified_symbol_test() {
+        /* example:
+         * Module M1 {       # M1
+         *     func f1() { } # M1/f1
+         *     func f2() { } # M1/f2
+         * }
+         * Module M2 {       # M2
+         *     func f2() { } # M2/f2
+         * }
+         */
+
+        use crate::entry::{FuncDefData, ModuleDefData};
+        use tanitc_ty::Type;
+
+        let m1_id = Ident::from("M1".to_string());
+        let m2_id = Ident::from("M2".to_string());
+        let f1_id = Ident::from("f1".to_string());
+        let f2_id = Ident::from("f2".to_string());
+
+        let mut table = Table::new();
+
+        table.insert(Entry {
+            name: m1_id,
+            is_static: true,
+            kind: SymbolKind::ModuleDef(ModuleDefData {
+                table: Box::new(Table::new()),
+            }),
+        });
+
+        {
+            let m1 = table.lookup_mut(m1_id).unwrap();
+            let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
+                unreachable!()
+            };
+
+            data.table.insert(Entry {
+                name: f1_id,
+                is_static: false,
+                kind: SymbolKind::from(FuncDefData {
+                    name: Name {
+                        id: f1_id,
+                        prefix: data.table.get_id(),
+                    },
+                    parameters: vec![],
+                    return_type: Type::unit(),
+                    is_virtual: false,
+                    is_inline: false,
+                    no_return: true,
+                    safety: Safety::Safe,
+                }),
+            });
+
+            data.table.insert(Entry {
+                name: f2_id,
+                is_static: false,
+                kind: SymbolKind::from(FuncDefData {
+                    name: Name {
+                        id: f2_id,
+                        prefix: data.table.get_id(),
+                    },
+                    parameters: vec![],
+                    return_type: Type::unit(),
+                    is_virtual: false,
+                    is_inline: false,
+                    no_return: true,
+                    safety: Safety::Safe,
+                }),
+            });
         }
 
-        // check if main visible in Main
-        assert!(table.lookup(main_fn_id).is_some());
-
-        // check if var not visible in Main
-        assert!(table.lookup(var_id).is_none());
-
-        // check if baz not visible in Main
-        assert!(table.lookup(baz_id).is_none());
-    }
-}
-
-#[test]
-fn qualified_symbol_test() {
-    /* example:
-     * Module M1 {       # M1
-     *     func f1() { } # M1/f1
-     *     func f2() { } # M1/f2
-     * }
-     * Module M2 {       # M2
-     *     func f2() { } # M2/f2
-     * }
-     */
-
-    use crate::entry::{FuncDefData, ModuleDefData};
-    use tanitc_ty::Type;
-
-    let m1_id = Ident::from("M1".to_string());
-    let m2_id = Ident::from("M2".to_string());
-    let f1_id = Ident::from("f1".to_string());
-    let f2_id = Ident::from("f2".to_string());
-
-    let mut table = Table::new();
-
-    table.insert(Entry {
-        name: m1_id,
-        is_static: true,
-        kind: SymbolKind::ModuleDef(ModuleDefData {
-            table: Box::new(Table::new()),
-        }),
-    });
-
-    {
-        let m1 = table.lookup_mut(m1_id).unwrap();
-        let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
-            unreachable!()
-        };
-
-        data.table.insert(Entry {
-            name: f1_id,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters: vec![],
-                return_type: Type::unit(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: true,
-                safety: Safety::Safe,
-            }),
-        });
-
-        data.table.insert(Entry {
-            name: f2_id,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters: vec![],
-                return_type: Type::unit(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: true,
-                safety: Safety::Safe,
-            }),
-        });
-    }
-
-    table.insert(Entry {
-        name: m2_id,
-        is_static: true,
-        kind: SymbolKind::ModuleDef(ModuleDefData {
-            table: Box::new(Table::new()),
-        }),
-    });
-
-    {
-        let m2 = table.lookup_mut(m2_id).unwrap();
-        let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
-            unreachable!()
-        };
-
-        data.table.insert(Entry {
-            name: f2_id,
-            is_static: false,
-            kind: SymbolKind::from(FuncDefData {
-                parameters: vec![],
-                return_type: Type::unit(),
-                is_virtual: false,
-                is_inline: false,
-                no_return: true,
-                safety: Safety::Safe,
-            }),
-        });
-    }
-
-    assert!(table
-        .lookup_qualified([m1_id, f2_id].iter().peekable())
-        .is_some());
-    assert!(table
-        .lookup_qualified([m2_id, f1_id].iter().peekable())
-        .is_none());
-}
-
-#[test]
-fn lookup_type_test() {
-    /* example:
-     * Module M1 {       # M1
-     *     Module M2 {   # M1/M2
-     *         Struct S1 {
-     *             f1: i32
-     *             f2: f32
-     *         }
-     *     }
-     * }
-     */
-
-    use crate::entry::{ModuleDefData, StructDefData, StructFieldData};
-    use tanitc_ty::Type;
-
-    let m1_id = Ident::from("M1".to_string());
-    let m2_id = Ident::from("M2".to_string());
-    let s1_id = Ident::from("S1".to_string());
-    let f1_id = Ident::from("f1".to_string());
-    let f2_id = Ident::from("f2".to_string());
-
-    let mut table = Table::new();
-
-    table.insert(Entry {
-        name: m1_id,
-        is_static: true,
-        kind: SymbolKind::ModuleDef(ModuleDefData {
-            table: Box::new(Table::new()),
-        }),
-    });
-
-    {
-        let m1 = table.lookup_mut(m1_id).unwrap();
-        let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
-            unreachable!()
-        };
-
-        data.table.insert(Entry {
+        table.insert(Entry {
             name: m2_id,
             is_static: true,
             kind: SymbolKind::ModuleDef(ModuleDefData {
@@ -483,35 +497,132 @@ fn lookup_type_test() {
         });
 
         {
-            let m2 = data.table.lookup_mut(m2_id).unwrap();
+            let m2 = table.lookup_mut(m2_id).unwrap();
             let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
                 unreachable!()
             };
 
             data.table.insert(Entry {
-                name: s1_id,
+                name: f2_id,
                 is_static: false,
-                kind: SymbolKind::from(StructDefData {
-                    fields: {
-                        let mut field = BTreeMap::<Ident, StructFieldData>::new();
-
-                        field.insert(f1_id, StructFieldData { ty: Type::I32 });
-                        field.insert(f2_id, StructFieldData { ty: Type::F32 });
-
-                        field
+                kind: SymbolKind::from(FuncDefData {
+                    name: Name {
+                        id: f2_id,
+                        prefix: data.table.get_id(),
                     },
+                    parameters: vec![],
+                    return_type: Type::unit(),
+                    is_virtual: false,
+                    is_inline: false,
+                    no_return: true,
+                    safety: Safety::Safe,
                 }),
             });
         }
+
+        assert!(table
+            .lookup_qualified([m1_id, f2_id].iter().peekable())
+            .is_some());
+        assert!(table
+            .lookup_qualified([m2_id, f1_id].iter().peekable())
+            .is_none());
     }
 
-    let s1 = table.lookup_type(&Type::Custom(s1_id.to_string())).unwrap();
-    assert_eq!(s1.members.len(), 2);
-    assert!(s1.members.get(&f1_id).is_some());
-    assert!(s1.members.get(&f2_id).is_some());
-    assert!(s1.members.get(&m1_id).is_none());
+    #[test]
+    fn lookup_type_test() {
+        /* example:
+         * Module M1 {       # M1
+         *     Module M2 {   # M1/M2
+         *         Struct S1 {
+         *             f1: i32
+         *             f2: f32
+         *         }
+         *     }
+         * }
+         */
 
-    assert!(table
-        .lookup_type(&Type::Custom(m2_id.to_string()))
-        .is_none());
+        use crate::entry::{ModuleDefData, StructDefData, StructFieldData};
+        use tanitc_ty::Type;
+
+        let m1_id = Ident::from("M1".to_string());
+        let m2_id = Ident::from("M2".to_string());
+        let s1_id = Ident::from("S1".to_string());
+        let f1_id = Ident::from("f1".to_string());
+        let f2_id = Ident::from("f2".to_string());
+
+        let mut table = Table::new();
+
+        table.insert(Entry {
+            name: m1_id,
+            is_static: true,
+            kind: SymbolKind::ModuleDef(ModuleDefData {
+                table: Box::new(Table::new()),
+            }),
+        });
+
+        {
+            let m1 = table.lookup_mut(m1_id).unwrap();
+            let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
+                unreachable!()
+            };
+
+            data.table.insert(Entry {
+                name: m2_id,
+                is_static: true,
+                kind: SymbolKind::ModuleDef(ModuleDefData {
+                    table: Box::new(Table::new()),
+                }),
+            });
+
+            {
+                let prefix = Some(data.table.get_joined_id(m2_id));
+
+                let m2 = data.table.lookup_mut(m2_id).unwrap();
+                let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
+                    unreachable!()
+                };
+
+                let struct_name = Name { id: s1_id, prefix };
+                data.table.insert(Entry {
+                    name: s1_id,
+                    is_static: false,
+                    kind: SymbolKind::from(StructDefData {
+                        name: struct_name,
+                        fields: {
+                            let mut field = BTreeMap::<Ident, StructFieldData>::new();
+
+                            field.insert(
+                                f1_id,
+                                StructFieldData {
+                                    struct_name,
+                                    ty: Type::I32,
+                                },
+                            );
+                            field.insert(
+                                f2_id,
+                                StructFieldData {
+                                    struct_name,
+                                    ty: Type::F32,
+                                },
+                            );
+
+                            field
+                        },
+                    }),
+                });
+            }
+        }
+
+        let s1 = table
+            .lookup_type(&Type::Custom(Name::from(s1_id.to_string())))
+            .unwrap();
+        assert_eq!(s1.members.len(), 2);
+        assert!(s1.members.get(&f1_id).is_some());
+        assert!(s1.members.get(&f2_id).is_some());
+        assert!(s1.members.get(&m1_id).is_none());
+
+        assert!(table
+            .lookup_type(&Type::Custom(Name::from(m2_id.to_string())))
+            .is_none());
+    }
 }

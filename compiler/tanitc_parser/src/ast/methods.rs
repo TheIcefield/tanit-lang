@@ -109,7 +109,7 @@ mod tests {
                 );
             };
 
-            assert_eq!(struct_def.identifier.to_string(), "MyStruct");
+            assert_eq!(struct_def.name.id.to_string(), "MyStruct");
             assert!(struct_def.fields.is_empty());
         }
 
@@ -133,7 +133,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert!(method.parameters.is_empty());
             }
 
@@ -144,7 +144,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert_eq!(method.parameters.len(), PARAMS_COUNT);
                 assert_eq!(
                     method.parameters[0],
@@ -159,7 +159,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert_eq!(method.parameters.len(), PARAMS_COUNT);
                 assert_eq!(
                     method.parameters[0],
@@ -191,7 +191,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert_eq!(method.parameters.len(), PARAMS_COUNT);
                 assert_eq!(
                     method.parameters[0],
@@ -206,7 +206,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert_eq!(method.parameters.len(), PARAMS_COUNT);
                 assert_eq!(
                     method.parameters[0],
@@ -221,7 +221,7 @@ mod tests {
 
                 let method = &impl_def.methods[METHOD_INDEX];
 
-                assert_eq!(method.identifier.to_string(), METHOD_NAME);
+                assert_eq!(method.name.to_string(), METHOD_NAME);
                 assert_eq!(method.parameters.len(), PARAMS_COUNT);
                 assert_eq!(
                     method.parameters[0],
@@ -254,7 +254,6 @@ mod tests {
         let _ = parser.parse_global_block().unwrap();
 
         let errors = parser.get_errors();
-        println!("errors: {errors:?}");
         assert_eq!(errors.len(), 2);
         assert_eq!(errors[0].text, ERR_1);
         assert_eq!(errors[1].text, ERR_2);

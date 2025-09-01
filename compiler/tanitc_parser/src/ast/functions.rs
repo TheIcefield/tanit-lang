@@ -26,7 +26,7 @@ impl Parser {
 impl Parser {
     fn parse_func_header(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
         func_def.location = self.consume_token(Lexem::KwFunc)?.location;
-        func_def.identifier = self.consume_identifier()?;
+        func_def.name.id = self.consume_identifier()?;
 
         self.parse_func_header_params(func_def)?;
         self.parse_func_return_type(func_def)?;
@@ -120,7 +120,7 @@ impl Parser {
             match self.parse_func_header_param() {
                 Ok(param) => func_def.parameters.push(param),
                 Err(err) => {
-                    self.error(Message::in_func_def(func_def.identifier, err));
+                    self.error(Message::in_func_def(func_def.name.id, err));
                 }
             }
 
@@ -204,7 +204,7 @@ fn parse_func_def_test() {
         panic!("Expected FuncDef, actually: {}", ast.name());
     };
 
-    assert_eq!(func_node.identifier.to_string(), "hello");
+    assert_eq!(func_node.name.to_string(), "hello");
     assert!(func_node.body.is_some());
     assert_eq!(func_node.return_type.get_type(), Type::I32);
     assert_eq!(func_node.parameters.len(), 1);

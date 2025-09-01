@@ -7,6 +7,40 @@ use std::{
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident(usize);
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Name {
+    pub id: Ident,
+    pub prefix: Option<Ident>,
+}
+
+impl Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(prefix) = &self.prefix {
+            write!(f, "{prefix}__{}", self.id)
+        } else {
+            write!(f, "{}", self.id)
+        }
+    }
+}
+
+impl From<String> for Name {
+    fn from(value: String) -> Self {
+        Self {
+            id: Ident::from(value),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<Ident> for Name {
+    fn from(value: Ident) -> Self {
+        Self {
+            id: value,
+            ..Default::default()
+        }
+    }
+}
+
 impl From<String> for Ident {
     fn from(value: String) -> Self {
         let mut ids = IDENTIFIERS.lock().unwrap();

@@ -16,7 +16,7 @@ impl Parser {
 
     fn parse_enum_header(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         enum_def.location = self.consume_token(Lexem::KwEnum)?.location;
-        enum_def.identifier = self.consume_identifier()?;
+        enum_def.name.id = self.consume_identifier()?;
 
         Ok(())
     }
@@ -117,7 +117,7 @@ fn parse_enum_def_test() {
         panic!("Expected EnumDef, actually: {}", node.name());
     };
 
-    assert_eq!(enum_node.identifier.to_string(), "MyEnum");
+    assert_eq!(enum_node.name.id.to_string(), "MyEnum");
     assert_eq!(enum_node.attributes.publicity, Publicity::Private);
     assert_eq!(enum_node.fields.len(), 3);
 
@@ -147,7 +147,7 @@ fn parse_empty_enum_def_test() {
         panic!("Expected EnumDef, actually: {}", node.name());
     };
 
-    assert_eq!(enum_node.identifier.to_string(), "EmptyEnum");
+    assert_eq!(enum_node.name.id.to_string(), "EmptyEnum");
     assert_eq!(enum_node.attributes.publicity, Publicity::Private);
     assert!(enum_node.fields.is_empty());
 }
@@ -166,7 +166,7 @@ fn parse_enum_with_one_field_def_test() {
         panic!("Expected EnumDef, actually: {}", node.name());
     };
 
-    assert_eq!(enum_node.identifier.to_string(), "MyEnum");
+    assert_eq!(enum_node.name.id.to_string(), "MyEnum");
     assert_eq!(enum_node.attributes.publicity, Publicity::Private);
     assert_eq!(enum_node.fields.len(), 1);
 

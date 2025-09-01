@@ -27,7 +27,7 @@ impl Parser {
 
         self.consume_token(Lexem::KwModule)?;
 
-        mod_def.identifier = self.consume_identifier()?;
+        mod_def.name.id = self.consume_identifier()?;
 
         Ok(())
     }
@@ -60,7 +60,7 @@ impl Parser {
     }
 
     fn get_external_module_path(&mut self, mod_def: &mut ModuleDef) -> Result<PathBuf, Message> {
-        let name: String = mod_def.identifier.into();
+        let name = mod_def.name.id.to_string();
 
         let Some(current_path_str) = self.get_path().to_str() else {
             return Err(Message::new(mod_def.location, "Failed to get path"));
@@ -155,7 +155,7 @@ fn module_test() {
         panic!("Expected ModuleDef, actually: {}", res.name());
     };
 
-    assert_eq!(node.identifier.to_string(), "M1");
+    assert_eq!(node.name.id.to_string(), "M1");
 
     let body = node.body.as_ref();
     let Ast::ModuleDef(node) = &body.statements[0] else {
@@ -165,5 +165,5 @@ fn module_test() {
         );
     };
 
-    assert_eq!(node.identifier.to_string(), "M2");
+    assert_eq!(node.name.id.to_string(), "M2");
 }

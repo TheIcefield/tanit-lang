@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_lexer::location::Location;
 
 use crate::ast::{structs::StructFields, types::TypeSpec, Ast};
@@ -25,7 +25,7 @@ pub struct VariantAttributes {
 pub struct VariantDef {
     pub location: Location,
     pub attributes: VariantAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: VariantFields,
     pub internals: Vec<Ast>,
 }
@@ -36,10 +36,10 @@ impl From<VariantDef> for Ast {
     }
 }
 
-pub fn get_variant_data_kind_id(variant_id: Ident) -> Ident {
-    Ident::from(format!("__{variant_id}__kind__"))
+pub fn get_variant_data_kind_id(variant_id: Name) -> Name {
+    Name::from(format!("__{variant_id}__kind__"))
 }
 
-pub fn get_variant_data_type_id(variant_id: Ident) -> Ident {
-    Ident::from(format!("__{variant_id}__data__"))
+pub fn get_variant_data_type_id(variant_id: Name) -> Name {
+    Name::from(format!("__{variant_id}__data__"))
 }

@@ -25,9 +25,9 @@ impl CodeGenStream<'_> {
         self.generate_type_spec(&func_def.return_type)?;
 
         let full_name = if let Some(struct_name) = struct_name {
-            format!("{struct_name}__{}", func_def.identifier)
+            format!("{struct_name}__{}", func_def.name)
         } else {
-            format!("{}", func_def.identifier)
+            format!("{}", func_def.name)
         };
 
         write!(self, " {full_name}")?;
@@ -114,7 +114,7 @@ mod tests {
         Ast,
     };
     use tanitc_attributes::Mutability;
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_ty::Type;
 
     use pretty_assertions::assert_str_eq;
@@ -136,7 +136,7 @@ mod tests {
     fn get_func(name: &str, parameters: Vec<FunctionParam>, return_type: Type) -> FunctionDef {
         FunctionDef {
             parameters,
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             return_type: TypeSpec {
                 ty: return_type,
                 ..Default::default()

@@ -29,12 +29,9 @@ impl CodeGenStream<'_> {
 
                 write!(self, ")")?;
             }
-            ValueKind::Struct {
-                identifier,
-                components,
-            } => {
+            ValueKind::Struct { name, components } => {
                 // create anonimous variable
-                write!(self, "({identifier})")?;
+                write!(self, "({name})")?;
 
                 if components.is_empty() {
                     write!(self, " {{ }}")?;
@@ -106,7 +103,7 @@ mod tests {
         values::{CallArg, CallArgKind, Value, ValueKind},
         Ast,
     };
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
 
     use pretty_assertions::assert_str_eq;
     use tanitc_lexer::location::Location;
@@ -115,7 +112,7 @@ mod tests {
 
     fn get_func(name: &str, statements: Vec<Ast>) -> FunctionDef {
         FunctionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             body: Some(Box::new(Block {
                 is_global: false,
                 statements,
@@ -238,7 +235,7 @@ mod tests {
                     .into(),
                     Value {
                         kind: ValueKind::Struct {
-                            identifier: Ident::from("MyEmptyStruct".to_string()),
+                            name: Name::from("MyEmptyStruct".to_string()),
                             components: vec![],
                         },
                         location: Location::new(),
@@ -246,9 +243,9 @@ mod tests {
                     .into(),
                     Value {
                         kind: ValueKind::Struct {
-                            identifier: Ident::from("StructWith1F".to_string()),
+                            name: Name::from("StructWith1F".to_string()),
                             components: vec![(
-                                Ident::from("f1".to_string()),
+                                Name::from("f1".to_string()),
                                 Value {
                                     kind: ValueKind::Decimal(1.1),
                                     location: Location::new(),
@@ -261,10 +258,10 @@ mod tests {
                     .into(),
                     Value {
                         kind: ValueKind::Struct {
-                            identifier: Ident::from("StructWith2F".to_string()),
+                            name: Name::from("StructWith2F".to_string()),
                             components: vec![
                                 (
-                                    Ident::from("f1".to_string()),
+                                    Name::from("f1".to_string()),
                                     Value {
                                         kind: ValueKind::Integer(0),
                                         location: Location::new(),
@@ -272,7 +269,7 @@ mod tests {
                                     .into(),
                                 ),
                                 (
-                                    Ident::from("f2".to_string()),
+                                    Name::from("f2".to_string()),
                                     Value {
                                         kind: ValueKind::Decimal(2.2),
                                         location: Location::new(),

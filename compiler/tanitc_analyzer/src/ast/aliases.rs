@@ -1,6 +1,5 @@
 use tanitc_ast::ast::aliases::AliasDef;
 use tanitc_attributes::Mutability;
-use tanitc_ident::Ident;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
     entry::{AliasDefData, Entry, SymbolKind},
@@ -39,13 +38,11 @@ impl Analyzer {
     }
 
     pub fn find_alias_value(&self, alias_type: &Type) -> Option<Type> {
-        let Type::Custom(id) = alias_type else {
+        let Type::Custom(type_id) = alias_type else {
             return None;
         };
 
-        let type_id = Ident::from(id.clone());
-
-        let entry = self.table.lookup(type_id)?;
+        let entry = self.table.lookup(type_id.id)?;
 
         let SymbolKind::AliasDef(alias_data) = &entry.kind else {
             return None;

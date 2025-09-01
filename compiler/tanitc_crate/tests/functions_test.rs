@@ -145,18 +145,18 @@ fn function_in_module_work_test() {
                                      \n    Red = 0,\
                                      \n    Green = 1,\
                                      \n    Blue = 2,\
-                                     \n} Color;\
-                                     \nColor get_green();\
+                                     \n} color__Color;\
+                                     \ncolor__Color color__get_green();\
                                      \nvoid main();\n";
 
-        const SOURCE_EXPECTED: &str = "Color get_green()\
+        const SOURCE_EXPECTED: &str = "color__Color color__get_green()\
                                      \n{\
-                                     \n    Color const ret = 1;\
+                                     \n    color__Color const ret = 1;\
                                      \n    return ret;\
                                      \n}\
                                      \nvoid main()\
                                      \n{\
-                                     \n    void const green = color.get_green();\
+                                     \n    void const green = color__get_green();\
                                      \n}\n";
 
         let mut header_buffer = Vec::<u8>::new();

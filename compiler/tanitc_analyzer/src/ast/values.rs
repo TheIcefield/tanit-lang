@@ -5,11 +5,13 @@ use tanitc_ast::ast::{
     Ast,
 };
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 use tanitc_symbol_table::{
-    entry::{FuncDefData, StructFieldData, SymbolKind},
+    entry::{
+        FuncDefData, StructDefData, StructFieldData, SymbolKind, UnionDefData, VariantStructKind,
+    },
     type_info::{MemberInfo, TypeInfo},
 };
 use tanitc_ty::{ArraySize, Type};
@@ -110,7 +112,7 @@ impl Analyzer {
             }
         }
 
-        if func_data.safety == Safety::Unsafe && self.get_current_safety() == Safety::Safe {
+        if func_data.safety == Safety::Unsafe && self.get_current_safety() != Safety::Unsafe {
             self.error(Message::from_string(
                 location,
                 format!(
@@ -124,7 +126,7 @@ impl Analyzer {
 
     pub fn analyze_struct_value(&mut self, value: &mut Value) -> Result<(), Message> {
         let ValueKind::Struct {
-            identifier: object_name,
+            name: object_name,
             components: value_comps,
         } = &mut value.kind
         else {
@@ -134,23 +136,21 @@ impl Analyzer {
             ));
         };
 
-        let mut object = if let Some(entry) = self.table.lookup(*object_name) {
+        let mut object = if let Some(entry) = self.table.lookup(object_name.id) {
             entry.clone()
         } else {
-            return Err(Message::undefined_id(value.location, *object_name));
+            return Err(Message::undefined_id(value.location, object_name.id));
         };
 
         if let SymbolKind::AliasDef(alias_data) = &object.kind {
             let ty = &alias_data.ty;
             match ty {
-                Type::Custom(id) => {
-                    let alias_to_id = Ident::from(id.clone());
-
-                    if let Some(entry) = self.table.lookup(alias_to_id) {
+                Type::Custom(alias_to_id) => {
+                    if let Some(entry) = self.table.lookup(alias_to_id.id) {
                         object = entry.clone();
                     } else {
-                        return Err(Message::undefined_id(value.location, alias_to_id));
-                    };
+                        return Err(Message::undefined_id(value.location, alias_to_id.id));
+                    }
                 }
                 ty if ty.is_common() => {
                     return Err(Message {
@@ -166,30 +166,21 @@ impl Analyzer {
 
         match &object.kind {
             SymbolKind::StructDef(struct_data) => {
-                if let Err(mut msg) =
-                    self.check_struct_components(value_comps, *object_name, &struct_data.fields)
-                {
+                if let Err(mut msg) = self.check_struct_value_components(value_comps, struct_data) {
                     msg.location = value.location;
                     return Err(msg);
                 }
             }
             SymbolKind::UnionDef(union_data) => {
-                if let Err(mut msg) =
-                    self.check_union_components(value_comps, *object_name, &union_data.fields)
-                {
+                if let Err(mut msg) = self.check_union_components(value_comps, union_data) {
                     msg.location = value.location;
                     return Err(msg);
                 }
-
-                value.kind = ValueKind::Struct {
-                    identifier: *object_name,
-                    components: std::mem::take(value_comps),
-                };
             }
             _ => {
-                return Err(Message::new(
+                return Err(Message::from_string(
                     value.location,
-                    &format!("Cannot find struct or union named \"{object_name}\" in this scope"),
+                    format!("Cannot find struct or union named \"{object_name}\" in this scope"),
                 ));
             }
         }
@@ -197,17 +188,50 @@ impl Analyzer {
         Ok(())
     }
 
-    pub fn check_struct_components(
+    fn check_struct_component(
         &mut self,
-        value_comps: &[(Ident, Ast)],
-        struct_name: Ident,
-        struct_comps: &BTreeMap<Ident, StructFieldData>,
+        comp_id: usize,
+        value_comps: &mut [(Name, Ast)],
+        struct_fields: &BTreeMap<Ident, StructFieldData>,
     ) -> Result<(), Message> {
+        let value_comp = value_comps.get_mut(comp_id).unwrap();
+        let value_comp_name = &value_comp.0;
+        let value_comp_type = self.get_type(&value_comp.1);
+        let struct_comp_type = &struct_fields.get(&value_comp_name.id).unwrap().ty;
+
+        if let Err(err) = value_comp.1.accept_mut(self) {
+            self.error(err);
+        }
+
+        if self
+            .compare_types(
+                struct_comp_type,
+                &value_comp_type.ty,
+                value_comp.1.location(),
+            )
+            .is_err()
+        {
+            return Err(Message::from_string(
+                value_comp.1.location(),
+                format!("field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}"),
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn check_struct_value_components(
+        &mut self,
+        value_comps: &mut [(Name, Ast)],
+        struct_data: &StructDefData,
+    ) -> Result<(), Message> {
+        let struct_comps = &struct_data.fields;
         if value_comps.len() != struct_comps.len() {
-            return Err(Message::new(
+            return Err(Message::from_string(
                 Location::new(),
-                &format!(
-                    "Struct \"{struct_name}\" consists of {} fields, but {} were supplied",
+                format!(
+                    "Struct \"{}\" consists of {} fields, but {} were supplied",
+                    struct_data.name.id,
                     struct_comps.len(),
                     value_comps.len()
                 ),
@@ -215,35 +239,11 @@ impl Analyzer {
         }
 
         for comp_id in 0..value_comps.len() {
-            let value_comp = value_comps.get(comp_id).unwrap();
-            let value_comp_name = value_comp.0;
-            let value_comp_type = self.get_type(&value_comp.1);
-            let struct_comp_type = &struct_comps.get(&value_comp_name).unwrap().ty;
-
-            let mut alias_to = self.find_alias_value(struct_comp_type);
-
-            if value_comp_type.ty == *struct_comp_type {
-                alias_to = None;
-            }
-
-            if alias_to.is_none() && value_comp_type.ty != *struct_comp_type {
-                return Err(Message {
-                    location: value_comp.1.location(),
-                    text: format!(
-                        "Struct field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}",
-                    ),
-                });
-            } else if alias_to
-                .as_ref()
-                .is_some_and(|ty| value_comp_type.ty != *ty)
+            if let Err(mut msg) =
+                self.check_struct_component(comp_id, value_comps, &struct_data.fields)
             {
-                return Err(Message {
-                    location: value_comp.1.location(),
-                    text: format!(
-                        "Struct field named \"{value_comp_name}\" is {struct_comp_type} (aka: {}), but initialized like {value_comp_type}",
-                        alias_to.unwrap()
-                    ),
-                });
+                msg.text = format!("Struct {}", msg.text);
+                self.error(msg);
             }
         }
 
@@ -252,62 +252,67 @@ impl Analyzer {
 
     pub fn check_union_components(
         &mut self,
-        value_comps: &[(Ident, Ast)],
-        union_name: Ident,
-        union_comps: &BTreeMap<Ident, StructFieldData>,
+        value_comps: &mut [(Name, Ast)],
+        union_data: &UnionDefData,
     ) -> Result<(), Message> {
-        let union_comp_size = union_comps.len();
+        let union_comp_size = union_data.fields.len();
         let initialized_comp_size = value_comps.len();
 
         if union_comp_size == 0 && initialized_comp_size > 0 {
-            return Err(Message::new(
+            return Err(Message::from_string(
                 Location::new(),
-                &format!(
-                    "Union \"{union_name}\" has no fields, but were supplied {initialized_comp_size} fields",
+                format!(
+                    "Union \"{}\" has no fields, but were supplied {initialized_comp_size} fields",
+                    union_data.name
                 ),
             ));
         }
 
         if union_comp_size > 0 && initialized_comp_size > 1 {
-            return Err(Message::new(
+            return Err(Message::from_string(
                 Location::new(),
-                &format!(
+                format!(
                     "Only one union field must be initialized, but {initialized_comp_size} were initialized",
                 ),
             ));
         }
 
         for comp_id in 0..initialized_comp_size {
-            let value_comp = value_comps.get(comp_id).unwrap();
-            let value_comp_name = value_comp.0;
-            let value_comp_type = self.get_type(&value_comp.1);
-            let union_comp_data = union_comps.get(&value_comp.0).unwrap();
-            let union_comp_type = &union_comp_data.ty;
-
-            let mut alias_to = self.find_alias_value(union_comp_type);
-
-            if value_comp_type.ty == *union_comp_type {
-                alias_to = None;
-            }
-
-            if alias_to.is_none() && value_comp_type.ty != *union_comp_type {
-                return Err(Message::new(
-                    Location::new(),
-                    &format!(
-                        "Union field named \"{value_comp_name}\" is {union_comp_type}, but initialized like {value_comp_type}"
-                    ),
-                ));
-            } else if alias_to
-                .as_ref()
-                .is_some_and(|ty| value_comp_type.ty != *ty)
+            if let Err(mut msg) =
+                self.check_struct_component(comp_id, value_comps, &union_data.fields)
             {
-                return Err(Message::new(
-                        Location::new(),
-                        &format!(
-                            "Union field named \"{value_comp_name}\" is {union_comp_type} (aka: {}), but initialized like {value_comp_type}",
-                            alias_to.unwrap()
-                        ),
-                    ));
+                msg.text = format!("Union {}", msg.text);
+                self.error(msg);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn check_variant_struct_components(
+        &mut self,
+        value_comps: &mut [(Name, Ast)],
+        variant_struct_data: &VariantStructKind,
+    ) -> Result<(), Message> {
+        let struct_comps = &variant_struct_data.fields;
+        if value_comps.len() != struct_comps.len() {
+            return Err(Message::from_string(
+                Location::new(),
+                format!(
+                    "Variant struct \"{}\" consists of {} fields, but {} were supplied",
+                    variant_struct_data.variant_name.id,
+                    struct_comps.len(),
+                    value_comps.len()
+                ),
+            ));
+        }
+
+        for comp_id in 0..value_comps.len() {
+            if let Err(mut msg) =
+                self.check_struct_component(comp_id, value_comps, &variant_struct_data.fields)
+            {
+                msg.text = format!("Variant {}", msg.text);
+                self.error(msg);
             }
         }
 
@@ -392,6 +397,7 @@ impl Analyzer {
                 ..Default::default()
             },
             ValueKind::Identifier(id) => {
+                // Search entries with name id
                 let Some(entry) = self.table.lookup(*id) else {
                     return TypeInfo {
                         ty: Type::new(),
@@ -400,6 +406,7 @@ impl Analyzer {
                     };
                 };
 
+                // Entry must be VarDef
                 let SymbolKind::VarDef(data) = &entry.kind else {
                     return TypeInfo {
                         ty: Type::new(),
@@ -419,8 +426,8 @@ impl Analyzer {
                 type_info.mutability = data.mutability;
                 type_info
             }
-            ValueKind::Struct { identifier, .. } => {
-                let ty = Type::Custom(identifier.to_string());
+            ValueKind::Struct { name, .. } => {
+                let ty = Type::Custom(*name);
                 let Some(mut type_info) = self.table.lookup_type(&ty) else {
                     return TypeInfo {
                         ty,
@@ -655,7 +662,7 @@ mod tests {
         Ast,
     };
     use tanitc_attributes::Safety;
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_lexer::location::Location;
 
     use crate::Analyzer;
@@ -666,7 +673,7 @@ mod tests {
                 safety,
                 ..Default::default()
             },
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             body: Some(Box::new(Block {
                 statements,
                 is_global: false,

@@ -1,5 +1,5 @@
 use tanitc_attributes::{Publicity, Safety};
-use tanitc_ident::Ident;
+use tanitc_ident::Name;
 use tanitc_lexer::location::Location;
 
 use crate::ast::{blocks::Block, Ast};
@@ -14,7 +14,7 @@ pub struct ModuleAttributes {
 pub struct ModuleDef {
     pub location: Location,
     pub attributes: ModuleAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub is_external: bool,
     pub body: Box<Block>,
 }

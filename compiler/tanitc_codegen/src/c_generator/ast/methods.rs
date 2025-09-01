@@ -28,7 +28,7 @@ mod tests {
         Ast,
     };
     use tanitc_attributes::Mutability;
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_ty::Type;
 
     use crate::c_generator::CodeGenStream;
@@ -37,7 +37,7 @@ mod tests {
 
     fn get_struct_def(name: &str) -> StructDef {
         StructDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             ..Default::default()
         }
     }
@@ -63,7 +63,7 @@ mod tests {
 
     fn get_func(name: &str, parameters: Vec<FunctionParam>) -> FunctionDef {
         FunctionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             return_type: TypeSpec::default(),
             parameters,
             body: Some(Box::new(Block::default())),

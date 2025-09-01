@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_ty::Type;
 
 use crate::table::Table;
@@ -34,6 +34,7 @@ pub struct VarDefData {
 
 #[derive(Debug, Clone)]
 pub struct FuncDefData {
+    pub name: Name,
     pub parameters: Vec<(Ident, Type)>,
     pub return_type: Type,
     pub is_virtual: bool,
@@ -44,32 +45,37 @@ pub struct FuncDefData {
 
 #[derive(Debug, Clone)]
 pub struct StructFieldData {
+    pub struct_name: Name,
     pub ty: Type,
 }
 
 #[derive(Debug, Clone)]
 pub struct StructDefData {
+    pub name: Name,
     pub fields: BTreeMap<Ident, StructFieldData>,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnionDefData {
+    pub name: Name,
     pub fields: BTreeMap<Ident, StructFieldData>,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumData {
-    pub enum_name: Ident,
+    pub enum_name: Name,
     pub value: usize,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumDefData {
+    pub name: Name,
     pub enums: BTreeMap<Ident, Entry /* Only Enum */>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariantStructKind {
+    pub variant_name: Name,
     pub fields: BTreeMap<Ident, StructFieldData>,
 }
 
@@ -87,13 +93,15 @@ pub enum VariantKind {
 
 #[derive(Debug, Clone)]
 pub struct VariantData {
-    pub variant_name: Ident,
+    pub variant_name: Name,
+    pub variant_unit_name: Ident,
     pub variant_kind: VariantKind,
     pub variant_kind_num: usize,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariantDefData {
+    pub name: Name,
     pub variants: BTreeMap<Ident, Entry>,
 }
 

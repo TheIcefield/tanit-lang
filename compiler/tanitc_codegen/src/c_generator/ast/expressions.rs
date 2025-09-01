@@ -46,7 +46,7 @@ impl CodeGenStream<'_> {
             }
             ExpressionKind::Access { lhs, rhs } => {
                 self.generate(lhs)?;
-                write!(self, ".")?;
+                write!(self, "__")?;
                 self.generate(rhs)?;
             }
             ExpressionKind::Get { lhs, rhs } => {

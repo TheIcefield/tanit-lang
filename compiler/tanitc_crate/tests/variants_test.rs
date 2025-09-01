@@ -65,7 +65,7 @@ fn variant_work_test() {
                                      \n    float y;\
                                      \n} __MyVariant__data__f3__;\
                                      \n\
-                                     \ntypedef union __MyVariant__data__ {\
+                                     \ntypedef union {\
                                      \n    __MyVariant__data__f1__ f1;\
                                      \n    __MyVariant__data__f2__ f2;\
                                      \n    __MyVariant__data__f3__ f3;\
@@ -161,53 +161,52 @@ fn variant_in_module_work_test() {
 
     {
         const HEADER_EXPECTED: &str = "typedef enum {\
-                                     \n    __MyVariant__kind__f1__,\
-                                     \n    __MyVariant__kind__f2__,\
-                                     \n    __MyVariant__kind__f3__,\
-                                     \n} __MyVariant__kind__;\
+                                     \n    __math__MyVariant__kind__f1__,\
+                                     \n    __math__MyVariant__kind__f2__,\
+                                     \n    __math__MyVariant__kind__f3__,\
+                                     \n} __math__MyVariant__kind__;\
                                      \n\
-                                     \ntypedef struct { } __MyVariant__data__f1__;\
+                                     \ntypedef struct { } __math__MyVariant__data__f1__;\
                                      \n\
                                      \ntypedef struct {\
                                      \n    signed int _0;\
                                      \n    signed int _1;\
-                                     \n} __MyVariant__data__f2__;\
+                                     \n} __math__MyVariant__data__f2__;\
                                      \n\
                                      \ntypedef struct {\
                                      \n    signed int x;\
                                      \n    float y;\
-                                     \n} __MyVariant__data__f3__;\
+                                     \n} __math__MyVariant__data__f3__;\
                                      \n\
-                                     \ntypedef union __MyVariant__data__ {\
-                                     \n    __MyVariant__data__f1__ f1;\
-                                     \n    __MyVariant__data__f2__ f2;\
-                                     \n    __MyVariant__data__f3__ f3;\
-                                     \n} __MyVariant__data__;\
+                                     \ntypedef union {\
+                                     \n    __math__MyVariant__data__f1__ f1;\
+                                     \n    __math__MyVariant__data__f2__ f2;\
+                                     \n    __math__MyVariant__data__f3__ f3;\
+                                     \n} __math__MyVariant__data__;\
                                      \n\
                                      \ntypedef struct {\
-                                     \n    __MyVariant__kind__ __kind__;\
-                                     \n    __MyVariant__data__ __data__;\
-                                     \n} MyVariant;\
+                                     \n    __math__MyVariant__kind__ __kind__;\
+                                     \n    __math__MyVariant__data__ __data__;\
+                                     \n} math__MyVariant;\
                                      \n\
                                      \nvoid main();\n";
 
-        // TODO: correct data field initialization
         const SOURCE_EXPECTED: &str = "void main()\
                                      \n{\
-                                     \n    MyVariant const v1 = (MyVariant)\
+                                     \n    math__MyVariant const v1 = (math__MyVariant)\
                                      \n    {\
-                                     \n        .__kind__=__MyVariant__kind__f1__,\
-                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        .__kind__=__math__MyVariant__kind__f1__,\
+                                     \n        .__data__=(__math__MyVariant__data__)\
                                      \n        {\
-                                     \n            .f1=(__MyVariant__data__f1__) { },\
+                                     \n            .f1=(__math__MyVariant__data__f1__) { },\
                                      \n        },\
                                      \n    };\
-                                     \n    MyVariant const v3 = (MyVariant)\
+                                     \n    math__MyVariant const v3 = (math__MyVariant)\
                                      \n    {\
-                                     \n        .__kind__=__MyVariant__kind__f3__,\
-                                     \n        .__data__=(__MyVariant__data__)\
+                                     \n        .__kind__=__math__MyVariant__kind__f3__,\
+                                     \n        .__data__=(__math__MyVariant__data__)\
                                      \n        {\
-                                     \n            .f3=(__MyVariant__data__f3__)\
+                                     \n            .f3=(__math__MyVariant__data__f3__)\
                                      \n            {\
                                      \n                .x=4,\
                                      \n                .y=7.5,\

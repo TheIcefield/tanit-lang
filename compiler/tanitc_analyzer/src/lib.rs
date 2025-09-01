@@ -4,19 +4,10 @@ use tanitc_lexer::location::Location;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
 use tanitc_symbol_table::{entry::Entry, table::Table};
-use tanitc_ty::Type;
 
 pub mod ast;
 
 pub type Counter = usize;
-
-pub trait Analyze {
-    fn get_type(&self, _analyzer: &mut Analyzer) -> Type {
-        Type::unit()
-    }
-
-    fn analyze(&mut self, analyzer: &mut Analyzer) -> Result<(), Message>;
-}
 
 pub struct Analyzer {
     pub table: Box<Table>,
