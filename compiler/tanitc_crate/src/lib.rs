@@ -119,7 +119,7 @@ impl Crate {
         }
 
         if self.compile_options.crate_type == CrateType::Bin {
-            if let Err(err) = analyzer.check_main() {
+            if let Err(err) = analyzer.check_entry_point() {
                 analyzer.error(err);
             }
         }
