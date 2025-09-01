@@ -3,7 +3,11 @@ use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::{Errors, Message, Warnings};
 use tanitc_options::CompileOptions;
-use tanitc_symbol_table::{entry::Entry, table::Table};
+use tanitc_symbol_table::{
+    entry::{Entry, SymbolKind},
+    table::Table,
+};
+use tanitc_ty::Type;
 
 pub mod ast;
 
@@ -60,9 +64,23 @@ impl Analyzer {
         self.table.insert(entry);
     }
 
-    pub fn check_main(&self) -> Result<(), Message> {
-        if self.table.lookup(Ident::from("main".to_string())).is_none() {
+    pub fn check_entry_point(&self) -> Result<(), Message> {
+        const ENTRY_POINT: &str = "main";
+        let main_func_id = Ident::from(ENTRY_POINT.to_string());
+
+        let Some(entry) = self.table.lookup(main_func_id) else {
             return Err(Message::new(Location::new(), "No entry point!"));
+        };
+
+        let SymbolKind::FuncDef(data) = &entry.kind else {
+            return Err(Message::new(Location::new(), "No entry point function!"));
+        };
+
+        if data.return_type != Type::I32 && !data.return_type.is_unit() {
+            return Err(Message::from_string(
+                Location::new(),
+                format!("Bad type of main function: {}", data.return_type),
+            ));
         }
 
         Ok(())

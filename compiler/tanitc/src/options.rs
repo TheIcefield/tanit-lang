@@ -89,10 +89,10 @@ impl CommandLineParser {
         Ok(())
     }
 
-    fn fill_missed_output_file(&mut self) -> Result<(), String> {
+    fn fill_missed_output_file(&mut self) {
         let output_file = self.options.output_file.to_string_lossy();
         if !output_file.is_empty() {
-            return Ok(());
+            return;
         }
 
         let suffix = match self.options.crate_type {
@@ -102,13 +102,11 @@ impl CommandLineParser {
         };
 
         self.options.output_file = PathBuf::from(format!("{}{suffix}", self.options.crate_name));
-
-        Ok(())
     }
 
     fn fill_missed_options(&mut self) -> Result<(), String> {
         self.fill_missed_crate_name()?;
-        self.fill_missed_output_file()?;
+        self.fill_missed_output_file();
 
         Ok(())
     }
