@@ -52,7 +52,7 @@ mod tests {
     use tanitc_ast::ast::{blocks::Block, functions::FunctionDef, Ast};
 
     use pretty_assertions::assert_str_eq;
-    use tanitc_ident::Ident;
+    use tanitc_ident::Name;
 
     use crate::c_generator::CodeGenStream;
 
@@ -78,7 +78,7 @@ mod tests {
                                      \n}\n";
 
         let node = Ast::from(FunctionDef {
-            identifier: Ident::from("hello".to_string()),
+            name: Name::from("hello".to_string()),
             body: Some(Box::new(get_block(
                 false,
                 vec![

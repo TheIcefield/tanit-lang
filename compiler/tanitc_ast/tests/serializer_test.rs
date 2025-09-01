@@ -5,7 +5,7 @@ use tanitc_ast::ast::{
     types::TypeSpec,
     Ast,
 };
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_ty::Type;
 
 use pretty_assertions::assert_str_eq;
@@ -17,7 +17,7 @@ fn ast_write_test() {
     let ast = Ast::from(Block {
         statements: vec![
             Ast::from(StructDef {
-                identifier: Ident::from("MyStruct".to_string()),
+                name: Name::from("MyStruct".to_string()),
                 fields: {
                     let mut fields = BTreeMap::new();
                     fields.insert(
@@ -45,7 +45,7 @@ fn ast_write_test() {
                 ..Default::default()
             }),
             Ast::from(FunctionDef {
-                identifier: Ident::from(format!("MyFunction")),
+                name: Name::from(format!("MyFunction")),
                 ..Default::default()
             }),
         ],
@@ -69,7 +69,10 @@ fn ast_write_test() {
                           \n            attributes: StructAttributes {\
                           \n                publicity: Private,\
                           \n            },\
-                          \n            identifier: MyStruct,\
+                          \n            name: Name {\
+                          \n                id: MyStruct,\
+                          \n                prefix: None,\
+                          \n            },\
                           \n            fields: {\
                           \n                a: StructFieldInfo {\
                           \n                    ty: TypeSpec {\
@@ -113,7 +116,10 @@ fn ast_write_test() {
                           \n                publicity: Private,\
                           \n                safety: Inherited,\
                           \n            },\
-                          \n            identifier: MyFunction,\
+                          \n            name: Name {\
+                          \n                id: MyFunction,\
+                          \n                prefix: None,\
+                          \n            },\
                           \n            return_type: TypeSpec {\
                           \n                location: Location {\
                           \n                    row: 1,\

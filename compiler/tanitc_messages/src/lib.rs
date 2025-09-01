@@ -69,6 +69,13 @@ impl Message {
         }
     }
 
+    pub fn undefined_type(location: Location, type_str: &str) -> Self {
+        Self {
+            location,
+            text: format!("Undefined type \"{type_str}\""),
+        }
+    }
+
     pub fn undefined_variable(location: Location, var_name: Ident) -> Self {
         Self {
             location,

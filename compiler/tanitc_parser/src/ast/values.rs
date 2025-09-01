@@ -2,7 +2,7 @@ use tanitc_ast::ast::{
     values::{CallArg, CallArgKind, Value, ValueKind},
     Ast,
 };
-use tanitc_ident::Ident;
+use tanitc_ident::Name;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -110,7 +110,7 @@ impl Parser {
     }
 
     // StructName { field_1: i32, field2: f32 }
-    pub fn parse_struct_value(&mut self) -> Result<Vec<(Ident, Ast)>, Message> {
+    pub fn parse_struct_value(&mut self) -> Result<Vec<(Name, Ast)>, Message> {
         self.consume_token(Lexem::Lcb)?;
 
         let old_opt = self.does_ignore_nl();
@@ -124,8 +124,8 @@ impl Parser {
         Ok(components)
     }
 
-    fn parse_struct_value_internal(&mut self) -> Result<Vec<(Ident, Ast)>, Message> {
-        let mut components = Vec::<(Ident, Ast)>::new();
+    fn parse_struct_value_internal(&mut self) -> Result<Vec<(Name, Ast)>, Message> {
+        let mut components = Vec::<(Name, Ast)>::new();
 
         loop {
             let next = self.peek_token();
@@ -138,7 +138,13 @@ impl Parser {
 
             self.consume_token(Lexem::Colon)?;
 
-            components.push((identifier, self.parse_expression()?));
+            components.push((
+                Name {
+                    id: identifier,
+                    ..Default::default()
+                },
+                self.parse_expression()?,
+            ));
 
             let next = self.peek_token();
             if next.lexem == Lexem::Comma || next.lexem == Lexem::EndOfLine {

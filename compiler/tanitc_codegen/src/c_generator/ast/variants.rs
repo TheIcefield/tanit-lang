@@ -5,7 +5,7 @@ use tanitc_ast::ast::{
         get_variant_data_kind_id, get_variant_data_type_id, VariantDef, VariantField, VariantFields,
     },
 };
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 
 use crate::c_generator::{CodeGenMode, CodeGenStream};
 
@@ -16,15 +16,15 @@ impl CodeGenStream<'_> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
 
-        self.generate_variant_kind(variant_def.identifier, &variant_def.fields)?;
-        self.generate_variant_data(variant_def.identifier, &variant_def.fields)?;
+        self.generate_variant_kind(variant_def.name, &variant_def.fields)?;
+        self.generate_variant_data(variant_def.name, &variant_def.fields)?;
 
         writeln!(self, "typedef struct {{")?;
 
-        self.generate_variant_kind_field(variant_def.identifier)?;
-        self.generate_variant_data_field(variant_def.identifier)?;
+        self.generate_variant_kind_field(variant_def.name)?;
+        self.generate_variant_data_field(variant_def.name)?;
 
-        writeln!(self, "}} {};\n", variant_def.identifier)?;
+        writeln!(self, "}} {};\n", variant_def.name)?;
 
         self.mode = old_mode;
         Ok(())
@@ -32,7 +32,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_kind(
         &mut self,
-        variant_id: Ident,
+        variant_id: Name,
         fields: &VariantFields,
     ) -> Result<(), std::io::Error> {
         let enum_id = get_variant_data_kind_id(variant_id);
@@ -47,7 +47,7 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 
-    fn generate_variant_kind_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
+    fn generate_variant_kind_field(&mut self, variant_id: Name) -> Result<(), std::io::Error> {
         let enum_id = get_variant_data_kind_id(variant_id);
         let field_id = Ident::from("__kind__".to_string());
 
@@ -58,7 +58,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_common_field(
         &mut self,
-        union_id: Ident,
+        union_id: Name,
         field_id: Ident,
     ) -> Result<(), std::io::Error> {
         let struct_name = format!("{union_id}{field_id}__");
@@ -70,7 +70,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_struct_field(
         &mut self,
-        union_id: Ident,
+        union_id: Name,
         field_id: Ident,
         subfields: &StructFields,
     ) -> Result<(), std::io::Error> {
@@ -90,7 +90,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_tuple_field(
         &mut self,
-        union_id: Ident,
+        union_id: Name,
         field_id: Ident,
         components: &[TypeSpec],
     ) -> Result<(), std::io::Error> {
@@ -110,7 +110,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_data_types(
         &mut self,
-        variant_id: Ident,
+        variant_id: Name,
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
         let union_id = get_variant_data_type_id(variant_id);
@@ -133,12 +133,12 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_data_fields(
         &mut self,
-        variant_id: Ident,
+        variant_id: Name,
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
         let union_id = get_variant_data_type_id(variant_id);
 
-        writeln!(self, "typedef union {union_id} {{")?;
+        writeln!(self, "typedef union {{")?;
 
         for (field_id, _) in fields.iter() {
             writeln!(self, "    {union_id}{field_id}__ {field_id};")?;
@@ -151,7 +151,7 @@ impl CodeGenStream<'_> {
 
     fn generate_variant_data(
         &mut self,
-        variant_id: Ident,
+        variant_id: Name,
         fields: &BTreeMap<Ident, VariantField>,
     ) -> Result<(), std::io::Error> {
         self.generate_variant_data_types(variant_id, fields)?;
@@ -160,7 +160,7 @@ impl CodeGenStream<'_> {
         Ok(())
     }
 
-    fn generate_variant_data_field(&mut self, variant_id: Ident) -> Result<(), std::io::Error> {
+    fn generate_variant_data_field(&mut self, variant_id: Name) -> Result<(), std::io::Error> {
         let union_id = get_variant_data_type_id(variant_id);
         let field_id = Ident::from("__data__".to_string());
 
@@ -178,7 +178,7 @@ mod tests {
         variants::{VariantDef, VariantField, VariantFields},
         Ast,
     };
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_ty::Type;
 
     use pretty_assertions::assert_str_eq;
@@ -235,7 +235,7 @@ mod tests {
         }
 
         VariantDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             fields,
             ..Default::default()
         }
@@ -247,7 +247,7 @@ mod tests {
         const HEADER_EXPECTED: &str = "typedef enum {\
                                      \n} __MyVariant__kind__;\
                                      \n\
-                                     \ntypedef union __MyVariant__data__ {\
+                                     \ntypedef union {\
                                      \n} __MyVariant__data__;\
                                      \n\
                                      \ntypedef struct {\
@@ -288,7 +288,7 @@ mod tests {
                                      \n\
                                      \ntypedef struct { } __MyVariant__data__C__;\
                                      \n\
-                                     \ntypedef union __MyVariant__data__ {\
+                                     \ntypedef union {\
                                      \n    __MyVariant__data__A__ A;\
                                      \n    __MyVariant__data__B__ B;\
                                      \n    __MyVariant__data__C__ C;\
@@ -372,7 +372,7 @@ mod tests {
                                      \n    signed int _2;\
                                      \n} __MyVariant__data__G__;\
                                      \n\
-                                     \ntypedef union __MyVariant__data__ {\
+                                     \ntypedef union {\
                                      \n    __MyVariant__data__A__ A;\
                                      \n    __MyVariant__data__B__ B;\
                                      \n    __MyVariant__data__C__ C;\

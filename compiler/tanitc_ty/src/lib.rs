@@ -1,10 +1,11 @@
 use tanitc_attributes::Mutability;
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 
 use std::str::FromStr;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum ArraySize {
+    #[default]
     Unknown,
     Fixed(usize),
 }
@@ -25,7 +26,7 @@ pub enum Type {
         identifier: Ident,
         generics: Vec<Type>,
     },
-    Custom(String),
+    Custom(Name),
     Auto,
     Bool,
     U8,
@@ -79,6 +80,14 @@ impl Type {
         )
     }
 
+    pub fn is_unit(&self) -> bool {
+        let Self::Tuple(components) = self else {
+            return false;
+        };
+
+        components.is_empty()
+    }
+
     pub fn is_integer(&self) -> bool {
         matches!(
             self,
@@ -103,6 +112,10 @@ impl Type {
         matches!(self, Self::Ptr(_))
     }
 
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array { .. })
+    }
+
     pub fn as_str(&self) -> String {
         match self {
             Self::Auto => "auto".to_string(),
@@ -118,13 +131,14 @@ impl Type {
             Self::I64 => "i64".to_string(),
             Self::I128 => "i128".to_string(),
             Self::F32 => "f32".to_string(),
-            Self::F64 => "f54".to_string(),
-            Self::Custom(id) => id.clone(),
+            Self::F64 => "f64".to_string(),
+            Self::Custom(id) => id.id.to_string(),
             Self::Ref { ref_to, mutability } => format!(
                 "&{}{}",
                 if mutability.is_mutable() { "mut " } else { "" },
                 ref_to.as_str(),
             ),
+            Self::Ptr(ptr_to) => format!("*{ptr_to}"),
             Self::Tuple(components) => {
                 let mut res = String::new();
 
@@ -159,7 +173,7 @@ impl Type {
             Self::F32 => "float".to_string(),
             Self::F64 => "double".to_string(),
             Self::Str => "char".to_string(),
-            Self::Custom(id) => id.clone(),
+            Self::Custom(id) => id.to_string(),
             Self::Ref { ref_to, mutability } => format!(
                 "{}{}*",
                 ref_to.get_c_type(),
@@ -211,7 +225,7 @@ impl std::str::FromStr for Type {
             "f32" => Ok(Type::F32),
             "f64" => Ok(Type::F64),
             "str" => Ok(Type::Str),
-            _ => Ok(Type::Custom(s.to_string())),
+            _ => Ok(Type::Custom(Name::from(s.to_string()))),
         }
     }
 }

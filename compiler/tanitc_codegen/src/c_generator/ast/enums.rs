@@ -22,7 +22,7 @@ impl CodeGenStream<'_> {
             )?;
         }
 
-        writeln!(self, "{indentation}}} {};", enum_def.identifier)?;
+        writeln!(self, "{indentation}}} {};", enum_def.name)?;
 
         self.mode = old_mode;
 
@@ -36,7 +36,7 @@ mod tests {
         enums::{EnumDef, EnumUnits},
         Ast,
     };
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
 
     use pretty_assertions::assert_str_eq;
 
@@ -50,7 +50,7 @@ mod tests {
         }
 
         EnumDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             fields,
             ..Default::default()
         }

@@ -1,5 +1,6 @@
 use tanitc_ast::ast::types::{ParsedTypeInfo, TypeSpec};
 use tanitc_attributes::Mutability;
+use tanitc_ident::Name;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 use tanitc_ty::{ArraySize, Type};
@@ -106,7 +107,7 @@ impl Parser {
             ));
         }
 
-        Ok((Type::Custom(id_str), info))
+        Ok((Type::Custom(Name::from(id_str.to_string())), info))
     }
 
     pub fn parse_tuple_def(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {

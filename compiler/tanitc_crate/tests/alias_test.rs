@@ -48,7 +48,7 @@ fn alias_in_func_test() {
     let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
 
     let res = if let Ast::FuncDef(node) = parser.parse_func_def().unwrap() {
-        assert!(node.identifier == Ident::from("main".to_string()));
+        assert!(node.name.id == Ident::from("main".to_string()));
         assert!(node.parameters.is_empty());
 
         if let Type::Tuple(components) = &node.return_type.get_type() {
@@ -75,7 +75,7 @@ fn alias_in_func_test() {
             assert!(*identifier == Ident::from("Vec".to_string()));
             assert_eq!(generics.len(), 1);
             if let Type::Custom(id) = &generics[0] {
-                assert_eq!(id, "Item");
+                assert_eq!(id.to_string(), "Item");
             } else {
                 panic!("Type is expected to be \"Item\"")
             }

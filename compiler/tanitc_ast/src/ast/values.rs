@@ -1,4 +1,4 @@
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_lexer::location::Location;
 
 use crate::ast::Ast;
@@ -23,8 +23,8 @@ pub enum ValueKind {
         arguments: Vec<CallArg>,
     },
     Struct {
-        identifier: Ident,
-        components: Vec<(Ident, Ast)>,
+        name: Name,
+        components: Vec<(Name, Ast)>,
     },
     Tuple {
         components: Vec<Ast>,

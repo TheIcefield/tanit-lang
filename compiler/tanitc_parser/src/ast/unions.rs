@@ -19,7 +19,7 @@ impl Parser {
 
     fn parse_union_header(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
         union_def.location = self.consume_token(Lexem::KwUnion)?.location;
-        union_def.identifier = self.consume_identifier()?;
+        union_def.name.id = self.consume_identifier()?;
         Ok(())
     }
 

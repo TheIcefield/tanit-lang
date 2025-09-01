@@ -1,5 +1,5 @@
 use tanitc_attributes::{Mutability, Publicity, Safety};
-use tanitc_ident::Ident;
+use tanitc_ident::Name;
 use tanitc_lexer::location::Location;
 
 use crate::ast::{blocks::Block, types::TypeSpec, variables::VariableDef, Ast};
@@ -22,7 +22,7 @@ pub enum FunctionParam {
 pub struct FunctionDef {
     pub location: Location,
     pub attributes: FunctionAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub return_type: TypeSpec,
     pub parameters: Vec<FunctionParam>,
     pub body: Option<Box<Block>>,

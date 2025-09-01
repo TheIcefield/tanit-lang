@@ -3,6 +3,7 @@ use tanitc_ast::ast::{
     values::{Value, ValueKind},
     Ast,
 };
+use tanitc_ident::Name;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
 
@@ -161,7 +162,10 @@ impl Parser {
                     return Ok(Ast::from(Value {
                         location,
                         kind: ValueKind::Struct {
-                            identifier,
+                            name: Name {
+                                id: identifier,
+                                ..Default::default()
+                            },
                             components,
                         },
                     }));

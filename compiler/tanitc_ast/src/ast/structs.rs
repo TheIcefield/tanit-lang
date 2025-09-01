@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::Ident;
+use tanitc_ident::{Ident, Name};
 use tanitc_lexer::location::Location;
 
 use crate::ast::{types::TypeSpec, Ast};
@@ -28,7 +28,7 @@ pub struct StructAttributes {
 pub struct StructDef {
     pub location: Location,
     pub attributes: StructAttributes,
-    pub identifier: Ident,
+    pub name: Name,
     pub fields: StructFields,
     pub internals: Vec<Ast>,
 }

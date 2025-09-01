@@ -19,7 +19,7 @@ impl Parser {
 
     fn parse_struct_header(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         struct_def.location = self.consume_token(Lexem::KwStruct)?.location;
-        struct_def.identifier = self.consume_identifier()?;
+        struct_def.name.id = self.consume_identifier()?;
         Ok(())
     }
 

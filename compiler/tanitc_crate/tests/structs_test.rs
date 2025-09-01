@@ -102,12 +102,12 @@ fn struct_in_module_work_test() {
         const HEADER_EXPECTED: &str = "typedef struct {\
                                      \n    float x;\
                                      \n    float y;\
-                                     \n} Vector2;\
+                                     \n} math__Vector2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\
                                      \n{\
-                                     \n    Vector2 vec = (Vector2)\
+                                     \n    math__Vector2 vec = (math__Vector2)\
                                      \n    {\
                                      \n        .x=0.0,\
                                      \n        .y=2.0,\
@@ -181,8 +181,8 @@ fn internal_struct_work_test() {
                             \n}\
                             \nfunc main() {\
                             \n    var mut pnt = math::Point2 { \
-                            \n                  x: Unit { value: 1.0 },\
-                            \n                  y: Unit { value: 2.0 },\
+                            \n                  x: math::Unit { value: 1.0 },\
+                            \n                  y: math::Unit { value: 2.0 },\
                             \n            }\
                             \n    pnt.x.value = 2.0\
                             \n}";
@@ -207,22 +207,22 @@ fn internal_struct_work_test() {
     {
         const HEADER_EXPECTED: &str = "typedef struct {\
                                      \n    float value;\
-                                     \n} Unit;\
+                                     \n} math__Unit;\
                                      \ntypedef struct {\
                                      \n    Unit x;\
                                      \n    Unit y;\
-                                     \n} Point2;\
+                                     \n} math__Point2;\
                                      \nvoid main();\n";
 
         const SOURCE_EXPECTED: &str = "void main()\
                                      \n{\
-                                     \n    Point2 pnt = (Point2)\
+                                     \n    math__Point2 pnt = (math__Point2)\
                                      \n    {\
-                                     \n        .x=(Unit)\
+                                     \n        .x=(math__Unit)\
                                      \n        {\
                                      \n            .value=1.0,\
                                      \n        },\
-                                     \n        .y=(Unit)\
+                                     \n        .y=(math__Unit)\
                                      \n        {\
                                      \n            .value=2.0,\
                                      \n        },\

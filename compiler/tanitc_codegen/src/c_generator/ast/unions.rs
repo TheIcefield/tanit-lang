@@ -16,7 +16,7 @@ impl CodeGenStream<'_> {
             self.generate_type_spec(&field_info.ty)?;
             writeln!(self, " {field_id};")?;
         }
-        writeln!(self, "}} {};", union_def.identifier)?;
+        writeln!(self, "}} {};", union_def.name)?;
 
         self.mode = old_mode;
         Ok(())
@@ -30,7 +30,7 @@ mod tests {
         unions::{UnionDef, UnionFieldInfo, UnionFields},
         Ast,
     };
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_ty::Type;
 
     use pretty_assertions::assert_str_eq;
@@ -54,7 +54,7 @@ mod tests {
         }
 
         UnionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             fields,
             ..Default::default()
         }
@@ -127,7 +127,7 @@ mod tests {
                 (FIELD_2_NAME.to_string(), Type::F32),
                 (
                     FIELD_3_NAME.to_string(),
-                    Type::Custom(FIELD_3_TYPE_NAME.to_string()),
+                    Type::Custom(Name::from(FIELD_3_TYPE_NAME.to_string())),
                 ),
             ],
         ));

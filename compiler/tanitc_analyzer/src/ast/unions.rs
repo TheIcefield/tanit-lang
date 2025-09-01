@@ -15,31 +15,42 @@ use crate::Analyzer;
 
 impl Analyzer {
     pub fn analyze_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
-        if self.has_symbol(union_def.identifier) {
-            return Err(Message::multiple_ids(
-                union_def.location,
-                union_def.identifier,
-            ));
+        if self.has_symbol(union_def.name.id) {
+            return Err(Message::multiple_ids(union_def.location, union_def.name.id));
         }
+
+        union_def.name.prefix = self.table.get_id();
 
         for internal in union_def.internals.iter_mut() {
             internal.accept_mut(self)?;
         }
 
         let mut fields = BTreeMap::<Ident, StructFieldData>::new();
-        for (field_id, field_ty) in union_def.fields.iter() {
+        for (field_id, field_info) in union_def.fields.iter() {
+            let Some(ty) = self.table.lookup_type(&field_info.ty.ty) else {
+                self.error(Message::undefined_type(
+                    field_info.ty.location,
+                    &field_info.ty.ty.as_str(),
+                ));
+                continue;
+            };
+
             fields.insert(
                 *field_id,
                 StructFieldData {
-                    ty: field_ty.ty.get_type(),
+                    struct_name: union_def.name,
+                    ty: ty.ty,
                 },
             );
         }
 
         self.add_symbol(Entry {
-            name: union_def.identifier,
+            name: union_def.name.id,
             is_static: true,
-            kind: SymbolKind::from(UnionDefData { fields }),
+            kind: SymbolKind::from(UnionDefData {
+                name: union_def.name,
+                fields,
+            }),
         });
 
         Ok(())
@@ -47,13 +58,10 @@ impl Analyzer {
 
     pub fn access_union_def(
         &mut self,
-        union_name: Ident,
         union_data: &UnionDefData,
         node: &Ast,
     ) -> Result<Option<Expression>, Message> {
         let mut value_clone = Box::new(node.clone());
-
-        let union_comps = &union_data.fields;
 
         let Ast::Value(value) = value_clone.as_mut() else {
             return Err(Message::unreachable(
@@ -63,7 +71,7 @@ impl Analyzer {
         };
 
         let ValueKind::Struct {
-            identifier: union_id,
+            name: union_name,
             components: value_comps,
         } = &mut value.kind
         else {
@@ -73,21 +81,17 @@ impl Analyzer {
             ));
         };
 
-        if let Err(mut msg) = self.check_union_components(value_comps, union_name, union_comps) {
+        if let Err(mut msg) = self.check_union_components(value_comps, union_data) {
             msg.location = node.location();
             return Err(msg);
         }
 
-        value.kind = ValueKind::Struct {
-            identifier: *union_id,
-            components: std::mem::take(value_comps),
-        };
-
+        *union_name = union_data.name;
         let node = Expression {
             location: node.location(),
             kind: ExpressionKind::Term {
                 node: value_clone,
-                ty: Type::Custom(union_name.to_string()),
+                ty: Type::Custom(union_data.name),
             },
         };
 
@@ -109,7 +113,7 @@ mod tests {
         Ast,
     };
     use tanitc_attributes::Safety;
-    use tanitc_ident::Ident;
+    use tanitc_ident::{Ident, Name};
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
@@ -131,7 +135,7 @@ mod tests {
         );
 
         UnionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             fields,
             ..Default::default()
         }
@@ -139,7 +143,7 @@ mod tests {
 
     fn get_func(name: &str, statements: Vec<Ast>) -> FunctionDef {
         FunctionDef {
-            identifier: Ident::from(name.to_string()),
+            name: Name::from(name.to_string()),
             body: Some(Box::new(Block {
                 statements,
                 ..Default::default()
@@ -184,7 +188,7 @@ mod tests {
         let mut func_def = get_func(
             FUNC_NAME,
             vec![
-                get_var(VAR_NAME, Type::Custom(UNION_NAME.to_string())).into(),
+                get_var(VAR_NAME, Type::Custom(Name::from(UNION_NAME.to_string()))).into(),
                 get_access(VAR_NAME).into(),
             ],
         );
@@ -214,7 +218,7 @@ mod tests {
         let func_def = get_func(
             FUNC_NAME,
             vec![
-                get_var(VAR_NAME, Type::Custom(UNION_NAME.to_string())).into(),
+                get_var(VAR_NAME, Type::Custom(Name::from(UNION_NAME.to_string()))).into(),
                 get_access(VAR_NAME).into(),
             ],
         );
