@@ -55,7 +55,39 @@ mod tests {
     }
 
     #[test]
+    fn codegen_simple_alias_test() {
+        /*
+         * alias MyAlias = f32
+         */
+        const ALIAS_NAME: &str = "MyAlias";
+
+        let node = Ast::from(Block {
+            is_global: true,
+            statements: vec![get_alias(ALIAS_NAME, Type::F32).into()],
+            ..Default::default()
+        });
+
+        const HEADER_EXPECTED: &str = "typedef float MyAlias;\n";
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer).unwrap();
+
+        node.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert!(source_res.is_empty());
+    }
+
+    #[test]
     fn codegen_alias_test() {
+        /*
+         * alias FirstAlias = EmptyStruct
+         * alias SecondAlias = FirstAlias
+         */
         const STRUCT_NAME: &str = "EmptyStruct";
         const ALIAS_1_NAME: &str = "FirstAlias";
         const ALIAS_2_NAME: &str = "SecondAlias";
