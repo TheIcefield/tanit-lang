@@ -115,7 +115,7 @@ mod tests {
     };
     use tanitc_attributes::Mutability;
     use tanitc_ident::{Ident, Name};
-    use tanitc_ty::Type;
+    use tanitc_ty::{RefType, Type};
 
     use pretty_assertions::assert_str_eq;
 
@@ -213,25 +213,25 @@ mod tests {
             vec![
                 get_func_param(
                     PARAM_1_NAME,
-                    Type::Ref {
+                    Type::Ref(RefType {
                         ref_to: Box::new(Type::I32),
                         mutability: Mutability::Immutable,
-                    },
+                    }),
                 ),
                 get_func_param(
                     PARAM_2_NAME,
-                    Type::Ref {
+                    Type::Ref(RefType {
                         ref_to: Box::new(Type::I32),
                         mutability: Mutability::Mutable,
-                    },
+                    }),
                 ),
                 get_func_param(PARAM_3_NAME, Type::I8),
                 get_func_param(
                     PARAM_4_NAME,
-                    Type::Ref {
+                    Type::Ref(RefType {
                         ref_to: Box::new(Type::Str),
                         mutability: Mutability::Immutable,
-                    },
+                    }),
                 ),
             ],
             Type::unit(),

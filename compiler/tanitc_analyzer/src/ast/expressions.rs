@@ -15,7 +15,7 @@ use tanitc_symbol_table::{
     entry::{SymbolKind, VarDefData},
     type_info::TypeInfo,
 };
-use tanitc_ty::Type;
+use tanitc_ty::{RefType, Type};
 
 use crate::Analyzer;
 
@@ -114,8 +114,8 @@ impl Analyzer {
                         return Err(Message::undefined_variable(node.location, *id));
                     };
 
-                    if let Type::Ref { mutability, .. } = &var_data.var_type {
-                        if mutability.is_const() && does_mutate {
+                    if let Type::Ref(ref_type) = &var_data.var_type {
+                        if ref_type.mutability.is_const() && does_mutate {
                             return Err(Message::const_ref_mutation(node.location, *id));
                         }
                     } else if var_data.mutability.is_const() && does_mutate {
@@ -232,10 +232,10 @@ impl Analyzer {
 
                 if is_ref {
                     return TypeInfo {
-                        ty: Type::Ref {
+                        ty: Type::Ref(RefType {
                             ref_to: Box::new(node_type.ty.clone()),
                             mutability,
-                        },
+                        }),
                         mutability,
                         members: node_type.members,
                         ..Default::default()

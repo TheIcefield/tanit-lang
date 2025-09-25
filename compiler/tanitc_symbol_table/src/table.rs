@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, LinkedList};
 
 use tanitc_attributes::{Mutability, Safety};
 use tanitc_ident::{Ident, Name};
-use tanitc_ty::Type;
+use tanitc_ty::{RefType, Type};
 
 use super::{
     entry::{Entry, SymbolKind},
@@ -162,12 +162,12 @@ impl Table {
                 };
                 return Some(internal);
             }
-            Type::Ref { ref_to, mutability } => {
-                let mut internal = self.lookup_type(ref_to.as_ref())?;
-                internal.ty = Type::Ref {
+            Type::Ref(ref_type) => {
+                let mut internal = self.lookup_type(ref_type.ref_to.as_ref())?;
+                internal.ty = Type::Ref(RefType {
                     ref_to: Box::new(internal.ty),
-                    mutability: *mutability,
-                };
+                    mutability: ref_type.mutability,
+                });
                 return Some(internal);
             }
             Type::Ptr(ptr_to) => {
