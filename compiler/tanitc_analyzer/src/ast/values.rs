@@ -14,7 +14,7 @@ use tanitc_symbol_table::{
     },
     type_info::{MemberInfo, TypeInfo},
 };
-use tanitc_ty::{ArraySize, Type};
+use tanitc_ty::{ArraySize, RefType, Type};
 
 use crate::Analyzer;
 
@@ -379,10 +379,10 @@ impl Analyzer {
     pub fn get_value_type(&self, val: &Value) -> TypeInfo {
         match &val.kind {
             ValueKind::Text(_) => TypeInfo {
-                ty: Type::Ref {
+                ty: Type::Ref(RefType {
                     ref_to: Box::new(Type::Str),
                     mutability: Mutability::Immutable,
-                },
+                }),
                 mutability: Mutability::Immutable,
                 ..Default::default()
             },

@@ -3,7 +3,7 @@ use tanitc_attributes::Mutability;
 use tanitc_ident::Name;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
-use tanitc_ty::{ArraySize, Type};
+use tanitc_ty::{ArraySize, RefType, Type};
 
 use crate::Parser;
 
@@ -28,10 +28,10 @@ impl Parser {
         let (ref_to, _) = self.parse_type()?;
 
         Ok((
-            Type::Ref {
+            Type::Ref(RefType {
                 ref_to: Box::new(ref_to),
                 mutability: info.mutability,
-            },
+            }),
             info,
         ))
     }

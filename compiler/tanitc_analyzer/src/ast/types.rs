@@ -50,7 +50,7 @@ impl Analyzer {
         dst_type: &Type,
         location: Location,
     ) -> Result<(), Message> {
-        let Type::Ref { ref_to, .. } = src_type else {
+        let Type::Ref(ref_type) = src_type else {
             return Err(Message::unreachable(
                 location,
                 format!("dst_type expected to be reference, actually: {src_type}"),
@@ -64,7 +64,7 @@ impl Analyzer {
             ));
         };
 
-        self.compare_types(ref_to, ptr_to.as_ref(), location)
+        self.compare_types(&ref_type.ref_to, ptr_to.as_ref(), location)
     }
 
     fn check_array_types(

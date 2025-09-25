@@ -11,11 +11,14 @@ pub enum ArraySize {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct RefType {
+    pub ref_to: Box<Type>,
+    pub mutability: Mutability,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum Type {
-    Ref {
-        ref_to: Box<Type>,
-        mutability: Mutability,
-    },
+    Ref(RefType),
     Ptr(Box<Type>),
     Tuple(Vec<Type>),
     Array {
@@ -133,10 +136,14 @@ impl Type {
             Self::F32 => "f32".to_string(),
             Self::F64 => "f64".to_string(),
             Self::Custom(id) => id.id.to_string(),
-            Self::Ref { ref_to, mutability } => format!(
+            Self::Ref(ref_type) => format!(
                 "&{}{}",
-                if mutability.is_mutable() { "mut " } else { "" },
-                ref_to.as_str(),
+                if ref_type.mutability.is_mutable() {
+                    "mut "
+                } else {
+                    ""
+                },
+                ref_type.ref_to.as_str(),
             ),
             Self::Ptr(ptr_to) => format!("*{ptr_to}"),
             Self::Tuple(components) => {
@@ -174,10 +181,10 @@ impl Type {
             Self::F64 => "double".to_string(),
             Self::Str => "char".to_string(),
             Self::Custom(id) => id.to_string(),
-            Self::Ref { ref_to, mutability } => format!(
+            Self::Ref(ref_type) => format!(
                 "{}{}*",
-                ref_to.get_c_type(),
-                if mutability.is_const() {
+                ref_type.ref_to.get_c_type(),
+                if ref_type.mutability.is_const() {
                     " const "
                 } else {
                     " "
@@ -239,10 +246,18 @@ impl Default for Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ref { ref_to, mutability } => {
-                write!(f, "&{}", if mutability.is_mutable() { "mut " } else { "" })?;
+            Self::Ref(ref_type) => {
+                write!(
+                    f,
+                    "&{}",
+                    if ref_type.mutability.is_mutable() {
+                        "mut "
+                    } else {
+                        ""
+                    }
+                )?;
 
-                write!(f, "{ref_to}")
+                write!(f, "{}", ref_type.ref_to)
             }
             Self::Ptr(ptr_to) => {
                 write!(f, "*")?;
