@@ -17,6 +17,12 @@ pub struct RefType {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct FuncType {
+    pub parameters: Vec<Type>,
+    pub return_type: Box<Type>,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum Type {
     Ref(RefType),
     Ptr(Box<Type>),
@@ -30,6 +36,7 @@ pub enum Type {
         generics: Vec<Type>,
     },
     Custom(Name),
+    Func(FuncType),
     Auto,
     Bool,
     U8,
@@ -284,8 +291,21 @@ impl std::fmt::Display for Type {
                 write!(f, ")")
             }
             Self::Array { value_type, .. } => write!(f, "[{value_type}]"),
-            Self::Custom(s) => write!(f, "{s}"),
+            Self::Func(func_type) => {
+                write!(f, "func (")?;
 
+                if let Some(first_param) = func_type.parameters.first() {
+                    write!(f, "{first_param}")?;
+                }
+                for p in func_type.parameters.iter().skip(1) {
+                    write!(f, ", {p}")?;
+                }
+
+                write!(f, ") -> {}", func_type.return_type)?;
+
+                Ok(())
+            }
+            Self::Custom(s) => write!(f, "{s}"),
             Self::Auto => write!(f, "@auto"),
             Self::Bool => write!(f, "bool"),
             Self::I8 => write!(f, "i8"),

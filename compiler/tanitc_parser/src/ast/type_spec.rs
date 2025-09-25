@@ -3,7 +3,7 @@ use tanitc_attributes::Mutability;
 use tanitc_ident::Name;
 use tanitc_lexer::token::Lexem;
 use tanitc_messages::Message;
-use tanitc_ty::{ArraySize, RefType, Type};
+use tanitc_ty::{ArraySize, FuncType, RefType, Type};
 
 use crate::Parser;
 
@@ -13,6 +13,50 @@ impl Parser {
         let (ty, info) = self.parse_type()?;
 
         Ok(TypeSpec { location, info, ty })
+    }
+
+    fn parse_func_type_params(&mut self) -> Result<Vec<Type>, Message> {
+        self.consume_token(Lexem::LParen)?;
+
+        let mut params = Vec::<Type>::new();
+
+        loop {
+            let tkn = self.peek_token();
+
+            if tkn.lexem == Lexem::RParen {
+                self.get_token();
+                break;
+            }
+
+            let ty = self.parse_type()?;
+
+            params.push(ty.0);
+        }
+
+        Ok(params)
+    }
+
+    fn parse_func_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
+        self.consume_token(Lexem::KwFunc)?;
+
+        let parameters = self.parse_func_type_params()?;
+
+        let next = self.peek_token();
+
+        let return_type = if next.lexem == Lexem::Colon {
+            self.get_token();
+            Box::new(self.parse_type()?.0)
+        } else {
+            Box::new(Type::unit())
+        };
+
+        Ok((
+            Type::Func(FuncType {
+                parameters,
+                return_type,
+            }),
+            ParsedTypeInfo::default(),
+        ))
     }
 
     fn parse_reference_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
@@ -53,6 +97,11 @@ impl Parser {
 
     fn parse_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         let next = self.peek_token();
+
+        // Parse func: fn(i32, i32) -> i32
+        if self.peek_token().lexem == Lexem::KwFunc {
+            return self.parse_func_type();
+        }
 
         // Parse reference: &mut i32
         if self.peek_token().lexem == Lexem::Ampersand {
@@ -175,5 +224,74 @@ impl Parser {
         self.get_singular();
 
         Ok(children)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tanitc_ty::Type;
+
+    use crate::Parser;
+
+    #[test]
+    fn parse_empty_func_type_test() {
+        const SRC_TEXT: &str = "func()";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let ty = parser.parse_type().unwrap();
+
+        let Type::Func(func_type) = &ty.0 else {
+            panic!("Expected Type::Func");
+        };
+
+        assert!(func_type.parameters.is_empty());
+        assert_eq!(*func_type.return_type, Type::unit());
+    }
+
+    #[test]
+    fn parse_empty_func_type_with_ret_test() {
+        const SRC_TEXT: &str = "func():i32";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let ty = parser.parse_type().unwrap();
+
+        let Type::Func(func_type) = &ty.0 else {
+            panic!("Expected Type::Func");
+        };
+
+        assert!(func_type.parameters.is_empty());
+        assert_eq!(*func_type.return_type, Type::I32);
+    }
+
+    #[test]
+    fn parse_func_type_test() {
+        const SRC_TEXT: &str = "func(i32)";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let ty = parser.parse_type().unwrap();
+
+        let Type::Func(func_type) = &ty.0 else {
+            panic!("Expected Type::Func");
+        };
+
+        assert_eq!(func_type.parameters.len(), 1);
+        assert_eq!(func_type.parameters[0], Type::I32);
+        assert_eq!(*func_type.return_type, Type::unit());
+    }
+
+    #[test]
+    fn parse_func_type_with_ret_test() {
+        const SRC_TEXT: &str = "func(i32):i32";
+
+        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let ty = parser.parse_type().unwrap();
+
+        let Type::Func(func_type) = &ty.0 else {
+            panic!("Expected Type::Func");
+        };
+
+        assert_eq!(func_type.parameters.len(), 1);
+        assert_eq!(func_type.parameters[0], Type::I32);
+        assert_eq!(*func_type.return_type, Type::I32);
     }
 }
