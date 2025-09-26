@@ -13,7 +13,7 @@ impl Analyzer {
     pub fn analyze_alias_def(&mut self, alias_def: &mut AliasDef) -> Result<(), Message> {
         if self.has_symbol(alias_def.identifier) {
             return Err(Message::multiple_ids(
-                alias_def.location,
+                &alias_def.location,
                 alias_def.identifier,
             ));
         }
@@ -127,7 +127,7 @@ mod tests {
 
     fn get_var_init(var_name: &str, var_type: Type, obj: ValueKind) -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::Assign,
                 lhs: Box::new(
@@ -143,7 +143,7 @@ mod tests {
                 ),
                 rhs: Box::new(
                     Value {
-                        location: Location::new(),
+                        location: Location::default(),
                         kind: obj,
                     }
                     .into(),
@@ -170,7 +170,7 @@ mod tests {
 
     fn get_float(value: f64) -> Value {
         Value {
-            location: Location::new(),
+            location: Location::default(),
             kind: ValueKind::Decimal(value),
         }
     }

@@ -16,7 +16,10 @@ use crate::Analyzer;
 impl Analyzer {
     pub fn analyze_union_def(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
         if self.has_symbol(union_def.name.id) {
-            return Err(Message::multiple_ids(union_def.location, union_def.name.id));
+            return Err(Message::multiple_ids(
+                &union_def.location,
+                union_def.name.id,
+            ));
         }
 
         union_def.name.prefix = self.table.get_id();
@@ -29,7 +32,7 @@ impl Analyzer {
         for (field_id, field_info) in union_def.fields.iter() {
             let Some(ty) = self.table.lookup_type(&field_info.ty.ty) else {
                 self.error(Message::undefined_type(
-                    field_info.ty.location,
+                    &field_info.ty.location,
                     &field_info.ty.ty.as_str(),
                 ));
                 continue;
@@ -65,7 +68,7 @@ impl Analyzer {
 
         let Ast::Value(value) = value_clone.as_mut() else {
             return Err(Message::unreachable(
-                node.location(),
+                &node.location(),
                 format!("expected Ast::Value, actually: {}", node.name()),
             ));
         };
@@ -76,15 +79,12 @@ impl Analyzer {
         } = &mut value.kind
         else {
             return Err(Message::unreachable(
-                value.location,
+                &value.location,
                 format!("expected ValueKind::Struct, actually: {:?}", value.kind),
             ));
         };
 
-        if let Err(mut msg) = self.check_union_components(value_comps, union_data) {
-            msg.location = node.location();
-            return Err(msg);
-        }
+        self.check_union_components(value_comps, union_data, &value.location)?;
 
         *union_name = union_data.name;
         let node = Expression {
@@ -165,15 +165,15 @@ mod tests {
 
     fn get_access(var_name: &str) -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Get {
                 lhs: Box::new(Ast::from(Value {
                     kind: ValueKind::Identifier(Ident::from(var_name.to_string())),
-                    location: Location::new(),
+                    location: Location::default(),
                 })),
                 rhs: Box::new(Ast::from(Value {
                     kind: ValueKind::Identifier(Ident::from(FIELD_NAME.to_string())),
-                    location: Location::new(),
+                    location: Location::default(),
                 })),
             },
         }

@@ -39,7 +39,7 @@ impl Parser {
     fn set_safety(&self, attrs: &mut ParsedAttributes, safety: Safety) -> Result<(), Message> {
         if attrs.safety.is_some() {
             return Err(Message::from_string(
-                self.get_location(),
+                &self.get_location(),
                 format!(
                     "Setting \"{safety}\" discards previous setting: \"{}\"",
                     attrs.safety.unwrap()
@@ -59,7 +59,7 @@ impl Parser {
     ) -> Result<(), Message> {
         if attrs.publicity.is_some() {
             return Err(Message::from_string(
-                self.get_location(),
+                &self.get_location(),
                 format!(
                     "Setting \"{publicity}\" discards previous setting: \"{}\"",
                     attrs.publicity.unwrap()

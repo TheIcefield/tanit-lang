@@ -37,21 +37,21 @@ mod tests {
 
     fn get_return(ret: Option<Box<Ast>>) -> ControlFlow {
         ControlFlow {
-            location: Location::new(),
+            location: Location::default(),
             kind: ControlFlowKind::Return { ret },
         }
     }
 
     fn get_continue() -> ControlFlow {
         ControlFlow {
-            location: Location::new(),
+            location: Location::default(),
             kind: ControlFlowKind::Continue,
         }
     }
 
     fn get_break() -> ControlFlow {
         ControlFlow {
-            location: Location::new(),
+            location: Location::default(),
             kind: ControlFlowKind::Break { ret: None },
         }
     }
@@ -71,7 +71,7 @@ mod tests {
                     get_return(None).into(),
                     get_return(Some(Box::new(Ast::from(Value {
                         kind: ValueKind::Integer(0),
-                        location: Location::new(),
+                        location: Location::default(),
                     }))))
                     .into(),
                     get_break().into(),

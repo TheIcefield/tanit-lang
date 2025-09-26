@@ -65,6 +65,14 @@ mod tests {
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
+    fn get_location(row: usize, col: usize) -> Location {
+        Location {
+            row,
+            col,
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn parse_impl_def_good_test() {
         const SRC_TEXT: &str = "\nstruct MyStruct\
@@ -168,11 +176,11 @@ mod tests {
                 assert_eq!(
                     method.parameters[1],
                     FunctionParam::Common(VariableDef {
-                        location: Location { row: 11, col: 29 },
+                        location: get_location(11, 29),
                         attributes: VariableAttributes::default(),
                         identifier: Ident::from("p".to_string()),
                         var_type: TypeSpec {
-                            location: Location { row: 11, col: 32 },
+                            location: get_location(11, 32),
                             info: ParsedTypeInfo {
                                 mutability: Mutability::Immutable
                             },

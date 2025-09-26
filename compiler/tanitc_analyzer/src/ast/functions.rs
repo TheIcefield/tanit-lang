@@ -22,7 +22,7 @@ impl Analyzer {
         is_method: bool,
     ) -> Result<(), Message> {
         if self.has_symbol(func_def.name.id) {
-            return Err(Message::multiple_ids(func_def.location, func_def.name.id));
+            return Err(Message::multiple_ids(&func_def.location, func_def.name.id));
         }
 
         func_def.name.prefix = self.table.get_id();
@@ -78,7 +78,7 @@ impl Analyzer {
             todo!("Unexpected rhs: {rhs:#?}");
         };
 
-        self.analyze_call(func_data.name.id, func_data, call_args, *location)?;
+        self.analyze_call(func_data.name.id, func_data, call_args, location)?;
 
         Ok(None)
     }
@@ -101,7 +101,7 @@ impl Analyzer {
                 | FunctionParam::SelfVal(_) => {
                     if !is_method {
                         self.error(Message::from_string(
-                            func_def.location,
+                            &func_def.location,
                             format!(
                                 "In definition of function \"{}\": \"self\" parameter is allowed only in associated functions",
                                 func_def.name.id),
@@ -110,7 +110,7 @@ impl Analyzer {
 
                     if index > 0 {
                         self.error(Message::from_string(
-                            func_def.location,
+                            &func_def.location,
                             format!(
                                 "In definition of function \"{}\": Unexpected \"self\" parameter. Must be the first parameter of the associated function",
                                 func_def.name.id
@@ -138,7 +138,7 @@ impl Analyzer {
     fn analyze_return_type(&mut self, return_type: &mut TypeSpec) -> Result<(), Message> {
         let Some(type_info) = self.table.lookup_type(&return_type.ty) else {
             return Err(Message::undefined_type(
-                return_type.location,
+                &return_type.location,
                 &return_type.ty.as_str(),
             ));
         };

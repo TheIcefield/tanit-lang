@@ -35,119 +35,119 @@ impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
         match self.generate_module_def(module_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&module_def.location, e)),
         }
     }
 
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
         match self.generate_struct_def(struct_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&struct_def.location, e)),
         }
     }
 
     fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message> {
         match self.generate_union_def(union_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&union_def.location, e)),
         }
     }
 
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
         match self.generate_variant_def(variant_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&variant_def.location, e)),
         }
     }
 
     fn visit_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), Message> {
         match self.generate_impl_def(impl_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&impl_def.location, e)),
         }
     }
 
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message> {
         match self.generate_enum_def(enum_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&enum_def.location, e)),
         }
     }
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
         match self.generate_func_def(func_def, None) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&func_def.location, e)),
         }
     }
 
     fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
         match self.generate_extern_def(extern_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&extern_def.location, e)),
         }
     }
 
     fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message> {
         match self.generate_variable_def(var_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&var_def.location, e)),
         }
     }
 
     fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message> {
         match self.generate_alias_def(alias_def) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&alias_def.location, e)),
         }
     }
 
     fn visit_expression(&mut self, expr: &Expression) -> Result<(), Message> {
         match self.generate_expression(expr) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&expr.location, e)),
         }
     }
 
     fn visit_branch(&mut self, branch: &Branch) -> Result<(), Message> {
         match self.generate_branch(branch) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&branch.location, e)),
         }
     }
 
     fn visit_control_flow(&mut self, cf: &ControlFlow) -> Result<(), Message> {
         match self.generate_control_flow(cf) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&cf.location, e)),
         }
     }
 
     fn visit_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), Message> {
         match self.generate_type_spec(type_spec) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&type_spec.location, e)),
         }
     }
 
     fn visit_use(&mut self, u: &Use) -> Result<(), Message> {
         match self.generate_use(u) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&u.location, e)),
         }
     }
 
     fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
         match self.generate_block(block) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&block.location, e)),
         }
     }
 
     fn visit_value(&mut self, val: &Value) -> Result<(), Message> {
         match self.generate_value(val) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(e)),
+            Err(e) => Err(Self::codegen_err(&val.location, e)),
         }
     }
 }
@@ -175,10 +175,7 @@ impl CodeGenStream<'_> {
         }
     }
 
-    fn codegen_err(err: std::io::Error) -> Message {
-        Message {
-            location: Location::new(),
-            text: format!("Codegen error: {err}"),
-        }
+    fn codegen_err(location: &Location, err: std::io::Error) -> Message {
+        Message::from_string(location, format!("Codegen error: {err}"))
     }
 }

@@ -58,16 +58,16 @@ mod tests {
 
     fn get_cond() -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::LogicalEq,
                 lhs: Box::new(Ast::Value(Value {
                     kind: ValueKind::Integer(0),
-                    location: Location::new(),
+                    location: Location::default(),
                 })),
                 rhs: Box::new(Ast::Value(Value {
                     kind: ValueKind::Integer(0),
-                    location: Location::new(),
+                    location: Location::default(),
                 })),
             },
         }
@@ -89,7 +89,7 @@ mod tests {
     fn get_else_if() -> BranchKind {
         BranchKind::Else {
             body: Box::new(Ast::from(Branch {
-                location: Location::new(),
+                location: Location::default(),
                 kind: get_if(),
             })),
         }
@@ -102,7 +102,7 @@ mod tests {
                                      \n}\n";
 
         let node = Ast::from(Branch {
-            location: Location::new(),
+            location: Location::default(),
             kind: get_if(),
         });
 
@@ -132,12 +132,12 @@ mod tests {
             is_global: true,
             statements: vec![
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_if(),
                 }
                 .into(),
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_else(),
                 }
                 .into(),
@@ -172,12 +172,12 @@ mod tests {
             is_global: true,
             statements: vec![
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_if(),
                 }
                 .into(),
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_else_if(),
                 }
                 .into(),
@@ -215,17 +215,17 @@ mod tests {
             is_global: true,
             statements: vec![
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_if(),
                 }
                 .into(),
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_else_if(),
                 }
                 .into(),
                 Branch {
-                    location: Location::new(),
+                    location: Location::default(),
                     kind: get_else(),
                 }
                 .into(),

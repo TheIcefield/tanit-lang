@@ -27,7 +27,7 @@ impl Lexer {
 
         Ok(Self {
             path: path.to_path_buf(),
-            location: Location::new(),
+            location: Location::new(path),
             next_token: None,
             next_char: None,
             input: Box::new(file.unwrap()),
@@ -40,7 +40,7 @@ impl Lexer {
     pub fn from_text(src: &'static str) -> Result<Self, &'static str> {
         Ok(Self {
             path: PathBuf::new(),
-            location: Location::new(),
+            location: Location::new(&PathBuf::new()),
             next_token: None,
             next_char: None,
             input: Box::new(src.as_bytes()),
@@ -93,7 +93,7 @@ impl Lexer {
     }
 
     pub fn get_location(&self) -> Location {
-        self.location
+        self.location.clone()
     }
 
     pub fn get_path(&self) -> &Path {
@@ -183,271 +183,233 @@ impl Lexer {
             }
         }
 
+        let location = self.get_location();
+
         if self.is_eof {
-            return Token::new(Lexem::EndOfFile, self.location);
+            return Token::new(Lexem::EndOfFile, location);
         }
 
         let next_char = self.peek_char();
 
-        match next_char {
+        let lexem = match next_char {
             '\n' => {
                 self.get_char();
-                Token::new(Lexem::EndOfLine, self.location)
+                Lexem::EndOfLine
             }
-
             '(' => {
                 self.get_char();
-                Token::new(Lexem::LParen, self.location)
+                Lexem::LParen
             }
-
             ')' => {
                 self.get_char();
-                Token::new(Lexem::RParen, self.location)
+                Lexem::RParen
             }
-
             '[' => {
                 self.get_char();
-                Token::new(Lexem::Lsb, self.location)
+                Lexem::Lsb
             }
-
             ']' => {
                 self.get_char();
-                Token::new(Lexem::Rsb, self.location)
+                Lexem::Rsb
             }
-
             '{' => {
                 self.get_char();
-                Token::new(Lexem::Lcb, self.location)
+                Lexem::Lcb
             }
-
             '}' => {
                 self.get_char();
-                Token::new(Lexem::Rcb, self.location)
+                Lexem::Rcb
             }
-
             '>' => {
                 self.get_char();
+                let mut lexem = Lexem::Gt;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-                    return Token::new(Lexem::Gte, self.location);
-                }
-
-                if self.peek_char() == '>' && !singular {
+                    lexem = Lexem::Gte;
+                } else if self.peek_char() == '>' && !singular {
                     self.get_char();
+                    lexem = Lexem::RShift;
 
                     if self.peek_char() == '=' {
                         self.get_char();
-                        return Token::new(Lexem::RShiftAssign, self.location);
+                        lexem = Lexem::RShiftAssign;
                     }
-
-                    return Token::new(Lexem::RShift, self.location);
                 }
 
-                Token::new(Lexem::Gt, self.location)
+                lexem
             }
-
             '<' => {
                 self.get_char();
+                let mut lexem = Lexem::Lt;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-                    return Token::new(Lexem::Lte, self.location);
-                }
-
-                if self.peek_char() == '<' && !singular {
+                    lexem = Lexem::Lte;
+                } else if self.peek_char() == '<' && !singular {
                     self.get_char();
+                    lexem = Lexem::LShift;
 
                     if self.peek_char() == '=' {
                         self.get_char();
-                        return Token::new(Lexem::LShiftAssign, self.location);
+                        lexem = Lexem::LShiftAssign;
                     }
-
-                    return Token::new(Lexem::LShift, self.location);
                 }
 
-                Token::new(Lexem::Lt, self.location)
+                lexem
             }
-
             '+' => {
                 self.get_char();
+                let mut lexem = Lexem::Plus;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::AddAssign, self.location);
+                    lexem = Lexem::AddAssign;
                 }
 
-                Token::new(Lexem::Plus, self.location)
+                lexem
             }
-
             '-' => {
                 self.get_char();
+                let mut lexem = Lexem::Minus;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::SubAssign, self.location);
+                    lexem = Lexem::SubAssign;
                 }
 
-                Token::new(Lexem::Minus, self.location)
+                lexem
             }
-
             '/' => {
                 self.get_char();
+                let mut lexem = Lexem::Slash;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::DivAssign, self.location);
+                    lexem = Lexem::DivAssign;
                 }
 
-                Token::new(Lexem::Slash, self.location)
+                lexem
             }
-
             '%' => {
                 self.get_char();
+                let mut lexem = Lexem::Percent;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::ModAssign, self.location);
+                    lexem = Lexem::ModAssign;
                 }
 
-                Token::new(Lexem::Percent, self.location)
+                lexem
             }
-
             '*' => {
                 self.get_char();
+                let mut lexem = Lexem::Star;
 
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::MulAssign, self.location);
+                    lexem = Lexem::MulAssign;
                 }
 
-                Token::new(Lexem::Star, self.location)
+                lexem
             }
-
             '!' => {
                 self.get_char();
+                let mut lexem = Lexem::Not;
 
-                let ch = self.peek_char();
-
-                if ch == '=' && !singular {
+                if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::Neq, self.location);
+                    lexem = Lexem::Neq;
                 }
 
-                Token::new(Lexem::Not, self.location)
+                lexem
             }
-
             '=' => {
                 self.get_char();
+                let mut lexem = Lexem::Assign;
+
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::Eq, self.location);
+                    lexem = Lexem::Eq;
                 }
 
-                Token::new(Lexem::Assign, self.location)
+                lexem
             }
-
             '&' => {
                 self.get_char();
+                let mut lexem = Lexem::Ampersand;
+
                 if self.peek_char() == '&' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::AndAssign, self.location);
-                }
-
-                if self.peek_char() == '=' && !singular {
+                    lexem = Lexem::And;
+                } else if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::And, self.location);
+                    lexem = Lexem::AndAssign;
                 }
 
-                Token::new(Lexem::Ampersand, self.location)
+                lexem
             }
-
             '^' => {
                 self.get_char();
+                let mut lexem = Lexem::Xor;
+
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::XorAssign, self.get_location());
+                    lexem = Lexem::XorAssign;
                 }
 
-                Token::new(Lexem::Xor, self.get_location())
+                lexem
             }
-
             '|' => {
                 self.get_char();
+                let mut lexem = Lexem::Stick;
+
                 if self.peek_char() == '=' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::OrAssign, self.get_location());
-                }
-
-                if self.peek_char() == '|' && !singular {
+                    lexem = Lexem::OrAssign;
+                } else if self.peek_char() == '|' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::Or, self.get_location());
+                    lexem = Lexem::Or;
                 }
 
-                Token::new(Lexem::Stick, self.get_location())
+                lexem
             }
-
             ':' => {
                 self.get_char();
+                let mut lexem = Lexem::Colon;
+
                 if self.peek_char() == ':' && !singular {
                     self.get_char();
-
-                    return Token::new(Lexem::Dcolon, self.get_location());
+                    lexem = Lexem::Dcolon;
                 }
 
-                Token::new(Lexem::Colon, self.get_location())
+                lexem
             }
-
             '.' => {
                 self.get_char();
-                Token::new(Lexem::Dot, self.get_location())
+                Lexem::Dot
             }
-
             ',' => {
                 self.get_char();
-                Token::new(Lexem::Comma, self.get_location())
+                Lexem::Comma
             }
+            _ if '\"' == next_char => self.get_text_lexem(),
+            _ if next_char.is_ascii_digit() => self.get_numeric_lexem(),
+            _ if next_char.is_ascii_alphabetic() || '_' == next_char => self.get_string_lexem(),
+            _ => Lexem::Unknown,
+        };
 
-            _ => {
-                if next_char == '\"' {
-                    return self.get_text_token();
-                }
-
-                if next_char.is_ascii_digit() {
-                    return self.get_numeric_token();
-                }
-
-                if next_char.is_ascii_alphabetic() || next_char == '_' {
-                    return self.get_string_token();
-                }
-
-                Token::new(Lexem::Unknown, self.get_location())
-            }
-        }
+        Token::new(lexem, location)
     }
 
-    fn get_numeric_token(&mut self) -> Token {
-        let location = self.location;
-
+    fn get_numeric_lexem(&mut self) -> Lexem {
         let mut text = String::new();
         let mut is_float = false;
 
         while !self.is_eof && (self.peek_char().is_ascii_digit() || self.peek_char() == '.') {
             if self.peek_char() == '.' {
                 if is_float {
-                    return Token::new(Lexem::Unknown, location);
+                    return Lexem::Unknown;
                 }
                 is_float = true;
             }
@@ -456,15 +418,13 @@ impl Lexer {
         }
 
         if is_float {
-            return Token::new(Lexem::Decimal(text), location);
+            return Lexem::Decimal(text);
         }
 
-        Token::new(Lexem::Integer(text), location)
+        Lexem::Integer(text)
     }
 
-    fn get_string_token(&mut self) -> Token {
-        let location = self.location;
-
+    fn get_string_lexem(&mut self) -> Lexem {
         let mut text = String::new();
 
         while !self.is_eof && (self.peek_char().is_ascii_alphanumeric() || self.peek_char() == '_')
@@ -472,7 +432,7 @@ impl Lexer {
             text.push(self.get_char());
         }
 
-        let lexem = match &text[..] {
+        match &text[..] {
             "def" => Lexem::KwDef,
             "module" => Lexem::KwModule,
             "struct" => Lexem::KwStruct,
@@ -506,14 +466,10 @@ impl Lexer {
             "unsafe" => Lexem::KwUnsafe,
             "pub" => Lexem::KwPub,
             _ => Lexem::Identifier(text),
-        };
-
-        Token::new(lexem, location)
+        }
     }
 
-    fn get_text_token(&mut self) -> Token {
-        let location = self.location;
-
+    fn get_text_lexem(&mut self) -> Lexem {
         let mut text = String::new();
 
         self.get_char();
@@ -527,150 +483,158 @@ impl Lexer {
             text.push(self.get_char());
         }
 
-        Token::new(Lexem::Text(text), location)
+        Lexem::Text(text)
     }
 }
 
+/*
++ hello func var 65 -= <<\n
+ struct alpha safe unsafe impl
+ */
+
 #[test]
-fn lexer_test() {
-    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha safe unsafe impl";
+fn lexer_with_ignore_test() {
+    const SRC_TEXT: &str = "+ hello func var 65 -= <<\n struct alpha safe unsafe impl";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
+    lexer.ignores_nl = true;
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Identifier("hello".to_string()),
-            Location { row: 1, col: 2 }
-        )
-    );
+    let mut tkn = lexer.get();
+    let mut location = Location::default();
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwFunc, Location { row: 1, col: 8 })
-    );
+    location.col = 2;
+    assert_eq!(tkn.lexem, Lexem::Plus);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwVar, Location { row: 1, col: 13 })
-    );
+    tkn = lexer.get();
+    location.col = 4;
+    assert_eq!(tkn.lexem, Lexem::identifier("hello"));
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::Plus, Location { row: 1, col: 18 })
-    );
+    tkn = lexer.get();
+    location.col = 10;
+    assert_eq!(tkn.lexem, Lexem::KwFunc);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Integer("65".to_string()),
-            Location { row: 1, col: 19 }
-        )
-    );
+    tkn = lexer.get();
+    location.col = 15;
+    assert_eq!(tkn.lexem, Lexem::KwVar);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::SubAssign, Location { row: 1, col: 23 })
-    );
+    tkn = lexer.get();
+    location.col = 19;
+    assert_eq!(tkn.lexem, Lexem::integer(65));
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::LShift, Location { row: 1, col: 27 })
-    );
+    tkn = lexer.get();
+    location.col = 22;
+    assert_eq!(tkn.lexem, Lexem::SubAssign);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwStruct, Location { row: 2, col: 3 })
-    );
+    tkn = lexer.get();
+    location.col = 25;
+    assert_eq!(tkn.lexem, Lexem::LShift);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Identifier("alpha".to_string()),
-            Location { row: 2, col: 10 }
-        )
-    );
+    tkn = lexer.get();
+    location.row = 2;
+    location.col = 3;
+    assert_eq!(tkn.lexem, Lexem::KwStruct);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwSafe, Location { row: 2, col: 16 })
-    );
+    tkn = lexer.get();
+    location.col = 10;
+    assert_eq!(tkn.lexem, Lexem::identifier("alpha"));
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwUnsafe, Location { row: 2, col: 21 })
-    );
+    tkn = lexer.get();
+    location.col = 16;
+    assert_eq!(tkn.lexem, Lexem::KwSafe);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwImpl, Location { row: 2, col: 28 })
-    );
+    tkn = lexer.get();
+    location.col = 21;
+    assert_eq!(tkn.lexem, Lexem::KwUnsafe);
+    assert_eq!(tkn.location, location);
+
+    tkn = lexer.get();
+    location.col = 28;
+    assert_eq!(tkn.lexem, Lexem::KwImpl);
+    assert_eq!(tkn.location, location);
 }
 
 #[test]
-fn lexer_without_ignore_test() {
-    const SRC_TEXT: &str = "hello func var + 65 -= <<\n struct alpha";
+fn lexer_without_test() {
+    const SRC_TEXT: &str = "+ hello func var 65 -= <<\n struct alpha safe unsafe impl";
 
     let mut lexer = Lexer::from_text(SRC_TEXT).unwrap();
-
     lexer.ignores_nl = false;
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Identifier("hello".to_string()),
-            Location { row: 1, col: 2 }
-        )
-    );
+    let mut tkn = lexer.get();
+    let mut location = Location::default();
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwFunc, Location { row: 1, col: 8 })
-    );
+    location.col = 2;
+    assert_eq!(tkn.lexem, Lexem::Plus);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwVar, Location { row: 1, col: 13 })
-    );
+    tkn = lexer.get();
+    location.col = 4;
+    assert_eq!(tkn.lexem, Lexem::identifier("hello"));
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::Plus, Location { row: 1, col: 18 })
-    );
+    tkn = lexer.get();
+    location.col = 10;
+    assert_eq!(tkn.lexem, Lexem::KwFunc);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Integer("65".to_string()),
-            Location { row: 1, col: 19 }
-        )
-    );
+    tkn = lexer.get();
+    location.col = 15;
+    assert_eq!(tkn.lexem, Lexem::KwVar);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::SubAssign, Location { row: 1, col: 23 })
-    );
+    tkn = lexer.get();
+    location.col = 19;
+    assert_eq!(tkn.lexem, Lexem::integer(65));
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::LShift, Location { row: 1, col: 27 })
-    );
+    tkn = lexer.get();
+    location.col = 22;
+    assert_eq!(tkn.lexem, Lexem::SubAssign);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::EndOfLine, Location { row: 2, col: 1 })
-    );
+    tkn = lexer.get();
+    location.col = 25;
+    assert_eq!(tkn.lexem, Lexem::LShift);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(Lexem::KwStruct, Location { row: 2, col: 3 })
-    );
+    tkn = lexer.get();
+    location.row = 2;
+    location.col = 1;
+    assert_eq!(tkn.lexem, Lexem::EndOfLine);
+    assert_eq!(tkn.location, location);
 
-    assert_eq!(
-        lexer.get(),
-        Token::new(
-            Lexem::Identifier("alpha".to_string()),
-            Location { row: 2, col: 10 }
-        )
-    );
+    tkn = lexer.get();
+    location.col = 3;
+    assert_eq!(tkn.lexem, Lexem::KwStruct);
+    assert_eq!(tkn.location, location);
+
+    tkn = lexer.get();
+    location.col = 10;
+    assert_eq!(tkn.lexem, Lexem::identifier("alpha"));
+    assert_eq!(tkn.location, location);
+
+    tkn = lexer.get();
+    location.col = 16;
+    assert_eq!(tkn.lexem, Lexem::KwSafe);
+    assert_eq!(tkn.location, location);
+
+    tkn = lexer.get();
+    location.col = 21;
+    assert_eq!(tkn.lexem, Lexem::KwUnsafe);
+    assert_eq!(tkn.location, location);
+
+    tkn = lexer.get();
+    location.col = 28;
+    assert_eq!(tkn.lexem, Lexem::KwImpl);
+    assert_eq!(tkn.location, location);
 }

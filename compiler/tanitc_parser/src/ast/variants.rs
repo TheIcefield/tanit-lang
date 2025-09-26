@@ -63,7 +63,7 @@ impl Parser {
 
                     if variant_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            next.location,
+                            &next.location,
                             format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
@@ -78,7 +78,7 @@ impl Parser {
 
                 Lexem::Lcb => {
                     return Err(Message::new(
-                        next.location,
+                        &next.location,
                         "Unexpected token: \"{\" during parsing enum fields.\n\
                             Help: If you tried to declare struct-like field, place \"{\" \
                             in the same line with name of the field.",
@@ -128,7 +128,7 @@ impl Parser {
                     let mut processed_components: Vec<TypeSpec> = vec![];
                     for ty in components.iter() {
                         processed_components.push(TypeSpec {
-                            location,
+                            location: location.clone(),
                             info,
                             ty: ty.clone(),
                         });
@@ -156,7 +156,7 @@ impl Parser {
             }
 
             _ => Err(Message::from_string(
-                next.location,
+                &next.location,
                 format!("Unexpected token during parsing enum: {next}"),
             )),
         }

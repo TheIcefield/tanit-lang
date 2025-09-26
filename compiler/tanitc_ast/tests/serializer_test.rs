@@ -54,6 +54,7 @@ fn ast_write_test() {
 
     const EXPECTED: &str = "Block {\
                           \n    location: Location {\
+                          \n        path: \"\",\
                           \n        row: 1,\
                           \n        col: 1,\
                           \n    },\
@@ -63,6 +64,7 @@ fn ast_write_test() {
                           \n    statements: [\
                           \n        StructDef {\
                           \n            location: Location {\
+                          \n                path: \"\",\
                           \n                row: 1,\
                           \n                col: 1,\
                           \n            },\
@@ -77,6 +79,7 @@ fn ast_write_test() {
                           \n                a: StructFieldInfo {\
                           \n                    ty: TypeSpec {\
                           \n                        location: Location {\
+                          \n                            path: \"\",\
                           \n                            row: 1,\
                           \n                            col: 1,\
                           \n                        },\
@@ -92,6 +95,7 @@ fn ast_write_test() {
                           \n                b: StructFieldInfo {\
                           \n                    ty: TypeSpec {\
                           \n                        location: Location {\
+                          \n                            path: \"\",\
                           \n                            row: 1,\
                           \n                            col: 1,\
                           \n                        },\
@@ -109,6 +113,7 @@ fn ast_write_test() {
                           \n        },\
                           \n        FunctionDef {\
                           \n            location: Location {\
+                          \n                path: \"\",\
                           \n                row: 1,\
                           \n                col: 1,\
                           \n            },\
@@ -122,6 +127,7 @@ fn ast_write_test() {
                           \n            },\
                           \n            return_type: TypeSpec {\
                           \n                location: Location {\
+                          \n                    path: \"\",\
                           \n                    row: 1,\
                           \n                    col: 1,\
                           \n                },\

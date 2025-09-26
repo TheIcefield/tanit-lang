@@ -49,7 +49,7 @@ impl Parser {
 
         let Ast::Block(block) = block else {
             return Err(Message::unreachable(
-                mod_def.location,
+                &mod_def.location,
                 format!("expected Block, actually {}", block.name()),
             ));
         };
@@ -63,7 +63,7 @@ impl Parser {
         let name = mod_def.name.id.to_string();
 
         let Some(current_path_str) = self.get_path().to_str() else {
-            return Err(Message::new(mod_def.location, "Failed to get path"));
+            return Err(Message::new(&mod_def.location, "Failed to get path"));
         };
 
         let mut path = current_path_str
@@ -105,7 +105,7 @@ impl Parser {
 
         if !file_exists {
             return Err(Message::from_string(
-                mod_def.location,
+                &mod_def.location,
                 format!("Module \"{name}\" not found"),
             ));
         }
@@ -118,7 +118,7 @@ impl Parser {
 
         let lexer = match Lexer::from_file(&path) {
             Ok(lexer) => lexer,
-            Err(msg) => return Err(Message::from_string(mod_def.location, msg)),
+            Err(msg) => return Err(Message::from_string(&mod_def.location, msg)),
         };
 
         let mut parser = Parser::new(lexer);
@@ -127,7 +127,7 @@ impl Parser {
 
         let Ast::Block(block) = block else {
             return Err(Message::unreachable(
-                mod_def.location,
+                &mod_def.location,
                 format!("expected Block, actually {}", block.name()),
             ));
         };

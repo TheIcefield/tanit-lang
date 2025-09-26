@@ -69,16 +69,19 @@ impl Analyzer {
         let main_func_id = Ident::from(ENTRY_POINT.to_string());
 
         let Some(entry) = self.table.lookup(main_func_id) else {
-            return Err(Message::new(Location::new(), "No entry point!"));
+            return Err(Message::new(&Location::default(), "No entry point!"));
         };
 
         let SymbolKind::FuncDef(data) = &entry.kind else {
-            return Err(Message::new(Location::new(), "No entry point function!"));
+            return Err(Message::new(
+                &Location::default(),
+                "No entry point function!",
+            ));
         };
 
         if data.return_type != Type::I32 && !data.return_type.is_unit() {
             return Err(Message::from_string(
-                Location::new(),
+                &Location::default(),
                 format!("Bad type of main function: {}", data.return_type),
             ));
         }

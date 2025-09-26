@@ -11,7 +11,7 @@ impl Analyzer {
     pub fn analyze_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
         if self.has_symbol(module_def.name.id) {
             return Err(Message::multiple_ids(
-                module_def.location,
+                &module_def.location,
                 module_def.name.id,
             ));
         }

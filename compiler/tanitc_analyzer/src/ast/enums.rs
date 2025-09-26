@@ -16,7 +16,7 @@ use crate::Analyzer;
 impl Analyzer {
     pub fn analyze_enum_def(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         if self.has_symbol(enum_def.name.id) {
-            return Err(Message::multiple_ids(enum_def.location, enum_def.name.id));
+            return Err(Message::multiple_ids(&enum_def.location, enum_def.name.id));
         }
 
         enum_def.name.prefix = self.table.get_id();
@@ -66,7 +66,7 @@ impl Analyzer {
         let location = rhs.location();
 
         Ok(Some(Expression {
-            location,
+            location: location.clone(),
             kind: ExpressionKind::Term {
                 node: Box::new(Ast::Value(Value {
                     location,

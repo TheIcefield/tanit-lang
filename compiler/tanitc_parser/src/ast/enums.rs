@@ -55,7 +55,7 @@ impl Parser {
                             match value.parse::<usize>() {
                                 Ok(value) => value,
                                 Err(err) => {
-                                    return Err(Message::parse_int_error(token.location, err))
+                                    return Err(Message::parse_int_error(&token.location, err))
                                 }
                             }
                         } else {
@@ -69,7 +69,7 @@ impl Parser {
 
                     if enum_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            next.location,
+                            &next.location,
                             format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
@@ -82,7 +82,7 @@ impl Parser {
 
                 Lexem::Lcb => {
                     return Err(Message::new(
-                        next.location,
+                        &next.location,
                         "Unexpected token: \"{{\" during parsing enum fields.\n\
                             Help: if you tried to declare struct-like field, place \"{{\" \
                             in the same line with name of the field.",

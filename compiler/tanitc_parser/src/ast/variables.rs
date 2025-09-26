@@ -14,7 +14,7 @@ use crate::Parser;
 impl Parser {
     pub fn parse_variable_def(&mut self) -> Result<Ast, Message> {
         let next = self.peek_token();
-        let location = next.location;
+        let location = next.location.clone();
 
         let visibility = match next.lexem {
             Lexem::KwVar => {
@@ -53,6 +53,7 @@ impl Parser {
         let identifier = self.consume_identifier()?;
 
         let next = self.peek_token();
+        println!("NEXT1: {next}");
 
         let mut var_type: Option<TypeSpec> = None;
         let mut rvalue: Option<Ast> = None;
@@ -64,6 +65,7 @@ impl Parser {
         }
 
         let next = self.peek_token();
+        println!("NEXT2: {next}");
 
         if Lexem::Assign == next.lexem {
             self.get_token();
@@ -72,8 +74,10 @@ impl Parser {
         }
 
         if var_type.is_none() && rvalue.is_none() {
+            println!("VAR_TYPE: {}", var_type.is_some());
+            println!("RVALUE: {}", rvalue.is_some());
             return Err(Message::from_string(
-                location,
+                &location,
                 format!(
                     "Variable \"{identifier}\" defined without type. Need to specify type or use with rvalue"
                 ),
@@ -82,7 +86,7 @@ impl Parser {
 
         if var_type.is_none() && visibility.is_global() {
             return Err(Message::from_string(
-                location,
+                &location,
                 format!(
                     "Variable \"{identifier}\" defined without type, but marked as static. Need to specify type"
                 ),
@@ -90,11 +94,11 @@ impl Parser {
         }
 
         let var_node = Ast::from(VariableDef {
-            location,
+            location: location.clone(),
             attributes: VariableAttributes::default(),
             identifier,
             var_type: var_type.unwrap_or(TypeSpec {
-                location,
+                location: location.clone(),
                 info: ParsedTypeInfo::default(),
                 ty: Type::Auto,
             }),

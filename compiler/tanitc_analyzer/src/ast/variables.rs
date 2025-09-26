@@ -11,7 +11,7 @@ use crate::Analyzer;
 impl Analyzer {
     pub fn analyze_variable_def(&mut self, var_def: &mut VariableDef) -> Result<(), Message> {
         if self.has_symbol(var_def.identifier) {
-            return Err(Message::multiple_ids(var_def.location, var_def.identifier));
+            return Err(Message::multiple_ids(&var_def.location, var_def.identifier));
         }
 
         self.add_symbol(Entry {
@@ -50,7 +50,7 @@ impl Analyzer {
 
         let Some(rhs) = rhs else {
             return Err(Message::from_string(
-                lhs.location,
+                &lhs.location,
                 format!("Variable {variable_name} is defined, but not initialized"),
             ));
         };
@@ -58,7 +58,7 @@ impl Analyzer {
         let rhs_type = self.get_type(rhs);
 
         if self.has_symbol(variable_name) {
-            return Err(Message::multiple_ids(rhs.location(), variable_name));
+            return Err(Message::multiple_ids(&rhs.location(), variable_name));
         }
 
         if Type::Auto == lhs.var_type.get_type() {
@@ -67,7 +67,7 @@ impl Analyzer {
         } else {
             // Analyze specified type
             self.analyze_variable_type(&mut lhs.var_type)?;
-            self.compare_types(&lhs.var_type.ty, &rhs_type.ty, lhs.var_type.location)?;
+            self.compare_types(&lhs.var_type.ty, &rhs_type.ty, &lhs.var_type.location)?;
         }
 
         self.add_symbol(Entry {
@@ -89,7 +89,7 @@ impl Analyzer {
     fn analyze_variable_type(&self, var_type: &mut TypeSpec) -> Result<(), Message> {
         let Some(type_info) = self.table.lookup_type(&var_type.ty) else {
             return Err(Message::undefined_type(
-                var_type.location,
+                &var_type.location,
                 &var_type.ty.as_str(),
             ));
         };
