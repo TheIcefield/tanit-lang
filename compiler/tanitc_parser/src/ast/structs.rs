@@ -61,7 +61,7 @@ impl Parser {
 
                     if struct_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            next.location,
+                            &next.location,
                             format!("Struct has already field with identifier {id}"),
                         ));
                         continue;
@@ -82,7 +82,7 @@ impl Parser {
 
                 _ => {
                     return Err(Message::from_string(
-                        next.location,
+                        &next.location,
                         format!(
                             "Unexpected token when parsing struct fields: {}",
                             next.lexem

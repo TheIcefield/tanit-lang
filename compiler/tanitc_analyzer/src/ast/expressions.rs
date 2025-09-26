@@ -38,7 +38,7 @@ impl Analyzer {
         match ret {
             Ok(Some(processed_node)) => *expr = processed_node,
             Err(mut msg) => {
-                msg.location = expr.location;
+                msg.location = expr.location.clone();
                 return Err(msg);
             }
             _ => {}
@@ -53,8 +53,8 @@ impl Analyzer {
         node: &mut Box<Ast>,
     ) -> Result<Option<Expression>, Message> {
         node.accept_mut(self)?;
+        let location = node.location();
         let node_type = self.get_type(node);
-        println!("UNARY: ty({}), operation({operation})", node_type.ty);
 
         let does_mutate = *operation == UnaryOperation::RefMut;
 
@@ -64,15 +64,15 @@ impl Analyzer {
         }) = node.as_ref()
         {
             let Some(entry) = self.table.lookup(*id) else {
-                return Err(Message::undefined_id(*location, *id));
+                return Err(Message::undefined_id(location, *id));
             };
 
             if let SymbolKind::VarDef(var_data) = &entry.kind {
                 if var_data.mutability.is_const() && does_mutate {
-                    return Err(Message {
-                        location: *location,
-                        text: format!("Mutable reference to immutable variable \"{id}\""),
-                    });
+                    return Err(Message::from_string(
+                        location,
+                        format!("Mutable reference to immutable variable \"{id}\""),
+                    ));
                 }
             }
         }
@@ -82,7 +82,7 @@ impl Analyzer {
             && self.get_current_safety() != Safety::Unsafe
         {
             return Err(Message::new(
-                node.location(),
+                &location,
                 "Dereferencing raw pointer require unsafe function or block",
             ));
         }
@@ -107,36 +107,36 @@ impl Analyzer {
             match &node.kind {
                 ValueKind::Identifier(id) => {
                     let Some(entry) = self.table.lookup(*id) else {
-                        return Err(Message::undefined_id(node.location, *id));
+                        return Err(Message::undefined_id(&node.location, *id));
                     };
 
                     let SymbolKind::VarDef(var_data) = &entry.kind else {
-                        return Err(Message::undefined_variable(node.location, *id));
+                        return Err(Message::undefined_variable(&node.location, *id));
                     };
 
                     if let Type::Ref(ref_type) = &var_data.var_type {
                         if ref_type.mutability.is_const() && does_mutate {
-                            return Err(Message::const_ref_mutation(node.location, *id));
+                            return Err(Message::const_ref_mutation(&node.location, *id));
                         }
                     } else if var_data.mutability.is_const() && does_mutate {
-                        return Err(Message::const_var_mutation(node.location, *id));
+                        return Err(Message::const_var_mutation(&node.location, *id));
                     }
                 }
                 ValueKind::Integer(..) | ValueKind::Decimal(..) => {}
                 ValueKind::Text(..) => self.error(Message::new(
-                    node.location,
+                    &node.location,
                     "Cannot perform operation with text in this context",
                 )),
                 ValueKind::Array { .. } => self.error(Message::new(
-                    node.location,
+                    &node.location,
                     "Cannot perform operation with array in this context",
                 )),
                 ValueKind::Tuple { .. } => self.error(Message::new(
-                    node.location,
+                    &node.location,
                     "Cannot perform operation with tuple in this context",
                 )),
                 _ => self.error(Message::new(
-                    node.location,
+                    &node.location,
                     "Cannot perform operation with this object",
                 )),
             }
@@ -146,7 +146,7 @@ impl Analyzer {
 
             if lhs_type.ty != rhs_type.ty {
                 self.error(Message::from_string(
-                    rhs.location(),
+                    &rhs.location(),
                     format!(
                         "Cannot perform operation on objects with different types: {lhs_type} and {rhs_type}",
                     ),
@@ -155,7 +155,7 @@ impl Analyzer {
 
             if lhs_type.mutability.is_const() && does_mutate {
                 return Err(Message::const_mutation(
-                    lhs.location(),
+                    &lhs.location(),
                     &lhs_type.ty.as_str(),
                 ));
             }
@@ -174,7 +174,7 @@ impl Analyzer {
         let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
 
         let Some(entry) = self.table.lookup_qualified(ids.iter().peekable()) else {
-            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
+            return Err(Message::undefined_id(&rhs.location(), *ids.last().unwrap()));
         };
 
         let entry = entry.clone();
@@ -279,7 +279,7 @@ impl Analyzer {
         let mut iter = ids.iter().peekable();
 
         let Some(entry) = self.table.lookup(*iter.next().unwrap()) else {
-            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
+            return Err(Message::undefined_id(&rhs.location(), *ids.last().unwrap()));
         };
 
         let entry = entry.clone();
@@ -302,26 +302,26 @@ impl Analyzer {
                 ..
             }) => {
                 let Some(var_entry) = self.table.lookup(*var_name) else {
-                    return Err(Message::undefined_id(location, *var_name));
+                    return Err(Message::undefined_id(&location, *var_name));
                 };
 
                 let SymbolKind::VarDef(var_data) = &var_entry.kind else {
                     return Err(Message::from_string(
-                        location,
+                        &location,
                         format!("{var_name} is not an variable"),
                     ));
                 };
 
                 let Type::Array { .. } = &var_data.var_type else {
                     return Err(Message::from_string(
-                        location,
+                        &location,
                         format!("{var_name} is not an array"),
                     ));
                 };
             }
             _ => {
                 return Err(Message::from_string(
-                    lhs.location(),
+                    &location,
                     format!("Can't index {}", lhs.name()),
                 ));
             }
@@ -330,7 +330,7 @@ impl Analyzer {
         let index_ty = self.get_type(index);
         if !index_ty.ty.is_integer() {
             return Err(Message::from_string(
-                index.location(),
+                &index.location(),
                 format!("Invalid index type: {}", index_ty.ty),
             ));
         }
@@ -343,7 +343,7 @@ impl Analyzer {
         name: Ident,
         type_info: &TypeInfo,
         members: &mut Peekable<Iter<Ident>>,
-        location: Location,
+        location: &Location,
     ) -> Result<Type, Message> {
         let Some(next) = members.next() else {
             return Ok(type_info.ty.clone());
@@ -379,7 +379,7 @@ impl Analyzer {
         let var_type = &var_data.var_type;
 
         let member_type = if let Some(type_info) = self.table.lookup_type(var_type) {
-            self.check_members(var_name, &type_info, &mut members, location)?
+            self.check_members(var_name, &type_info, &mut members, &location)?
         } else {
             unreachable!("Can't find {var_type}")
         };
@@ -395,7 +395,7 @@ impl Analyzer {
                 ..
             }) => {
                 if operation.does_mutate() && var_data.mutability.is_const() {
-                    return Err(Message::const_var_mutation(location, var_name));
+                    return Err(Message::const_var_mutation(&location, var_name));
                 }
 
                 let Ast::Value(Value {
@@ -404,7 +404,7 @@ impl Analyzer {
                 }) = lhs.as_ref()
                 else {
                     return Err(Message::unreachable(
-                        location,
+                        &location,
                         format!("Expected member access, actually: {lhs:?}"),
                     ));
                 };
@@ -415,7 +415,7 @@ impl Analyzer {
 
                 if member_type != rhs_type.ty {
                     return Err(Message::from_string(
-                                rhs.location(),
+                                &rhs.location(),
                                 format!(
                                     "Cannot perform operation on objects with different types: {member_type} and {rhs_type}",
                                 ),
@@ -437,14 +437,14 @@ impl Analyzer {
         lhs: &'a Ast,
         rhs: &'a mut Ast,
     ) -> Result<&'a mut Ast, Message> {
-        let mut loc = Location::new();
+        let mut location = Location::default();
 
         let lhs_id = match lhs {
             Ast::Value(Value {
-                location,
+                location: loc,
                 kind: ValueKind::Identifier(id),
             }) => {
-                loc = *location;
+                location = loc.clone();
                 *id
             }
             _ => Ident::default(),
@@ -513,7 +513,7 @@ impl Analyzer {
                 Ok(rhs)
             }
             _ => Err(Message::unreachable(
-                loc,
+                &location,
                 format!("Expected ExpressionKind::Access or Value::Identifier, actually: {rhs:?}"),
             )),
         }
@@ -533,14 +533,14 @@ impl Analyzer {
 
     #[allow(dead_code)]
     fn convert_expr_node(&mut self, expr_node: &mut Ast) -> Result<(), Message> {
+        let location = expr_node.location();
+
         let Ast::Expression(node) = expr_node else {
             return Err(Message::from_string(
-                expr_node.location(),
+                &expr_node.location(),
                 format!("Expected Ast::Expression, actually: {}", expr_node.name()),
             ));
         };
-
-        let location = node.location;
 
         if let ExpressionKind::Binary {
             operation,
@@ -567,7 +567,7 @@ impl Analyzer {
                     BinaryOperation::ShiftR => "rshift",
                     BinaryOperation::BitwiseOr => "or",
                     BinaryOperation::BitwiseAnd => "and",
-                    _ => return Err(Message::new(location, "Unexpected operation")),
+                    _ => return Err(Message::new(&location, "Unexpected operation")),
                 },
                 lhs_type.ty,
                 rhs_type.ty
@@ -576,17 +576,17 @@ impl Analyzer {
             let func_id = Ident::from(func_name_str);
 
             *expr_node = Ast::from(Value {
-                location,
+                location: location.clone(),
                 kind: ValueKind::Call {
                     identifier: func_id,
                     arguments: vec![
                         CallArg {
-                            location,
+                            location: location.clone(),
                             identifier: None,
                             kind: CallArgKind::Positional(0, lhs.clone()),
                         },
                         CallArg {
-                            location,
+                            location: location.clone(),
                             identifier: None,
                             kind: CallArgKind::Positional(1, rhs.clone()),
                         },
@@ -640,7 +640,7 @@ mod tests {
      */
     fn get_var_init(var_name: &str) -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::Assign,
                 lhs: Box::new(
@@ -656,7 +656,7 @@ mod tests {
                 ),
                 rhs: Box::new(
                     Value {
-                        location: Location::new(),
+                        location: Location::default(),
                         kind: ValueKind::Integer(0),
                     }
                     .into(),
@@ -670,7 +670,7 @@ mod tests {
      */
     fn get_raw_ptr_init(ptr_name: &str, var_name: &str) -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::Assign,
                 lhs: Box::new(
@@ -686,12 +686,12 @@ mod tests {
                 ),
                 rhs: Box::new(
                     Expression {
-                        location: Location::new(),
+                        location: Location::default(),
                         kind: ExpressionKind::Unary {
                             operation: UnaryOperation::Ref,
                             node: Box::new(
                                 Value {
-                                    location: Location::new(),
+                                    location: Location::default(),
                                     kind: ValueKind::Identifier(Ident::from(var_name.to_string())),
                                 }
                                 .into(),
@@ -709,12 +709,12 @@ mod tests {
      */
     fn get_raw_ptr_deref(ptr_name: &str) -> Expression {
         Expression {
-            location: Location::new(),
+            location: Location::default(),
             kind: ExpressionKind::Unary {
                 operation: UnaryOperation::Deref,
                 node: Box::new(
                     Value {
-                        location: Location::new(),
+                        location: Location::default(),
                         kind: ValueKind::Identifier(Ident::from(ptr_name.to_string())),
                     }
                     .into(),

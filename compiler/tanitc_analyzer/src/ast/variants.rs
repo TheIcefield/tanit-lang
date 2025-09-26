@@ -21,11 +21,11 @@ use crate::Analyzer;
 
 impl Analyzer {
     pub fn analyze_variant_def(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        self.check_variants_are_allowed(variant_def.location)?;
+        self.check_variants_are_allowed(&variant_def.location)?;
 
         if self.has_symbol(variant_def.name.id) {
             return Err(Message::multiple_ids(
-                variant_def.location,
+                &variant_def.location,
                 variant_def.name.id,
             ));
         }
@@ -50,7 +50,7 @@ impl Analyzer {
         Ok(())
     }
 
-    fn check_variants_are_allowed(&self, location: Location) -> Result<(), Message> {
+    fn check_variants_are_allowed(&self, location: &Location) -> Result<(), Message> {
         if !self.compile_options.allow_variants {
             return Err(Message::new(
                 location,
@@ -167,24 +167,24 @@ impl Analyzer {
         }) = rhs
         else {
             return Err(Message::no_id_in_namespace(
-                location,
+                &location,
                 variant_data.variant_name.id,
                 variant_data.variant_unit_name,
             ));
         };
 
         Ok(Some(Expression {
-            location,
+            location: location.clone(),
             kind: ExpressionKind::Term {
                 node: Box::new(Ast::Value(Value {
-                    location,
+                    location: location.clone(),
                     kind: ValueKind::Struct {
                         name: variant_data.variant_name,
                         components: vec![
                             (
                                 Name::from("__kind__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
                                         variant_data.variant_name, variant_data.variant_unit_name
@@ -194,7 +194,7 @@ impl Analyzer {
                             (
                                 Name::from("__data__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Struct {
                                         name: get_variant_data_type_id(variant_data.variant_name),
                                         components: vec![(
@@ -240,26 +240,26 @@ impl Analyzer {
         }) = rhs
         else {
             return Err(Message::no_id_in_namespace(
-                location,
+                &location,
                 variant_data.variant_name.id,
                 variant_data.variant_unit_name,
             ));
         };
 
-        self.check_variant_struct_components(value_comps, variant_struct_data)?;
+        self.check_variant_struct_components(value_comps, variant_struct_data, &location)?;
 
         Ok(Some(Expression {
-            location,
+            location: location.clone(),
             kind: ExpressionKind::Term {
                 node: Box::new(Ast::Value(Value {
-                    location,
+                    location: location.clone(),
                     kind: ValueKind::Struct {
                         name: variant_data.variant_name,
                         components: vec![
                             (
                                 Name::from("__kind__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
                                         variant_data.variant_name, variant_data.variant_unit_name
@@ -269,7 +269,7 @@ impl Analyzer {
                             (
                                 Name::from("__data__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Struct {
                                         name: get_variant_data_type_id(variant_data.variant_name),
                                         components: vec![(
@@ -316,26 +316,31 @@ impl Analyzer {
         }) = rhs
         else {
             return Err(Message::no_id_in_namespace(
-                location,
+                &location,
                 variant_data.variant_name.id,
                 variant_name.id,
             ));
         };
 
-        self.check_tuple_components(value_comps, Some(variant_name.id), &tuple_data.fields)?;
+        self.check_tuple_components(
+            value_comps,
+            Some(variant_name.id),
+            &tuple_data.fields,
+            &location,
+        )?;
 
         Ok(Some(Expression {
-            location,
+            location: location.clone(),
             kind: ExpressionKind::Term {
                 node: Box::new(Ast::Value(Value {
-                    location,
+                    location: location.clone(),
                     kind: ValueKind::Struct {
                         name: variant_data.variant_name,
                         components: vec![
                             (
                                 Name::from("__kind__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Identifier(Ident::from(format!(
                                         "__{}__kind__{}__",
                                         variant_data.variant_name, variant_name
@@ -345,7 +350,7 @@ impl Analyzer {
                             (
                                 Name::from("__data__".to_string()),
                                 Ast::Value(Value {
-                                    location,
+                                    location: location.clone(),
                                     kind: ValueKind::Struct {
                                         name: get_variant_data_type_id(variant_data.variant_name),
                                         components: vec![(

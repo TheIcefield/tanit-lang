@@ -29,7 +29,7 @@ impl Parser {
         self.set_ignore_nl_option(old_opt);
 
         if let Ast::Expression(node) = &expr {
-            let location = node.location;
+            let location = node.location.clone();
 
             if let ExpressionKind::Binary {
                 operation,
@@ -53,7 +53,7 @@ impl Parser {
 
                 if let Some(new_op) = new_op {
                     return Ok(Ast::from(Expression {
-                        location,
+                        location: location.clone(),
                         kind: ExpressionKind::new_binary(
                             Lexem::Assign,
                             lhs.clone(),
@@ -72,7 +72,7 @@ impl Parser {
 
     pub fn parse_factor(&mut self) -> Result<Ast, Message> {
         let next = self.peek_token();
-        let location = next.location;
+        let location = next.location.clone();
 
         match &next.lexem {
             Lexem::Ampersand => {
@@ -144,7 +144,7 @@ impl Parser {
                     self.set_ignore_nl_option(old_opt);
 
                     let lhs = Box::new(Ast::from(Value {
-                        location,
+                        location: location.clone(),
                         kind: ValueKind::Identifier(identifier),
                     }));
 
@@ -212,7 +212,7 @@ impl Parser {
                 let is_tuple = match &expr {
                     Ast::Expression { .. } => false,
                     Ast::Value { .. } => true,
-                    _ => return Err(Message::new(next.location, "Unexpected node parsed")),
+                    _ => return Err(Message::new(&next.location, "Unexpected node parsed")),
                 };
 
                 /* If parsed one expression, we return expression */
@@ -235,7 +235,7 @@ impl Parser {
                         components.push(self.parse_expression()?);
                     } else {
                         return Err(Message::from_string(
-                            next.location,
+                            &next.location,
                             format!("Unexpected token \"{next}\" within tuple"),
                         ));
                     }
@@ -250,7 +250,7 @@ impl Parser {
             Lexem::Lsb => self.parse_array_value(),
 
             _ => Err(Message::from_string(
-                next.location,
+                &next.location,
                 format!("Unexpected token \"{next}\" within expression"),
             )),
         }
@@ -573,65 +573,72 @@ mod tests {
         values::{Value, ValueKind},
         Ast,
     };
+    use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
     use crate::Parser;
 
+    fn get_location(col: usize) -> Location {
+        Location {
+            col,
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn binary_expression_test() {
         use tanitc_ident::Ident;
-        use tanitc_lexer::location::Location;
 
         const SRC_TEXT: &str = "a += 1 * 4 / (1 + a) == 3\n";
 
         let a_id = Ident::from("a".to_string());
 
         let expected = Ast::from(Expression {
-            location: Location { row: 1, col: 5 },
+            location: get_location(4),
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::Assign,
                 lhs: Box::new(Ast::from(Value {
-                    location: Location { row: 1, col: 2 },
+                    location: get_location(2),
                     kind: ValueKind::Identifier(a_id),
                 })),
                 rhs: Box::new(Ast::from(Expression {
-                    location: Location { row: 1, col: 5 },
+                    location: get_location(4),
                     kind: ExpressionKind::Binary {
                         operation: BinaryOperation::Add,
                         lhs: Box::new(Ast::from(Value {
-                            location: Location { row: 1, col: 2 },
+                            location: get_location(2),
                             kind: ValueKind::Identifier(a_id),
                         })),
                         rhs: Box::new(Ast::from(Expression {
-                            location: Location { row: 1, col: 10 },
+                            location: get_location(9),
                             kind: ExpressionKind::Binary {
                                 operation: BinaryOperation::Mul,
                                 lhs: Box::new(Ast::from(Value {
-                                    location: Location { row: 1, col: 7 },
+                                    location: get_location(7),
                                     kind: ValueKind::Integer(1),
                                 })),
                                 rhs: Box::new(Ast::from(Expression {
-                                    location: Location { row: 1, col: 24 },
+                                    location: get_location(23),
                                     kind: ExpressionKind::Binary {
                                         operation: BinaryOperation::LogicalEq,
                                         lhs: Box::new(Ast::from(Expression {
-                                            location: Location { row: 1, col: 14 },
+                                            location: get_location(13),
                                             kind: ExpressionKind::Binary {
                                                 operation: BinaryOperation::Div,
                                                 lhs: Box::new(Ast::from(Value {
-                                                    location: Location { row: 1, col: 11 },
+                                                    location: get_location(11),
                                                     kind: ValueKind::Integer(4),
                                                 })),
                                                 rhs: Box::new(Ast::from(Expression {
-                                                    location: Location { row: 1, col: 19 },
+                                                    location: get_location(18),
                                                     kind: ExpressionKind::Binary {
                                                         operation: BinaryOperation::Add,
                                                         lhs: Box::new(Ast::from(Value {
-                                                            location: Location { row: 1, col: 16 },
+                                                            location: get_location(16),
                                                             kind: ValueKind::Integer(1),
                                                         })),
                                                         rhs: Box::new(Ast::from(Value {
-                                                            location: Location { row: 1, col: 20 },
+                                                            location: get_location(20),
                                                             kind: ValueKind::Identifier(a_id),
                                                         })),
                                                     },
@@ -639,7 +646,7 @@ mod tests {
                                             },
                                         })),
                                         rhs: Box::new(Ast::from(Value {
-                                            location: Location { row: 1, col: 26 },
+                                            location: get_location(26),
                                             kind: ValueKind::Integer(3),
                                         })),
                                     },

@@ -17,7 +17,7 @@ impl Analyzer {
     pub fn analyze_struct_def(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
         if self.has_symbol(struct_def.name.id) {
             return Err(Message::multiple_ids(
-                struct_def.location,
+                &struct_def.location,
                 struct_def.name.id,
             ));
         }
@@ -32,7 +32,7 @@ impl Analyzer {
         for (field_id, field_info) in struct_def.fields.iter() {
             let Some(ty) = self.table.lookup_type(&field_info.ty.ty) else {
                 self.error(Message::undefined_type(
-                    field_info.ty.location,
+                    &field_info.ty.location,
                     &field_info.ty.ty.as_str(),
                 ));
                 continue;
@@ -65,6 +65,7 @@ impl Analyzer {
         node: &mut Ast,
     ) -> Result<Option<Expression>, Message> {
         let mut value = Box::new(node.clone());
+        let location = node.location();
 
         let Ast::Value(Value {
             kind:
@@ -76,15 +77,12 @@ impl Analyzer {
         }) = value.as_mut()
         else {
             return Err(Message::unreachable(
-                node.location(),
+                &node.location(),
                 format!("expected ValueKind::Struct, actually: {node:?}"),
             ));
         };
 
-        if let Err(mut msg) = self.check_struct_value_components(value_comps, struct_data) {
-            msg.location = node.location();
-            return Err(msg);
-        }
+        self.check_struct_value_components(value_comps, struct_data, &location)?;
 
         *struct_name = struct_data.name;
         let node = Expression {

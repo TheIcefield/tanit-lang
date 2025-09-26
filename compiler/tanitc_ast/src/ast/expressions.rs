@@ -213,7 +213,7 @@ impl ExpressionKind {
     pub fn new_unary(operator: Lexem, operand: Box<Ast>) -> Result<Self, Message> {
         let operation = match UnaryOperation::try_from(operator) {
             Ok(operation) => operation,
-            Err(err) => return Err(Message::new(operand.location(), &err)),
+            Err(err) => return Err(Message::new(&operand.location(), &err)),
         };
 
         Ok(Self::Unary {
@@ -225,7 +225,7 @@ impl ExpressionKind {
     pub fn new_binary(operator: Lexem, lhs: Box<Ast>, rhs: Box<Ast>) -> Result<Self, Message> {
         let operation = match BinaryOperation::try_from(operator) {
             Ok(operation) => operation,
-            Err(err) => return Err(Message::new(lhs.location(), &err)),
+            Err(err) => return Err(Message::new(&lhs.location(), &err)),
         };
 
         Ok(match operation {

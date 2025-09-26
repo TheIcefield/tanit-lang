@@ -51,7 +51,7 @@ impl Parser {
 
         if mutability.is_mutable() {
             return Err(Message::new(
-                location,
+                &location,
                 "\"Mut\" must be followed named binding",
             ));
         }

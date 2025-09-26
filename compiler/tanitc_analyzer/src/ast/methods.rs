@@ -7,7 +7,7 @@ impl Analyzer {
     pub fn analyze_impl_def(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
         if self.table.lookup_mut(impl_def.identifier).is_none() {
             return Err(Message::undefined_id(
-                impl_def.location,
+                &impl_def.location,
                 impl_def.identifier,
             ));
         };

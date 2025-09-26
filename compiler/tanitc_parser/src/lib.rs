@@ -120,7 +120,7 @@ impl Parser {
             }
 
             _ => Err(Message::from_string(
-                tkn.location,
+                &tkn.location,
                 format!("Unexpected token {tkn}. Expected identifier."),
             )),
         }
@@ -133,7 +133,7 @@ impl Parser {
             Lexem::Integer(_) => Ok(self.get_token()),
 
             _ => Err(Message::from_string(
-                tkn.location,
+                &tkn.location,
                 format!("Unexpected token {tkn}. Expected integer number."),
             )),
         }
@@ -146,7 +146,7 @@ impl Parser {
             Lexem::Decimal(_) => Ok(self.get_token()),
 
             _ => Err(Message::from_string(
-                tkn.location,
+                &tkn.location,
                 format!("Unexpected token {tkn}. Expected decimal number."),
             )),
         }
@@ -162,7 +162,7 @@ impl Parser {
             }
 
             _ => Err(Message::from_string(
-                tkn.location,
+                &tkn.location,
                 format!("Unexpected token {tkn}. Expected text."),
             )),
         }

@@ -9,7 +9,7 @@ impl Analyzer {
         &self,
         lhs_type: &Type,
         rhs_type: &Type,
-        location: Location,
+        location: &Location,
     ) -> Result<(), Message> {
         let mut alias_to = self.find_alias_value(lhs_type);
 
@@ -48,7 +48,7 @@ impl Analyzer {
         &self,
         src_type: &Type,
         dst_type: &Type,
-        location: Location,
+        location: &Location,
     ) -> Result<(), Message> {
         let Type::Ref(ref_type) = src_type else {
             return Err(Message::unreachable(
@@ -71,7 +71,7 @@ impl Analyzer {
         &self,
         src_type: &Type,
         dst_type: &Type,
-        location: Location,
+        location: &Location,
     ) -> Result<(), Message> {
         let Type::Array {
             value_type: src_type,
@@ -99,7 +99,7 @@ impl Analyzer {
     }
 
     // Returns true if src_type can be coerced to dst_type, otherwise - false
-    fn try_coerce(&self, src_type: &Type, dst_type: &Type, location: Location) -> bool {
+    fn try_coerce(&self, src_type: &Type, dst_type: &Type, location: &Location) -> bool {
         if src_type.is_reference() && dst_type.is_pointer() {
             return self
                 .check_ref_coerce_to_ptr(src_type, dst_type, location)

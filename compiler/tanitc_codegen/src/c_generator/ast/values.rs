@@ -159,12 +159,12 @@ mod tests {
                 vec![
                     Value {
                         kind: ValueKind::Text("text".to_string()),
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Identifier(Ident::from("var_name".to_string())),
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -172,28 +172,28 @@ mod tests {
                             identifier: Ident::from("empty_func_name".to_string()),
                             arguments: vec![],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Call {
                             identifier: Ident::from("func_with_1p".to_string()),
                             arguments: vec![CallArg {
-                                location: Location::new(),
+                                location: Location::default(),
                                 identifier: None,
                                 kind: CallArgKind::Positional(
                                     0,
                                     Box::new(
                                         Value {
                                             kind: ValueKind::Decimal(0.0),
-                                            location: Location::new(),
+                                            location: Location::default(),
                                         }
                                         .into(),
                                     ),
                                 ),
                             }],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -201,28 +201,28 @@ mod tests {
                             identifier: Ident::from("func_with_2p".to_string()),
                             arguments: vec![
                                 CallArg {
-                                    location: Location::new(),
+                                    location: Location::default(),
                                     identifier: None,
                                     kind: CallArgKind::Positional(
                                         0,
                                         Box::new(
                                             Value {
                                                 kind: ValueKind::Decimal(0.0),
-                                                location: Location::new(),
+                                                location: Location::default(),
                                             }
                                             .into(),
                                         ),
                                     ),
                                 },
                                 CallArg {
-                                    location: Location::new(),
+                                    location: Location::default(),
                                     identifier: None,
                                     kind: CallArgKind::Positional(
                                         1,
                                         Box::new(
                                             Value {
                                                 kind: ValueKind::Decimal(2.0),
-                                                location: Location::new(),
+                                                location: Location::default(),
                                             }
                                             .into(),
                                         ),
@@ -230,7 +230,7 @@ mod tests {
                                 },
                             ],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -238,7 +238,7 @@ mod tests {
                             name: Name::from("MyEmptyStruct".to_string()),
                             components: vec![],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -248,12 +248,12 @@ mod tests {
                                 Name::from("f1".to_string()),
                                 Value {
                                     kind: ValueKind::Decimal(1.1),
-                                    location: Location::new(),
+                                    location: Location::default(),
                                 }
                                 .into(),
                             )],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -264,7 +264,7 @@ mod tests {
                                     Name::from("f1".to_string()),
                                     Value {
                                         kind: ValueKind::Integer(0),
-                                        location: Location::new(),
+                                        location: Location::default(),
                                     }
                                     .into(),
                                 ),
@@ -272,29 +272,29 @@ mod tests {
                                     Name::from("f2".to_string()),
                                     Value {
                                         kind: ValueKind::Decimal(2.2),
-                                        location: Location::new(),
+                                        location: Location::default(),
                                     }
                                     .into(),
                                 ),
                             ],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Array { components: vec![] },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Array {
                             components: vec![Value {
                                 kind: ValueKind::Integer(0),
-                                location: Location::new(),
+                                location: Location::default(),
                             }
                             .into()],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -302,33 +302,33 @@ mod tests {
                             components: vec![
                                 Value {
                                     kind: ValueKind::Integer(1),
-                                    location: Location::new(),
+                                    location: Location::default(),
                                 }
                                 .into(),
                                 Value {
                                     kind: ValueKind::Integer(2),
-                                    location: Location::new(),
+                                    location: Location::default(),
                                 }
                                 .into(),
                             ],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Tuple { components: vec![] },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
                         kind: ValueKind::Tuple {
                             components: vec![Value {
                                 kind: ValueKind::Integer(0),
-                                location: Location::new(),
+                                location: Location::default(),
                             }
                             .into()],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                     Value {
@@ -336,17 +336,17 @@ mod tests {
                             components: vec![
                                 Value {
                                     kind: ValueKind::Integer(1),
-                                    location: Location::new(),
+                                    location: Location::default(),
                                 }
                                 .into(),
                                 Value {
                                     kind: ValueKind::Integer(2),
-                                    location: Location::new(),
+                                    location: Location::default(),
                                 }
                                 .into(),
                             ],
                         },
-                        location: Location::new(),
+                        location: Location::default(),
                     }
                     .into(),
                 ],

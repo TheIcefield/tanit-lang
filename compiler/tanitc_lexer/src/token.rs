@@ -92,8 +92,12 @@ impl Lexem {
         Self::Identifier(String::new())
     }
 
-    pub fn from(v: &str) -> Self {
-        Self::Identifier(String::from(v))
+    pub fn identifier(v: &str) -> Self {
+        Self::Identifier(v.to_string())
+    }
+
+    pub fn integer(v: usize) -> Self {
+        Self::Integer(v.to_string())
     }
 
     pub fn get_string(&self) -> String {

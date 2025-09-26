@@ -31,7 +31,7 @@ impl Analyzer {
                 if self.has_symbol(*id) {
                     Ok(())
                 } else {
-                    Err(Message::undefined_id(value.location, *id))
+                    Err(Message::undefined_id(&value.location, *id))
                 }
             }
 
@@ -40,14 +40,14 @@ impl Analyzer {
                 arguments: call_args,
             } => {
                 let Some(func_entry) = self.table.lookup(*func_name) else {
-                    return Err(Message::undefined_id(value.location, *func_name));
+                    return Err(Message::undefined_id(&value.location, *func_name));
                 };
 
                 let SymbolKind::FuncDef(func_data) = func_entry.kind.clone() else {
-                    return Err(Message::undefined_func(value.location, *func_name));
+                    return Err(Message::undefined_func(&value.location, *func_name));
                 };
 
-                self.analyze_call(func_entry.name, &func_data, call_args, value.location)?;
+                self.analyze_call(func_entry.name, &func_data, call_args, &value.location)?;
 
                 Ok(())
             }
@@ -75,7 +75,7 @@ impl Analyzer {
                         let comp_index = comp.0 + 1;
                         let suffix = get_ordinal_number_suffix(comp.0);
                         return Err(Message::from_string(
-                            value.location,
+                            &value.location,
                             format!(
                                 "Array type is declared like {}, but {comp_index}{suffix} element has type {}",
                                 comp_type.ty, current_comp_type.ty
@@ -94,7 +94,7 @@ impl Analyzer {
         func_name: Ident,
         func_data: &FuncDefData,
         call_args: &mut [CallArg],
-        location: Location,
+        location: &Location,
     ) -> Result<(), Message> {
         if func_name.is_built_in() {
             return Ok(());
@@ -131,7 +131,7 @@ impl Analyzer {
         } = &mut value.kind
         else {
             return Err(Message::unreachable(
-                value.location,
+                &value.location,
                 format!("Expected ValueKind::Struct, actually: {:?}", value.kind),
             ));
         };
@@ -139,7 +139,7 @@ impl Analyzer {
         let mut object = if let Some(entry) = self.table.lookup(object_name.id) {
             entry.clone()
         } else {
-            return Err(Message::undefined_id(value.location, object_name.id));
+            return Err(Message::undefined_id(&value.location, object_name.id));
         };
 
         if let SymbolKind::AliasDef(alias_data) = &object.kind {
@@ -149,12 +149,12 @@ impl Analyzer {
                     if let Some(entry) = self.table.lookup(alias_to_id.id) {
                         object = entry.clone();
                     } else {
-                        return Err(Message::undefined_id(value.location, alias_to_id.id));
+                        return Err(Message::undefined_id(&value.location, alias_to_id.id));
                     }
                 }
                 ty if ty.is_common() => {
                     return Err(Message {
-                        location: value.location,
+                        location: value.location.clone(),
                         text: format!("Common type \"{ty}\" does not have any fields"),
                     })
                 }
@@ -166,20 +166,14 @@ impl Analyzer {
 
         match &object.kind {
             SymbolKind::StructDef(struct_data) => {
-                if let Err(mut msg) = self.check_struct_value_components(value_comps, struct_data) {
-                    msg.location = value.location;
-                    return Err(msg);
-                }
+                self.check_struct_value_components(value_comps, struct_data, &value.location)?;
             }
             SymbolKind::UnionDef(union_data) => {
-                if let Err(mut msg) = self.check_union_components(value_comps, union_data) {
-                    msg.location = value.location;
-                    return Err(msg);
-                }
+                self.check_union_components(value_comps, union_data, &value.location)?;
             }
             _ => {
                 return Err(Message::from_string(
-                    value.location,
+                    &value.location,
                     format!("Cannot find struct or union named \"{object_name}\" in this scope"),
                 ));
             }
@@ -207,12 +201,12 @@ impl Analyzer {
             .compare_types(
                 struct_comp_type,
                 &value_comp_type.ty,
-                value_comp.1.location(),
+                &value_comp.1.location(),
             )
             .is_err()
         {
             return Err(Message::from_string(
-                value_comp.1.location(),
+                &value_comp.1.location(),
                 format!("field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}"),
             ));
         }
@@ -224,11 +218,12 @@ impl Analyzer {
         &mut self,
         value_comps: &mut [(Name, Ast)],
         struct_data: &StructDefData,
+        location: &Location,
     ) -> Result<(), Message> {
         let struct_comps = &struct_data.fields;
         if value_comps.len() != struct_comps.len() {
             return Err(Message::from_string(
-                Location::new(),
+                location,
                 format!(
                     "Struct \"{}\" consists of {} fields, but {} were supplied",
                     struct_data.name.id,
@@ -254,13 +249,14 @@ impl Analyzer {
         &mut self,
         value_comps: &mut [(Name, Ast)],
         union_data: &UnionDefData,
+        location: &Location,
     ) -> Result<(), Message> {
         let union_comp_size = union_data.fields.len();
         let initialized_comp_size = value_comps.len();
 
         if union_comp_size == 0 && initialized_comp_size > 0 {
             return Err(Message::from_string(
-                Location::new(),
+                location,
                 format!(
                     "Union \"{}\" has no fields, but were supplied {initialized_comp_size} fields",
                     union_data.name
@@ -270,7 +266,7 @@ impl Analyzer {
 
         if union_comp_size > 0 && initialized_comp_size > 1 {
             return Err(Message::from_string(
-                Location::new(),
+                location,
                 format!(
                     "Only one union field must be initialized, but {initialized_comp_size} were initialized",
                 ),
@@ -293,11 +289,12 @@ impl Analyzer {
         &mut self,
         value_comps: &mut [(Name, Ast)],
         variant_struct_data: &VariantStructKind,
+        location: &Location,
     ) -> Result<(), Message> {
         let struct_comps = &variant_struct_data.fields;
         if value_comps.len() != struct_comps.len() {
             return Err(Message::from_string(
-                Location::new(),
+                location,
                 format!(
                     "Variant struct \"{}\" consists of {} fields, but {} were supplied",
                     variant_struct_data.variant_name.id,
@@ -324,10 +321,11 @@ impl Analyzer {
         value_comps: &[Ast],
         tuple_name: Option<Ident>,
         tuple_comps: &BTreeMap<usize, StructFieldData>,
+        location: &Location,
     ) -> Result<(), Message> {
         if value_comps.len() != tuple_comps.len() {
             return Err(Message::new(
-                Location::new(),
+                location,
                 &format!(
                     "Tuple {} consists of {} fields, but {} were supplied",
                     if let Some(tuple_name) = tuple_name {
@@ -521,7 +519,7 @@ impl Analyzer {
         func_name: Ident,
         arguments: &[CallArg],
         parameters: &[(Ident, Type)],
-        location: Location,
+        location: &Location,
     ) -> Result<(), Message> {
         let expected_len = parameters.len();
         let actual_len = arguments.len();
@@ -552,9 +550,11 @@ impl Analyzer {
         arg_value: &Ast,
         positional_skipped: &mut bool,
     ) -> Result<usize, Message> {
+        let location = arg_value.location();
+
         if *positional_skipped {
             return Err(Message::from_string(
-                arg_value.location(),
+                &location,
                 format!("In function \"{func_name}\" call: positional parameter \"{arg_idx}\" must be passed before notified",
             )));
         }
@@ -564,7 +564,7 @@ impl Analyzer {
 
         if expr_type.ty != *func_param_type {
             return Err(Message::from_string(
-                arg_value.location(),
+                &location,
                 format!("Mismatched types. In function \"{func_name}\" call: positional parameter \"{arg_idx}\" has type \"{expr_type}\" but expected \"{func_param_type}\""),
             ));
         }
@@ -589,7 +589,7 @@ impl Analyzer {
                 let arg_type = self.get_type(arg_value);
                 if *param_type != arg_type.ty {
                     return Err(Message::from_string(
-                        location,
+                        &location,
                         format!("Mismatched types. In function \"{func_name}\" call: notified parameter \"{arg_id}\" has type \"{arg_type}\" but expected \"{param_type}\"", ),
                     ));
                 }
@@ -599,7 +599,7 @@ impl Analyzer {
         }
 
         Err(Message::from_string(
-            location,
+            &location,
             format!("No parameter named \"{arg_id}\" in function \"{func_name}\""),
         ))
     }
@@ -685,7 +685,7 @@ mod tests {
 
     fn get_call(name: &str) -> Value {
         Value {
-            location: Location::new(),
+            location: Location::default(),
             kind: ValueKind::Call {
                 identifier: Ident::from(name.to_string()),
                 arguments: Vec::new(),
