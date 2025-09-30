@@ -568,100 +568,238 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_str_eq;
+
     use tanitc_ast::ast::{
-        expressions::{BinaryOperation, Expression, ExpressionKind},
+        expressions::ExpressionKind,
         values::{Value, ValueKind},
         Ast,
     };
-    use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
     use crate::Parser;
 
-    fn get_location(col: usize) -> Location {
-        Location {
-            col,
-            ..Default::default()
-        }
-    }
-
     #[test]
     fn binary_expression_test() {
-        use tanitc_ident::Ident;
-
         const SRC_TEXT: &str = "a += 1 * 4 / (1 + a) == 3\n";
-
-        let a_id = Ident::from("a".to_string());
-
-        let expected = Ast::from(Expression {
-            location: get_location(4),
-            kind: ExpressionKind::Binary {
-                operation: BinaryOperation::Assign,
-                lhs: Box::new(Ast::from(Value {
-                    location: get_location(2),
-                    kind: ValueKind::Identifier(a_id),
-                })),
-                rhs: Box::new(Ast::from(Expression {
-                    location: get_location(4),
-                    kind: ExpressionKind::Binary {
-                        operation: BinaryOperation::Add,
-                        lhs: Box::new(Ast::from(Value {
-                            location: get_location(2),
-                            kind: ValueKind::Identifier(a_id),
-                        })),
-                        rhs: Box::new(Ast::from(Expression {
-                            location: get_location(9),
-                            kind: ExpressionKind::Binary {
-                                operation: BinaryOperation::Mul,
-                                lhs: Box::new(Ast::from(Value {
-                                    location: get_location(7),
-                                    kind: ValueKind::Integer(1),
-                                })),
-                                rhs: Box::new(Ast::from(Expression {
-                                    location: get_location(23),
-                                    kind: ExpressionKind::Binary {
-                                        operation: BinaryOperation::LogicalEq,
-                                        lhs: Box::new(Ast::from(Expression {
-                                            location: get_location(13),
-                                            kind: ExpressionKind::Binary {
-                                                operation: BinaryOperation::Div,
-                                                lhs: Box::new(Ast::from(Value {
-                                                    location: get_location(11),
-                                                    kind: ValueKind::Integer(4),
-                                                })),
-                                                rhs: Box::new(Ast::from(Expression {
-                                                    location: get_location(18),
-                                                    kind: ExpressionKind::Binary {
-                                                        operation: BinaryOperation::Add,
-                                                        lhs: Box::new(Ast::from(Value {
-                                                            location: get_location(16),
-                                                            kind: ValueKind::Integer(1),
-                                                        })),
-                                                        rhs: Box::new(Ast::from(Value {
-                                                            location: get_location(20),
-                                                            kind: ValueKind::Identifier(a_id),
-                                                        })),
-                                                    },
-                                                })),
-                                            },
-                                        })),
-                                        rhs: Box::new(Ast::from(Value {
-                                            location: get_location(26),
-                                            kind: ValueKind::Integer(3),
-                                        })),
-                                    },
-                                })),
-                            },
-                        })),
-                    },
-                })),
-            },
-        });
+        const EXPECTED_AST: &str = "Expression {\
+            \n    location: Location {\
+            \n        path: \"\",\
+            \n        row: 1,\
+            \n        col: 4,\
+            \n    },\
+            \n    kind: Binary {\
+            \n        operation: Assign,\
+            \n        lhs: Value {\
+            \n            location: Location {\
+            \n                path: \"\",\
+            \n                row: 1,\
+            \n                col: 2,\
+            \n            },\
+            \n            kind: Identifier(\
+            \n                a,\
+            \n            ),\
+            \n        },\
+            \n        rhs: Expression {\
+            \n            location: Location {\
+            \n                path: \"\",\
+            \n                row: 1,\
+            \n                col: 4,\
+            \n            },\
+            \n            kind: Binary {\
+            \n                operation: Add,\
+            \n                lhs: Value {\
+            \n                    location: Location {\
+            \n                        path: \"\",\
+            \n                        row: 1,\
+            \n                        col: 2,\
+            \n                    },\
+            \n                    kind: Identifier(\
+            \n                        a,\
+            \n                    ),\
+            \n                },\
+            \n                rhs: Expression {\
+            \n                    location: Location {\
+            \n                        path: \"\",\
+            \n                        row: 1,\
+            \n                        col: 9,\
+            \n                    },\
+            \n                    kind: Binary {\
+            \n                        operation: Mul,\
+            \n                        lhs: Value {\
+            \n                            location: Location {\
+            \n                                path: \"\",\
+            \n                                row: 1,\
+            \n                                col: 7,\
+            \n                            },\
+            \n                            kind: Integer(\
+            \n                                1,\
+            \n                            ),\
+            \n                        },\
+            \n                        rhs: Expression {\
+            \n                            location: Location {\
+            \n                                path: \"\",\
+            \n                                row: 1,\
+            \n                                col: 23,\
+            \n                            },\
+            \n                            kind: Binary {\
+            \n                                operation: LogicalEq,\
+            \n                                lhs: Expression {\
+            \n                                    location: Location {\
+            \n                                        path: \"\",\
+            \n                                        row: 1,\
+            \n                                        col: 13,\
+            \n                                    },\
+            \n                                    kind: Binary {\
+            \n                                        operation: Div,\
+            \n                                        lhs: Value {\
+            \n                                            location: Location {\
+            \n                                                path: \"\",\
+            \n                                                row: 1,\
+            \n                                                col: 11,\
+            \n                                            },\
+            \n                                            kind: Integer(\
+            \n                                                4,\
+            \n                                            ),\
+            \n                                        },\
+            \n                                        rhs: Expression {\
+            \n                                            location: Location {\
+            \n                                                path: \"\",\
+            \n                                                row: 1,\
+            \n                                                col: 18,\
+            \n                                            },\
+            \n                                            kind: Binary {\
+            \n                                                operation: Add,\
+            \n                                                lhs: Value {\
+            \n                                                    location: Location {\
+            \n                                                        path: \"\",\
+            \n                                                        row: 1,\
+            \n                                                        col: 16,\
+            \n                                                    },\
+            \n                                                    kind: Integer(\
+            \n                                                        1,\
+            \n                                                    ),\
+            \n                                                },\
+            \n                                                rhs: Value {\
+            \n                                                    location: Location {\
+            \n                                                        path: \"\",\
+            \n                                                        row: 1,\
+            \n                                                        col: 20,\
+            \n                                                    },\
+            \n                                                    kind: Identifier(\
+            \n                                                        a,\
+            \n                                                    ),\
+            \n                                                },\
+            \n                                            },\
+            \n                                        },\
+            \n                                    },\
+            \n                                },\
+            \n                                rhs: Value {\
+            \n                                    location: Location {\
+            \n                                        path: \"\",\
+            \n                                        row: 1,\
+            \n                                        col: 26,\
+            \n                                    },\
+            \n                                    kind: Integer(\
+            \n                                        3,\
+            \n                                    ),\
+            \n                                },\
+            \n                            },\
+            \n                        },\
+            \n                    },\
+            \n                },\
+            \n            },\
+            \n        },\
+            \n    },\
+            \n}";
 
         let mut parser = Parser::from_text(SRC_TEXT).unwrap();
         let ast = parser.parse_expression().unwrap();
 
-        assert_eq!(ast, expected);
+        assert_str_eq!(format!("{ast:#?}"), EXPECTED_AST);
+    }
+
+    #[test]
+    fn ref_to_field_test() {
+        const SRC_TEXT: &str = "var reference = &variable.field\n";
+        const EXPECTED_AST: &str = "Expression {\
+            \n    location: Location {\
+            \n        path: \"\",\
+            \n        row: 1,\
+            \n        col: 2,\
+            \n    },\
+            \n    kind: Binary {\
+            \n        operation: Assign,\
+            \n        lhs: VariableDef {\
+            \n            location: Location {\
+            \n                path: \"\",\
+            \n                row: 1,\
+            \n                col: 2,\
+            \n            },\
+            \n            attributes: VariableAttributes {\
+            \n                publicity: Private,\
+            \n            },\
+            \n            identifier: reference,\
+            \n            var_type: TypeSpec {\
+            \n                location: Location {\
+            \n                    path: \"\",\
+            \n                    row: 1,\
+            \n                    col: 2,\
+            \n                },\
+            \n                info: ParsedTypeInfo {\
+            \n                    mutability: Immutable,\
+            \n                },\
+            \n                ty: @auto,\
+            \n            },\
+            \n            visibility: Local,\
+            \n            mutability: Immutable,\
+            \n        },\
+            \n        rhs: Expression {\
+            \n            location: Location {\
+            \n                path: \"\",\
+            \n                row: 1,\
+            \n                col: 18,\
+            \n            },\
+            \n            kind: Unary {\
+            \n                operation: Ref,\
+            \n                node: Expression {\
+            \n                    location: Location {\
+            \n                        path: \"\",\
+            \n                        row: 1,\
+            \n                        col: 27,\
+            \n                    },\
+            \n                    kind: Get {\
+            \n                        lhs: Value {\
+            \n                            location: Location {\
+            \n                                path: \"\",\
+            \n                                row: 1,\
+            \n                                col: 19,\
+            \n                            },\
+            \n                            kind: Identifier(\
+            \n                                variable,\
+            \n                            ),\
+            \n                        },\
+            \n                        rhs: Value {\
+            \n                            location: Location {\
+            \n                                path: \"\",\
+            \n                                row: 1,\
+            \n                                col: 28,\
+            \n                            },\
+            \n                            kind: Identifier(\
+            \n                                field,\
+            \n                            ),\
+            \n                        },\
+            \n                    },\
+            \n                },\
+            \n            },\
+            \n        },\
+            \n    },\
+            \n}";
+
+        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let ast = parser.parse_variable_def().unwrap();
+
+        assert_str_eq!(format!("{ast:#?}"), EXPECTED_AST);
     }
 
     #[test]
