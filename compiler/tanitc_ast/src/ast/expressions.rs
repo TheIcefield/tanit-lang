@@ -284,3 +284,18 @@ impl From<Expression> for Ast {
         Self::Expression(value)
     }
 }
+
+impl From<ExpressionKind> for Expression {
+    fn from(kind: ExpressionKind) -> Self {
+        Self {
+            location: Location::default(),
+            kind,
+        }
+    }
+}
+
+impl From<ExpressionKind> for Ast {
+    fn from(value: ExpressionKind) -> Self {
+        Self::from(Expression::from(value))
+    }
+}

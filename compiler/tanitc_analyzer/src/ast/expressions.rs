@@ -222,12 +222,14 @@ impl Analyzer {
             ExpressionKind::Unary { operation, node } => {
                 let node_type = self.get_type(node);
 
-                let (is_ref, mutability) = if *operation == UnaryOperation::Ref {
-                    (true, Mutability::Immutable)
-                } else if *operation == UnaryOperation::RefMut {
-                    (true, Mutability::Mutable)
-                } else {
-                    (false, Mutability::Immutable)
+                if *operation == UnaryOperation::Deref {
+                    return node_type;
+                }
+
+                let (is_ref, mutability) = match operation {
+                    UnaryOperation::Ref => (true, Mutability::Immutable),
+                    UnaryOperation::RefMut => (true, Mutability::Mutable),
+                    _ => (false, Mutability::Immutable),
                 };
 
                 if is_ref {
@@ -250,7 +252,9 @@ impl Analyzer {
                 ..Default::default()
             },
             ExpressionKind::Access { rhs, .. } => self.get_type(rhs),
-            ExpressionKind::Get { rhs, .. } => self.get_type(rhs),
+            ExpressionKind::Get { lhs, rhs } => {
+                self.get_accessed_member_type(lhs.as_ref(), rhs.as_ref())
+            }
             ExpressionKind::Indexing { lhs, .. } => {
                 let mut lhs_type = self.get_type(lhs);
                 let Type::Array { ref value_type, .. } = &lhs_type.ty else {
@@ -266,6 +270,19 @@ impl Analyzer {
                 ..Default::default()
             },
         }
+    }
+
+    fn get_accessed_member_type(&self, lhs: &Ast, rhs: &Ast) -> TypeInfo {
+        let mut ids = Vec::<Ident>::new();
+
+        let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
+        if ids.is_empty() {
+            unreachable!();
+        }
+
+        let mut iter = ids.iter().peekable();
+
+        TypeInfo::default()
     }
 
     pub fn analyze_member_access(&mut self, lhs: &mut Ast, rhs: &mut Ast) -> Result<(), Message> {
@@ -605,12 +622,13 @@ mod tests {
         blocks::{Block, BlockAttributes},
         expressions::{BinaryOperation, Expression, ExpressionKind, UnaryOperation},
         functions::FunctionDef,
+        structs::{StructDef, StructFieldInfo},
         types::TypeSpec,
         values::{Value, ValueKind},
         variables::VariableDef,
         Ast,
     };
-    use tanitc_attributes::Safety;
+    use tanitc_attributes::{Mutability, Safety};
     use tanitc_ident::{Ident, Name};
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
@@ -638,30 +656,21 @@ mod tests {
     /* Creates:
      * var var_name: i32 = 0
      */
-    fn get_var_init(var_name: &str) -> Expression {
-        Expression {
-            location: Location::default(),
-            kind: ExpressionKind::Binary {
-                operation: BinaryOperation::Assign,
-                lhs: Box::new(
-                    VariableDef {
-                        identifier: Ident::from(var_name.to_string()),
-                        var_type: TypeSpec {
-                            ty: Type::I32,
-                            ..Default::default()
-                        },
+    fn get_var_init(var_name: &str, ty: Type, rhs: Ast) -> ExpressionKind {
+        ExpressionKind::Binary {
+            operation: BinaryOperation::Assign,
+            lhs: Box::new(
+                VariableDef {
+                    identifier: Ident::from(var_name.to_string()),
+                    var_type: TypeSpec {
+                        ty,
                         ..Default::default()
-                    }
-                    .into(),
-                ),
-                rhs: Box::new(
-                    Value {
-                        location: Location::default(),
-                        kind: ValueKind::Integer(0),
-                    }
-                    .into(),
-                ),
-            },
+                    },
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            rhs: Box::new(rhs),
         }
     }
 
@@ -741,7 +750,7 @@ mod tests {
             statements: vec![get_func_def(
                 MAIN_FUNC_NAME,
                 vec![
-                    get_var_init(VAR_NAME).into(),
+                    get_var_init(VAR_NAME, Type::I32, ValueKind::Integer(0).into()).into(),
                     get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
                     Block {
                         is_global: false,
@@ -780,7 +789,7 @@ mod tests {
             statements: vec![get_func_def(
                 MAIN_FUNC_NAME,
                 vec![
-                    get_var_init(VAR_NAME).into(),
+                    get_var_init(VAR_NAME, Type::I32, ValueKind::Integer(0).into()).into(),
                     get_raw_ptr_init(PTR_NAME, VAR_NAME).into(),
                     get_raw_ptr_deref(PTR_NAME).into(),
                 ],
@@ -795,5 +804,120 @@ mod tests {
         let errors = analyzer.get_errors();
         assert!(!errors.is_empty());
         assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+
+    #[test]
+    fn ref_to_field_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const STRUCT_FIELD_NAME: &str = "field";
+        const MAIN_FUNC_NAME: &str = "main";
+        const VAR_NAME: &str = "my_var";
+        const REF_NAME: &str = "my_ref";
+
+        let var_id = Ident::from(VAR_NAME.to_string());
+        let ref_id = Ident::from(REF_NAME.to_string());
+
+        // struct MyStruct { ... }
+        let mut struct_def = StructDef::default();
+        struct_def.name = Name::from(STRUCT_NAME.to_string());
+
+        // field: i32
+        struct_def.fields.insert(
+            Ident::from(STRUCT_FIELD_NAME.to_string()),
+            StructFieldInfo {
+                ty: TypeSpec {
+                    ty: Type::I32,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+
+        let obj_init = ExpressionKind::Binary {
+            operation: BinaryOperation::Assign,
+            lhs: Box::new(
+                VariableDef {
+                    mutability: Mutability::Mutable,
+                    identifier: var_id,
+                    var_type: TypeSpec::auto(),
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            rhs: Box::new(
+                ValueKind::Struct {
+                    name: Name::from(STRUCT_NAME.to_string()),
+                    components: vec![(
+                        Name::from(STRUCT_FIELD_NAME.to_string()),
+                        ValueKind::Integer(0).into(),
+                    )],
+                }
+                .into(),
+            ),
+        };
+
+        let ref_init = ExpressionKind::Binary {
+            operation: BinaryOperation::Assign,
+            lhs: Box::new(
+                VariableDef {
+                    identifier: ref_id,
+                    var_type: TypeSpec::auto(),
+                    ..Default::default()
+                }
+                .into(),
+            ),
+            rhs: Box::new(
+                ExpressionKind::Unary {
+                    operation: UnaryOperation::RefMut,
+                    node: Box::new(
+                        ExpressionKind::Get {
+                            lhs: Box::new(ValueKind::Identifier(var_id).into()),
+                            rhs: Box::new(
+                                ValueKind::Identifier(Ident::from(STRUCT_FIELD_NAME.to_string()))
+                                    .into(),
+                            ),
+                        }
+                        .into(),
+                    ),
+                }
+                .into(),
+            ),
+        };
+
+        let deref_stmt = ExpressionKind::Binary {
+            operation: BinaryOperation::Assign,
+            lhs: Box::new(
+                ExpressionKind::Unary {
+                    operation: UnaryOperation::Deref,
+                    node: Box::new(ValueKind::Identifier(ref_id).into()),
+                }
+                .into(),
+            ),
+            rhs: Box::new(ValueKind::Integer(10).into()),
+        };
+
+        let func_def = get_func_def(
+            MAIN_FUNC_NAME,
+            vec![
+                obj_init.into(),   // var mut my_var = MyStruct { field: 0 }
+                ref_init.into(),   // var my_ref = &mut my_var.field
+                deref_stmt.into(), // *my_ref = 10
+            ],
+        );
+
+        // func main() { ... }
+        let mut program = Ast::from(Block {
+            is_global: true,
+            statements: vec![struct_def.into(), func_def.into()],
+            ..Default::default()
+        });
+
+        let mut analyzer = Analyzer::new();
+        program.accept_mut(&mut analyzer).unwrap();
+
+        let errors = analyzer.get_errors();
+        if !errors.is_empty() {
+            panic!("{errors:#?}");
+        }
     }
 }

@@ -17,6 +17,13 @@ pub struct TypeSpec {
 }
 
 impl TypeSpec {
+    pub fn auto() -> Self {
+        Self {
+            ty: Type::Auto,
+            ..Default::default()
+        }
+    }
+
     pub fn get_type(&self) -> Type {
         self.ty.clone()
     }

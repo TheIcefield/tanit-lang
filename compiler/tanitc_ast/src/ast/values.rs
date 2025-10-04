@@ -44,8 +44,23 @@ pub struct Value {
     pub kind: ValueKind,
 }
 
+impl From<ValueKind> for Value {
+    fn from(kind: ValueKind) -> Self {
+        Self {
+            location: Location::default(),
+            kind,
+        }
+    }
+}
+
 impl From<Value> for Ast {
     fn from(value: Value) -> Self {
         Self::Value(value)
+    }
+}
+
+impl From<ValueKind> for Ast {
+    fn from(kind: ValueKind) -> Self {
+        Self::from(Value::from(kind))
     }
 }
