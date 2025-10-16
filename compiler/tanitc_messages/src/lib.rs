@@ -141,13 +141,21 @@ impl Message {
     pub fn codegen_err(err: std::io::Error, location: &Location) -> Self {
         Self::from_string(location, format!("Codegen error: {err}"))
     }
+
+    pub fn map_in_func_def(mut self, func_name: Ident) -> Self {
+        self.text = format!("In definition of function \"{func_name}\": {}", self.text);
+        self
+    }
+
+    pub fn map_location(mut self, location: &Location) -> Self {
+        self.location = location.clone();
+        self
+    }
 }
 
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.location, self.text)?;
-
-        Ok(())
+        write!(f, "{}: {}", self.location, self.text)
     }
 }
 

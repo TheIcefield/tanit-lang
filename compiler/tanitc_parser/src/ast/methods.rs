@@ -31,10 +31,10 @@ impl Parser {
         let methods = self.parse_global_block()?;
 
         let Ast::Block(mut block) = methods else {
-            return Err(Message {
-                location: methods.location(),
-                text: format!("Unexpected node {} within impl block", methods.name()),
-            });
+            return Err(Message::from_string(
+                &methods.location(),
+                format!("Unexpected node {} within impl block", methods.name()),
+            ));
         };
 
         for method in block.statements.iter_mut() {

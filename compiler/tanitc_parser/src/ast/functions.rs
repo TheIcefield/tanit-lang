@@ -120,7 +120,7 @@ impl Parser {
             match self.parse_func_header_param() {
                 Ok(param) => func_def.parameters.push(param),
                 Err(err) => {
-                    self.error(Message::in_func_def(func_def.name.id, err));
+                    self.error(err.map_in_func_def(func_def.name.id));
                 }
             }
 

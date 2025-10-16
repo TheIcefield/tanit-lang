@@ -250,6 +250,10 @@ impl Token {
     pub fn is_decimal(&self) -> bool {
         matches!(self.lexem, Lexem::Decimal(_))
     }
+
+    pub fn get_location(&self) -> Location {
+        self.location.clone()
+    }
 }
 
 impl std::fmt::Display for Token {
