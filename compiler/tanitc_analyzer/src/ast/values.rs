@@ -153,10 +153,10 @@ impl Analyzer {
                     }
                 }
                 ty if ty.is_common() => {
-                    return Err(Message {
-                        location: value.location.clone(),
-                        text: format!("Common type \"{ty}\" does not have any fields"),
-                    })
+                    return Err(Message::from_string(
+                        &value.location,
+                        format!("Common type \"{ty}\" does not have any fields"),
+                    ))
                 }
                 _ => {
                     todo!("Unexpected type: {ty}");
@@ -351,23 +351,23 @@ impl Analyzer {
             }
 
             if alias_to.is_none() && value_comp_type.ty != *tuple_comp_type {
-                return Err(Message {
-                    location: value_comp.location(),
-                    text: format!(
-                        "Tuple component with index \"{comp_id}\" is {tuple_comp_type}, but initialized like {value_comp_type}",
-                    ),
-                });
+                return Err(
+                    Message::from_string(
+                        &value_comp.location(),
+                        format!(
+                            "Tuple component with index \"{comp_id}\" is {tuple_comp_type}, but initialized like {value_comp_type}",
+                    ))
+                );
             } else if alias_to
                 .as_ref()
                 .is_some_and(|ty| value_comp_type.ty != *ty)
             {
-                return Err(Message {
-                    location: value_comp.location(),
-                    text: format!(
-                        "Tuple component with index \"{comp_id}\" is {tuple_comp_type} (aka: {}), but initialized like {value_comp_type}",
-                        alias_to.unwrap()
-                    ),
-                });
+                return Err(Message::from_string(
+                    &value_comp.location(),
+                    format!(
+                    "Tuple component with index \"{comp_id}\" is {tuple_comp_type} (aka: {}), but initialized like {value_comp_type}",
+                    alias_to.unwrap()
+                )));
             }
         }
 

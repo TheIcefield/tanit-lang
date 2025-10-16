@@ -37,9 +37,8 @@ impl Analyzer {
 
         match ret {
             Ok(Some(processed_node)) => *expr = processed_node,
-            Err(mut msg) => {
-                msg.location = expr.location.clone();
-                return Err(msg);
+            Err(msg) => {
+                return Err(msg.map_location(&expr.location));
             }
             _ => {}
         }

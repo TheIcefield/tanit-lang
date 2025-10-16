@@ -30,10 +30,10 @@ impl Analyzer {
             );
 
             if is_denied {
-                self.error(Message {
-                    location: n.location(),
-                    text: format!("Node \"{}\" is not allowed in global scope", n.name()),
-                });
+                self.error(Message::from_string(
+                    &n.location(),
+                    format!("Node \"{}\" is not allowed in global scope", n.name()),
+                ));
 
                 continue;
             }
@@ -64,10 +64,10 @@ impl Analyzer {
             );
 
             if is_denied {
-                self.error(Message {
-                    location: n.location(),
-                    text: format!("Node \"{}\" is not allowed in local scope", n.name()),
-                });
+                self.error(Message::from_string(
+                    &n.location(),
+                    format!("Node \"{}\" is not allowed in local scope", n.name()),
+                ));
 
                 continue;
             }
