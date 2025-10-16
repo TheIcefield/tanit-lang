@@ -8,7 +8,6 @@ use tanitc_ast::{
     },
     visitor::Visitor,
 };
-use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
 use super::CodeGenStream;
@@ -33,122 +32,88 @@ mod variants;
 
 impl Visitor for CodeGenStream<'_> {
     fn visit_module_def(&mut self, module_def: &ModuleDef) -> Result<(), Message> {
-        match self.generate_module_def(module_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&module_def.location, e)),
-        }
+        self.generate_module_def(module_def)
+            .map_err(|err| Message::codegen_err(err, &module_def.location))
     }
 
     fn visit_struct_def(&mut self, struct_def: &StructDef) -> Result<(), Message> {
-        match self.generate_struct_def(struct_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&struct_def.location, e)),
-        }
+        self.generate_struct_def(struct_def)
+            .map_err(|err| Message::codegen_err(err, &struct_def.location))
     }
 
     fn visit_union_def(&mut self, union_def: &UnionDef) -> Result<(), Message> {
-        match self.generate_union_def(union_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&union_def.location, e)),
-        }
+        self.generate_union_def(union_def)
+            .map_err(|err| Message::codegen_err(err, &union_def.location))
     }
 
     fn visit_variant_def(&mut self, variant_def: &VariantDef) -> Result<(), Message> {
-        match self.generate_variant_def(variant_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&variant_def.location, e)),
-        }
+        self.generate_variant_def(variant_def)
+            .map_err(|err| Message::codegen_err(err, &variant_def.location))
     }
 
     fn visit_impl_def(&mut self, impl_def: &ImplDef) -> Result<(), Message> {
-        match self.generate_impl_def(impl_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&impl_def.location, e)),
-        }
+        self.generate_impl_def(impl_def)
+            .map_err(|err| Message::codegen_err(err, &impl_def.location))
     }
 
     fn visit_enum_def(&mut self, enum_def: &EnumDef) -> Result<(), Message> {
-        match self.generate_enum_def(enum_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&enum_def.location, e)),
-        }
+        self.generate_enum_def(enum_def)
+            .map_err(|err| Message::codegen_err(err, &enum_def.location))
     }
 
     fn visit_func_def(&mut self, func_def: &FunctionDef) -> Result<(), Message> {
-        match self.generate_func_def(func_def, None) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&func_def.location, e)),
-        }
+        self.generate_func_def(func_def, None)
+            .map_err(|err| Message::codegen_err(err, &func_def.location))
     }
 
     fn visit_extern_def(&mut self, extern_def: &ExternDef) -> Result<(), Message> {
-        match self.generate_extern_def(extern_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&extern_def.location, e)),
-        }
+        self.generate_extern_def(extern_def)
+            .map_err(|err| Message::codegen_err(err, &extern_def.location))
     }
 
     fn visit_variable_def(&mut self, var_def: &VariableDef) -> Result<(), Message> {
-        match self.generate_variable_def(var_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&var_def.location, e)),
-        }
+        self.generate_variable_def(var_def)
+            .map_err(|err| Message::codegen_err(err, &var_def.location))
     }
 
     fn visit_alias_def(&mut self, alias_def: &AliasDef) -> Result<(), Message> {
-        match self.generate_alias_def(alias_def) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&alias_def.location, e)),
-        }
+        self.generate_alias_def(alias_def)
+            .map_err(|err| Message::codegen_err(err, &alias_def.location))
     }
 
     fn visit_expression(&mut self, expr: &Expression) -> Result<(), Message> {
-        match self.generate_expression(expr) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&expr.location, e)),
-        }
+        self.generate_expression(expr)
+            .map_err(|err| Message::codegen_err(err, &expr.location))
     }
 
     fn visit_branch(&mut self, branch: &Branch) -> Result<(), Message> {
-        match self.generate_branch(branch) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&branch.location, e)),
-        }
+        self.generate_branch(branch)
+            .map_err(|err| Message::codegen_err(err, &branch.location))
     }
 
     fn visit_control_flow(&mut self, cf: &ControlFlow) -> Result<(), Message> {
-        match self.generate_control_flow(cf) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&cf.location, e)),
-        }
+        self.generate_control_flow(cf)
+            .map_err(|err| Message::codegen_err(err, &cf.location))
     }
 
     fn visit_type_spec(&mut self, type_spec: &TypeSpec) -> Result<(), Message> {
-        match self.generate_type_spec(type_spec) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&type_spec.location, e)),
-        }
+        self.generate_type_spec(type_spec)
+            .map_err(|err| Message::codegen_err(err, &type_spec.location))
     }
 
     fn visit_use(&mut self, u: &Use) -> Result<(), Message> {
-        match self.generate_use(u) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&u.location, e)),
-        }
+        self.generate_use(u)
+            .map_err(|err| Message::codegen_err(err, &u.location))
     }
 
     fn visit_block(&mut self, block: &Block) -> Result<(), Message> {
-        match self.generate_block(block) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&block.location, e)),
-        }
+        self.generate_block(block)
+            .map_err(|err| Message::codegen_err(err, &block.location))
     }
 
     fn visit_value(&mut self, val: &Value) -> Result<(), Message> {
-        match self.generate_value(val) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Self::codegen_err(&val.location, e)),
-        }
+        self.generate_value(val)
+            .map_err(|err| Message::codegen_err(err, &val.location))
     }
 }
 
@@ -173,9 +138,5 @@ impl CodeGenStream<'_> {
             Ast::Block(node) => self.generate_block(node),
             Ast::Value(node) => self.generate_value(node),
         }
-    }
-
-    fn codegen_err(location: &Location, err: std::io::Error) -> Message {
-        Message::from_string(location, format!("Codegen error: {err}"))
     }
 }
