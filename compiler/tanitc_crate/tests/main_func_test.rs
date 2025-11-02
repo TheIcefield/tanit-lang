@@ -31,8 +31,10 @@ fn main_existing_bad_test() {
 
     let mut analyzer = Analyzer::new();
     program.accept_mut(&mut analyzer).unwrap();
-    if analyzer.has_errors() {
-        panic!("{:#?}", analyzer.get_errors());
+
+    let messages = analyzer.messages_ref();
+    if messages.has_errors() {
+        panic!("{:#?}", messages.errors_ref());
     }
 
     let Err(msg) = analyzer.check_entry_point() else {
@@ -55,8 +57,10 @@ fn main_existing_good_test() {
 
     let mut analyzer = Analyzer::new();
     program.accept_mut(&mut analyzer).unwrap();
-    if analyzer.has_errors() {
-        panic!("{:#?}", analyzer.get_errors());
+
+    let messages = analyzer.messages_ref();
+    if messages.has_errors() {
+        panic!("{:#?}", messages.errors_ref());
     }
 
     analyzer.check_entry_point().unwrap();
@@ -77,8 +81,10 @@ fn main_bad_type_test() {
 
     let mut analyzer = Analyzer::new();
     program.accept_mut(&mut analyzer).unwrap();
-    if analyzer.has_errors() {
-        panic!("{:#?}", analyzer.get_errors());
+
+    let messages = analyzer.messages_ref();
+    if messages.has_errors() {
+        panic!("{:#?}", messages.errors_ref());
     }
 
     let Err(msg) = analyzer.check_entry_point() else {
@@ -102,8 +108,10 @@ fn main_good_type_i32_test() {
     let mut analyzer = Analyzer::new();
 
     program.accept_mut(&mut analyzer).unwrap();
-    if analyzer.has_errors() {
-        panic!("{:#?}", analyzer.get_errors());
+
+    let messages = analyzer.messages_ref();
+    if messages.has_errors() {
+        panic!("{:#?}", messages.errors_ref());
     }
 
     analyzer.check_entry_point().unwrap();
@@ -123,8 +131,10 @@ fn main_good_type_unit_test() {
     let mut analyzer = Analyzer::new();
 
     program.accept_mut(&mut analyzer).unwrap();
-    if analyzer.has_errors() {
-        panic!("{:#?}", analyzer.get_errors());
+
+    let messages = analyzer.messages_ref();
+    if messages.has_errors() {
+        panic!("{:#?}", messages.errors_ref());
     }
 
     analyzer.check_entry_point().unwrap();

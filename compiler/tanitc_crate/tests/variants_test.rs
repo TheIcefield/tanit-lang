@@ -39,10 +39,14 @@ fn variant_work_test() {
             ..Default::default()
         };
 
-        let mut analyzer = Analyzer::with_options(compile_options);
+        let mut analyzer = Analyzer::new();
+        analyzer.set_compile_options(compile_options);
+
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -152,10 +156,14 @@ fn variant_in_module_work_test() {
             ..Default::default()
         };
 
-        let mut analyzer = Analyzer::with_options(compile_options);
+        let mut analyzer = Analyzer::new();
+        analyzer.set_compile_options(compile_options);
+
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -258,8 +266,15 @@ fn denied_variants_test() {
     }
 
     {
+        const EXPECTED_ERR: &str = "Semantic error: Variants not supported in 0.1.0 (use \"--variants\" to enable variants)";
+
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        assert!(analyzer.has_errors());
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
+        assert!(!errors.is_empty());
+        assert_str_eq!(errors[0].text, EXPECTED_ERR);
     }
 }

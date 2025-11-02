@@ -139,17 +139,19 @@ impl Crate {
     }
 
     fn process_analyze(&mut self) -> Result<(), String> {
-        let mut analyzer = Analyzer::with_options(self.compile_options.clone());
+        let mut analyzer = Analyzer::new();
+        analyzer.set_compile_options(self.compile_options.clone());
 
         self.analyze_program(&mut analyzer)?;
 
-        if analyzer.has_errors() {
-            self.print_messages(&analyzer.get_errors());
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            self.print_messages(messages.errors_ref());
             return Err(format!("Failed analysis of {:?}", self.initial_path));
         }
 
-        if analyzer.has_warnings() {
-            self.print_messages(&analyzer.get_warnings());
+        if messages.has_warnings() {
+            self.print_messages(messages.warnings_ref());
         }
 
         Ok(())

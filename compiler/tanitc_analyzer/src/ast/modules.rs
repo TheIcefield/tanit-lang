@@ -30,7 +30,8 @@ impl Analyzer {
 
         let joined_id = self.table.get_joined_id(module_def.name.id);
 
-        let mut analyzer = Analyzer::with_options(self.compile_options.clone());
+        let mut analyzer = Analyzer::new();
+        analyzer.set_compile_options(self.compile_options.clone());
         analyzer.table.set_id(joined_id);
 
         analyzer.visit_block(module_def.body.as_mut())?;

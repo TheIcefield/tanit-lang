@@ -1,7 +1,7 @@
 use tanitc_attributes::Safety;
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
-use tanitc_messages::{Errors, Message, Warnings};
+use tanitc_messages::{listener::MessageListener, Message};
 use tanitc_options::CompileOptions;
 use tanitc_symbol_table::{
     entry::{Entry, SymbolKind},
@@ -17,8 +17,7 @@ pub struct Analyzer {
     pub table: Box<Table>,
     compile_options: CompileOptions,
     counter: Counter,
-    errors: Errors,
-    warnings: Warnings,
+    messages: MessageListener,
 }
 
 impl Analyzer {
@@ -26,20 +25,21 @@ impl Analyzer {
         Self {
             table: Box::new(Table::new()),
             counter: 0,
-            errors: Errors::new(),
-            warnings: Warnings::new(),
+            messages: MessageListener::new(),
             compile_options: CompileOptions::default(),
         }
     }
 
-    pub fn with_options(compile_options: CompileOptions) -> Self {
-        Self {
-            table: Box::new(Table::new()),
-            counter: 0,
-            errors: Errors::new(),
-            warnings: Warnings::new(),
-            compile_options,
-        }
+    pub fn set_compile_options(&mut self, compile_options: CompileOptions) {
+        self.compile_options = compile_options;
+    }
+
+    pub fn set_message_listener(&mut self, messages: MessageListener) {
+        self.messages = messages;
+    }
+
+    pub fn messages_ref(&self) -> &MessageListener {
+        &self.messages
     }
 
     pub fn counter(&mut self) -> Counter {
@@ -91,28 +91,12 @@ impl Analyzer {
 
     pub fn error(&mut self, mut error: Message) {
         error.text = format!("Semantic error: {}", error.text);
-        self.errors.push(error);
+        self.messages.error(error);
     }
 
     pub fn warning(&mut self, mut warn: Message) {
         warn.text = format!("Semantic warning: {}", warn.text);
-        self.warnings.push(warn);
-    }
-
-    pub fn get_errors(&mut self) -> Errors {
-        std::mem::take(&mut self.errors)
-    }
-
-    pub fn get_warnings(&mut self) -> Warnings {
-        std::mem::take(&mut self.warnings)
-    }
-
-    pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
-    }
-
-    pub fn has_warnings(&self) -> bool {
-        !self.warnings.is_empty()
+        self.messages.warn(warn);
     }
 }
 
