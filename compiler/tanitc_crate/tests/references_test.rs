@@ -29,7 +29,10 @@ fn immutable_deref_test() {
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_str_eq!(
             errors.first().expect("Expected errors").text,
             EXPECTED_ERROR_TEXT
@@ -59,8 +62,10 @@ fn mutable_deref_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:#?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -116,7 +121,10 @@ fn mutable_ref_to_immutable_var_test() {
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let mesages = analyzer.messages_ref();
+        let errors = mesages.errors_ref();
+
         assert_str_eq!(
             errors.first().expect("Expected errors").text,
             EXPECTED_ERROR_TEXT
@@ -149,7 +157,10 @@ fn immutable_deref_param_test() {
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_str_eq!(
             errors.first().expect("Expected errors").text,
             EXPECTED_ERROR_TEXT
@@ -179,8 +190,10 @@ fn mutable_deref_param_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:#?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 

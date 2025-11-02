@@ -112,8 +112,10 @@ fn enum_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -169,8 +171,10 @@ fn enum_in_module_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 

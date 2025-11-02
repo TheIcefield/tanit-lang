@@ -30,8 +30,10 @@ fn struct_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -93,8 +95,10 @@ fn struct_in_module_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -161,7 +165,10 @@ fn incorrect_struct_work_test() {
 
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 2);
         assert_str_eq!(errors[0].text, EXPECTED_1);
         assert_str_eq!(errors[1].text, EXPECTED_2);
@@ -199,8 +206,10 @@ fn internal_struct_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 

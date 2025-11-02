@@ -70,8 +70,10 @@ fn functions_test() {
     let mut analyzer = Analyzer::new();
     {
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:#?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -135,8 +137,10 @@ fn function_in_module_work_test() {
     {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
-        if analyzer.has_errors() {
-            panic!("{:?}", analyzer.get_errors());
+
+        let messages = analyzer.messages_ref();
+        if messages.has_errors() {
+            panic!("{:#?}", messages.errors_ref());
         }
     }
 
@@ -199,7 +203,10 @@ fn incorrect_call_test() {
         const EXPECTED_2: &str = "Semantic error: Mismatched types. In function \"f\" call: notified parameter \"b\" has type \"f32\" but expected \"i32\"";
 
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 2);
         assert_str_eq!(errors[0].text, EXPECTED_1);
         assert_str_eq!(errors[1].text, EXPECTED_2);
@@ -230,7 +237,10 @@ fn incorrect_notified_call_test() {
         const EXPECTED: &str = "Semantic error: In function \"f\" call: positional parameter \"1\" must be passed before notified";
 
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 1);
         assert_str_eq!(errors[0].text, EXPECTED);
     }
@@ -264,7 +274,10 @@ fn incorrect_module_func_call_test() {
         const EXPECTED_2: &str = "Semantic error: Mismatched types. In function \"f\" call: notified parameter \"b\" has type \"f32\" but expected \"i32\"";
 
         program.accept_mut(&mut analyzer).unwrap();
-        let errors = analyzer.get_errors();
+
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 2);
         assert_str_eq!(errors[0].text, EXPECTED_1);
         assert_str_eq!(errors[1].text, EXPECTED_2);

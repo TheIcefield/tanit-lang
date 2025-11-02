@@ -108,8 +108,8 @@ mod tests {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
 
-        let errors = analyzer.get_errors();
-        assert!(errors.is_empty());
+        let messages = analyzer.messages_ref();
+        assert!(!messages.has_errors());
     }
 
     #[test]
@@ -137,7 +137,9 @@ mod tests {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
 
-        let errors = analyzer.get_errors();
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].text, EXPECTED_ERR);
     }
@@ -162,7 +164,9 @@ mod tests {
         let mut analyzer = Analyzer::new();
         program.accept_mut(&mut analyzer).unwrap();
 
-        let errors = analyzer.get_errors();
+        let messages = analyzer.messages_ref();
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].text, EXPECTED_ERR);
     }
