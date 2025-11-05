@@ -3,18 +3,21 @@ name = "tanitc_crate"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["backend_C"]
+backend_C = ["dep:tanitc_ir_c"]
+
 [dev-dependencies]
 pretty_assertions = "1"
 tanitc_attributes = { path = "../tanitc_attributes" }
 
 [dependencies]
 tanitc_ast = { path = "../tanitc_ast" }
+tanitc_ast_lowering = { path = "../tanitc_ast_lowering" }
+tanitc_hir = { path = "../tanitc_hir" }
+tanitc_hir_analyzer = { path = "../tanitc_hir_analyzer" }
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_parser = { path = "../tanitc_parser" }
-tanitc_codegen = { path = "../tanitc_codegen" }
 tanitc_builder = { path = "../tanitc_builder" }
-tanitc_analyzer = { path = "../tanitc_analyzer" }
-tanitc_messages = { path = "../tanitc_messages" }
-tanitc_ident = { path = "../tanitc_ident" }
-tanitc_ty = { path = "../tanitc_ty" }
 tanitc_options = { path = "../tanitc_options" }
+tanitc_ir_c = { path = "../tanitc_ir_c", optional = true }

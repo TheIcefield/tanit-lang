@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tanitc_path::PathId;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Location {
     pub path: PathId,
     pub row: usize,
@@ -31,15 +31,5 @@ impl Location {
 impl std::fmt::Display for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}:{}", self.path, self.row + 1, self.col + 1)
-    }
-}
-
-impl Default for Location {
-    fn default() -> Self {
-        Self {
-            path: PathId::from(PathBuf::from("")),
-            row: 0,
-            col: 0,
-        }
     }
 }

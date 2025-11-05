@@ -48,7 +48,7 @@ impl Display for PathId {
 }
 
 lazy_static! {
-    static ref PATHS: Mutex<Vec<PathBuf>> = Mutex::new(vec![]);
+    static ref PATHS: Mutex<Vec<PathBuf>> = Mutex::new(vec!["TestLocation".into()]);
 }
 
 #[test]
@@ -57,9 +57,9 @@ fn path_test() {
     let second = PathId::from(PathBuf::from("bar"));
     let third = PathId::from(PathBuf::from("baz"));
 
-    assert_eq!(first.index(), 0);
-    assert_eq!(second.index(), 1);
-    assert_eq!(third.index(), 2);
+    assert_eq!(first.index(), 1);
+    assert_eq!(second.index(), 2);
+    assert_eq!(third.index(), 3);
     assert_eq!(third, PathId::from(PathBuf::from("baz")));
 
     assert_eq!(first.to_string(), "foo");

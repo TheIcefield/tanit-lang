@@ -1,0 +1,224 @@
+use tanitc_hir::hir::definitions::methods::ImplDef;
+
+use crate::{CodeGenMode, CodeGenStream};
+
+impl CodeGenStream<'_> {
+    pub fn generate_impl_def(&mut self, impl_def: &ImplDef) -> std::io::Result<()> {
+        let old_mode = self.mode;
+        self.mode = CodeGenMode::HeaderOnly;
+
+        for method in impl_def.methods.iter() {
+            self.generate_func_def(method, Some(impl_def.identifier))?;
+        }
+
+        self.mode = old_mode;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use tanitc_attributes::Mutability;
+    use tanitc_hir::hir::{
+        blocks::Block,
+        definitions::{
+            functions::{FunctionDef, FunctionParam},
+            methods::ImplDef,
+            structs::StructDef,
+            variables::VariableDef,
+        },
+        types::Type,
+        Hir,
+    };
+    use tanitc_ident::{Ident, Name};
+
+    use pretty_assertions::assert_str_eq;
+
+    fn get_struct_def(name: &str) -> StructDef {
+        StructDef {
+            name: Name::from(name.to_string()),
+            ..Default::default()
+        }
+    }
+
+    fn get_impl_def(name: &str, methods: Vec<FunctionDef>) -> ImplDef {
+        ImplDef {
+            identifier: Ident::from(name.to_string()),
+            methods,
+            ..Default::default()
+        }
+    }
+
+    fn get_common_param(name: &str) -> FunctionParam {
+        FunctionParam::Common(VariableDef {
+            identifier: Ident::from(name.to_string()),
+            var_type: Type::I32,
+            ..Default::default()
+        })
+    }
+
+    fn get_func(name: &str, parameters: Vec<FunctionParam>) -> FunctionDef {
+        FunctionDef {
+            parameters,
+            name: Name::from(name.to_string()),
+            return_type: Type::unit(),
+            body: Some(Box::new(Block::default())),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn self_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_self(MyStruct const self, signed int const hello);\n";
+
+        const SOURCE_EXPECTED: &str =
+            "void MyStruct__by_self(MyStruct const self, signed int const hello) { }\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_self",
+                vec![
+                    FunctionParam::SelfVal(Mutability::Immutable),
+                    get_common_param("hello"),
+                ],
+            )],
+        );
+
+        let program = Hir::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn mut_self_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_mut_self(MyStruct self);\n";
+
+        const SOURCE_EXPECTED: &str = "void MyStruct__by_mut_self(MyStruct self) { }\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_mut_self",
+                vec![FunctionParam::SelfVal(Mutability::Mutable)],
+            )],
+        );
+
+        let program = Hir::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn self_ref_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_self_ref(MyStruct const * const self);\n";
+
+        const SOURCE_EXPECTED: &str =
+            "void MyStruct__by_self_ref(MyStruct const * const self) { }\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_self_ref",
+                vec![FunctionParam::SelfRef(Mutability::Immutable)],
+            )],
+        );
+
+        let program = Hir::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+
+    #[test]
+    fn mut_self_ref_in_beginning_good_test() {
+        const STRUCT_NAME: &str = "MyStruct";
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} MyStruct;\
+                                     \nvoid MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello);\n";
+
+        const SOURCE_EXPECTED: &str =
+            "void MyStruct__by_mut_self_ref(MyStruct * const self, signed int const hello) { }\n";
+
+        let impl_def_node = get_impl_def(
+            STRUCT_NAME,
+            vec![get_func(
+                "by_mut_self_ref",
+                vec![
+                    FunctionParam::SelfRef(Mutability::Mutable),
+                    get_common_param("hello"),
+                ],
+            )],
+        );
+
+        let program = Hir::from(Block {
+            is_global: true,
+            statements: vec![get_struct_def(STRUCT_NAME).into(), impl_def_node.into()],
+            ..Default::default()
+        });
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+
+        program.accept(&mut writer).unwrap();
+
+        let header_res = String::from_utf8(header_buffer).unwrap();
+        assert_str_eq!(header_res, HEADER_EXPECTED);
+
+        let source_res = String::from_utf8(source_buffer).unwrap();
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
+    }
+}
