@@ -1,11 +1,12 @@
 use tanitc_ident::Ident;
 use tanitc_lexer::{
     location::Location,
-    token::{Lexem, Token},
+    token::{lexeme::Lexeme, Token},
 };
 
 use std::{
     char::ParseCharError,
+    error::Error,
     fmt::Display,
     num::{ParseFloatError, ParseIntError},
     str::ParseBoolError,
@@ -18,13 +19,13 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(location: &Location, text: &str) -> Self {
+    pub fn new(location: Location, text: &str) -> Self {
         Self::from_string(location, text.to_string())
     }
 
-    pub fn from_string(location: &Location, text: String) -> Self {
+    pub fn from_string(location: Location, text: String) -> Self {
         Self {
-            location: Some(location.clone()),
+            location: Some(location),
             text,
         }
     }
@@ -38,8 +39,8 @@ impl Message {
         }
     }
 
-    pub fn unexpected_token(token: &Token, expected: &[Lexem]) -> Self {
-        let mut text = format!("Unexpected token: {}. ", token.lexem_ref());
+    pub fn unexpected_token(token: &Token, expected: &[Lexeme]) -> Self {
+        let mut text = format!("Unexpected token: {}. ", token.lexeme_ref());
 
         if !expected.is_empty() {
             text.push_str(&format!("Expected: {}", expected[0]));
@@ -51,25 +52,25 @@ impl Message {
             text.push('.');
         }
 
-        Self::from_string(token.location_ref(), text)
+        Self::from_string(token.get_location(), text)
     }
 
-    pub fn multiple_ids(location: &Location, id: Ident) -> Self {
+    pub fn multiple_ids(location: Location, id: Ident) -> Self {
         Self::from_string(
             location,
             format!("Identifier \"{id}\" defined multiple times"),
         )
     }
 
-    pub fn undefined_id(location: &Location, id: Ident) -> Self {
+    pub fn undefined_id(location: Location, id: Ident) -> Self {
         Self::from_string(location, format!("Undefined name \"{id}\""))
     }
 
-    pub fn undefined_type(location: &Location, type_str: &str) -> Self {
+    pub fn undefined_type(location: Location, type_str: String) -> Self {
         Self::from_string(location, format!("Undefined type \"{type_str}\""))
     }
 
-    pub fn undefined_variable(location: &Location, var_name: Ident) -> Self {
+    pub fn undefined_variable(location: Location, var_name: Ident) -> Self {
         Self::from_string(location, format!("No variable \"{var_name}\" found"))
     }
 
@@ -78,70 +79,70 @@ impl Message {
         msg
     }
 
-    pub fn undefined_func(location: &Location, func_name: Ident) -> Self {
+    pub fn undefined_func(location: Location, func_name: Ident) -> Self {
         Self::from_string(location, format!("No function \"{func_name}\" found"))
     }
 
-    pub fn undefined_struct(location: &Location, struct_name: Ident) -> Self {
+    pub fn undefined_struct(location: Location, struct_name: Ident) -> Self {
         Self::from_string(location, format!("No struct \"{struct_name}\" found"))
     }
 
-    pub fn undefined_union(location: &Location, union_name: Ident) -> Self {
+    pub fn undefined_union(location: Location, union_name: Ident) -> Self {
         Self::from_string(location, format!("No struct \"{union_name}\" found"))
     }
 
-    pub fn const_mutation(location: &Location, s: &str) -> Self {
+    pub fn const_mutation(location: Location, s: &str) -> Self {
         Self::from_string(
             location,
             format!("Cannot mutate immutable object of type \"{s}\" is immutable in current scope"),
         )
     }
 
-    pub fn const_var_mutation(location: &Location, var_name: Ident) -> Self {
+    pub fn const_var_mutation(location: Location, var_name: Ident) -> Self {
         Self::from_string(
             location,
             format!("Variable \"{var_name}\" is immutable in current scope"),
         )
     }
 
-    pub fn const_ref_mutation(location: &Location, var_name: Ident) -> Self {
+    pub fn const_ref_mutation(location: Location, var_name: Ident) -> Self {
         Self::from_string(
             location,
             format!("Reference \"{var_name}\" is immutable in current scope"),
         )
     }
 
-    pub fn no_id_in_namespace(location: &Location, namespace: Ident, id: Ident) -> Self {
+    pub fn no_id_in_namespace(location: Location, namespace: Ident, id: Ident) -> Self {
         Self::from_string(
             location,
             format!("No object named \"{id}\" in namespace {namespace}"),
         )
     }
 
-    pub fn parse_int_error(location: &Location, err: ParseIntError) -> Self {
+    pub fn parse_int_error(location: Location, err: ParseIntError) -> Self {
         Self::from_string(location, err.to_string())
     }
 
-    pub fn parse_float_error(location: &Location, err: ParseFloatError) -> Self {
+    pub fn parse_float_error(location: Location, err: ParseFloatError) -> Self {
         Self::from_string(location, err.to_string())
     }
 
-    pub fn parse_char_error(location: &Location, err: ParseCharError) -> Self {
+    pub fn parse_char_error(location: Location, err: ParseCharError) -> Self {
         Self::from_string(location, err.to_string())
     }
 
-    pub fn parse_bool_error(location: &Location, err: ParseBoolError) -> Self {
+    pub fn parse_bool_error(location: Location, err: ParseBoolError) -> Self {
         Self::from_string(location, err.to_string())
     }
 
-    pub fn unreachable(location: &Location, msg: String) -> Self {
+    pub fn unreachable(location: Location, msg: String) -> Self {
         Self::from_string(
             location,
             format!("Compiler reached unreachable code: {msg}"),
         )
     }
 
-    pub fn codegen_err(err: std::io::Error, location: &Location) -> Self {
+    pub fn codegen_err(location: Location, err: std::io::Error) -> Self {
         Self::from_string(location, format!("Codegen error: {err}"))
     }
 
@@ -150,12 +151,13 @@ impl Message {
         self
     }
 
-    pub fn map_location(mut self, location: &Location) -> Self {
-        self.location = Some(location.clone());
+    pub fn map_location(mut self, location: Location) -> Self {
+        self.location = Some(location);
         self
     }
 }
 
+impl Error for Message {}
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(loc) = &self.location {
@@ -180,7 +182,7 @@ mod tests {
         const MESSAGE: &str = "Some message";
 
         let location = Location::new(&PathBuf::from(FILE));
-        let msg = Message::new(&location, MESSAGE);
+        let msg = Message::new(location, MESSAGE);
 
         assert_eq!(msg.to_string(), "main.tt:1:1: Some message");
     }

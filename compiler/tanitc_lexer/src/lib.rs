@@ -8,7 +8,9 @@ use std::{
 };
 
 use location::Location;
-use token::{Lexem, Token};
+use tanitc_ident::Ident;
+
+use crate::token::{lexeme::Lexeme, Token};
 
 pub type Tokens = Vec<Token>;
 
@@ -171,216 +173,216 @@ impl<'a> Lexer<'a> {
         let lexem = match next_char {
             '\n' => {
                 self.next_char();
-                Lexem::EndOfLine
+                Lexeme::EndOfLine
             }
             '(' => {
                 self.next_char();
-                Lexem::LParen
+                Lexeme::LParen
             }
             ')' => {
                 self.next_char();
-                Lexem::RParen
+                Lexeme::RParen
             }
             '[' => {
                 self.next_char();
-                Lexem::Lsb
+                Lexeme::Lsb
             }
             ']' => {
                 self.next_char();
-                Lexem::Rsb
+                Lexeme::Rsb
             }
             '{' => {
                 self.next_char();
-                Lexem::Lcb
+                Lexeme::Lcb
             }
             '}' => {
                 self.next_char();
-                Lexem::Rcb
+                Lexeme::Rcb
             }
             '.' => {
                 self.next_char();
-                Lexem::Dot
+                Lexeme::Dot
             }
             ',' => {
                 self.next_char();
-                Lexem::Comma
+                Lexeme::Comma
             }
             '>' => {
                 self.next_char();
-                let mut lexem = Lexem::Gt;
+                let mut lexeme = Lexeme::Gt;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::Gte;
+                    lexeme = Lexeme::Gte;
                 } else if self.peek_char().is_some_and(|ch| *ch == '>') && !singular {
                     self.next_char();
-                    lexem = Lexem::RShift;
+                    lexeme = Lexeme::RShift;
 
                     if self.peek_char().is_some_and(|ch| *ch == '=') {
                         self.next_char();
-                        lexem = Lexem::RShiftAssign;
+                        lexeme = Lexeme::RShiftAssign;
                     }
                 }
 
-                lexem
+                lexeme
             }
             '<' => {
                 self.next_char();
-                let mut lexem = Lexem::Lt;
+                let mut lexeme = Lexeme::Lt;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::Lte;
+                    lexeme = Lexeme::Lte;
                 } else if self.peek_char().is_some_and(|ch| *ch == '<') && !singular {
                     self.next_char();
-                    lexem = Lexem::LShift;
+                    lexeme = Lexeme::LShift;
 
                     if self.peek_char().is_some_and(|ch| *ch == '=') {
                         self.next_char();
-                        lexem = Lexem::LShiftAssign;
+                        lexeme = Lexeme::LShiftAssign;
                     }
                 }
 
-                lexem
+                lexeme
             }
             '+' => {
                 self.next_char();
-                let mut lexem = Lexem::Plus;
+                let mut lexeme = Lexeme::Plus;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::AddAssign;
+                    lexeme = Lexeme::AddAssign;
                 }
 
-                lexem
+                lexeme
             }
             '-' => {
                 self.next_char();
-                let mut lexem = Lexem::Minus;
+                let mut lexeme = Lexeme::Minus;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::SubAssign;
+                    lexeme = Lexeme::SubAssign;
                 }
 
-                lexem
+                lexeme
             }
             '/' => {
                 self.next_char();
-                let mut lexem = Lexem::Slash;
+                let mut lexeme = Lexeme::Slash;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::DivAssign;
+                    lexeme = Lexeme::DivAssign;
                 }
 
-                lexem
+                lexeme
             }
             '%' => {
                 self.next_char();
-                let mut lexem = Lexem::Percent;
+                let mut lexeme = Lexeme::Percent;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::ModAssign;
+                    lexeme = Lexeme::ModAssign;
                 }
 
-                lexem
+                lexeme
             }
             '*' => {
                 self.next_char();
-                let mut lexem = Lexem::Star;
+                let mut lexeme = Lexeme::Star;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::MulAssign;
+                    lexeme = Lexeme::MulAssign;
                 }
 
-                lexem
+                lexeme
             }
             '!' => {
                 self.next_char();
-                let mut lexem = Lexem::Not;
+                let mut lexeme = Lexeme::Not;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::Neq;
+                    lexeme = Lexeme::Neq;
                 }
 
-                lexem
+                lexeme
             }
             '=' => {
                 self.next_char();
-                let mut lexem = Lexem::Assign;
+                let mut lexeme = Lexeme::Assign;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::Eq;
+                    lexeme = Lexeme::Eq;
                 }
 
-                lexem
+                lexeme
             }
             '&' => {
                 self.next_char();
-                let mut lexem = Lexem::Ampersand;
+                let mut lexeme = Lexeme::Ampersand;
 
                 if self.peek_char().is_some_and(|ch| *ch == '&') && !singular {
                     self.next_char();
-                    lexem = Lexem::And;
+                    lexeme = Lexeme::And;
                 } else if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::AndAssign;
+                    lexeme = Lexeme::AndAssign;
                 }
 
-                lexem
+                lexeme
             }
             '^' => {
                 self.next_char();
-                let mut lexem = Lexem::Xor;
+                let mut lexeme = Lexeme::Xor;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::XorAssign;
+                    lexeme = Lexeme::XorAssign;
                 }
 
-                lexem
+                lexeme
             }
             '|' => {
                 self.next_char();
-                let mut lexem = Lexem::Stick;
+                let mut lexeme = Lexeme::Stick;
 
                 if self.peek_char().is_some_and(|ch| *ch == '=') && !singular {
                     self.next_char();
-                    lexem = Lexem::OrAssign;
+                    lexeme = Lexeme::OrAssign;
                 } else if self.peek_char().is_some_and(|ch| *ch == '|') && !singular {
                     self.next_char();
-                    lexem = Lexem::Or;
+                    lexeme = Lexeme::Or;
                 }
 
-                lexem
+                lexeme
             }
             ':' => {
                 self.next_char();
-                let mut lexem = Lexem::Colon;
+                let mut lexeme = Lexeme::Colon;
 
                 if self.peek_char().is_some_and(|ch| *ch == ':') && !singular {
                     self.next_char();
-                    lexem = Lexem::Dcolon;
+                    lexeme = Lexeme::Dcolon;
                 }
 
-                lexem
+                lexeme
             }
 
             _ if '\"' == *next_char => self.get_text_lexem()?,
             _ if next_char.is_ascii_digit() => self.get_numeric_lexem()?,
             _ if next_char.is_ascii_alphabetic() || '_' == *next_char => self.get_string_lexem()?,
-            _ => Lexem::Unknown,
+            _ => Lexeme::Unknown,
         };
 
-        Some(Token::new(lexem, self.location_ref().clone()))
+        Some(Token::new(lexem, *self.location_ref()))
     }
 
-    fn get_numeric_lexem(&mut self) -> Option<Lexem> {
+    fn get_numeric_lexem(&mut self) -> Option<Lexeme> {
         let mut text = String::new();
         let mut is_float = false;
 
@@ -399,13 +401,13 @@ impl<'a> Lexer<'a> {
         }
 
         Some(if is_float {
-            Lexem::Decimal(text)
+            Lexeme::Decimal(text)
         } else {
-            Lexem::Integer(text)
+            Lexeme::Integer(text)
         })
     }
 
-    fn get_string_lexem(&mut self) -> Option<Lexem> {
+    fn get_string_lexem(&mut self) -> Option<Lexeme> {
         let mut text = String::new();
 
         while self
@@ -416,43 +418,42 @@ impl<'a> Lexer<'a> {
         }
 
         Some(match &text[..] {
-            "def" => Lexem::KwDef,
-            "module" => Lexem::KwModule,
-            "struct" => Lexem::KwStruct,
-            "union" => Lexem::KwUnion,
-            "variant" => Lexem::KwVariant,
-            "impl" => Lexem::KwImpl,
-            "enum" => Lexem::KwEnum,
-            "var" => Lexem::KwVar,
-            "mut" => Lexem::KwMut,
-            "const" => Lexem::KwConst,
-            "alias" => Lexem::KwAlias,
-            "func" => Lexem::KwFunc,
-            "if" => Lexem::KwIf,
-            "else" => Lexem::KwElse,
-            "loop" => Lexem::KwLoop,
-            "do" => Lexem::KwDo,
-            "while" => Lexem::KwWhile,
-            "for" => Lexem::KwFor,
-            "continue" => Lexem::KwContinue,
-            "break" => Lexem::KwBreak,
-            "return" => Lexem::KwReturn,
-            "extern" => Lexem::KwExtern,
-            "static" => Lexem::KwStatic,
-            "use" => Lexem::KwUse,
-            "super" => Lexem::KwSuper,
-            "Self" => Lexem::KwSelfT,
-            "self" => Lexem::KwSelfO,
-            "crate" => Lexem::KwCrate,
-            "as" => Lexem::KwAs,
-            "safe" => Lexem::KwSafe,
-            "unsafe" => Lexem::KwUnsafe,
-            "pub" => Lexem::KwPub,
-            _ => Lexem::Identifier(text),
+            "def" => Lexeme::KwDef,
+            "module" => Lexeme::KwModule,
+            "struct" => Lexeme::KwStruct,
+            "union" => Lexeme::KwUnion,
+            "variant" => Lexeme::KwVariant,
+            "impl" => Lexeme::KwImpl,
+            "enum" => Lexeme::KwEnum,
+            "var" => Lexeme::KwVar,
+            "mut" => Lexeme::KwMut,
+            "const" => Lexeme::KwConst,
+            "alias" => Lexeme::KwAlias,
+            "func" => Lexeme::KwFunc,
+            "if" => Lexeme::KwIf,
+            "else" => Lexeme::KwElse,
+            "loop" => Lexeme::KwLoop,
+            "do" => Lexeme::KwDo,
+            "while" => Lexeme::KwWhile,
+            "for" => Lexeme::KwFor,
+            "continue" => Lexeme::KwContinue,
+            "break" => Lexeme::KwBreak,
+            "return" => Lexeme::KwReturn,
+            "extern" => Lexeme::KwExtern,
+            "static" => Lexeme::KwStatic,
+            "use" => Lexeme::KwUse,
+            "super" => Lexeme::KwSuper,
+            "self" => Lexeme::KwSelf,
+            "crate" => Lexeme::KwCrate,
+            "as" => Lexeme::KwAs,
+            "safe" => Lexeme::KwSafe,
+            "unsafe" => Lexeme::KwUnsafe,
+            "pub" => Lexeme::KwPub,
+            _ => Lexeme::Identifier(Ident::from(text)),
         })
     }
 
-    fn get_text_lexem(&mut self) -> Option<Lexem> {
+    fn get_text_lexem(&mut self) -> Option<Lexeme> {
         let mut text = String::new();
 
         // push opening '\"'
@@ -469,7 +470,7 @@ impl<'a> Lexer<'a> {
             text.push(self.next_char()?);
         }
 
-        Some(Lexem::Text(text))
+        Some(Lexeme::Text(text))
     }
 }
 
@@ -477,7 +478,7 @@ impl<'a> Lexer<'a> {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{location::Location, token::Lexem, Lexer};
+    use crate::{location::Location, token::lexeme::Lexeme, Lexer};
 
     #[test]
     fn lexer_test() {
@@ -491,69 +492,69 @@ mod tests {
         let mut location = Location::new(&test_path);
 
         location.col = 1;
-        assert_eq!(*tkn.lexem_ref(), Lexem::Plus);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::Plus);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 7;
-        assert_eq!(*tkn.lexem_ref(), Lexem::identifier("hello"));
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::identifier("hello"));
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 12;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwFunc);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwFunc);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 16;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwVar);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwVar);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 19;
-        assert_eq!(*tkn.lexem_ref(), Lexem::integer(65));
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::integer(65));
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 22;
-        assert_eq!(*tkn.lexem_ref(), Lexem::SubAssign);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::SubAssign);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 25;
-        assert_eq!(*tkn.lexem_ref(), Lexem::LShift);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::LShift);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.row = 2;
         location.col = 0;
-        assert_eq!(*tkn.lexem_ref(), Lexem::EndOfLine);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::EndOfLine);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 7;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwStruct);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwStruct);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 13;
-        assert_eq!(*tkn.lexem_ref(), Lexem::identifier("alpha"));
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::identifier("alpha"));
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 18;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwSafe);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwSafe);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 25;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwUnsafe);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwUnsafe);
+        assert_eq!(tkn.get_location(), location);
 
         tkn = lexer.get().unwrap();
         location.col = 30;
-        assert_eq!(*tkn.lexem_ref(), Lexem::KwImpl);
-        assert_eq!(*tkn.location_ref(), location);
+        assert_eq!(*tkn.lexeme_ref(), Lexeme::KwImpl);
+        assert_eq!(tkn.get_location(), location);
 
         assert_eq!(lexer.get(), None);
     }

@@ -13,5 +13,3 @@ tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_ident = { path = "../tanitc_ident" }
 tanitc_ast = { path = "../tanitc_ast" }
-tanitc_ty = { path = "../tanitc_ty" }
-tanitc_attributes = { path = "../tanitc_attributes" }

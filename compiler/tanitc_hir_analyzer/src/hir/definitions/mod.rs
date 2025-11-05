@@ -1,0 +1,10 @@
+pub(crate) mod aliases;
+pub(crate) mod enums;
+pub(crate) mod externs;
+pub(crate) mod functions;
+pub(crate) mod methods;
+pub(crate) mod modules;
+pub(crate) mod structs;
+pub(crate) mod unions;
+pub(crate) mod variables;
+pub(crate) mod variants;

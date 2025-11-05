@@ -1,0 +1,12 @@
+[package]
+name = "tanitc_hir_test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tanitc_hir = { path = "../tanitc_hir" }
+tanitc_ident = { path = "../tanitc_ident" }
+tanitc_lexer = { path = "../tanitc_lexer" }
+tanitc_attributes = { path = "../tanitc_attributes" }

@@ -1,12 +1,12 @@
 use std::{io::Read, path::PathBuf};
 
-use tanitc_analyzer::{self, Analyzer};
-use tanitc_ast::ast::Ast;
+use tanitc_ast::program_ctx::ProgramCtx;
+use tanitc_ast_lowering::AstLowering;
 use tanitc_builder::{build_object_file, link_crate_objects};
-use tanitc_codegen::c_generator::{CodeGenMode, CodeGenStream};
+use tanitc_hir::hir::Hir;
+use tanitc_hir_analyzer::Analyzer;
 use tanitc_lexer::Lexer;
-use tanitc_messages::Message;
-use tanitc_options::{CompileOptions, CrateType, SerializationOption};
+use tanitc_options::{CompileOptions, SerializationOption};
 use tanitc_parser::Parser;
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,6 @@ pub struct Crate {
     name: String,
     initial_path: PathBuf,
     output_path: PathBuf,
-    ast: Option<Ast>,
     compile_options: CompileOptions,
 }
 
@@ -24,7 +23,6 @@ impl Default for Crate {
             name: "main".to_string(),
             initial_path: PathBuf::from("./main.tt".to_string()),
             output_path: PathBuf::from("./main"),
-            ast: None,
             compile_options: CompileOptions::default(),
         }
     }
@@ -42,14 +40,16 @@ impl Crate {
     }
 
     pub fn process(&mut self) -> Result<(), String> {
-        self.process_parsing()?;
-        self.process_analyze()?;
-
+        let ast = self.process_parsing()?;
         if SerializationOption::Enabled == self.compile_options.dump_ast_mode {
-            self.serialize_ast()?;
+            self.serialize_ast(&ast)?;
         }
 
-        self.process_codegen()?;
+        let mut hir = self.process_ast_lowering(ast.as_ref())?;
+
+        self.process_analyze(&mut hir)?;
+        self.process_codegen(&hir)?;
+
         self.process_building()?;
         self.process_linkage()?;
 
@@ -58,141 +58,91 @@ impl Crate {
 }
 
 impl Crate {
-    fn print_messages(&self, messages: &[Message]) {
-        for msg in messages.iter() {
-            eprintln!("{msg}");
-        }
-    }
-
-    fn serialize_ast(&mut self) -> Result<(), String> {
+    fn serialize_ast(&mut self, program_ctx: &ProgramCtx) -> Result<(), String> {
         use std::io::Write;
 
-        let Some(ast) = &mut self.ast else {
-            return Err("Serialising requires AST".to_string());
-        };
+        let file_name = format!("{}.ast.ron", &self.name);
+        let mut file = std::fs::File::create(&file_name)
+            .map_err(|err| format!("Failed to open \"{file_name}\": {err}"))?;
 
-        let mut file = match std::fs::File::create(format!("{}.ast.ron", &self.name)) {
-            Ok(file) => file,
-            Err(err) => return Err(format!("{err}")),
-        };
-
-        if let Err(err) = writeln!(file, "{ast:#?}") {
-            return Err(format!("Failed to serialize AST: {err}"));
-        }
+        writeln!(file, "{program_ctx:#?}")
+            .map_err(|err| format!("Failed to serialize AST: {err}"))?;
 
         Ok(())
     }
 
-    fn parse_program(&mut self, parser: &mut Parser) {
-        match parser.parse_global_block() {
-            Ok(ast) => self.ast = Some(ast),
-            Err(msg) => parser.error(msg),
-        }
-    }
+    fn process_parsing(&mut self) -> Result<Box<ProgramCtx>, String> {
+        let mut file = std::fs::File::open(&self.initial_path)
+            .map_err(|err| format!("Failed to open {:?}: {err}", self.initial_path))?;
 
-    fn process_parsing(&mut self) -> Result<(), String> {
         let mut buffer = String::new();
-
-        match std::fs::File::open(&self.initial_path) {
-            Ok(mut file) => {
-                if let Err(err) = file.read_to_string(&mut buffer) {
-                    return Err(err.to_string());
-                }
-            }
-            Err(err) => return Err(err.to_string()),
-        }
+        file.read_to_string(&mut buffer)
+            .map_err(|err| format!("Failed to read file {:?}: {err}", self.initial_path))?;
 
         let mut lexer = Lexer::new(buffer.chars().peekable(), &self.initial_path);
         lexer.verbose_tokens = self.compile_options.verbose_tokens;
 
         let mut parser = Parser::new(lexer);
-        self.parse_program(&mut parser);
 
-        if parser.has_errors() {
-            self.print_messages(&parser.get_errors());
-            return Err(format!("Failed parsing of {:?}", self.initial_path));
+        let program_ctx = parser.parse_program().map_err(|messages| {
+            messages.print_errors();
+            "Failed to parse program".to_string()
+        })?;
+
+        if parser.messages_ref().has_warnings() {
+            parser.messages_ref().print_warnings();
         }
 
-        if parser.has_warnings() {
-            self.print_messages(&parser.get_warnings());
+        Ok(program_ctx)
+    }
+
+    fn process_ast_lowering(&mut self, program_ctx: &ProgramCtx) -> Result<Box<Hir>, String> {
+        let mut lowering = AstLowering::new();
+
+        let hir = lowering.low(program_ctx).map_err(|messages| {
+            messages.print_errors();
+            "Failed to analyze program".to_string()
+        })?;
+
+        if lowering.messages_ref().has_warnings() {
+            lowering.messages_ref().print_warnings();
+        }
+
+        Ok(hir)
+    }
+
+    fn process_analyze(&mut self, hir: &mut Hir) -> Result<(), String> {
+        let mut analyzer = Analyzer::with_compile_options(self.compile_options.clone());
+
+        analyzer.analyze_program(hir).map_err(|messages| {
+            messages.print_errors();
+            "Failed to analyze program".to_string()
+        })?;
+
+        if analyzer.messages_ref().has_warnings() {
+            analyzer.messages_ref().print_warnings();
         }
 
         Ok(())
     }
 
-    fn analyze_program(&mut self, analyzer: &mut Analyzer) -> Result<(), String> {
-        let Some(ast) = &mut self.ast else {
-            return Err("Analysis requires AST".to_string());
-        };
+    #[cfg(feature = "backend_C")]
+    fn process_codegen(&self, hir: &Hir) -> Result<(), String> {
+        let header_name = format!("{}.tt.h", &self.name);
+        let mut header_stream = std::fs::File::create(&header_name)
+            .map_err(|err| format!("Failed to create \"{header_name}\": {err}"))?;
 
-        if let Err(err) = ast.accept_mut(analyzer) {
-            analyzer.error(err);
-        }
+        let source_name = &self.output_path;
+        let mut source_stream = std::fs::File::create(source_name)
+            .map_err(|err| format!("Failed to create \"{header_name}\": {err}"))?;
 
-        if self.compile_options.crate_type == CrateType::Bin {
-            if let Err(err) = analyzer.check_entry_point() {
-                analyzer.error(err);
-            }
-        }
+        let mut codegen = tanitc_ir_c::CodeGenStream::with_compile_options(
+            &mut header_stream,
+            &mut source_stream,
+            self.compile_options.clone(),
+        );
 
-        Ok(())
-    }
-
-    fn process_analyze(&mut self) -> Result<(), String> {
-        let mut analyzer = Analyzer::new();
-        analyzer.set_compile_options(self.compile_options.clone());
-
-        self.analyze_program(&mut analyzer)?;
-
-        let messages = analyzer.messages_ref();
-        if messages.has_errors() {
-            self.print_messages(messages.errors_ref());
-            return Err(format!("Failed analysis of {:?}", self.initial_path));
-        }
-
-        if messages.has_warnings() {
-            self.print_messages(messages.warnings_ref());
-        }
-
-        Ok(())
-    }
-
-    fn codegen_program(&self, codegen: &mut CodeGenStream) -> Result<(), String> {
-        use std::io::Write;
-
-        let Some(ast) = &self.ast else {
-            return Err("Codegen requires AST".to_string());
-        };
-
-        codegen.mode = CodeGenMode::SourceOnly;
-
-        if let Err(msg) = writeln!(codegen, "#include \"{}.tt.h\"\n", &self.name) {
-            return Err(format!("{msg}"));
-        };
-
-        codegen.mode = CodeGenMode::Unset;
-
-        if let Err(err) = ast.accept(codegen) {
-            return Err(format!("Error: {err}"));
-        }
-
-        Ok(())
-    }
-
-    fn process_codegen(&self) -> Result<(), String> {
-        let Ok(mut header_stream) = std::fs::File::create(format!("{}.tt.h", &self.name)) else {
-            return Err("Error: can't create file for header stream".to_string());
-        };
-
-        let Ok(mut source_stream) = std::fs::File::create(&self.output_path) else {
-            return Err("Error: can't create file for source stream".to_string());
-        };
-
-        let Ok(mut codegen) = CodeGenStream::new(&mut header_stream, &mut source_stream) else {
-            return Err("Error: can't create codegen writer".to_string());
-        };
-
-        self.codegen_program(&mut codegen)?;
+        codegen.codegen_program(hir)?;
 
         Ok(())
     }

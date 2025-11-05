@@ -31,6 +31,20 @@ pub enum Safety {
     Unsafe,
 }
 
+impl Safety {
+    pub fn is_safe(&self) -> bool {
+        Safety::Safe == *self
+    }
+
+    pub fn is_unsafe(&self) -> bool {
+        Safety::Unsafe == *self
+    }
+
+    pub fn is_inherited(&self) -> bool {
+        Safety::Inherited == *self
+    }
+}
+
 impl Display for Safety {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
