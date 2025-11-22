@@ -13,7 +13,7 @@ fn extern_test() {
                             \n    var res = hello()\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

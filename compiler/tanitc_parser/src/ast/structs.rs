@@ -18,7 +18,7 @@ impl Parser {
     }
 
     fn parse_struct_header(&mut self, struct_def: &mut StructDef) -> Result<(), Message> {
-        struct_def.location = self.consume_token(Lexem::KwStruct)?.location;
+        struct_def.location = self.consume_token(Lexem::KwStruct)?.location_ref().clone();
         struct_def.name.id = self.consume_identifier()?;
         Ok(())
     }
@@ -40,9 +40,11 @@ impl Parser {
         loop {
             let attrs = self.parse_attributes()?;
 
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            match &next.lexem {
+            match next.lexem_ref() {
                 Lexem::Rcb => break,
 
                 Lexem::EndOfLine => {
@@ -61,7 +63,7 @@ impl Parser {
 
                     if struct_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            &next.location,
+                            next.location_ref(),
                             format!("Struct has already field with identifier {id}"),
                         ));
                         continue;
@@ -82,10 +84,10 @@ impl Parser {
 
                 _ => {
                     return Err(Message::from_string(
-                        &next.location,
+                        next.location_ref(),
                         format!(
                             "Unexpected token when parsing struct fields: {}",
-                            next.lexem
+                            next.lexem_ref()
                         ),
                     ));
                 }

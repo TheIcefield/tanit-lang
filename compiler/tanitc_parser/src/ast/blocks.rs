@@ -1,5 +1,5 @@
 use tanitc_ast::ast::{blocks::Block, Ast};
-use tanitc_lexer::token::Lexem;
+use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
 
 use crate::Parser;
@@ -33,25 +33,30 @@ impl Parser {
     }
 
     fn parse_block_internal(&mut self, block: &mut Block) -> Result<(), Message> {
-        block.location = self.get_location();
+        let mut location: Option<Location> = None;
 
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            if matches!(next.lexem, Lexem::Rcb | Lexem::EndOfFile) {
+            location = Some(next.location_ref().clone());
+
+            if *next.lexem_ref() == Lexem::Rcb {
                 break;
             }
 
-            if next.lexem == Lexem::EndOfLine {
+            if *next.lexem_ref() == Lexem::EndOfLine {
                 self.get_token();
                 continue;
             }
 
             let attrs = self.parse_attributes()?;
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            let next = self.peek_token();
-
-            let statement = match next.lexem {
+            let statement = match *next.lexem_ref() {
                 Lexem::KwDef | Lexem::KwModule => self.parse_module_def(),
 
                 Lexem::KwFunc => self.parse_func_def(),
@@ -93,7 +98,7 @@ impl Parser {
                     self.skip_until(&[Lexem::EndOfLine]);
                     self.get_token();
 
-                    self.error(Message::unexpected_token(next, &[]));
+                    self.error(Message::unexpected_token(&next, &[]));
                     continue;
                 }
             };
@@ -106,6 +111,8 @@ impl Parser {
                 Err(err) => self.error(err),
             }
         }
+
+        block.location = location.unwrap_or_default();
 
         Ok(())
     }
@@ -121,7 +128,7 @@ fn parse_local_block_test() {
                           \n{}\
                           \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_local_block().unwrap();
 
     let Ast::Block(block_node) = &ast else {

@@ -15,7 +15,7 @@ impl Parser {
     }
 
     fn parse_enum_header(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
-        enum_def.location = self.consume_token(Lexem::KwEnum)?.location;
+        enum_def.location = self.consume_token(Lexem::KwEnum)?.location_ref().clone();
         enum_def.name.id = self.consume_identifier()?;
 
         Ok(())
@@ -36,9 +36,11 @@ impl Parser {
 
     fn parse_enum_body_internal(&mut self, enum_def: &mut EnumDef) -> Result<(), Message> {
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            match &next.lexem {
+            match &next.lexem_ref() {
                 Lexem::Rcb => break,
                 Lexem::EndOfLine => {
                     self.get_token();
@@ -47,29 +49,27 @@ impl Parser {
                 Lexem::Identifier(id) => {
                     let identifier = self.consume_identifier()?;
 
-                    let value = if Lexem::Colon == self.peek_token().lexem {
+                    let value = if self.is_next(Lexem::Colon) {
                         self.consume_token(Lexem::Colon)?;
 
                         let token = self.consume_integer()?;
-                        let value = if let Lexem::Integer(value) = token.lexem {
-                            match value.parse::<usize>() {
-                                Ok(value) => value,
-                                Err(err) => {
-                                    return Err(Message::parse_int_error(&token.location, err))
-                                }
-                            }
-                        } else {
+                        let Lexem::Integer(value) = token.lexem_ref() else {
                             unreachable!()
                         };
 
-                        Some(value)
+                        match value.parse::<usize>() {
+                            Ok(value) => Some(value),
+                            Err(err) => {
+                                return Err(Message::parse_int_error(token.location_ref(), err))
+                            }
+                        }
                     } else {
                         None
                     };
 
                     if enum_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            &next.location,
+                            next.location_ref(),
                             format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
@@ -82,7 +82,7 @@ impl Parser {
 
                 Lexem::Lcb => {
                     return Err(Message::new(
-                        &next.location,
+                        next.location_ref(),
                         "Unexpected token: \"{{\" during parsing enum fields.\n\
                             Help: if you tried to declare struct-like field, place \"{{\" \
                             in the same line with name of the field.",
@@ -90,7 +90,7 @@ impl Parser {
                 }
 
                 _ => {
-                    return Err(Message::unexpected_token(next, &[]));
+                    return Err(Message::unexpected_token(&next, &[]));
                 }
             }
         }
@@ -110,7 +110,7 @@ fn parse_enum_def_test() {
                             \n    Max\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let node = parser.parse_enum_def().unwrap();
     let Ast::EnumDef(enum_node) = &node else {
@@ -140,7 +140,7 @@ fn parse_empty_enum_def_test() {
     use tanitc_attributes::Publicity;
     const SRC_TEXT: &str = "\nenum EmptyEnum { }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let node = parser.parse_enum_def().unwrap();
     let Ast::EnumDef(enum_node) = &node else {
@@ -159,7 +159,7 @@ fn parse_enum_with_one_field_def_test() {
 
     const SRC_TEXT: &str = "\nenum MyEnum { MinsInHour: 60\n }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let node = parser.parse_enum_def().unwrap();
     let Ast::EnumDef(enum_node) = &node else {

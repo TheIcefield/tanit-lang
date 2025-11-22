@@ -13,10 +13,10 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_variable_def(&mut self) -> Result<Ast, Message> {
-        let next = self.peek_token();
-        let location = next.location.clone();
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        let visibility = match next.lexem {
+        let visibility = match next.lexem_ref() {
             Lexem::KwVar => {
                 self.get_token();
                 Visibility::Local
@@ -29,14 +29,14 @@ impl Parser {
 
             _ => {
                 return Err(Message::unexpected_token(
-                    next,
+                    &next,
                     &[Lexem::KwVar, Lexem::KwStatic],
                 ));
             }
         };
 
-        let next = self.peek_token();
-        let mutability = match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let mutability = match next.lexem_ref() {
             Lexem::KwMut => {
                 self.get_token();
                 Mutability::Mutable
@@ -52,30 +52,20 @@ impl Parser {
 
         let identifier = self.consume_identifier()?;
 
-        let next = self.peek_token();
-        println!("NEXT1: {next}");
-
         let mut var_type: Option<TypeSpec> = None;
         let mut rvalue: Option<Ast> = None;
 
-        if Lexem::Colon == next.lexem {
-            self.consume_token(Lexem::Colon)?;
-
+        if self.is_next(Lexem::Colon) {
+            self.get_token();
             var_type = Some(self.parse_type_spec()?);
         }
 
-        let next = self.peek_token();
-        println!("NEXT2: {next}");
-
-        if Lexem::Assign == next.lexem {
+        if self.is_next(Lexem::Assign) {
             self.get_token();
-
             rvalue = Some(self.parse_expression()?);
         }
 
         if var_type.is_none() && rvalue.is_none() {
-            println!("VAR_TYPE: {}", var_type.is_some());
-            println!("RVALUE: {}", rvalue.is_some());
             return Err(Message::from_string(
                 &location,
                 format!(
@@ -124,15 +114,15 @@ mod tests {
         values::{Value, ValueKind},
         Ast,
     };
-    use tanitc_ty::Type;
+    use tanitc_ty::{ArraySize, Type};
 
     use crate::Parser;
 
     #[test]
     fn notified_vardef_test() {
-        const SRC_TEXT: &str = "var a: i32 = 0";
+        const SRC_TEXT: &str = "var a: i32 = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -174,9 +164,9 @@ mod tests {
 
     #[test]
     fn notified_mut_vardef_test() {
-        const SRC_TEXT: &str = "var mut b: i32 = 0";
+        const SRC_TEXT: &str = "var mut b: i32 = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -218,9 +208,9 @@ mod tests {
 
     #[test]
     fn unnotified_vardef_test() {
-        const SRC_TEXT: &str = "var c = 0";
+        const SRC_TEXT: &str = "var c = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -262,9 +252,9 @@ mod tests {
 
     #[test]
     fn unnotified_mut_vardef_test() {
-        const SRC_TEXT: &str = "var mut d = 0";
+        const SRC_TEXT: &str = "var mut d = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -306,9 +296,9 @@ mod tests {
 
     #[test]
     fn notified_vardec_test() {
-        const SRC_TEXT: &str = "var e: i32";
+        const SRC_TEXT: &str = "var e: i32\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -327,9 +317,9 @@ mod tests {
 
     #[test]
     fn notified_mut_vardec_test() {
-        const SRC_TEXT: &str = "var mut f: f32";
+        const SRC_TEXT: &str = "var mut f: f32\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -348,11 +338,11 @@ mod tests {
 
     #[test]
     fn unnotified_vardec_bad_test() {
-        const SRC_TEXT: &str = "var e";
+        const SRC_TEXT: &str = "var e\n";
         const EXPECTED_ERR: &str =
             "Variable \"e\" defined without type. Need to specify type or use with rvalue";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let msg = parser.parse_variable_def().err().unwrap();
         assert_eq!(msg.text, EXPECTED_ERR);
@@ -360,9 +350,9 @@ mod tests {
 
     #[test]
     fn notified_static_def_test() {
-        const SRC_TEXT: &str = "static A: i32 = 0";
+        const SRC_TEXT: &str = "static A: i32 = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -404,9 +394,9 @@ mod tests {
 
     #[test]
     fn notified_static_mut_def_test() {
-        const SRC_TEXT: &str = "static mut B: i32 = 0";
+        const SRC_TEXT: &str = "static mut B: i32 = 0\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let res = parser.parse_variable_def().unwrap();
         if parser.has_errors() {
@@ -448,13 +438,134 @@ mod tests {
 
     #[test]
     fn unnotified_static_def_bad_test() {
-        const SRC_TEXT: &str = "static C = 0";
+        const SRC_TEXT: &str = "static C = 0\n";
         const EXPECTED_ERR: &str =
             "Variable \"C\" defined without type, but marked as static. Need to specify type";
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let msg = parser.parse_variable_def().err().unwrap();
         assert_eq!(msg.text, EXPECTED_ERR);
+    }
+
+    #[test]
+    fn notified_vardec_array_test() {
+        const SRC_TEXT: &str = "var mut arr: [f32: 6]\n";
+
+        let mut parser = Parser::from_text(SRC_TEXT);
+
+        let res = parser.parse_variable_def().unwrap();
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+
+        let Ast::VariableDef(var_def) = &res else {
+            panic!("Expected VariableDef, actually: {}", res.name());
+        };
+
+        assert_eq!(var_def.identifier.to_string(), "arr");
+        assert_eq!(var_def.mutability.is_mutable(), true);
+        assert_eq!(var_def.visibility.is_global(), false);
+        assert_eq!(
+            var_def.var_type.get_type(),
+            Type::Array {
+                size: ArraySize::Fixed(6),
+                value_type: Box::new(Type::F32),
+            }
+        );
+    }
+
+    #[test]
+    fn unnotified_vardef_array_test() {
+        const SRC_TEXT: &str = "var arr = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]\n";
+
+        let mut parser = Parser::from_text(SRC_TEXT);
+
+        let res = parser.parse_variable_def().unwrap();
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+
+        let Ast::Expression(Expression {
+            kind:
+                ExpressionKind::Binary {
+                    operation: BinaryOperation::Assign,
+                    lhs,
+                    rhs,
+                },
+            ..
+        }) = &res
+        else {
+            panic!("Expected binary expression, actually: {}", res.name());
+        };
+
+        let Ast::VariableDef(var_def) = lhs.as_ref() else {
+            panic!("Expected VariableDef, actually: {}", res.name());
+        };
+
+        assert_eq!(var_def.identifier.to_string(), "arr");
+        assert_eq!(var_def.mutability.is_mutable(), false);
+        assert_eq!(var_def.visibility.is_global(), false);
+        assert_eq!(var_def.var_type.get_type(), Type::Auto);
+
+        let Ast::Value(Value {
+            kind: ValueKind::Array { components },
+            ..
+        }) = rhs.as_ref()
+        else {
+            panic!("Expected Array, actually: {}", res.name());
+        };
+
+        assert_eq!(components.len(), 6);
+    }
+
+    #[test]
+    fn notified_vardef_array_test() {
+        const SRC_TEXT: &str = "var mut arr: [f32: 6] = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]\n";
+
+        let mut parser = Parser::from_text(SRC_TEXT);
+
+        let res = parser.parse_variable_def().unwrap();
+        if parser.has_errors() {
+            panic!("{:?}", parser.get_errors());
+        }
+
+        let Ast::Expression(Expression {
+            kind:
+                ExpressionKind::Binary {
+                    operation: BinaryOperation::Assign,
+                    lhs,
+                    rhs,
+                },
+            ..
+        }) = &res
+        else {
+            panic!("Expected binary expression, actually: {}", res.name());
+        };
+
+        let Ast::VariableDef(var_def) = lhs.as_ref() else {
+            panic!("Expected VariableDef, actually: {}", res.name());
+        };
+
+        assert_eq!(var_def.identifier.to_string(), "arr");
+        assert_eq!(var_def.mutability.is_mutable(), true);
+        assert_eq!(var_def.visibility.is_global(), false);
+        assert_eq!(
+            var_def.var_type.get_type(),
+            Type::Array {
+                size: ArraySize::Fixed(6),
+                value_type: Box::new(Type::F32),
+            }
+        );
+
+        let Ast::Value(Value {
+            kind: ValueKind::Array { components },
+            ..
+        }) = rhs.as_ref()
+        else {
+            panic!("Expected Array, actually: {}", res.name());
+        };
+
+        assert_eq!(components.len(), 6);
     }
 }

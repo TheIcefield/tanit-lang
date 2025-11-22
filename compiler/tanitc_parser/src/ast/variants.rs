@@ -21,7 +21,7 @@ impl Parser {
     }
 
     fn parse_variant_header(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
-        variant_def.location = self.consume_token(Lexem::KwVariant)?.location;
+        variant_def.location = self.consume_token(Lexem::KwVariant)?.location_ref().clone();
         variant_def.name.id = self.consume_identifier()?;
 
         Ok(())
@@ -42,9 +42,11 @@ impl Parser {
 
     fn parse_variant_body_internal(&mut self, variant_def: &mut VariantDef) -> Result<(), Message> {
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            match &next.lexem {
+            match next.lexem_ref() {
                 Lexem::Rcb => break,
 
                 Lexem::EndOfLine => {
@@ -63,7 +65,7 @@ impl Parser {
 
                     if variant_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            &next.location,
+                            next.location_ref(),
                             format!("Enum has already field with identifier \"{id}\""),
                         ));
                         continue;
@@ -78,7 +80,7 @@ impl Parser {
 
                 Lexem::Lcb => {
                     return Err(Message::new(
-                        &next.location,
+                        next.location_ref(),
                         "Unexpected token: \"{\" during parsing enum fields.\n\
                             Help: If you tried to declare struct-like field, place \"{\" \
                             in the same line with name of the field.",
@@ -86,7 +88,7 @@ impl Parser {
                 }
 
                 _ => {
-                    return Err(Message::unexpected_token(next, &[]));
+                    return Err(Message::unexpected_token(&next, &[]));
                 }
             }
         }
@@ -95,7 +97,6 @@ impl Parser {
     }
 }
 
-// Variant field
 impl Parser {
     fn parse_variant_field(&mut self) -> Result<VariantField, Message> {
         let mut node = VariantField::default();
@@ -112,8 +113,8 @@ impl Parser {
         &mut self,
         variant_field: &mut VariantField,
     ) -> Result<(), Message> {
-        let next = self.peek_token();
-        match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        match next.lexem_ref() {
             Lexem::EndOfLine => {
                 *variant_field = VariantField::Common;
 
@@ -121,7 +122,7 @@ impl Parser {
             }
 
             Lexem::LParen => {
-                let location = self.peek_token().location;
+                let location = next.location_ref();
                 let (ty, info) = self.parse_tuple_def()?;
 
                 if let Type::Tuple(components) = &ty {
@@ -137,7 +138,7 @@ impl Parser {
 
                     Ok(())
                 } else {
-                    Err(Message::unexpected_token(next, &[]))
+                    Err(Message::unexpected_token(&next, &[]))
                 }
             }
 
@@ -156,7 +157,7 @@ impl Parser {
             }
 
             _ => Err(Message::from_string(
-                &next.location,
+                next.location_ref(),
                 format!("Unexpected token during parsing enum: {next}"),
             )),
         }

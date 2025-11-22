@@ -19,7 +19,7 @@ fn union_work_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -82,7 +82,7 @@ fn union_in_module_work_test() {
                             \n              }\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

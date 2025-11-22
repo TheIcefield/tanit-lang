@@ -12,7 +12,7 @@ fn enum_def_test() {
                             \n    Max\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -41,7 +41,7 @@ fn enum_def_test() {
 fn empty_enum_def_test() {
     const SRC_TEXT: &str = "\nenum EmptyEnum { }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -66,7 +66,7 @@ fn empty_enum_def_test() {
 fn enum_with_one_field_def_test() {
     const SRC_TEXT: &str = "\nenum MyEnum { MinsInHour: 60\n }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let enum_node = parser.parse_enum_def().unwrap();
 
@@ -100,7 +100,7 @@ fn enum_work_test() {
                             \n    var a = MyEnum::Second\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -157,7 +157,7 @@ fn enum_in_module_work_test() {
                             \n    var a = color::Color::Red\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

@@ -55,8 +55,8 @@ fn ast_write_test() {
     const EXPECTED: &str = "Block {\
                           \n    location: Location {\
                           \n        path: \"\",\
-                          \n        row: 1,\
-                          \n        col: 1,\
+                          \n        row: 0,\
+                          \n        col: 0,\
                           \n    },\
                           \n    attributes: BlockAttributes {\
                           \n        safety: Inherited,\
@@ -65,8 +65,8 @@ fn ast_write_test() {
                           \n        StructDef {\
                           \n            location: Location {\
                           \n                path: \"\",\
-                          \n                row: 1,\
-                          \n                col: 1,\
+                          \n                row: 0,\
+                          \n                col: 0,\
                           \n            },\
                           \n            attributes: StructAttributes {\
                           \n                publicity: Private,\
@@ -80,8 +80,8 @@ fn ast_write_test() {
                           \n                    ty: TypeSpec {\
                           \n                        location: Location {\
                           \n                            path: \"\",\
-                          \n                            row: 1,\
-                          \n                            col: 1,\
+                          \n                            row: 0,\
+                          \n                            col: 0,\
                           \n                        },\
                           \n                        info: ParsedTypeInfo {\
                           \n                            mutability: Immutable,\
@@ -96,8 +96,8 @@ fn ast_write_test() {
                           \n                    ty: TypeSpec {\
                           \n                        location: Location {\
                           \n                            path: \"\",\
-                          \n                            row: 1,\
-                          \n                            col: 1,\
+                          \n                            row: 0,\
+                          \n                            col: 0,\
                           \n                        },\
                           \n                        info: ParsedTypeInfo {\
                           \n                            mutability: Immutable,\
@@ -114,8 +114,8 @@ fn ast_write_test() {
                           \n        FunctionDef {\
                           \n            location: Location {\
                           \n                path: \"\",\
-                          \n                row: 1,\
-                          \n                col: 1,\
+                          \n                row: 0,\
+                          \n                col: 0,\
                           \n            },\
                           \n            attributes: FunctionAttributes {\
                           \n                publicity: Private,\
@@ -128,8 +128,8 @@ fn ast_write_test() {
                           \n            return_type: TypeSpec {\
                           \n                location: Location {\
                           \n                    path: \"\",\
-                          \n                    row: 1,\
-                          \n                    col: 1,\
+                          \n                    row: 0,\
+                          \n                    col: 0,\
                           \n                },\
                           \n                info: ParsedTypeInfo {\
                           \n                    mutability: Immutable,\

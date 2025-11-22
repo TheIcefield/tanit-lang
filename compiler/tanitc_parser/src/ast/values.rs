@@ -11,15 +11,16 @@ use crate::Parser;
 impl Parser {
     // func_name(1, 2 ,3)
     pub fn parse_call_params(&mut self) -> Result<Vec<CallArg>, Message> {
-        let _ = self.consume_token(Lexem::LParen)?.location;
+        let _ = self.consume_token(Lexem::LParen)?.location_ref().clone();
 
         let mut args = Vec::<CallArg>::new();
 
         let mut i = 0;
         loop {
-            let next = self.peek_token();
-
-            if next.lexem == Lexem::RParen {
+            let Some(next) = self.peek_token() else {
+                break;
+            };
+            if *next.lexem_ref() == Lexem::RParen {
                 break;
             }
 
@@ -32,8 +33,8 @@ impl Parser {
                 ..
             }) = &expr
             {
-                if self.peek_token().lexem == Lexem::Colon {
-                    self.consume_token(Lexem::Colon)?;
+                if self.is_next(Lexem::Colon) {
+                    self.get_token();
                     Some(*id)
                 } else {
                     None
@@ -56,16 +57,14 @@ impl Parser {
 
             i += 1;
 
-            let next = self.peek_token();
-            if next.lexem == Lexem::Comma {
-                // continue parsing if ','
+            let next = self.peek_token().ok_or(Message::reached_eof())?;
+            if self.is_next(Lexem::Comma) {
                 self.get_token();
                 continue;
-            } else if next.lexem == Lexem::RParen {
-                // end parsing if ')'
+            } else if self.is_next(Lexem::RParen) {
                 break;
             } else {
-                return Err(Message::unexpected_token(next, &[]));
+                return Err(Message::unexpected_token(&next, &[]));
             }
         }
 
@@ -76,28 +75,30 @@ impl Parser {
 
     // [1, 2, 3]
     pub fn parse_array_value(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::Lsb)?.location;
+        let location = self.consume_token(Lexem::Lsb)?.location_ref().clone();
 
         let mut components = Vec::<Ast>::new();
 
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            if next.lexem == Lexem::Rsb {
+            if *next.lexem_ref() == Lexem::Rsb {
                 break;
             }
             components.push(self.parse_expression()?);
 
-            let next = self.peek_token();
-            if next.lexem == Lexem::Comma {
+            let next = self.peek_token().ok_or(Message::reached_eof())?;
+            if *next.lexem_ref() == Lexem::Comma {
                 // continue parsing if ','
                 self.get_token();
                 continue;
-            } else if next.lexem == Lexem::Rsb {
+            } else if *next.lexem_ref() == Lexem::Rsb {
                 // end parsing if ']'
                 break;
             } else {
-                return Err(Message::unexpected_token(next, &[]));
+                return Err(Message::unexpected_token(&next, &[]));
             }
         }
 
@@ -128,9 +129,11 @@ impl Parser {
         let mut components = Vec::<(Name, Ast)>::new();
 
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            if next.lexem == Lexem::Rcb {
+            if *next.lexem_ref() == Lexem::Rcb {
                 break;
             }
 
@@ -146,16 +149,14 @@ impl Parser {
                 self.parse_expression()?,
             ));
 
-            let next = self.peek_token();
-            if next.lexem == Lexem::Comma || next.lexem == Lexem::EndOfLine {
-                // continue parsing if ','
+            let next = self.peek_token().ok_or(Message::reached_eof())?;
+            if self.is_next(Lexem::Comma) || self.is_next(Lexem::EndOfLine) {
                 self.get_token();
                 continue;
-            } else if next.lexem == Lexem::Rcb {
-                // end parsing if '}'
+            } else if self.is_next(Lexem::Rcb) {
                 break;
             } else {
-                return Err(Message::unexpected_token(next, &[]));
+                return Err(Message::unexpected_token(&next, &[]));
             }
         }
 

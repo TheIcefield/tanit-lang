@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{io::Read, path::PathBuf};
 
 use tanitc_ast::ast::{modules::ModuleDef, Ast};
 use tanitc_lexer::{token::Lexem, Lexer};
@@ -17,16 +17,12 @@ impl Parser {
     }
 
     fn parse_module_header(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
-        let next = self.peek_token();
-        mod_def.location = next.location;
-
-        if Lexem::KwDef == next.lexem {
-            self.consume_token(Lexem::KwDef)?;
+        if self.is_next(Lexem::KwDef) {
+            self.get_token();
             mod_def.is_external = true;
         }
 
-        self.consume_token(Lexem::KwModule)?;
-
+        mod_def.location = self.consume_token(Lexem::KwModule)?.location_ref().clone();
         mod_def.name.id = self.consume_identifier()?;
 
         Ok(())
@@ -116,10 +112,18 @@ impl Parser {
     fn parse_module_body_external(&mut self, mod_def: &mut ModuleDef) -> Result<(), Message> {
         let path = self.get_external_module_path(mod_def)?;
 
-        let lexer = match Lexer::from_file(&path) {
-            Ok(lexer) => lexer,
-            Err(msg) => return Err(Message::from_string(&mod_def.location, msg)),
-        };
+        let mut buffer = String::new();
+
+        match std::fs::File::open(&path) {
+            Ok(mut file) => {
+                if let Err(err) = file.read_to_string(&mut buffer) {
+                    return Err(Message::from_string(&mod_def.location, format!("{err}")));
+                }
+            }
+            Err(err) => return Err(Message::from_string(&mod_def.location, format!("{err}"))),
+        }
+
+        let lexer = Lexer::new(buffer.chars().peekable(), &path);
 
         let mut parser = Parser::new(lexer);
 
@@ -147,7 +151,7 @@ fn module_test() {
                             \n    }\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let res = parser.parse_module_def().unwrap();
 
