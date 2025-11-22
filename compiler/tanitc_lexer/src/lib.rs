@@ -7,7 +7,6 @@ use location::Location;
 use token::{Lexem, Token};
 
 pub struct Lexer {
-    path: PathBuf,
     location: Location,
     next_token: Option<Token>,
     next_char: Option<char>,
@@ -26,7 +25,6 @@ impl Lexer {
         }
 
         Ok(Self {
-            path: path.to_path_buf(),
             location: Location::new(path),
             next_token: None,
             next_char: None,
@@ -39,7 +37,6 @@ impl Lexer {
 
     pub fn from_text(src: &'static str) -> Result<Self, &'static str> {
         Ok(Self {
-            path: PathBuf::new(),
             location: Location::new(&PathBuf::new()),
             next_token: None,
             next_char: None,
@@ -97,11 +94,11 @@ impl Lexer {
     }
 
     pub fn get_path(&self) -> &Path {
-        if self.path.as_os_str().is_empty() {
+        if self.location.path.as_os_str().is_empty() {
             panic!("Lexer input stream is not a file");
         }
 
-        self.path.as_path()
+        self.location.path.as_path()
     }
 }
 
