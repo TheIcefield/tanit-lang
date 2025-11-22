@@ -2,7 +2,6 @@ use super::location::Location;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Lexem {
-    EndOfFile,
     EndOfLine,
 
     LParen,       // (
@@ -140,7 +139,6 @@ impl Default for Lexem {
 impl std::fmt::Display for Lexem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EndOfFile => write!(f, "EOF"),
             Self::EndOfLine => write!(f, "EOL"),
             Self::LParen => write!(f, "("),
             Self::RParen => write!(f, ")"),
@@ -230,8 +228,8 @@ impl std::fmt::Display for Lexem {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
-    pub lexem: Lexem,
-    pub location: Location,
+    lexem: Lexem,
+    location: Location,
 }
 
 impl Token {
@@ -251,8 +249,20 @@ impl Token {
         matches!(self.lexem, Lexem::Decimal(_))
     }
 
-    pub fn get_location(&self) -> Location {
-        self.location.clone()
+    pub fn lexem_ref(&self) -> &Lexem {
+        &self.lexem
+    }
+
+    pub fn lexem_mut(&mut self) -> &mut Lexem {
+        &mut self.lexem
+    }
+
+    pub fn location_ref(&self) -> &Location {
+        &self.location
+    }
+
+    pub fn location_mut(&mut self) -> &mut Location {
+        &mut self.location
     }
 }
 

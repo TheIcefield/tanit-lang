@@ -6,7 +6,7 @@ use crate::Parser;
 
 impl Parser {
     fn parse_extern_header(&mut self, extern_def: &mut ExternDef) -> Result<(), Message> {
-        extern_def.location = self.consume_token(Lexem::KwExtern)?.location;
+        extern_def.location = self.consume_token(Lexem::KwExtern)?.location_ref().clone();
         extern_def.abi_name = self.consume_text()?;
 
         Ok(())
@@ -14,29 +14,33 @@ impl Parser {
 
     fn parse_extern_body_internal(&mut self, extern_def: &mut ExternDef) -> Result<(), Message> {
         loop {
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            if matches!(next.lexem, Lexem::Rcb | Lexem::EndOfFile) {
+            if matches!(next.lexem_ref(), Lexem::Rcb) {
                 break;
             }
 
-            if next.lexem == Lexem::EndOfLine {
+            if *next.lexem_ref() == Lexem::EndOfLine {
                 self.get_token();
                 continue;
             }
 
             let attrs = self.parse_attributes()?;
 
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            let statement = match next.lexem {
+            let statement = match next.lexem_ref() {
                 Lexem::KwFunc => self.parse_func_def(),
 
                 _ => {
                     self.skip_until(&[Lexem::EndOfLine]);
                     self.get_token();
 
-                    self.error(Message::unexpected_token(next, &[Lexem::KwFunc]));
+                    self.error(Message::unexpected_token(&next, &[Lexem::KwFunc]));
                     continue;
                 }
             };

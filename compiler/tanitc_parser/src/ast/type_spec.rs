@@ -9,7 +9,12 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_type_spec(&mut self) -> Result<TypeSpec, Message> {
-        let location = self.peek_token().location;
+        let location = self
+            .peek_token()
+            .ok_or(Message::reached_eof())?
+            .location_ref()
+            .clone();
+
         let (ty, info) = self.parse_type()?;
 
         Ok(TypeSpec { location, info, ty })
@@ -21,9 +26,11 @@ impl Parser {
         let mut params = Vec::<Type>::new();
 
         loop {
-            let tkn = self.peek_token();
+            let Some(tkn) = self.peek_token() else {
+                break;
+            };
 
-            if tkn.lexem == Lexem::RParen {
+            if *tkn.lexem_ref() == Lexem::RParen {
                 self.get_token();
                 break;
             }
@@ -41,9 +48,7 @@ impl Parser {
 
         let parameters = self.parse_func_type_params()?;
 
-        let next = self.peek_token();
-
-        let return_type = if next.lexem == Lexem::Colon {
+        let return_type = if self.is_next(Lexem::Colon) {
             self.get_token();
             Box::new(self.parse_type()?.0)
         } else {
@@ -64,7 +69,7 @@ impl Parser {
 
         let mut info = ParsedTypeInfo::default();
 
-        if matches!(self.peek_token().lexem, Lexem::KwMut) {
+        if self.is_next(Lexem::KwMut) {
             info.mutability = Mutability::Mutable;
             self.get_token();
         }
@@ -85,7 +90,7 @@ impl Parser {
 
         let mut info = ParsedTypeInfo::default();
 
-        if matches!(self.peek_token().lexem, Lexem::KwMut) {
+        if self.is_next(Lexem::KwMut) {
             info.mutability = Mutability::Mutable;
             self.get_token();
         }
@@ -95,34 +100,7 @@ impl Parser {
         Ok((Type::Ptr(Box::new(ptr_to)), info))
     }
 
-    fn parse_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
-        let next = self.peek_token();
-
-        // Parse func: fn(i32, i32) -> i32
-        if self.peek_token().lexem == Lexem::KwFunc {
-            return self.parse_func_type();
-        }
-
-        // Parse reference: &mut i32
-        if self.peek_token().lexem == Lexem::Ampersand {
-            return self.parse_reference_type();
-        }
-
-        // Parse pointer: *mut f32
-        if next.lexem == Lexem::Star {
-            return self.parse_pointer_type();
-        }
-
-        // Parse tuple: (i32, f32)
-        if next.lexem == Lexem::LParen {
-            return self.parse_tuple_def();
-        }
-
-        // Parse array: [f32: 4]
-        if next.lexem == Lexem::Lsb {
-            return self.parse_array_def();
-        }
-
+    fn parse_named_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         let identifier = self.consume_identifier()?;
         let id_str: String = identifier.into();
 
@@ -146,7 +124,7 @@ impl Parser {
             _ => {}
         }
 
-        if self.peek_singular().lexem == Lexem::Lt {
+        if Lexem::Lt == *self.peek_token().ok_or(Message::reached_eof())?.lexem_ref() {
             return Ok((
                 Type::Template {
                     identifier,
@@ -159,19 +137,33 @@ impl Parser {
         Ok((Type::Custom(Name::from(id_str.to_string())), info))
     }
 
+    fn parse_type(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+
+        match next.lexem_ref() {
+            Lexem::KwFunc => self.parse_func_type(),
+            Lexem::Ampersand => self.parse_reference_type(),
+            Lexem::Star => self.parse_pointer_type(),
+            Lexem::LParen => self.parse_tuple_def(),
+            Lexem::Lsb => self.parse_array_def(),
+            Lexem::Identifier(_) => self.parse_named_type(),
+            _ => Err(Message::unexpected_token(&next, &[])),
+        }
+    }
+
     pub fn parse_tuple_def(&mut self) -> Result<(Type, ParsedTypeInfo), Message> {
         self.consume_token(Lexem::LParen)?;
 
         let mut children = Vec::<Type>::new();
         loop {
-            if self.peek_token().lexem == Lexem::RParen {
+            if self.is_next(Lexem::RParen) {
                 break;
             }
 
             let (child, _) = self.parse_type()?;
             children.push(child);
 
-            if self.peek_token().lexem == Lexem::Comma {
+            if self.is_next(Lexem::Comma) {
                 self.get_token();
                 continue;
             }
@@ -188,10 +180,10 @@ impl Parser {
         let (value_type, _) = self.parse_type()?;
         let mut size = ArraySize::Unknown;
 
-        if self.peek_token().lexem == Lexem::Colon {
+        if self.is_next(Lexem::Colon) {
             self.get_token();
 
-            size = ArraySize::Fixed(self.consume_integer()?.lexem.get_int().unwrap());
+            size = ArraySize::Fixed(self.consume_integer()?.lexem_ref().get_int().unwrap());
         }
 
         self.consume_token(Lexem::Rsb)?;
@@ -213,15 +205,15 @@ impl Parser {
             let (child, _) = self.parse_type()?;
             children.push(child);
 
-            let next = self.peek_singular();
-            if next.lexem == Lexem::Gt {
+            let next = self.peek_token().ok_or(Message::reached_eof())?;
+            if *next.lexem_ref() == Lexem::Gt {
                 break;
             } else {
                 self.consume_token(Lexem::Comma)?;
             }
         }
 
-        self.get_singular();
+        self.get_token();
 
         Ok(children)
     }
@@ -237,7 +229,7 @@ mod tests {
     fn parse_empty_func_type_test() {
         const SRC_TEXT: &str = "func()";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ty = parser.parse_type().unwrap();
 
         let Type::Func(func_type) = &ty.0 else {
@@ -252,7 +244,7 @@ mod tests {
     fn parse_empty_func_type_with_ret_test() {
         const SRC_TEXT: &str = "func():i32";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ty = parser.parse_type().unwrap();
 
         let Type::Func(func_type) = &ty.0 else {
@@ -267,7 +259,7 @@ mod tests {
     fn parse_func_type_test() {
         const SRC_TEXT: &str = "func(i32)";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ty = parser.parse_type().unwrap();
 
         let Type::Func(func_type) = &ty.0 else {
@@ -283,7 +275,7 @@ mod tests {
     fn parse_func_type_with_ret_test() {
         const SRC_TEXT: &str = "func(i32):i32";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ty = parser.parse_type().unwrap();
 
         let Type::Func(func_type) = &ty.0 else {

@@ -13,7 +13,7 @@ fn array_work_test() {
                             \n    arr_1[1 + 1] = 7.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -62,7 +62,7 @@ fn immutable_array_bad_test() {
                             \n    arr[0] = 7.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -89,7 +89,7 @@ fn strange_index_array_bad_test() {
                             \n    arr[3.14] = 7.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

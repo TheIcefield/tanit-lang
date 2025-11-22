@@ -13,7 +13,7 @@ use std::{
 
 #[derive(Default, Debug, Clone)]
 pub struct Message {
-    pub location: Location,
+    pub location: Option<Location>,
     pub text: String,
 }
 
@@ -30,13 +30,20 @@ impl Message {
 
     pub fn from_string(location: &Location, text: String) -> Self {
         Self {
-            location: location.clone(),
+            location: Some(location.clone()),
             text,
         }
     }
 
-    pub fn unexpected_token(token: Token, expected: &[Lexem]) -> Self {
-        let mut text = format!("Unexpected token: {}. ", token.lexem);
+    pub fn reached_eof() -> Self {
+        Self {
+            location: None,
+            text: "Readched EOF".to_string(),
+        }
+    }
+
+    pub fn unexpected_token(token: &Token, expected: &[Lexem]) -> Self {
+        let mut text = format!("Unexpected token: {}. ", token.lexem_ref());
 
         if !expected.is_empty() {
             text.push_str(&format!("Expected: {}", expected[0]));
@@ -48,7 +55,7 @@ impl Message {
             text.push('.');
         }
 
-        Self::from_string(&token.location, text)
+        Self::from_string(token.location_ref(), text)
     }
 
     pub fn multiple_ids(location: &Location, id: Ident) -> Self {
@@ -148,14 +155,18 @@ impl Message {
     }
 
     pub fn map_location(mut self, location: &Location) -> Self {
-        self.location = location.clone();
+        self.location = Some(location.clone());
         self
     }
 }
 
 impl Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.location, self.text)
+        if let Some(loc) = &self.location {
+            write!(f, "{loc}: ")?;
+        }
+
+        write!(f, "{}", self.text)
     }
 }
 

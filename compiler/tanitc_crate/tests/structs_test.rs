@@ -18,7 +18,7 @@ fn struct_work_test() {
                             \n    s.f1 = 2\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -81,7 +81,7 @@ fn struct_in_module_work_test() {
                             \n    vec.x = 2.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -145,7 +145,7 @@ fn incorrect_struct_work_test() {
                             \n    s.f3 = 1.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -187,7 +187,7 @@ fn internal_struct_work_test() {
                             \n    pnt.x.value = 2.0\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

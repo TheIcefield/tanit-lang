@@ -13,7 +13,7 @@ fn function_def_test() {
                             \n    var ret: f32 = sum(a, b)\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let node = parser.parse_global_block().unwrap();
 
@@ -58,7 +58,7 @@ fn functions_test() {
                             \n   void_func()
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -123,7 +123,7 @@ fn function_in_module_work_test() {
                             \n    var green = color::get_green()\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -184,7 +184,7 @@ fn incorrect_call_test() {
                             \n   var res = f(5.6, b: pi)\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -216,7 +216,7 @@ fn incorrect_notified_call_test() {
                             \n   var res = f(a: 44, 56)\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {
@@ -249,7 +249,7 @@ fn incorrect_module_func_call_test() {
                             \n   var res = math::f(5.6, b: pi)\
                             \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     let mut program = parser.parse_global_block().unwrap();
     {

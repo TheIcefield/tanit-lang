@@ -1,8 +1,5 @@
 use std::path::{Path, PathBuf};
 
-const DEFAULT_ROW: usize = 1;
-const DEFAULT_COL: usize = 1;
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct Location {
     pub path: PathBuf,
@@ -14,14 +11,14 @@ impl Location {
     pub fn new(path: &Path) -> Self {
         Self {
             path: PathBuf::from(path),
-            row: DEFAULT_ROW,
-            col: DEFAULT_COL,
+            row: 0,
+            col: 0,
         }
     }
 
     pub fn new_line(&mut self) {
         self.row += 1;
-        self.col = DEFAULT_COL;
+        self.col = 0;
     }
 
     pub fn shift(&mut self) {
@@ -31,7 +28,13 @@ impl Location {
 
 impl std::fmt::Display for Location {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}:{}", self.path.display(), self.row, self.col)
+        write!(
+            f,
+            "{}:{}:{}",
+            self.path.display(),
+            self.row + 1,
+            self.col + 1
+        )
     }
 }
 
@@ -39,8 +42,8 @@ impl Default for Location {
     fn default() -> Self {
         Self {
             path: PathBuf::from(""),
-            row: DEFAULT_ROW,
-            col: DEFAULT_COL,
+            row: 0,
+            col: 0,
         }
     }
 }

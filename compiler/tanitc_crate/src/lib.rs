@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{io::Read, path::PathBuf};
 
 use tanitc_analyzer::{self, Analyzer};
 use tanitc_ast::ast::Ast;
@@ -91,7 +91,18 @@ impl Crate {
     }
 
     fn process_parsing(&mut self) -> Result<(), String> {
-        let mut lexer = Lexer::from_file(&self.initial_path)?;
+        let mut buffer = String::new();
+
+        match std::fs::File::open(&self.initial_path) {
+            Ok(mut file) => {
+                if let Err(err) = file.read_to_string(&mut buffer) {
+                    return Err(err.to_string());
+                }
+            }
+            Err(err) => return Err(err.to_string()),
+        }
+
+        let mut lexer = Lexer::new(buffer.chars().peekable(), &self.initial_path);
         lexer.verbose_tokens = self.compile_options.verbose_tokens;
 
         let mut parser = Parser::new(lexer);

@@ -15,8 +15,8 @@ impl Parser {
 
         self.set_ignore_nl_option(false);
 
-        let next = self.peek_token();
-        let expr = match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let expr = match next.lexem_ref() {
             Lexem::Plus
             | Lexem::Minus
             | Lexem::Ampersand
@@ -71,16 +71,15 @@ impl Parser {
     }
 
     pub fn parse_factor(&mut self) -> Result<Ast, Message> {
-        let next = self.peek_token();
-        let location = next.location.clone();
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match &next.lexem {
+        match next.lexem_ref() {
             Lexem::Ampersand => {
                 self.get_token();
 
                 let operation = {
-                    let next = self.peek_token();
-                    if next.lexem == Lexem::KwMut {
+                    if self.is_next(Lexem::KwMut) {
                         self.get_token();
                         UnaryOperation::RefMut
                     } else {
@@ -97,7 +96,7 @@ impl Parser {
             }
             Lexem::Plus | Lexem::Minus | Lexem::Star | Lexem::Not => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
                 let node = Box::new(self.parse_expression()?);
 
                 Ok(Ast::from(Expression {
@@ -108,14 +107,20 @@ impl Parser {
             Lexem::Integer(_) => Ok(Ast::from(Value {
                 location,
                 kind: ValueKind::Integer(
-                    self.consume_integer()?.lexem.get_int().unwrap_or_default(),
+                    self.consume_integer()?
+                        .lexem_ref()
+                        .get_int()
+                        .unwrap_or_default(),
                 ),
             })),
 
             Lexem::Decimal(_) => Ok(Ast::from(Value {
                 location,
                 kind: ValueKind::Decimal(
-                    self.consume_decimal()?.lexem.get_dec().unwrap_or_default(),
+                    self.consume_decimal()?
+                        .lexem_ref()
+                        .get_dec()
+                        .unwrap_or_default(),
                 ),
             })),
 
@@ -125,8 +130,7 @@ impl Parser {
                 let old_opt = self.does_ignore_nl();
                 self.set_ignore_nl_option(true);
 
-                let next = self.peek_token();
-                if next.lexem == Lexem::LParen {
+                if self.is_next(Lexem::LParen) {
                     // if call
                     let arguments = self.parse_call_params()?;
 
@@ -138,7 +142,7 @@ impl Parser {
                             arguments,
                         },
                     }));
-                } else if next.lexem == Lexem::Dcolon {
+                } else if self.is_next(Lexem::Dcolon) {
                     // if ::
                     self.get_token();
                     self.set_ignore_nl_option(old_opt);
@@ -154,7 +158,7 @@ impl Parser {
                         location,
                         kind: ExpressionKind::Access { lhs, rhs },
                     }));
-                } else if next.lexem == Lexem::Lcb {
+                } else if self.is_next(Lexem::Lcb) {
                     // if struct
                     let components = self.parse_struct_value()?;
 
@@ -169,7 +173,7 @@ impl Parser {
                             components,
                         },
                     }));
-                } else if next.lexem == Lexem::Lsb {
+                } else if self.is_next(Lexem::Lsb) {
                     // if indexing: [i + 1]
 
                     let lhs = Box::new(Ast::from(Value {
@@ -181,7 +185,7 @@ impl Parser {
 
                     return Ok(Ast::from(Expression {
                         kind: ExpressionKind::Indexing { lhs, index },
-                        location: next.location,
+                        location: next.location_ref().clone(),
                     }));
                 }
 
@@ -195,8 +199,8 @@ impl Parser {
                 self.consume_token(Lexem::LParen)?;
 
                 /* If parsed `()` then we return empty tuple */
-                if self.peek_token().lexem == Lexem::RParen {
-                    self.consume_token(Lexem::RParen)?;
+                if self.is_next(Lexem::RParen) {
+                    self.get_token();
                     return Ok(Ast::from(Value {
                         location,
                         kind: ValueKind::Tuple {
@@ -212,7 +216,7 @@ impl Parser {
                 let is_tuple = match &expr {
                     Ast::Expression { .. } => false,
                     Ast::Value { .. } => true,
-                    _ => return Err(Message::new(&next.location, "Unexpected node parsed")),
+                    _ => return Err(Message::new(next.location_ref(), "Unexpected node parsed")),
                 };
 
                 /* If parsed one expression, we return expression */
@@ -225,17 +229,19 @@ impl Parser {
                 components.push(expr);
 
                 loop {
-                    let next = self.peek_token();
+                    let Some(next) = self.peek_token() else {
+                        break;
+                    };
 
-                    if next.lexem == Lexem::RParen {
+                    if *next.lexem_ref() == Lexem::RParen {
                         self.consume_token(Lexem::RParen)?;
                         break;
-                    } else if next.lexem == Lexem::Comma {
+                    } else if *next.lexem_ref() == Lexem::Comma {
                         self.consume_token(Lexem::Comma)?;
                         components.push(self.parse_expression()?);
                     } else {
                         return Err(Message::from_string(
-                            &next.location,
+                            next.location_ref(),
                             format!("Unexpected token \"{next}\" within tuple"),
                         ));
                     }
@@ -250,7 +256,7 @@ impl Parser {
             Lexem::Lsb => self.parse_array_value(),
 
             _ => Err(Message::from_string(
-                &next.location,
+                next.location_ref(),
                 format!("Unexpected token \"{next}\" within expression"),
             )),
         }
@@ -270,10 +276,10 @@ impl Parser {
     fn parse_assign(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_logical_or()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Assign
             | Lexem::AddAssign
             | Lexem::SubAssign
@@ -286,7 +292,7 @@ impl Parser {
             | Lexem::LShiftAssign
             | Lexem::RShiftAssign => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -303,10 +309,10 @@ impl Parser {
     fn parse_logical_or(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_logical_and()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Or => {
                 self.get_token();
                 let operation = Lexem::Or;
@@ -326,10 +332,10 @@ impl Parser {
     fn parse_logical_and(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_bitwise_or()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::And => {
                 self.get_token();
                 let operation = Lexem::And;
@@ -349,10 +355,10 @@ impl Parser {
     fn parse_bitwise_or(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_bitwise_xor()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Stick => {
                 self.get_token();
                 let operation = Lexem::Stick;
@@ -372,10 +378,10 @@ impl Parser {
     fn parse_bitwise_xor(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_bitwise_and()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Xor => {
                 self.get_token();
                 let operation = Lexem::Xor;
@@ -395,10 +401,10 @@ impl Parser {
     fn parse_bitwise_and(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_logical_eq()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Ampersand => {
                 self.get_token();
                 let operation = Lexem::Ampersand;
@@ -418,13 +424,13 @@ impl Parser {
     fn parse_logical_eq(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_logical_less_or_greater()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Eq | Lexem::Neq => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -441,13 +447,13 @@ impl Parser {
     fn parse_logical_less_or_greater(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_shift()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Lt | Lexem::Lte | Lexem::Gt | Lexem::Gte => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -464,13 +470,13 @@ impl Parser {
     fn parse_shift(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_add_or_sub()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::LShift | Lexem::RShift => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -487,13 +493,13 @@ impl Parser {
     fn parse_add_or_sub(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_mul_or_div()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Plus | Lexem::Minus => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -510,13 +516,13 @@ impl Parser {
     fn parse_mul_or_div(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_dot_or_as()?;
 
-        let next = self.peek_token();
-        let location = next.location;
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        let location = next.location_ref().clone();
 
-        match next.lexem {
+        match next.lexem_ref() {
             Lexem::Star | Lexem::Slash | Lexem::Percent => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
 
                 let rhs = Box::new(self.parse_expression()?);
 
@@ -533,16 +539,15 @@ impl Parser {
     fn parse_dot_or_as(&mut self) -> Result<Ast, Message> {
         let lhs = self.parse_factor()?;
 
-        let next = self.peek_token();
-
-        match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        match next.lexem_ref() {
             Lexem::Dot | Lexem::KwAs => {
                 self.get_token();
-                let operation = next.lexem;
+                let operation = next.lexem_ref().clone();
                 let is_conversion = Lexem::KwAs == operation;
 
                 if is_conversion {
-                    let location = self.peek_token().location;
+                    let location = next.location_ref().clone();
                     return Ok(Ast::from(Expression {
                         location,
                         kind: ExpressionKind::Conversion {
@@ -553,7 +558,7 @@ impl Parser {
                 }
 
                 Ok(Ast::from(Expression {
-                    location: next.location,
+                    location: next.location_ref().clone(),
                     kind: ExpressionKind::new_binary(
                         operation,
                         Box::new(lhs),
@@ -568,6 +573,10 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
+    use pretty_assertions::assert_eq;
+
     use tanitc_ast::ast::{
         expressions::{BinaryOperation, Expression, ExpressionKind},
         values::{Value, ValueKind},
@@ -581,6 +590,7 @@ mod tests {
     fn get_location(col: usize) -> Location {
         Location {
             col,
+            path: PathBuf::from("text"),
             ..Default::default()
         }
     }
@@ -598,7 +608,7 @@ mod tests {
             kind: ExpressionKind::Binary {
                 operation: BinaryOperation::Assign,
                 lhs: Box::new(Ast::from(Value {
-                    location: get_location(2),
+                    location: get_location(1),
                     kind: ValueKind::Identifier(a_id),
                 })),
                 rhs: Box::new(Ast::from(Expression {
@@ -606,15 +616,15 @@ mod tests {
                     kind: ExpressionKind::Binary {
                         operation: BinaryOperation::Add,
                         lhs: Box::new(Ast::from(Value {
-                            location: get_location(2),
+                            location: get_location(1),
                             kind: ValueKind::Identifier(a_id),
                         })),
                         rhs: Box::new(Ast::from(Expression {
-                            location: get_location(9),
+                            location: get_location(8),
                             kind: ExpressionKind::Binary {
                                 operation: BinaryOperation::Mul,
                                 lhs: Box::new(Ast::from(Value {
-                                    location: get_location(7),
+                                    location: get_location(6),
                                     kind: ValueKind::Integer(1),
                                 })),
                                 rhs: Box::new(Ast::from(Expression {
@@ -622,23 +632,23 @@ mod tests {
                                     kind: ExpressionKind::Binary {
                                         operation: BinaryOperation::LogicalEq,
                                         lhs: Box::new(Ast::from(Expression {
-                                            location: get_location(13),
+                                            location: get_location(12),
                                             kind: ExpressionKind::Binary {
                                                 operation: BinaryOperation::Div,
                                                 lhs: Box::new(Ast::from(Value {
-                                                    location: get_location(11),
+                                                    location: get_location(10),
                                                     kind: ValueKind::Integer(4),
                                                 })),
                                                 rhs: Box::new(Ast::from(Expression {
-                                                    location: get_location(18),
+                                                    location: get_location(17),
                                                     kind: ExpressionKind::Binary {
                                                         operation: BinaryOperation::Add,
                                                         lhs: Box::new(Ast::from(Value {
-                                                            location: get_location(16),
+                                                            location: get_location(15),
                                                             kind: ValueKind::Integer(1),
                                                         })),
                                                         rhs: Box::new(Ast::from(Value {
-                                                            location: get_location(20),
+                                                            location: get_location(19),
                                                             kind: ValueKind::Identifier(a_id),
                                                         })),
                                                     },
@@ -646,7 +656,7 @@ mod tests {
                                             },
                                         })),
                                         rhs: Box::new(Ast::from(Value {
-                                            location: get_location(26),
+                                            location: get_location(25),
                                             kind: ValueKind::Integer(3),
                                         })),
                                     },
@@ -658,7 +668,7 @@ mod tests {
             },
         });
 
-        let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ast = parser.parse_expression().unwrap();
 
         assert_eq!(ast, expected);
@@ -666,9 +676,9 @@ mod tests {
 
     #[test]
     fn conversion_test() {
-        const SRC_TEXT: &str = "45 as f32";
+        const SRC_TEXT: &str = "45 as f32\n";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let expr = parser.parse_expression().unwrap();
         let Ast::Expression(node) = expr else {
@@ -687,6 +697,6 @@ mod tests {
             })
         ));
 
-        assert!(matches!(ty.get_type(), Type::F32));
+        assert_eq!(ty.get_type(), Type::F32);
     }
 }

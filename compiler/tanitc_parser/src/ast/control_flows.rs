@@ -9,20 +9,20 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_control_flow(&mut self) -> Result<Ast, Message> {
-        let next = self.peek_token();
-        match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        match next.lexem_ref() {
             Lexem::KwBreak => self.parse_break(),
             Lexem::KwContinue => self.parse_continue(),
             Lexem::KwReturn => self.parse_return(),
             _ => Err(Message::unexpected_token(
-                next,
+                &next,
                 &[Lexem::KwBreak, Lexem::KwContinue, Lexem::KwReturn],
             )),
         }
     }
 
     fn parse_break(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwBreak)?.location;
+        let location = self.consume_token(Lexem::KwBreak)?.location_ref().clone();
 
         let old_opt = self.does_ignore_nl();
 
@@ -33,13 +33,15 @@ impl Parser {
             kind: ControlFlowKind::Break { ret: None },
         };
 
-        match self.peek_token().lexem {
-            Lexem::EndOfLine => {}
-            _ => {
-                let expr = self.parse_expression()?;
+        if let Some(next) = self.peek_token() {
+            match next.lexem_ref() {
+                Lexem::EndOfLine => {}
+                _ => {
+                    let expr = self.parse_expression()?;
 
-                node.kind = ControlFlowKind::Break {
-                    ret: Some(Box::new(expr)),
+                    node.kind = ControlFlowKind::Break {
+                        ret: Some(Box::new(expr)),
+                    }
                 }
             }
         }
@@ -50,7 +52,10 @@ impl Parser {
     }
 
     fn parse_continue(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwContinue)?.location;
+        let location = self
+            .consume_token(Lexem::KwContinue)?
+            .location_ref()
+            .clone();
 
         Ok(Ast::from(ControlFlow {
             location,
@@ -59,7 +64,7 @@ impl Parser {
     }
 
     fn parse_return(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwReturn)?.location;
+        let location = self.consume_token(Lexem::KwReturn)?.location_ref().clone();
 
         let mut node = ControlFlow {
             location,
@@ -70,13 +75,15 @@ impl Parser {
 
         self.set_ignore_nl_option(false);
 
-        match self.peek_token().lexem {
-            Lexem::EndOfLine => {}
-            _ => {
-                let expr = self.parse_expression()?;
+        if let Some(next) = self.peek_token() {
+            match next.lexem_ref() {
+                Lexem::EndOfLine => {}
+                _ => {
+                    let expr = self.parse_expression()?;
 
-                node.kind = ControlFlowKind::Return {
-                    ret: Some(Box::new(expr)),
+                    node.kind = ControlFlowKind::Return {
+                        ret: Some(Box::new(expr)),
+                    }
                 }
             }
         }
@@ -93,7 +100,7 @@ fn parse_return_value_test() {
 
     const SRC_TEXT: &str = "return 10\n";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_control_flow().unwrap();
 
     let Ast::ControlFlow(cf_node) = &ast else {
@@ -117,7 +124,7 @@ fn parse_return_value_test() {
 fn parse_return_test() {
     const SRC_TEXT: &str = "return\n";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_control_flow().unwrap();
 
     let Ast::ControlFlow(cf_node) = &ast else {
@@ -135,7 +142,7 @@ fn parse_return_test() {
 fn parse_break_test() {
     const SRC_TEXT: &str = "break\n";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_control_flow().unwrap();
 
     let Ast::ControlFlow(cf_node) = &ast else {
@@ -153,7 +160,7 @@ fn parse_break_test() {
 fn parse_continue_test() {
     const SRC_TEXT: &str = "continue\n";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_control_flow().unwrap();
 
     let Ast::ControlFlow(cf_node) = &ast else {

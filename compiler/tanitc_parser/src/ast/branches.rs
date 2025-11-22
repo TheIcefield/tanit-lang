@@ -9,21 +9,22 @@ use crate::Parser;
 
 impl Parser {
     pub fn parse_branch(&mut self) -> Result<Ast, Message> {
-        let next = self.peek_token();
-        match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+
+        match next.lexem_ref() {
             Lexem::KwLoop => self.parse_loop(),
             Lexem::KwWhile => self.parse_while(),
             Lexem::KwIf => self.parse_if(),
             Lexem::KwElse => self.parse_else(),
             _ => Err(Message::unexpected_token(
-                next,
+                &next,
                 &[Lexem::KwLoop, Lexem::KwWhile, Lexem::KwIf, Lexem::KwElse],
             )),
         }
     }
 
     fn parse_loop(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwLoop)?.location;
+        let location = self.consume_token(Lexem::KwLoop)?.location_ref().clone();
 
         let body = Box::new(self.parse_local_block()?);
 
@@ -34,7 +35,7 @@ impl Parser {
     }
 
     fn parse_while(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwWhile)?.location;
+        let location = self.consume_token(Lexem::KwWhile)?.location_ref().clone();
 
         let condition = Box::new(self.parse_expression()?);
         let body = Box::new(self.parse_local_block()?);
@@ -46,7 +47,7 @@ impl Parser {
     }
 
     fn parse_if(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwIf)?.location;
+        let location = self.consume_token(Lexem::KwIf)?.location_ref().clone();
 
         let condition = Box::new(self.parse_expression()?);
         let body = Box::new(self.parse_local_block()?);
@@ -58,9 +59,9 @@ impl Parser {
     }
 
     fn parse_else(&mut self) -> Result<Ast, Message> {
-        let location = self.consume_token(Lexem::KwElse)?.location;
+        let location = self.consume_token(Lexem::KwElse)?.location_ref().clone();
 
-        let body = Box::new(if Lexem::KwIf == self.peek_token().lexem {
+        let body = Box::new(if self.is_next(Lexem::KwIf) {
             self.parse_if()?
         } else {
             self.parse_local_block()?
@@ -79,7 +80,7 @@ fn parse_loop_test() {
                           \n   # come code here ...\
                           \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_branch().unwrap();
 
     let Ast::BranchStmt(br_node) = &ast else {
@@ -101,7 +102,7 @@ fn parse_while_test() {
                           \n   # come code here ...\
                           \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_branch().unwrap();
 
     let Ast::BranchStmt(br_node) = &ast else {
@@ -130,7 +131,7 @@ fn parse_if_test() {
                           \n   # come code here ...\
                           \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_branch().unwrap();
 
     let Ast::BranchStmt(br_node) = &ast else {
@@ -158,7 +159,7 @@ fn parse_if_else_test() {
 
     const SRC_TEXT: &str = "if 1 { } else { }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     // if
     {
@@ -207,7 +208,7 @@ fn parse_if_else_if_test() {
                           \nelse\
                           \nif 2 { }";
 
-    let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+    let mut parser = Parser::from_text(SRC_TEXT);
 
     // Parse if
     {

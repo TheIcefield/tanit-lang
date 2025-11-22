@@ -7,7 +7,7 @@ use crate::Parser;
 impl Parser {
     pub fn parse_alias_def(&mut self) -> Result<Ast, Message> {
         let mut node = AliasDef {
-            location: self.consume_token(Lexem::KwAlias)?.location,
+            location: self.consume_token(Lexem::KwAlias)?.location_ref().clone(),
             identifier: self.consume_identifier()?,
             ..Default::default()
         };
@@ -35,7 +35,7 @@ mod tests {
                                     alias Items = Vec<Item>\
                                 }";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let program = parser.parse_func_def().unwrap();
 
@@ -72,7 +72,7 @@ mod tests {
     fn parse_alias_def_test() {
         const SRC_TEXT: &str = "alias MyAlias = f32";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
         let ast = parser.parse_alias_def().unwrap();
 
         let Ast::AliasDef(alias_node) = &ast else {

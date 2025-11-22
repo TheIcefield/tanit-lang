@@ -18,7 +18,7 @@ impl Parser {
     }
 
     fn parse_union_header(&mut self, union_def: &mut UnionDef) -> Result<(), Message> {
-        union_def.location = self.consume_token(Lexem::KwUnion)?.location;
+        union_def.location = self.consume_token(Lexem::KwUnion)?.location_ref().clone();
         union_def.name.id = self.consume_identifier()?;
         Ok(())
     }
@@ -37,9 +37,11 @@ impl Parser {
         loop {
             let attrs = self.parse_attributes()?;
 
-            let next = self.peek_token();
+            let Some(next) = self.peek_token() else {
+                break;
+            };
 
-            match &next.lexem {
+            match next.lexem_ref() {
                 Lexem::Rcb => break,
 
                 Lexem::EndOfLine => {
@@ -58,7 +60,7 @@ impl Parser {
 
                     if union_def.fields.contains_key(&identifier) {
                         self.error(Message::from_string(
-                            &next.location,
+                            next.location_ref(),
                             format!("Struct has already field with identifier {id}"),
                         ));
                         continue;
@@ -79,8 +81,11 @@ impl Parser {
 
                 _ => {
                     return Err(Message::from_string(
-                        &next.location,
-                        format!("Unexpected token when parsing union fields: {}", next.lexem),
+                        next.location_ref(),
+                        format!(
+                            "Unexpected token when parsing union fields: {}",
+                            next.lexem_ref()
+                        ),
                     ));
                 }
             }

@@ -5,7 +5,7 @@ use tanitc_ast::ast::{
     Ast,
 };
 use tanitc_attributes::{Mutability, Visibility};
-use tanitc_lexer::token::Lexem;
+use tanitc_lexer::{location::Location, token::Lexem};
 use tanitc_messages::Message;
 use tanitc_ty::Type;
 
@@ -20,12 +20,9 @@ impl Parser {
 
         Ok(Ast::from(node))
     }
-}
 
-// Private
-impl Parser {
     fn parse_func_header(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
-        func_def.location = self.consume_token(Lexem::KwFunc)?.location;
+        func_def.location = self.consume_token(Lexem::KwFunc)?.location_ref().clone();
         func_def.name.id = self.consume_identifier()?;
 
         self.parse_func_header_params(func_def)?;
@@ -47,7 +44,7 @@ impl Parser {
         &mut self,
         mutability: Mutability,
     ) -> Result<FunctionParam, Message> {
-        let location = self.consume_token(Lexem::Ampersand)?.location;
+        let location = self.consume_token(Lexem::Ampersand)?.location_ref().clone();
 
         if mutability.is_mutable() {
             return Err(Message::new(
@@ -56,7 +53,7 @@ impl Parser {
             ));
         }
 
-        let mutability = if self.peek_token().lexem == Lexem::KwMut {
+        let mutability = if self.is_next(Lexem::KwMut) {
             self.get_token(); // mut
             Mutability::Mutable
         } else {
@@ -71,8 +68,8 @@ impl Parser {
     fn parse_func_common_param(
         &mut self,
         mutability: Mutability,
+        location: &Location,
     ) -> Result<FunctionParam, Message> {
-        let location = self.peek_token().location;
         let identifier = self.consume_identifier()?;
 
         self.consume_token(Lexem::Colon)?;
@@ -80,7 +77,7 @@ impl Parser {
         let var_type = self.parse_type_spec()?;
 
         Ok(FunctionParam::Common(VariableDef {
-            location,
+            location: location.clone(),
             attributes: VariableAttributes::default(),
             identifier,
             var_type,
@@ -90,20 +87,20 @@ impl Parser {
     }
 
     fn parse_func_header_param(&mut self) -> Result<FunctionParam, Message> {
-        let next = self.peek_token();
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
 
         let mut mutability = Mutability::default();
-        if next.lexem == Lexem::KwMut {
+        if *next.lexem_ref() == Lexem::KwMut {
             self.get_token();
             mutability = Mutability::Mutable;
         }
 
-        let next = self.peek_token();
-        match next.lexem {
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
+        match next.lexem_ref() {
             Lexem::KwSelfO => self.parse_func_self_val_param(mutability),
             Lexem::Ampersand => self.parse_func_self_ref_param(mutability),
-            Lexem::Identifier(_) => self.parse_func_common_param(mutability),
-            _ => Err(Message::unexpected_token(next, &[])),
+            Lexem::Identifier(_) => self.parse_func_common_param(mutability, next.location_ref()),
+            _ => Err(Message::unexpected_token(&next, &[])),
         }
     }
 
@@ -111,8 +108,7 @@ impl Parser {
         self.consume_token(Lexem::LParen)?;
 
         loop {
-            let next = self.peek_token();
-            if next.lexem == Lexem::RParen {
+            if self.is_next(Lexem::RParen) {
                 self.get_token();
                 break;
             }
@@ -124,8 +120,7 @@ impl Parser {
                 }
             }
 
-            let next = self.peek_token();
-            if next.lexem == Lexem::Comma {
+            if self.is_next(Lexem::Comma) {
                 self.get_token();
             }
         }
@@ -145,9 +140,9 @@ impl Parser {
     }
 
     fn parse_func_body_internal(&mut self, func_def: &mut FunctionDef) -> Result<(), Message> {
-        let next = self.peek_token();
+        let next = self.peek_token().ok_or(Message::reached_eof())?;
 
-        match next.lexem {
+        match *next.lexem_ref() {
             Lexem::EndOfLine => {}
 
             Lexem::Lcb => {
@@ -160,7 +155,7 @@ impl Parser {
 
             _ => {
                 return Err(Message::unexpected_token(
-                    next,
+                    &next,
                     &[Lexem::Lcb, Lexem::EndOfLine],
                 ));
             }
@@ -173,13 +168,12 @@ impl Parser {
         let old_opt = self.does_ignore_nl();
         self.set_ignore_nl_option(false);
 
-        let next = self.peek_token();
-        func_def.return_type = if Lexem::Colon == next.lexem {
+        func_def.return_type = if self.is_next(Lexem::Colon) {
             self.get_token();
             self.parse_type_spec()?
         } else {
             TypeSpec {
-                location: next.location,
+                location: func_def.location.clone(),
                 info: ParsedTypeInfo::default(),
                 ty: Type::unit(),
             }
@@ -197,7 +191,7 @@ fn parse_func_def_test() {
                           \n    return a\
                           \n}";
 
-    let mut parser = Parser::from_text(SRC_TEXT).unwrap();
+    let mut parser = Parser::from_text(SRC_TEXT);
     let ast = parser.parse_func_def().unwrap();
 
     let Ast::FuncDef(func_node) = &ast else {

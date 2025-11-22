@@ -4,7 +4,6 @@ use tanitc_messages::Message;
 
 use crate::Parser;
 
-// Impl definition
 impl Parser {
     pub fn parse_impl_def(&mut self) -> Result<Ast, Message> {
         let mut node = ImplDef::default();
@@ -16,7 +15,7 @@ impl Parser {
     }
 
     fn parse_impl_header(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
-        impl_def.location = self.consume_token(Lexem::KwImpl)?.location;
+        impl_def.location = self.consume_token(Lexem::KwImpl)?.location_ref().clone();
         impl_def.identifier = self.consume_identifier()?;
 
         Ok(())
@@ -65,10 +64,15 @@ mod tests {
     use tanitc_lexer::location::Location;
     use tanitc_ty::Type;
 
+    use pretty_assertions::assert_eq;
+
+    use std::path::PathBuf;
+
     fn get_location(row: usize, col: usize) -> Location {
         Location {
             row,
             col,
+            path: PathBuf::from("text"),
             ..Default::default()
         }
     }
@@ -94,7 +98,7 @@ mod tests {
                                 \n    }\
                                 \n}";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let program = parser.parse_global_block().unwrap();
         if parser.has_errors() {
@@ -176,11 +180,11 @@ mod tests {
                 assert_eq!(
                     method.parameters[1],
                     FunctionParam::Common(VariableDef {
-                        location: get_location(11, 29),
+                        location: get_location(20, 28),
                         attributes: VariableAttributes::default(),
                         identifier: Ident::from("p".to_string()),
                         var_type: TypeSpec {
-                            location: get_location(11, 32),
+                            location: get_location(20, 33),
                             info: ParsedTypeInfo {
                                 mutability: Mutability::Immutable
                             },
@@ -257,7 +261,7 @@ mod tests {
         const ERR_2: &str =
             "Syntax error: In definition of function \"with_mut_self_ref\": \"Mut\" must be followed named binding";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Failed to create parser");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let _ = parser.parse_global_block().unwrap();
 

@@ -18,11 +18,13 @@ impl Parser {
     }
 
     fn parse_use_internal(&mut self, u: &mut Use) -> Result<(), Message> {
-        u.location = self.consume_token(Lexem::KwUse)?.location;
+        u.location = self.consume_token(Lexem::KwUse)?.location_ref().clone();
 
         loop {
-            let next = self.peek_token();
-            let id = match next.lexem {
+            let Some(next) = self.peek_token() else {
+                break;
+            };
+            let id = match next.lexem_ref() {
                 Lexem::KwSuper => {
                     self.get_token();
                     UseIdentifier::BuiltInSuper
@@ -38,23 +40,25 @@ impl Parser {
                 Lexem::Star => {
                     self.get_token();
 
-                    let next = self.peek_token();
-                    let req = [Lexem::EndOfLine, Lexem::EndOfFile];
-                    if !req.contains(&next.lexem) {
-                        return Err(Message::unexpected_token(next, &req));
+                    if self.is_eof() {
+                        UseIdentifier::BuiltInAll
+                    } else if self.is_next(Lexem::EndOfLine) {
+                        self.get_token();
+                        UseIdentifier::BuiltInAll
+                    } else {
+                        return Err(Message::unexpected_token(
+                            self.peek_token().as_ref().unwrap(),
+                            &[Lexem::EndOfLine],
+                        ));
                     }
-
-                    self.get_token();
-
-                    UseIdentifier::BuiltInAll
                 }
                 Lexem::Identifier(id) => {
                     self.get_token();
-                    UseIdentifier::Identifier(Ident::from(id))
+                    UseIdentifier::Identifier(Ident::from(id.clone()))
                 }
                 _ => {
                     return Err(Message::unexpected_token(
-                        next,
+                        &next,
                         &[
                             Lexem::KwSuper,
                             Lexem::KwSelfT,
@@ -67,9 +71,11 @@ impl Parser {
 
             u.identifier.push(id);
 
-            let next = self.peek_token();
-            match next.lexem {
-                Lexem::EndOfLine | Lexem::EndOfFile => {
+            let Some(next) = self.peek_token() else {
+                break;
+            };
+            match next.lexem_ref() {
+                Lexem::EndOfLine => {
                     self.get_token();
                     break;
                 }
@@ -78,7 +84,7 @@ impl Parser {
                 }
                 _ => {
                     return Err(Message::unexpected_token(
-                        next,
+                        &next,
                         &[Lexem::Dcolon, Lexem::EndOfLine],
                     ))
                 }
@@ -100,7 +106,7 @@ mod tests {
         let hello_id = Ident::from("hello".to_string());
         let world_id = Ident::from("world".to_string());
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let use_node = parser.parse_use().unwrap();
         {
@@ -128,7 +134,7 @@ mod tests {
 
         let mod_id = Ident::from("mod".to_string());
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         let use_node = parser.parse_use().unwrap();
         {
@@ -155,7 +161,7 @@ mod tests {
     fn use_all_wrong_test() {
         const SRC_TEXT: &str = "use Self::mod::*::hi";
 
-        let mut parser = Parser::from_text(SRC_TEXT).expect("Parser creation failed");
+        let mut parser = Parser::from_text(SRC_TEXT);
 
         parser
             .parse_use()
