@@ -72,7 +72,7 @@ mod tests {
         Location {
             row,
             col,
-            path: PathBuf::from("text"),
+            path: PathBuf::from("text").into(),
             ..Default::default()
         }
     }

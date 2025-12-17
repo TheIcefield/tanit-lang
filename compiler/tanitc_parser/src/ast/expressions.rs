@@ -590,7 +590,7 @@ mod tests {
     fn get_location(col: usize) -> Location {
         Location {
             col,
-            path: PathBuf::from("text"),
+            path: PathBuf::from("text").into(),
             ..Default::default()
         }
     }

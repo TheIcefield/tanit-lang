@@ -1,7 +1,11 @@
 pub mod location;
 pub mod token;
 
-use std::{iter::Peekable, path::Path, str::Chars};
+use std::{
+    iter::Peekable,
+    path::{Path, PathBuf},
+    str::Chars,
+};
 
 use location::Location;
 use token::{Lexem, Token};
@@ -95,12 +99,12 @@ impl<'a> Lexer<'a> {
         &mut self.location
     }
 
-    pub fn get_path(&self) -> &Path {
-        if self.location.path.as_os_str().is_empty() {
+    pub fn get_path(&self) -> PathBuf {
+        if self.location.path.as_path_buf().as_os_str().is_empty() {
             panic!("Lexer input stream is not a file");
         }
 
-        self.location.path.as_path()
+        self.location.path.as_path_buf()
     }
 
     fn peek_char(&mut self) -> Option<&char> {
