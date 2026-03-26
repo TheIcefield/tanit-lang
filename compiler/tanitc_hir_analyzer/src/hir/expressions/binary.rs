@@ -25,11 +25,11 @@ use crate::{
 impl Analyzer {
     pub(crate) fn analyze_binary_expr(&mut self, expr: &mut BinaryExpr) -> AnalyzeResult<()> {
         if expr.operation == BinaryOperation::Access {
-            return self.analyze_member_access(expr.lhs.as_mut(), expr.rhs.as_mut());
+            return self.analyze_member_access(expr);
         }
 
         if expr.operation == BinaryOperation::ScopeRes {
-            return self.analyze_scope_res_expr(expr.lhs.as_mut(), expr.rhs.as_mut());
+            return self.analyze_scope_res_expr(expr);
         }
 
         self.analyze_expression(&mut expr.rhs)?;
@@ -122,27 +122,35 @@ impl Analyzer {
 
     pub(crate) fn analyze_scope_res_expr(
         &mut self,
-        lhs: &mut Expression,
-        rhs: &mut Expression,
+        scope_res_expr: &mut BinaryExpr,
     ) -> AnalyzeResult<()> {
         let mut ids = Vec::<Ident>::new();
 
-        let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
+        Self::preprocess_access_tree(&mut ids, scope_res_expr)?;
+        if ids.is_empty() {
+            return Err(Message::unreachable(
+                scope_res_expr.location,
+                format!("<analyze_scope_res_expr>: IDS is empty"),
+            ));
+        }
 
         let Some(entry) = self.table.lookup_qualified(ids.iter().peekable()) else {
-            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
+            return Err(Message::undefined_id(
+                scope_res_expr.location,
+                *ids.last().unwrap(),
+            ));
         };
 
         let kind = entry.kind.clone();
 
         match &kind {
-            SymbolKind::Enum(data) => self.access_enum(data, rhs),
-            SymbolKind::Variant(data) => self.access_variant(data, rhs),
-            SymbolKind::StructDef(data) => self.access_struct_def(data, rhs),
-            SymbolKind::UnionDef(data) => self.access_union_def(data, rhs),
-            SymbolKind::FuncDef(_) => self.access_func_def(rhs),
+            SymbolKind::Enum(data) => self.access_enum(data, &mut scope_res_expr.rhs),
+            SymbolKind::Variant(data) => self.access_variant(data, &mut scope_res_expr.rhs),
+            SymbolKind::StructDef(data) => self.access_struct_def(data, &mut scope_res_expr.rhs),
+            SymbolKind::UnionDef(data) => self.access_union_def(data, &mut scope_res_expr.rhs),
+            SymbolKind::FuncDef(_) => self.access_func_def(&mut scope_res_expr.rhs),
             _ => Err(Message::from_string(
-                lhs.location(),
+                scope_res_expr.location,
                 format!("Unaccessible: {kind:?}"),
             )),
         }
@@ -150,27 +158,34 @@ impl Analyzer {
 
     pub(crate) fn analyze_member_access(
         &mut self,
-        lhs: &mut Expression,
-        rhs: &mut Expression,
+        member_access_expr: &mut BinaryExpr,
     ) -> AnalyzeResult<()> {
         let mut ids = Vec::<Ident>::new();
 
-        let rhs = Self::preprocess_access_tree(&mut ids, lhs, rhs)?;
+        Self::preprocess_access_tree(&mut ids, member_access_expr)?;
         if ids.is_empty() {
-            unreachable!();
+            return Err(Message::unreachable(
+                member_access_expr.location,
+                format!("<analyze_member_access>: IDS is empty"),
+            ));
         }
 
         let mut iter = ids.iter().peekable();
 
         let Some(entry) = self.table.lookup(*iter.next().unwrap()) else {
-            return Err(Message::undefined_id(rhs.location(), *ids.last().unwrap()));
+            return Err(Message::undefined_id(
+                member_access_expr.rhs.location(),
+                *ids.last().unwrap(),
+            ));
         };
 
         let kind = entry.kind.clone();
-        match &kind {
-            SymbolKind::VarDef(data) => self.check_member_access(entry.name, data, iter, rhs),
-            _ => unimplemented!("Entry.kind: {kind:?}"),
-        }
+        Ok(())
+
+        // match &kind {
+        //     SymbolKind::VarDef(data) => self.check_member_access(entry.name, data, iter, rhs),
+        //     _ => unimplemented!("Entry.kind: {kind:?}"),
+        // }
     }
 
     fn check_members(
@@ -202,6 +217,8 @@ impl Analyzer {
             ))
         }
     }
+
+    /*
 
     fn check_member_access(
         &mut self,
@@ -255,56 +272,84 @@ impl Analyzer {
 
         Ok(())
     }
+     */
 
-    fn preprocess_access_tree<'a>(
+    fn preprocess_scope_resolution_tree(
         ids: &mut Vec<Ident>,
-        lhs: &'a Expression,
-        rhs: &'a mut Expression,
-    ) -> AnalyzeResult<&'a mut Expression> {
-        let location = lhs.location();
-
-        let lhs_id = match lhs {
+        expr: &BinaryExpr,
+    ) -> AnalyzeResult<()> {
+        let lhs_id = match expr.lhs.as_ref() {
             Expression::Variable(Variable { id, .. }) => *id,
             _ => Ident::default(),
         };
 
         ids.push(lhs_id);
 
-        match rhs {
-            Expression::Binary(BinaryExpr {
-                operation: BinaryOperation::Access,
-                lhs,
-                rhs,
-                ..
-            })
-            | Expression::Binary(BinaryExpr {
-                operation: BinaryOperation::ScopeRes,
-                lhs,
-                rhs,
-                ..
-            }) => Self::preprocess_access_tree(ids, lhs, rhs),
-            Expression::Binary(BinaryExpr {
-                operation: BinaryOperation::Assign,
-                lhs: last_lhs,
-                ..
-            }) => {
-                if let Expression::Variable(Variable {
-                    id: last_lhs_id, ..
-                }) = last_lhs.as_ref()
-                {
-                    ids.push(*last_lhs_id);
+        match expr.rhs.as_ref() {
+            Expression::Binary(bin_expr) => {
+                if bin_expr.operation == BinaryOperation::ScopeRes {
+                    if let Expression::Variable(Variable {
+                        id: last_lhs_id, ..
+                    }) = expr.lhs.as_ref()
+                    {
+                        ids.push(*last_lhs_id);
+                    }
+                } else if bin_expr.operation == BinaryOperation::Access {
+                    return Self::preprocess_scope_resolution_tree(ids, bin_expr);
                 }
-
-                Ok(rhs)
             }
             Expression::Variable(Variable { id: rhs_id, .. }) => {
                 ids.push(*rhs_id);
-                Ok(rhs)
             }
-            _ => Err(Message::unreachable(
-                location,
-                format!("Expected ExpressionKind::Access or Value::Identifier, actually: {rhs:?}"),
-            )),
+            _ => {
+                return Err(Message::unreachable(
+                    expr.location,
+                    format!(
+                        "Expected ScopeRes or Variable, actually: {}",
+                        expr.rhs.kind_str()
+                    ),
+                ))
+            }
         }
+
+        Ok(())
+    }
+
+    fn preprocess_access_tree(ids: &mut Vec<Ident>, expr: &BinaryExpr) -> AnalyzeResult<()> {
+        let lhs_id = match expr.lhs.as_ref() {
+            Expression::Variable(Variable { id, .. }) => *id,
+            _ => Ident::default(),
+        };
+
+        ids.push(lhs_id);
+
+        match expr.rhs.as_ref() {
+            Expression::Binary(bin_expr) => {
+                if bin_expr.operation == BinaryOperation::Assign {
+                    if let Expression::Variable(Variable {
+                        id: last_lhs_id, ..
+                    }) = expr.lhs.as_ref()
+                    {
+                        ids.push(*last_lhs_id);
+                    }
+                } else if bin_expr.operation == BinaryOperation::Access {
+                    return Self::preprocess_access_tree(ids, bin_expr);
+                }
+            }
+            Expression::Variable(Variable { id: rhs_id, .. }) => {
+                ids.push(*rhs_id);
+            }
+            _ => {
+                return Err(Message::unreachable(
+                    expr.location,
+                    format!(
+                        "Expected Access or Variable, actually: {}",
+                        expr.rhs.kind_str()
+                    ),
+                ))
+            }
+        }
+
+        Ok(())
     }
 }

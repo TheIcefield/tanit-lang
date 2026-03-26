@@ -13,7 +13,7 @@ impl CodeGenStream<'_> {
 
         writeln!(self, "{indentation}typedef enum {{")?;
 
-        for field in enum_def.fields.iter() {
+        for field in enum_def.units.iter() {
             writeln!(
                 self,
                 "{indentation}    {} = {},",
@@ -34,100 +34,108 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{definitions::enums::EnumUnits, Hir};
-    use tanitc_ident::{Ident, Name};
-
     use pretty_assertions::assert_str_eq;
-
-    fn get_enum(name: &str, user_units: Vec<(String, Option<usize>)>) -> EnumDef {
-        let mut fields = EnumUnits::new();
-
-        for (unit_name, unit_val) in user_units {
-            fields.insert(Ident::from(unit_name), unit_val);
-        }
-
-        EnumDef {
-            name: Name::from(name.to_string()),
-            fields,
-            ..Default::default()
-        }
-    }
+    use tanitc_hir_test::{create_enum_def, create_program};
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn empty_enum() {
-        const ENUM_NAME: &str = "EmptyEnum";
-        const HEADER_EXPECTED: &str = "typedef enum {\
-                                     \n} EmptyEnum;\n";
+        // Given
+        let enum_def = create_enum_def("EmptyEnum", vec![]);
 
-        let node = Hir::from(get_enum(ENUM_NAME, Vec::new()));
+        let program = create_program(vec![enum_def.into()]);
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
-        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+        let mut writer = CodeGenStream::with_compile_options(
+            &mut header_buffer,
+            &mut source_buffer,
+            CompileOptions {
+                crate_name: "EnumsTest".into(),
+                ..Default::default()
+            },
+        );
 
-        node.accept(&mut writer).unwrap();
+        // When
+        writer.codegen_program(&program).unwrap();
+
+        // Then
+        const SOURCE_EXPECTED: &str = "#include \"EnumsTest.tt.h\"\n\n";
+        const HEADER_EXPECTED: &str = "typedef enum {\
+                                     \n} EmptyEnum;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
 
         let source_res = String::from_utf8(source_buffer).unwrap();
-        assert!(source_res.is_empty());
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
     }
 
     #[test]
     fn enum_with_1_unit() {
-        const ENUM_NAME: &str = "MyEnum";
-        const UNIT_1_NAME: &str = "A";
-        const HEADER_EXPECTED: &str = "typedef enum {\
-                                     \n    A = 0,\
-                                     \n} MyEnum;\n";
-
-        let node = Hir::from(get_enum(ENUM_NAME, vec![(UNIT_1_NAME.to_string(), None)]));
+        // Given
+        let enum_def = create_enum_def("MyEnum", vec![("A", None)]);
+        let program = create_program(vec![enum_def.into()]);
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
-        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+        let mut writer = CodeGenStream::with_compile_options(
+            &mut header_buffer,
+            &mut source_buffer,
+            CompileOptions {
+                crate_name: "EnumsTest".into(),
+                ..Default::default()
+            },
+        );
 
-        node.accept(&mut writer).unwrap();
+        // When
+        writer.codegen_program(&program).unwrap();
+
+        // Then
+        const SOURCE_EXPECTED: &str = "#include \"EnumsTest.tt.h\"\n\n";
+        const HEADER_EXPECTED: &str = "typedef enum {\
+                                     \n    A = 0,\
+                                     \n} MyEnum;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
 
         let source_res = String::from_utf8(source_buffer).unwrap();
-        assert!(source_res.is_empty());
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
     }
 
     #[test]
     fn enum_with_3_units() {
-        const ENUM_NAME: &str = "MyEnum";
-        const UNIT_1_NAME: &str = "A";
-        const UNIT_2_NAME: &str = "B";
-        const UNIT_3_NAME: &str = "C";
+        // Given
+        let enum_def = create_enum_def("MyEnum", vec![("A", Some(4)), ("B", None), ("C", None)]);
+        let program = create_program(vec![enum_def.into()]);
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::with_compile_options(
+            &mut header_buffer,
+            &mut source_buffer,
+            CompileOptions {
+                crate_name: "EnumsTest".into(),
+                ..Default::default()
+            },
+        );
+
+        // When
+        writer.codegen_program(&program).unwrap();
+
+        // Then
+        const SOURCE_EXPECTED: &str = "#include \"EnumsTest.tt.h\"\n\n";
         const HEADER_EXPECTED: &str = "typedef enum {\
                                      \n    A = 4,\
                                      \n    B = 0,\
                                      \n    C = 0,\
                                      \n} MyEnum;\n";
 
-        let node = Hir::from(get_enum(
-            ENUM_NAME,
-            vec![
-                (UNIT_1_NAME.to_string(), Some(4)),
-                (UNIT_2_NAME.to_string(), None),
-                (UNIT_3_NAME.to_string(), None),
-            ],
-        ));
-
-        let mut header_buffer = Vec::<u8>::new();
-        let mut source_buffer = Vec::<u8>::new();
-        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
-
-        node.accept(&mut writer).unwrap();
-
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
 
         let source_res = String::from_utf8(source_buffer).unwrap();
-        assert!(source_res.is_empty());
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
     }
 }

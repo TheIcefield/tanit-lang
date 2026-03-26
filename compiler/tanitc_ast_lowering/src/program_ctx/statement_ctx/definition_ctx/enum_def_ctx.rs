@@ -17,13 +17,13 @@ impl AstLowering {
         let location = enum_def_ctx.enum_tkn.get_location();
         let attributes = self.low_enum_def_attributes(&enum_def_ctx.attributes_ctx)?;
         let name = self.low_name_ctx(&enum_def_ctx.name_ctx);
-        let fields = self.low_enum_def_body_ctx(&enum_def_ctx.body_ctx)?;
+        let units = self.low_enum_def_body_ctx(&enum_def_ctx.body_ctx)?;
 
         Ok(EnumDef {
             location,
             attributes,
             name,
-            fields,
+            units,
         })
     }
 
