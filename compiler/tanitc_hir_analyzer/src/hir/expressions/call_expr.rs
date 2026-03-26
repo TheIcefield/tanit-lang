@@ -240,7 +240,7 @@ mod tests {
         let mut unsafe_func = create_func_def(FUNC_NAME, vec![], Type::unit(), vec![]);
         unsafe_func.attributes.safety = Safety::Unsafe;
 
-        let main_func = create_main_func_def(vec![create_call_expr(FUNC_NAME, &[]).into()]);
+        let main_func = create_main_func_def(vec![create_call_expr(FUNC_NAME, vec![]).into()]);
 
         /*
          * unsafe func unsafe_func() { }
@@ -281,7 +281,7 @@ mod tests {
             attributes: BlockAttributes {
                 safety: Safety::Unsafe,
             },
-            statements: vec![create_call_expr(FUNC_NAME, &[]).into()],
+            statements: vec![create_call_expr(FUNC_NAME, vec![]).into()],
             ..Default::default()
         }
         .into()]);
@@ -311,7 +311,7 @@ mod tests {
             Some(create_var(SOME_FUNC_NAME)),
         );
 
-        let call_expr = create_call_expr(FUNC_PTR_NAME, &[]);
+        let call_expr = create_call_expr(FUNC_PTR_NAME, vec![]);
         let main_func = create_main_func_def(vec![var_def.into(), call_expr.into()]);
 
         /*
@@ -345,7 +345,7 @@ mod tests {
             Some(create_decimal_lit(VAR_VALUE)),
         );
 
-        let call_expr = create_call_expr(VAR_NAME, &[]);
+        let call_expr = create_call_expr(VAR_NAME, vec![]);
         let main_func = create_main_func_def(vec![var_def.into(), call_expr.into()]);
 
         /*

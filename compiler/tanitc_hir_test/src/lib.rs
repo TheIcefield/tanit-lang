@@ -1,8 +1,11 @@
+use std::{iter::Peekable, slice::Iter};
+
 use tanitc_attributes::Mutability;
 use tanitc_hir::hir::{
     blocks::Block,
     definitions::{
         aliases::AliasDef,
+        enums::{EnumDef, EnumUnits},
         functions::{FunctionDef, FunctionParam},
         methods::ImplDef,
         modules::ModuleDef,
@@ -11,7 +14,10 @@ use tanitc_hir::hir::{
         variables::VariableDef,
         variants::{VariantAttributes, VariantDef, VariantField, VariantFields},
     },
-    expressions::Expression,
+    expressions::{
+        binary::{BinaryExpr, BinaryOperation},
+        Expression,
+    },
     types::{Type, TypeSpec},
     Hir,
 };
@@ -45,6 +51,21 @@ pub fn create_module_def(name: &str, definitions: Vec<Hir>) -> ModuleDef {
         attributes: ModuleAttributes::default(),
         name: name.to_string().into(),
         body: ModuleDefBody::Internal(Box::new(create_block(definitions))),
+    }
+}
+
+pub fn create_enum_def_units(units: Vec<(&str, Option<usize>)>) -> EnumUnits {
+    units
+        .into_iter()
+        .map(|(unit_name, unit_value)| (unit_name.to_string().into(), unit_value))
+        .collect::<EnumUnits>()
+}
+
+pub fn create_enum_def(name: &str, units: Vec<(&str, Option<usize>)>) -> EnumDef {
+    EnumDef {
+        name: Name::from(name.to_string()),
+        units: create_enum_def_units(units),
+        ..Default::default()
     }
 }
 
@@ -180,7 +201,7 @@ pub fn create_main_func_def(statements: Vec<Hir>) -> FunctionDef {
 }
 
 /* Creates
- * alias name = ty
+ * alias <name> = <ty>
  */
 pub fn create_alias_def(name: &str, ty: Type) -> AliasDef {
     AliasDef {
@@ -194,7 +215,7 @@ pub fn create_alias_def(name: &str, ty: Type) -> AliasDef {
 }
 
 /* Creates:
- * var mut?(mutability.is_mut()): var_type = obj
+ * var mut?(mutability.is_mut()) <var_name>: <var_type> = [obj]
  */
 pub fn create_var_def(
     var_name: &str,
@@ -298,17 +319,17 @@ pub fn create_var(name: &str) -> Expression {
 /* Creates:
  * func_name(args[0], args[1], ... args[N])
  */
-pub fn create_call_expr(func_name: &str, args: &[Expression]) -> Expression {
+pub fn create_call_expr(func_name: &str, args: Vec<Expression>) -> Expression {
     use tanitc_hir::hir::expressions::call::{CallArg, CallExpr, PositionalCallArg};
 
     let arguments = args
-        .iter()
+        .into_iter()
         .enumerate()
         .map(|(arg_idx, arg)| {
             CallArg::Positional(PositionalCallArg {
-                location: Location::default(),
                 id: arg_idx,
-                expr: Box::new(arg.clone()),
+                expr: Box::new(arg),
+                location: Location::default(),
             })
         })
         .collect();
@@ -334,4 +355,25 @@ pub fn create_impl_def(struct_name: &str, methods: Vec<FunctionDef>) -> ImplDef 
         methods,
         ..Default::default()
     }
+}
+
+fn create_scope_resolutions_expr_from_iter(mut ids: Peekable<Iter<&str>>) -> Expression {
+    let Some(first) = ids.next() else {
+        panic!("ids is empty");
+    };
+
+    if ids.peek().is_none() {
+        return create_var(first);
+    }
+
+    Expression::Binary(BinaryExpr {
+        operation: BinaryOperation::ScopeRes,
+        lhs: Box::new(create_var(first)),
+        rhs: Box::new(create_scope_resolutions_expr_from_iter(ids)),
+        location: Location::default(),
+    })
+}
+
+pub fn create_scope_resolutions_expr(ids: &[&str]) -> Expression {
+    create_scope_resolutions_expr_from_iter(ids.into_iter().peekable())
 }

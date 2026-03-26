@@ -18,7 +18,7 @@ pub struct EnumDef {
     pub location: Location,
     pub attributes: EnumAttributes,
     pub name: Name,
-    pub fields: EnumUnits,
+    pub units: EnumUnits,
 }
 
 impl From<EnumDef> for Hir {

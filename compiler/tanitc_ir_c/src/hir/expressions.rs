@@ -189,11 +189,11 @@ mod tests {
                 vec![
                     create_text_lit("text").into(),
                     create_var("var_name").into(),
-                    create_call_expr("empty_func_name", &[]).into(),
-                    create_call_expr("func_with_1p", &[create_decimal_lit(0.0)]).into(),
+                    create_call_expr("empty_func_name", vec![]).into(),
+                    create_call_expr("func_with_1p", vec![create_decimal_lit(0.0)]).into(),
                     create_call_expr(
                         "func_with_2p",
-                        &[create_decimal_lit(0.0), create_decimal_lit(2.0)],
+                        vec![create_decimal_lit(0.0), create_decimal_lit(2.0)],
                     )
                     .into(),
                     create_struct_lit("MyEmptyStruct", &[]).into(),
