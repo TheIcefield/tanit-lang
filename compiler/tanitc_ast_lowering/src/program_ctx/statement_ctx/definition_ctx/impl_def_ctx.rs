@@ -18,13 +18,13 @@ impl AstLowering {
     pub(crate) fn low_impl_def_ctx(&mut self, ctx: &ImplDefCtx) -> AstLowResult<ImplDef> {
         let location = ctx.impl_tkn.get_location();
         let attrs = self.low_impl_def_attributes(&ctx.attributes_ctx)?;
-        let identifier = self.low_name_ctx(&ctx.name_ctx).id;
+        let name = self.low_name_ctx(&ctx.name_ctx);
         let methods = self.low_impl_def_body_ctx(&ctx.body_ctx)?;
 
         Ok(ImplDef {
             location,
             attrs,
-            identifier,
+            name,
             methods,
         })
     }
@@ -43,7 +43,7 @@ impl AstLowering {
 
         for statement in &body.statements {
             if !matches!(statement, Hir::Definition(Definition::Func(_))) {
-                self.error(Message::from_string(
+                self.error(Message::new(
                     statement.location(),
                     format!("{} is not supported in impls", statement.kind_str()),
                 ));

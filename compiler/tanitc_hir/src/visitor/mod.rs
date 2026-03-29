@@ -10,7 +10,7 @@ use crate::hir::{
         variables::VariableDef, variants::VariantDef,
     },
     expressions::Expression,
-    types::TypeSpec,
+    type_spec::TypeSpec,
     uses::Use,
 };
 

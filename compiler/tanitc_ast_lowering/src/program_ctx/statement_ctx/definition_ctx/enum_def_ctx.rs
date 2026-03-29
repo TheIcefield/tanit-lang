@@ -85,10 +85,7 @@ impl AstLowering {
 
         match value.parse::<usize>() {
             Ok(val) => Ok(val),
-            Err(err) => Err(Message::parse_int_error(
-                assign_ctx.value_tkn.get_location(),
-                err,
-            )),
+            Err(err) => Err(Message::new(assign_ctx.value_tkn.get_location(), err)),
         }
     }
 }

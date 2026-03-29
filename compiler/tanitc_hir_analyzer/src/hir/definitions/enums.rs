@@ -1,96 +1,87 @@
-use std::collections::BTreeMap;
-
 use crate::{
-    symbol_table::entry::{Entry, EnumData, EnumDefData, SymbolKind},
+    symbol_table::entry::{Entry, EnumData, EnumDefData, EnumDefEntries, SymbolKind},
     AnalyzeResult, Analyzer,
 };
-use tanitc_hir::hir::{
-    definitions::enums::EnumDef,
-    expressions::{
-        literal::{Integer, Literal},
-        variable::Variable,
-        Expression,
-    },
-};
-use tanitc_ident::Ident;
+use tanitc_hir::hir::definitions::enums::{EnumDef, EnumUnits};
 use tanitc_messages::Message;
+use tanitc_name::NameSpec;
 
 impl Analyzer {
     pub(crate) fn analyze_enum_def(&mut self, enum_def: &mut EnumDef) -> AnalyzeResult<()> {
-        if self.has_symbol(enum_def.name.id) {
-            return Err(Message::multiple_ids(enum_def.location, enum_def.name.id));
+        let enum_id = enum_def
+            .name
+            .get_id()
+            .ok_or(Message::empty_name_spec(enum_def.location))?;
+
+        if self.has_symbol(enum_id) {
+            return Err(Message::multiple_ids(enum_def.location, enum_id));
         }
 
-        enum_def.name.prefix = self.table.get_id();
+        // Copies table.table_path to start of enum_def.name.path
+        enum_def.name.path.splice(0..0, self.table.get_path());
 
-        let mut counter = 0usize;
-        let mut enums = BTreeMap::<Ident, Entry>::new();
-        for field in enum_def.units.iter_mut() {
-            if let Some(value) = field.1 {
-                counter = *value;
-            }
-
-            // mark unmarked enum fields
-            *field.1 = Some(counter);
-
-            enums.insert(
-                *field.0,
-                Entry {
-                    name: *field.0,
-                    is_static: true,
-                    kind: SymbolKind::Enum(EnumData {
-                        enum_name: enum_def.name,
-                        value: counter,
-                    }),
-                },
-            );
-
-            counter += 1;
-        }
+        let units = self.analyze_enum_def_units(&enum_def.name, &mut enum_def.units)?;
 
         self.add_symbol(Entry {
-            name: enum_def.name.id,
+            id: enum_id,
             is_static: true,
             kind: SymbolKind::from(EnumDefData {
-                name: enum_def.name,
-                enums,
+                name: enum_def.name.clone(),
+                units,
             }),
         });
 
         Ok(())
     }
 
-    pub(crate) fn access_enum(
-        &self,
-        enum_data: &EnumData,
-        rhs: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let location = rhs.location();
+    fn analyze_enum_def_units(
+        &mut self,
+        enum_name: &NameSpec,
+        enum_units: &mut EnumUnits,
+    ) -> AnalyzeResult<EnumDefEntries> {
+        let mut counter = 0usize;
+        let mut enums_entries = EnumDefEntries::new();
 
-        println!("FOR REPLACE: {rhs:#?}");
+        for (unit_id, unit_value) in enum_units.iter_mut() {
+            if let Some(value) = unit_value {
+                counter = *value;
+            }
 
-        *rhs = Expression::Variable(Variable {
-            location,
-            id: enum_data.enum_name,
-        });
+            // mark unmarked enum fields
+            *unit_value = Some(counter);
 
-        Ok(())
+            let unit_data = EnumData {
+                name: enum_name.clone(),
+                value: counter,
+            };
+            let entry = Entry {
+                id: *unit_id,
+                is_static: true,
+                kind: unit_data.into(),
+            };
+
+            enums_entries.insert(*unit_id, entry);
+
+            counter += 1;
+        }
+
+        Ok(enums_entries)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use tanitc_attributes::Mutability;
-    use tanitc_hir::hir::types::Type;
+    use tanitc_hir::hir::type_spec::Type;
     use tanitc_hir_test::{
-        create_enum_def, create_main_func_def, create_program, create_scope_resolutions_expr,
-        create_var_def,
+        create_enum_def, create_main_func_def, create_module_def, create_program,
+        create_scope_resolutions_expr, create_var_def,
     };
 
     use crate::Analyzer;
 
     #[test]
-    fn enum_work_test() {
+    fn good_enum_access_test() {
         // Given
         const ENUM_NAME: &str = "MyEnum";
         const FIRST_UNIT_NAME: &str = "First";
@@ -130,65 +121,223 @@ mod tests {
         // When
         let res = analyzer.analyze_program(&mut program);
 
-        panic!("PROGRAM: {program:#?}");
+        // Then
+        res.expect("Expected no errors");
+    }
+
+    #[test]
+    fn good_enum_in_module_access_test() {
+        // Given
+        const ENUM_NAME: &str = "MyEnum";
+        const FIRST_UNIT_NAME: &str = "First";
+        const SECOND_UNIT_NAME: &str = "Second";
+        const MAX_UNIT_NAME: &str = "Max";
+        let enum_def = create_enum_def(
+            ENUM_NAME,
+            vec![
+                (FIRST_UNIT_NAME, Some(1)),
+                (SECOND_UNIT_NAME, None),
+                (MAX_UNIT_NAME, None),
+            ],
+        );
+
+        const MODULE_NAME: &str = "MyModule";
+        let module_def = create_module_def(MODULE_NAME, vec![enum_def.into()]);
+
+        let var_value = Some(create_scope_resolutions_expr(&[
+            MODULE_NAME,
+            ENUM_NAME,
+            SECOND_UNIT_NAME,
+        ]));
+        let var_def = create_var_def("second", Mutability::Immutable, Type::Auto, var_value);
+
+        let main_func = create_main_func_def(vec![var_def.into()]);
+
+        /*
+         * module MyModule
+         *     enum MyEnum {
+         *         One: 1
+         *         Second
+         *         Max
+         *     }
+         * }
+         *
+         * func main() {
+         *     var a = MyModule::MyEnum::Second
+         * };
+         */
+        let mut program = create_program(vec![module_def.into(), main_func.into()]);
+
+        let mut analyzer = Analyzer::new();
+
+        // When
+        let res = analyzer.analyze_program(&mut program);
 
         // Then
         res.expect("Expected no errors");
     }
 
-    /*
-        #[test]
-        fn enum_in_module_work_test() {
-            const SRC_TEXT: &str = "\nmodule color {\
-                                    \n    enum Color {\
-                                    \n        Red\
-                                    \n        Green\
-                                    \n        Blue\
-                                    \n    }\
-                                    \n}\
-                                    \nfunc main() {\
-                                    \n    var a = color::Color::Red\
-                                    \n}";
+    #[test]
+    fn bad_enum_access_test() {
+        // Given
+        const ENUM_NAME: &str = "MyEnum";
+        const FIRST_UNIT_NAME: &str = "First";
+        const SECOND_UNIT_NAME: &str = "Second";
+        const MAX_UNIT_NAME: &str = "Max";
+        let enum_def = create_enum_def(
+            ENUM_NAME,
+            vec![
+                (FIRST_UNIT_NAME, Some(1)),
+                (SECOND_UNIT_NAME, None),
+                (MAX_UNIT_NAME, None),
+            ],
+        );
 
-            let mut parser = Parser::from_text(SRC_TEXT);
+        let var_value = Some(create_scope_resolutions_expr(&[ENUM_NAME, "BadUnit"]));
+        let var_def = create_var_def("second", Mutability::Immutable, Type::Auto, var_value);
 
-            let ast = parser.parse_program().unwrap();
+        let main_func = create_main_func_def(vec![var_def.into()]);
 
-            let mut hir = {
-                let mut lowering = AstLowering::new();
-                lowering.low(ast.as_ref()).unwrap()
-            };
+        /* enum MyEnum {
+         *     One: 1
+         *     Second
+         *     Max
+         * }
+         *
+         * func main() {
+         *     var a = MyEnum::Second
+         * };
+         */
+        let mut program = create_program(vec![enum_def.into(), main_func.into()]);
 
-            {
-                let mut analyzer = Analyzer::new();
-                analyzer.analyze_program(hir.as_mut()).unwrap();
-            }
+        let mut analyzer = Analyzer::new();
 
-            {
-                const HEADER_EXPECTED: &str = "typedef enum {\
-                                             \n    Red = 0,\
-                                             \n    Green = 1,\
-                                             \n    Blue = 2,\
-                                             \n} color__Color;\
-                                             \nvoid main();\n";
+        // When
+        let res = analyzer.analyze_program(&mut program);
 
-                const SOURCE_EXPECTED: &str = "void main()\
-                                             \n{\
-                                             \n    color__Color const a = 0;\
-                                             \n}\n";
+        // Then
+        const EXPECTED_ERR: &str = "Semantic error: enum \"MyEnum\" doesn't contain \"BadUnit\"";
 
-                let mut header_buffer = Vec::<u8>::new();
-                let mut source_buffer = Vec::<u8>::new();
-                let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+        let messages = res.expect_err("Expected errors");
+        let errors = messages.errors_ref();
 
-                writer.codegen_program(hir.as_ref()).unwrap();
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
 
-                let mut res = String::from_utf8(header_buffer).unwrap();
-                assert_str_eq!(HEADER_EXPECTED, res);
+    #[test]
+    fn bad_enum_in_module_access_test() {
+        // Given
+        const ENUM_NAME: &str = "MyEnum";
+        const FIRST_UNIT_NAME: &str = "First";
+        const SECOND_UNIT_NAME: &str = "Second";
+        const MAX_UNIT_NAME: &str = "Max";
+        let enum_def = create_enum_def(
+            ENUM_NAME,
+            vec![
+                (FIRST_UNIT_NAME, Some(1)),
+                (SECOND_UNIT_NAME, None),
+                (MAX_UNIT_NAME, None),
+            ],
+        );
 
-                res = String::from_utf8(source_buffer).unwrap();
-                assert_str_eq!(SOURCE_EXPECTED, res);
-            }
-        }
-    */
+        const MODULE_NAME: &str = "MyModule";
+        let module_def = create_module_def(MODULE_NAME, vec![enum_def.into()]);
+
+        let var_value = Some(create_scope_resolutions_expr(&[
+            ENUM_NAME,
+            SECOND_UNIT_NAME,
+        ]));
+        let var_def = create_var_def("second", Mutability::Immutable, Type::Auto, var_value);
+
+        let main_func = create_main_func_def(vec![var_def.into()]);
+
+        /*
+         * module MyModule
+         *     enum MyEnum {
+         *         One: 1
+         *         Second
+         *         Max
+         *     }
+         * }
+         *
+         * func main() {
+         *     var a = MyEnum::Second
+         * };
+         */
+        let mut program = create_program(vec![module_def.into(), main_func.into()]);
+
+        let mut analyzer = Analyzer::new();
+
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        const EXPECTED_ERR: &str = "Semantic error: undefined id: \"MyEnum\"";
+
+        let messages = res.expect_err("Expected errors");
+        let errors = messages.errors_ref();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+
+    #[test]
+    fn bad_enum_unit_in_module_access_test() {
+        // Given
+        const ENUM_NAME: &str = "MyEnum";
+        const FIRST_UNIT_NAME: &str = "First";
+        const SECOND_UNIT_NAME: &str = "Second";
+        const MAX_UNIT_NAME: &str = "Max";
+        let enum_def = create_enum_def(
+            ENUM_NAME,
+            vec![
+                (FIRST_UNIT_NAME, Some(1)),
+                (SECOND_UNIT_NAME, None),
+                (MAX_UNIT_NAME, None),
+            ],
+        );
+
+        const MODULE_NAME: &str = "MyModule";
+        let module_def = create_module_def(MODULE_NAME, vec![enum_def.into()]);
+
+        let var_value = Some(create_scope_resolutions_expr(&[
+            MODULE_NAME,
+            ENUM_NAME,
+            "BadUnit",
+        ]));
+        let var_def = create_var_def("second", Mutability::Immutable, Type::Auto, var_value);
+
+        let main_func = create_main_func_def(vec![var_def.into()]);
+
+        /*
+         * module MyModule
+         *     enum MyEnum {
+         *         One: 1
+         *         Second
+         *         Max
+         *     }
+         * }
+         *
+         * func main() {
+         *     var a = MyEnum::Second
+         * };
+         */
+        let mut program = create_program(vec![module_def.into(), main_func.into()]);
+
+        let mut analyzer = Analyzer::new();
+
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        const EXPECTED_ERR: &str =
+            "Semantic error: enum \"MyModule::MyEnum\" doesn't contain \"BadUnit\"";
+
+        let messages = res.expect_err("Expected errors");
+        let errors = messages.errors_ref();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
 }

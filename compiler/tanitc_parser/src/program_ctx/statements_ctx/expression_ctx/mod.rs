@@ -64,23 +64,24 @@ impl Parser {
             }
 
             lexem if lexem.is_identifier() => {
-                let identifier = self.consume_identifier()?;
+                let name_spec_ctx = self.parse_name_spec_ctx()?;
+                println!("{name_spec_ctx:?}");
 
                 let old_opt = self.does_ignore_nl();
                 self.set_ignore_nl_option(true);
 
                 let expression_ctx = if self.is_next(Lexeme::LParen) {
-                    self.parse_call_ctx(Box::new(ExpressionCtx::Variable(identifier)))
+                    self.parse_call_ctx(Box::new(ExpressionCtx::Variable(name_spec_ctx)))
                         .map(ExpressionCtx::Call)
                 } else if self.is_next(Lexeme::Lcb) {
-                    self.parse_struct_literal_ctx(identifier)
+                    self.parse_struct_literal_ctx(name_spec_ctx)
                         .map(LiteralCtx::Struct)
                         .map(ExpressionCtx::Literal)
                 } else if self.is_next(Lexeme::Lsb) {
-                    self.parse_indexing_ctx(Box::new(ExpressionCtx::Variable(identifier)))
+                    self.parse_indexing_ctx(Box::new(ExpressionCtx::Variable(name_spec_ctx)))
                         .map(ExpressionCtx::Indexing)
                 } else {
-                    Ok(ExpressionCtx::Variable(identifier))
+                    Ok(ExpressionCtx::Variable(name_spec_ctx))
                 };
 
                 self.set_ignore_nl_option(old_opt);
@@ -89,7 +90,7 @@ impl Parser {
 
             Lexeme::LParen => self.parse_paren(),
 
-            _ => Err(Message::from_string(
+            _ => Err(Message::new(
                 next.get_location(),
                 format!("Unexpected token \"{next}\" within expression"),
             )),
@@ -389,7 +390,7 @@ impl Parser {
     }
 
     fn parse_dot_or_as(&mut self) -> ParseResult<ExpressionCtx> {
-        let lhs = self.parse_scope_resolution()?;
+        let lhs = self.parse_factor()?;
 
         let Some(next) = self.peek_token() else {
             return Ok(lhs);
@@ -401,6 +402,7 @@ impl Parser {
                 as_tkn: self.consume_token(lexem.clone())?,
                 type_ctx: Box::new(self.parse_type_ctx()?),
             })),
+
             lexem if *lexem == Lexeme::Dot => {
                 let binary_op_ctx = BinaryOpCtx::Access(self.consume_token(lexem.clone())?);
                 Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -410,35 +412,16 @@ impl Parser {
                 }))
             }
 
+            lexem if *lexem == Lexeme::EndOfLine => {
+                self.get_token();
+                Ok(lhs)
+            }
+
             _ => Err(Message::unexpected_token(
                 &next,
                 &[Lexeme::Dot, Lexeme::KwAs],
             )),
         }
-    }
-
-    fn parse_scope_resolution(&mut self) -> ParseResult<ExpressionCtx> {
-        let lhs = self.parse_factor()?;
-
-        let next = self.peek_token().ok_or(Message::reached_eof())?;
-        let binary_op_ctx = match next.lexeme_ref() {
-            lexem if *lexem == Lexeme::Dcolon => {
-                BinaryOpCtx::ScopeRes(self.consume_token(lexem.clone())?)
-            }
-
-            lexem if *lexem == Lexeme::EndOfLine => {
-                self.get_token();
-                return Ok(lhs);
-            }
-
-            _ => return Err(Message::unexpected_token(&next, &[])),
-        };
-
-        Ok(ExpressionCtx::Binary(BinaryCtx {
-            left_ctx: Box::new(lhs),
-            binary_op_ctx,
-            right_ctx: Box::new(self.parse_expression_ctx()?),
-        }))
     }
 }
 

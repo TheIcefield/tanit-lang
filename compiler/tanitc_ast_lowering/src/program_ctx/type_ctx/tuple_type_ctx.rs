@@ -1,5 +1,5 @@
 use tanitc_ast::program_ctx::type_ctx::tuple_type_ctx::{TupleTypeCtx, TupleTypeUnitCtx};
-use tanitc_hir::hir::types::{TupleType, Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{TupleType, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 

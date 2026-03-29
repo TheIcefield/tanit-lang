@@ -1,6 +1,6 @@
 use tanitc_lexer::location::Location;
 
-use crate::hir::{expressions::Expression, types::TypeSpec};
+use crate::hir::{expressions::Expression, type_spec::TypeSpec};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConversionExpr {

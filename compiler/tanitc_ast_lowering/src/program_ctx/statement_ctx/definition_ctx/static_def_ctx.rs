@@ -3,6 +3,7 @@ use tanitc_ast::program_ctx::statement_ctx::{
 };
 use tanitc_attributes::Visibility;
 use tanitc_hir::hir::definitions::variables::{VariableAttributes, VariableDef};
+use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
@@ -13,13 +14,16 @@ impl AstLowering {
     ) -> AstLowResult<VariableDef> {
         let location = static_def_ctx.static_tkn.get_location();
         let attributes = self.low_static_def_attributes(&static_def_ctx.attributes_ctx)?;
-        let identifier = self.low_name_ctx(&static_def_ctx.name_ctx).id;
         let var_type = self.low_type_ctx(&static_def_ctx.type_ctx.type_ctx)?.ty;
         let mutability = self.low_mut_token(&static_def_ctx.mut_tkn);
         let visibility = Visibility::Global;
         let value = Some(Box::new(
             self.low_expression_ctx(&static_def_ctx.value_ctx.value_ctx)?,
         ));
+        let identifier = self
+            .low_name_ctx(&static_def_ctx.name_ctx)
+            .get_id()
+            .ok_or(Message::empty_name_spec(location))?;
 
         Ok(VariableDef {
             location,

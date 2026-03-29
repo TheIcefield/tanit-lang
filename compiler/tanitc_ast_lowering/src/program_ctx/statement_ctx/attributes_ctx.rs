@@ -71,7 +71,7 @@ impl AstLowering {
 
     pub(crate) fn expect_incompatible_attribute(&self, tkn: &Option<Token>) -> AstLowResult<()> {
         if let Some(tkn) = tkn {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 tkn.get_location(),
                 format!("Incorrect attribute \"{}\"", tkn.lexeme_ref()),
             ));

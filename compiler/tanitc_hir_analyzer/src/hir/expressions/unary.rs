@@ -4,7 +4,7 @@ use tanitc_hir::hir::{
         unary::{UnaryExpr, UnaryOperation},
         Expression,
     },
-    types::{RefType, Type},
+    type_spec::{RefType, Type},
 };
 use tanitc_messages::Message;
 
@@ -23,15 +23,16 @@ impl Analyzer {
         let does_mutate = expr.operation == UnaryOperation::RefMut;
 
         if let Expression::Variable(var) = expr.node.as_ref() {
-            let Some(entry) = self.table.lookup(var.id) else {
-                return Err(Message::undefined_id(var.location, var.id));
-            };
+            let entry = self
+                .table
+                .lookup_name_spec(&var.name)
+                .map_err(|err| Message::new(location, err))?;
 
             if let SymbolKind::VarDef(var_data) = &entry.kind {
                 if var_data.mutability.is_const() && does_mutate {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         location,
-                        format!("Mutable reference to immutable variable \"{}\"", var.id),
+                        format!("Mutable reference to immutable variable \"{}\"", var.name),
                     ));
                 }
             }

@@ -10,6 +10,7 @@ tanitc_hir_test = { path = "../tanitc_hir_test" }
 
 [dependencies]
 tanitc_ident = { path = "../tanitc_ident" }
+tanitc_name = { path = "../tanitc_name" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_hir = { path = "../tanitc_hir" }
 tanitc_lexer = { path = "../tanitc_lexer" }

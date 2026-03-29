@@ -1,5 +1,5 @@
 use tanitc_ast::program_ctx::type_ctx::TypeCtx;
-use tanitc_hir::hir::types::TypeSpec;
+use tanitc_hir::hir::type_spec::TypeSpec;
 
 use crate::{AstLowResult, AstLowering};
 

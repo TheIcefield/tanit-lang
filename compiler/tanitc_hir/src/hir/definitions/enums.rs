@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::{definitions::Definition, Hir};
 
-pub type EnumUnits = BTreeMap<Ident, Option<usize>>;
+pub type EnumUnitValue = Option<usize>;
+pub type EnumUnits = BTreeMap<Ident, EnumUnitValue>;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct EnumAttributes {
@@ -17,7 +19,7 @@ pub struct EnumAttributes {
 pub struct EnumDef {
     pub location: Location,
     pub attributes: EnumAttributes,
-    pub name: Name,
+    pub name: NameSpec,
     pub units: EnumUnits,
 }
 

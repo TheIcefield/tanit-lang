@@ -7,7 +7,7 @@ use tanitc_ast::program_ctx::statement_ctx::{
 };
 use tanitc_hir::hir::{
     definitions::variants::{VariantAttributes, VariantDef, VariantField, VariantFields},
-    types::Type,
+    type_spec::Type,
 };
 use tanitc_ident::Ident;
 use tanitc_messages::Message;

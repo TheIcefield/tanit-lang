@@ -1,5 +1,5 @@
-use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::{
     definitions::{functions::FunctionDef, Definition},
@@ -13,7 +13,7 @@ pub struct ImplAttributes {}
 pub struct ImplDef {
     pub location: Location,
     pub attrs: ImplAttributes,
-    pub identifier: Ident,
+    pub name: NameSpec,
     pub methods: Vec<FunctionDef>,
 }
 

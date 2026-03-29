@@ -9,13 +9,12 @@ impl CodeGenStream<'_> {
         let old_mode = self.mode;
         self.mode = CodeGenMode::HeaderOnly;
 
-        write!(
-            self,
-            "typedef {} {}",
-            alias_def.value.get_c_type(),
-            alias_def.identifier
-        )?;
+        write!(self, "typedef ")?;
+        self.generate_type_spec(&alias_def.value)?;
 
+        write!(self, " ")?;
+
+        self.generate_name_spec(&alias_def.name)?;
         writeln!(self, ";")?;
 
         self.mode = old_mode;
@@ -28,54 +27,34 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{
-        blocks::Block,
-        definitions::structs::StructDef,
-        types::{Type, TypeSpec},
-        Hir,
-    };
-    use tanitc_ident::{Ident, Name};
+    use tanitc_hir::hir::{blocks::Block, type_spec::Type, Hir};
+    use tanitc_hir_test::{create_alias_def, create_custom_type, create_struct_def};
 
     use pretty_assertions::assert_str_eq;
 
-    fn get_struct(name: &str) -> StructDef {
-        StructDef {
-            name: Name::from(name.to_string()),
-            ..Default::default()
-        }
-    }
-
-    fn get_alias(name: &str, ty: Type) -> AliasDef {
-        AliasDef {
-            identifier: Ident::from(name.to_string()),
-            value: TypeSpec {
-                ty,
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-
     #[test]
     fn codegen_simple_alias_test() {
+        // Given
+        const ALIAS_NAME: &str = "MyAlias";
+
         /*
          * alias MyAlias = f32
          */
-        const ALIAS_NAME: &str = "MyAlias";
-
         let node = Hir::from(Block {
             is_global: true,
-            statements: vec![get_alias(ALIAS_NAME, Type::F32).into()],
+            statements: vec![create_alias_def(ALIAS_NAME, Type::F32).into()],
             ..Default::default()
         });
-
-        const HEADER_EXPECTED: &str = "typedef float MyAlias;\n";
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
 
+        // When
         node.accept(&mut writer).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "typedef float MyAlias;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
@@ -86,32 +65,21 @@ mod tests {
 
     #[test]
     fn codegen_alias_test() {
+        // Given
+        const STRUCT_NAME: &str = "EmptyStruct";
+        const ALIAS_1_NAME: &str = "FirstAlias";
+        const ALIAS_2_NAME: &str = "SecondAlias";
+
         /*
          * alias FirstAlias = EmptyStruct
          * alias SecondAlias = FirstAlias
          */
-        const STRUCT_NAME: &str = "EmptyStruct";
-        const ALIAS_1_NAME: &str = "FirstAlias";
-        const ALIAS_2_NAME: &str = "SecondAlias";
-        const HEADER_EXPECTED: &str = "typedef struct {\
-                                     \n} EmptyStruct;\
-                                     \ntypedef EmptyStruct FirstAlias;\
-                                     \ntypedef FirstAlias SecondAlias;\n";
-
         let node = Hir::from(Block {
             is_global: true,
             statements: vec![
-                get_struct(STRUCT_NAME).into(),
-                get_alias(
-                    ALIAS_1_NAME,
-                    Type::Custom(Name::from(STRUCT_NAME.to_string())),
-                )
-                .into(),
-                get_alias(
-                    ALIAS_2_NAME,
-                    Type::Custom(Name::from(ALIAS_1_NAME.to_string())),
-                )
-                .into(),
+                create_struct_def(STRUCT_NAME, vec![]).into(),
+                create_alias_def(ALIAS_1_NAME, create_custom_type(&[STRUCT_NAME])).into(),
+                create_alias_def(ALIAS_2_NAME, create_custom_type(&[ALIAS_1_NAME])).into(),
             ],
             ..Default::default()
         });
@@ -120,7 +88,14 @@ mod tests {
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
 
+        // When
         node.accept(&mut writer).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "typedef struct {\
+                                     \n} EmptyStruct;\
+                                     \ntypedef EmptyStruct FirstAlias;\
+                                     \ntypedef FirstAlias SecondAlias;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);

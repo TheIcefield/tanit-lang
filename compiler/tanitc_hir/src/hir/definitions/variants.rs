@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::{
     definitions::{structs::StructFieldsInfo, Definition},
-    types::Type,
+    type_spec::Type,
     Hir,
 };
 
@@ -29,7 +30,7 @@ pub struct VariantAttributes {
 pub struct VariantDef {
     pub location: Location,
     pub attributes: VariantAttributes,
-    pub name: Name,
+    pub name: NameSpec,
     pub fields: VariantFields,
     pub internals: Vec<Hir>,
 }
@@ -40,10 +41,34 @@ impl From<VariantDef> for Hir {
     }
 }
 
-pub fn get_variant_data_kind_id(variant_id: Name) -> Name {
-    Name::from(format!("__{variant_id}__kind__"))
-}
+impl VariantDef {
+    pub fn get_variant_data_kind_name(variant_name: &NameSpec) -> NameSpec {
+        let mut name = variant_name.clone();
+        name.path.push(Ident::from("kind".to_string()).into());
 
-pub fn get_variant_data_type_id(variant_id: Name) -> Name {
-    Name::from(format!("__{variant_id}__data__"))
+        name
+    }
+
+    pub fn get_variant_data_type_name(variant_name: &NameSpec) -> NameSpec {
+        let mut name = variant_name.clone();
+        name.path.push(Ident::from("data".to_string()).into());
+
+        name
+    }
+
+    pub fn get_variant_kind_name(variant_name: &NameSpec, variant_unit_id: Ident) -> NameSpec {
+        let mut name = variant_name.clone();
+        name.path.push(Ident::from("kind".to_string()).into());
+        name.path.push(variant_unit_id.into());
+
+        name
+    }
+
+    pub fn get_variant_data_name(variant_name: &NameSpec, variant_unit_id: Ident) -> NameSpec {
+        let mut name = variant_name.clone();
+        name.path.push(Ident::from("data".to_string()).into());
+        name.path.push(variant_unit_id.into());
+
+        name
+    }
 }

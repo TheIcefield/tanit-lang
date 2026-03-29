@@ -1,6 +1,6 @@
 use tanitc_attributes::{Publicity, Safety};
-use tanitc_ident::Name;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::{blocks::Block, definitions::Definition, Hir};
 
@@ -20,7 +20,7 @@ pub enum ModuleDefBody {
 pub struct ModuleDef {
     pub location: Location,
     pub attributes: ModuleAttributes,
-    pub name: Name,
+    pub name: NameSpec,
     pub body: ModuleDefBody,
 }
 

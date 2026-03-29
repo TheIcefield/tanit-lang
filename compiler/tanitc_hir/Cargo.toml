@@ -9,4 +9,5 @@ edition = "2021"
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_messages = { path = "../tanitc_messages" }
 tanitc_ident = { path = "../tanitc_ident" }
+tanitc_name = { path = "../tanitc_name" }
 tanitc_attributes = { path = "../tanitc_attributes" }

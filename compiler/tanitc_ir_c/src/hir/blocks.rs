@@ -43,8 +43,8 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{blocks::Block, definitions::functions::FunctionDef, Hir};
-    use tanitc_ident::Name;
+    use tanitc_hir::hir::{blocks::Block, type_spec::Type, Hir};
+    use tanitc_hir_test::{create_func_def, create_program};
 
     use pretty_assertions::assert_str_eq;
 
@@ -58,6 +58,26 @@ mod tests {
 
     #[test]
     fn codegen_block_test() {
+        // Given
+        let node = create_program(vec![create_func_def(
+            "hello",
+            vec![],
+            Type::unit(),
+            vec![
+                get_block(false, vec![]).into(),
+                get_block(false, vec![]).into(),
+            ],
+        )
+        .into()]);
+
+        let mut header_buffer = Vec::<u8>::new();
+        let mut source_buffer = Vec::<u8>::new();
+        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+
+        // When
+        node.accept(&mut writer).unwrap();
+
+        // Then
         const HEADER_EXPECTED: &str = "void hello();\n";
         const SOURCE_EXPECTED: &str = "void hello()\
                                      \n{\
@@ -68,24 +88,6 @@ mod tests {
                                      \n    }\
                                      \n\
                                      \n}\n";
-
-        let node = Hir::from(FunctionDef {
-            name: Name::from("hello".to_string()),
-            body: Some(Box::new(get_block(
-                false,
-                vec![
-                    get_block(false, vec![]).into(),
-                    get_block(false, vec![]).into(),
-                ],
-            ))),
-            ..Default::default()
-        });
-
-        let mut header_buffer = Vec::<u8>::new();
-        let mut source_buffer = Vec::<u8>::new();
-        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
-
-        node.accept(&mut writer).unwrap();
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);

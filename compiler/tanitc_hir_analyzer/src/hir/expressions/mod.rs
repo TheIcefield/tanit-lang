@@ -1,7 +1,7 @@
 use tanitc_attributes::Mutability;
 use tanitc_hir::hir::{
     expressions::{variable::Variable, Expression},
-    types::Type,
+    type_spec::Type,
 };
 use tanitc_messages::Message;
 
@@ -15,13 +15,15 @@ pub(crate) mod call_expr;
 pub(crate) mod conversion;
 pub(crate) mod indexing;
 pub(crate) mod literal;
+pub(crate) mod member_access;
 pub(crate) mod unary;
 
 impl Analyzer {
     pub(crate) fn analyze_expression(&mut self, expr: &mut Expression) -> AnalyzeResult<()> {
         match expr {
-            Expression::Binary(expr) => self.analyze_binary_expr(expr),
             Expression::Unary(expr) => self.analyze_unary_expr(expr),
+            Expression::Binary(expr) => self.analyze_binary_expr(expr),
+            Expression::MemberAccess(expr) => self.analyze_member_access_expr(expr),
             Expression::Conversion(expr) => self.analyze_conversion_expr(expr),
             Expression::Indexing(expr) => self.analyze_indexing_expr(expr),
             Expression::Call(call_expr) => self.analyze_call_expr(call_expr),
@@ -32,8 +34,9 @@ impl Analyzer {
 
     pub(crate) fn get_expr_type(&self, expr: &Expression) -> TypeInfo {
         match expr {
-            Expression::Binary(expr) => self.get_binary_expr_type(expr),
             Expression::Unary(expr) => self.get_unary_expr_type(expr),
+            Expression::Binary(expr) => self.get_binary_expr_type(expr),
+            Expression::MemberAccess(expr) => self.get_member_access_expr_type(expr),
             Expression::Conversion(expr) => self.get_conversion_expr_type(expr),
             Expression::Indexing(expr) => self.get_indexing_expr_type(expr),
             Expression::Call(call_expr) => self.get_call_expr_type(call_expr),
@@ -42,12 +45,12 @@ impl Analyzer {
         }
     }
 
-    fn analyze_variable_usage(&mut self, var: &mut Variable) -> AnalyzeResult<()> {
-        if self.has_symbol(var.id) {
-            Ok(())
-        } else {
-            Err(Message::undefined_id(var.location, var.id))
-        }
+    pub(crate) fn analyze_variable_usage(&mut self, var: &Variable) -> AnalyzeResult<()> {
+        self.table
+            .lookup_name_spec(&var.name)
+            .map_err(|err| Message::new(var.location, err))?;
+
+        Ok(())
     }
 
     fn get_variable_type(&self, var: &Variable) -> TypeInfo {
@@ -57,8 +60,8 @@ impl Analyzer {
             ..Default::default()
         };
 
-        // Search entries with name id
-        let Some(entry) = self.table.lookup(var.id) else {
+        // Search entries with name var_id
+        let Ok(entry) = self.table.lookup_name_spec(&var.name) else {
             return type_info;
         };
 

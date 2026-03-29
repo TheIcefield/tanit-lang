@@ -1,7 +1,8 @@
 use std::str::FromStr;
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::Hir;
 
@@ -77,7 +78,7 @@ pub enum Type {
         identifier: Ident,
         generics: Vec<Type>,
     },
-    Custom(Name),
+    Custom(NameSpec),
     Func(FuncType),
     Auto,
     Bool,
@@ -104,8 +105,8 @@ impl From<Ident> for Type {
     }
 }
 
-impl From<Name> for Type {
-    fn from(value: Name) -> Self {
+impl From<NameSpec> for Type {
+    fn from(value: NameSpec) -> Self {
         Type::Custom(value)
     }
 }
@@ -246,7 +247,10 @@ impl std::str::FromStr for Type {
             "f32" => Ok(Type::F32),
             "f64" => Ok(Type::F64),
             "str" => Ok(Type::Str),
-            _ => Ok(Type::Custom(Name::from(s.to_string()))),
+            _ => Ok(Type::Custom(NameSpec {
+                location: Location::default(),
+                path: vec![Ident::from(s.to_string()).into()],
+            })),
         }
     }
 }

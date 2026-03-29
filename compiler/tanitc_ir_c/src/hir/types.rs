@@ -1,4 +1,4 @@
-use tanitc_hir::hir::types::{Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{Type, TypeSpec};
 
 use crate::CodeGenStream;
 

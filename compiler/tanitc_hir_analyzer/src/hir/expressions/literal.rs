@@ -6,16 +6,19 @@ use tanitc_hir::hir::{
         literal::{ArrayLiteral, Literal, StructLiteral, TupleLiteral},
         Expression,
     },
-    types::{ArraySize, RefType, TupleType, Type},
+    type_spec::{ArraySize, RefType, TupleType, Type},
 };
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
 use crate::{
     hir::expressions::get_ordinal_number_suffix,
     symbol_table::{
-        entry::{StructDefData, StructFieldData, SymbolKind, UnionDefData, VariantStruct},
+        entry::{
+            StructDefData, StructFieldData, StructFieldsData, SymbolKind, UnionDefData,
+            VariantStruct,
+        },
         type_info::{MemberInfo, TypeInfo},
     },
     AnalyzeResult, Analyzer,
@@ -54,8 +57,8 @@ impl Analyzer {
                 ..Default::default()
             },
 
-            Literal::Struct(StructLiteral { id, .. }) => {
-                let ty = Type::Custom(*id);
+            Literal::Struct(StructLiteral { name, .. }) => {
+                let ty = Type::Custom(name.clone());
                 let Some(mut type_info) = self.table.lookup_type(&ty) else {
                     return TypeInfo {
                         ty,
@@ -120,17 +123,17 @@ impl Analyzer {
 
     pub(crate) fn check_struct_literal_components(
         &mut self,
-        value_comps: &mut [(Name, Expression)],
+        value_comps: &mut [(Ident, Expression)],
         struct_data: &StructDefData,
         location: Location,
     ) -> AnalyzeResult<()> {
         let struct_comps = &struct_data.fields;
         if value_comps.len() != struct_comps.len() {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 location,
                 format!(
                     "Struct \"{}\" consists of {} fields, but {} were supplied",
-                    struct_data.name.id,
+                    struct_data.name,
                     struct_comps.len(),
                     value_comps.len()
                 ),
@@ -151,7 +154,7 @@ impl Analyzer {
 
     pub(crate) fn check_union_literal_components(
         &mut self,
-        value_comps: &mut [(Name, Expression)],
+        value_comps: &mut [(Ident, Expression)],
         union_data: &UnionDefData,
         location: Location,
     ) -> AnalyzeResult<()> {
@@ -159,7 +162,7 @@ impl Analyzer {
         let initialized_comp_size = value_comps.len();
 
         if union_comp_size == 0 && initialized_comp_size > 0 {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 location,
                 format!(
                     "Union \"{}\" has no fields, but were supplied {initialized_comp_size} fields",
@@ -169,7 +172,7 @@ impl Analyzer {
         }
 
         if union_comp_size > 0 && initialized_comp_size > 1 {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 location,
                 format!(
                     "Only one union field must be initialized, but {initialized_comp_size} were initialized",
@@ -191,17 +194,17 @@ impl Analyzer {
 
     pub(crate) fn check_variant_struct_components(
         &mut self,
-        value_comps: &mut [(Name, Expression)],
+        value_comps: &mut [(Ident, Expression)],
         variant_struct_data: &VariantStruct,
         location: Location,
     ) -> AnalyzeResult<()> {
         let struct_comps = &variant_struct_data.fields;
         if value_comps.len() != struct_comps.len() {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 location,
                 format!(
                     "Variant struct \"{}\" consists of {} fields, but {} were supplied",
-                    variant_struct_data.variant_name.id,
+                    variant_struct_data.name,
                     struct_comps.len(),
                     value_comps.len()
                 ),
@@ -223,20 +226,14 @@ impl Analyzer {
     pub(crate) fn check_tuple_components(
         &self,
         value_comps: &[Expression],
-        tuple_name: Option<Ident>,
         tuple_comps: &BTreeMap<usize, StructFieldData>,
         location: Location,
     ) -> AnalyzeResult<()> {
         if value_comps.len() != tuple_comps.len() {
             return Err(Message::new(
                 location,
-                &format!(
-                    "Tuple {} consists of {} fields, but {} were supplied",
-                    if let Some(tuple_name) = tuple_name {
-                        tuple_name.to_string()
-                    } else {
-                        "".to_string()
-                    },
+                format!(
+                    "Tuple consists of {} fields, but {} were supplied",
                     tuple_comps.len(),
                     value_comps.len()
                 ),
@@ -260,7 +257,7 @@ impl Analyzer {
             }
 
             if alias_to.is_none() && value_comp_type.ty != tuple_comp_type.ty {
-                return Err(Message::from_string(
+                return Err(Message::new(
                     value_comp.location(),
                     format!(
                         "Tuple component with index \"{comp_id}\" is {}, but initialized like {}",
@@ -271,7 +268,7 @@ impl Analyzer {
 
             if let Some(alias_to_ty) = &alias_to {
                 if value_comp_type.ty != *alias_to_ty {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         value_comp.location(),
                         format!(
                         "Tuple component with index \"{comp_id}\" is {} (aka: {}), but initialized like {value_comp_type}",
@@ -286,24 +283,24 @@ impl Analyzer {
     }
 
     fn analyze_struct_literal(&mut self, literal: &mut StructLiteral) -> AnalyzeResult<()> {
-        let mut object = if let Some(entry) = self.table.lookup(literal.id.id) {
-            entry.clone()
-        } else {
-            return Err(Message::undefined_id(literal.location, literal.id.id));
-        };
+        let mut entry = self
+            .table
+            .lookup_name_spec(&literal.name)
+            .map_err(|err| Message::new(literal.location, err))?
+            .clone();
 
-        if let SymbolKind::AliasDef(alias_data) = &object.kind {
+        if let SymbolKind::AliasDef(alias_data) = &entry.kind {
             let ty = &alias_data.ty;
             match ty {
-                Type::Custom(alias_to_id) => {
-                    if let Some(entry) = self.table.lookup(alias_to_id.id) {
-                        object = entry.clone();
-                    } else {
-                        return Err(Message::undefined_id(literal.location, alias_to_id.id));
-                    }
+                Type::Custom(alias_to_name) => {
+                    entry = self
+                        .table
+                        .lookup_name_spec(alias_to_name)
+                        .map_err(|err| Message::new(literal.location, err))?
+                        .clone();
                 }
                 ty if ty.is_common() => {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         literal.location,
                         format!("Common type \"{ty}\" does not have any fields"),
                     ))
@@ -314,7 +311,7 @@ impl Analyzer {
             }
         }
 
-        match &object.kind {
+        match &entry.kind {
             SymbolKind::StructDef(struct_data) => {
                 self.check_struct_literal_components(
                     &mut literal.fields,
@@ -330,11 +327,11 @@ impl Analyzer {
                 )?;
             }
             _ => {
-                return Err(Message::from_string(
+                return Err(Message::new(
                     literal.location,
                     format!(
                         "Cannot find struct or union named \"{}\" in this scope",
-                        literal.id
+                        literal.name
                     ),
                 ));
             }
@@ -365,7 +362,7 @@ impl Analyzer {
             if comp_type.ty != current_comp_type.ty {
                 let comp_index = comp.0 + 1;
                 let suffix = get_ordinal_number_suffix(comp.0);
-                return Err(Message::from_string(
+                return Err(Message::new(
                     comp.1.location(),
                     format!(
                         "Array type is declared like {}, but {comp_index}{suffix} element has type {}",
@@ -381,13 +378,13 @@ impl Analyzer {
     fn check_struct_component(
         &mut self,
         comp_id: usize,
-        value_comps: &mut [(Name, Expression)],
-        struct_fields: &BTreeMap<Ident, StructFieldData>,
+        value_comps: &mut [(Ident, Expression)],
+        struct_fields: &StructFieldsData,
     ) -> AnalyzeResult<()> {
         let value_comp = value_comps.get_mut(comp_id).unwrap();
         let value_comp_name = &value_comp.0;
         let value_comp_type = self.get_expr_type(&value_comp.1);
-        let struct_comp_type = &struct_fields.get(&value_comp_name.id).unwrap().ty;
+        let struct_comp_type = &struct_fields.get(value_comp_name).unwrap().ty;
 
         if let Err(err) = self.analyze_expression(&mut value_comp.1) {
             self.error(err);
@@ -401,7 +398,7 @@ impl Analyzer {
             )
             .is_err()
         {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 value_comp.1.location(),
                 format!("field named \"{value_comp_name}\" is {struct_comp_type}, but initialized like {value_comp_type}"),
             ));

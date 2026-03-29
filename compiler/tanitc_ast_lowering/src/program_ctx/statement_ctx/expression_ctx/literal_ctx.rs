@@ -6,7 +6,7 @@ use tanitc_hir::hir::expressions::{
     literal::{ArrayLiteral, Decimal, Integer, Literal, StructLiteral, Text, TupleLiteral},
     Expression,
 };
-use tanitc_ident::Name;
+use tanitc_ident::Ident;
 use tanitc_lexer::token::{lexeme::Lexeme, Token};
 use tanitc_messages::Message;
 
@@ -33,7 +33,7 @@ impl AstLowering {
 
         let value = value_str
             .parse::<usize>()
-            .map_err(|err| Message::parse_int_error(location, err))?;
+            .map_err(|err| Message::new(location, err))?;
 
         Ok(Integer { location, value })
     }
@@ -47,7 +47,7 @@ impl AstLowering {
 
         let value = value_str
             .parse::<f64>()
-            .map_err(|err| Message::parse_float_error(location, err))?;
+            .map_err(|err| Message::new(location, err))?;
 
         Ok(Decimal { location, value })
     }
@@ -102,16 +102,16 @@ impl AstLowering {
     }
 
     fn low_struct_literal_ctx(&mut self, ctx: &StructLiteralCtx) -> AstLowResult<StructLiteral> {
-        let location = ctx.name_ctx.name_tkn.get_location();
-        let id = self.low_name_ctx(&ctx.name_ctx);
-        let mut fields = Vec::<(Name, Expression)>::new();
+        let name = self.low_name_spec_ctx(&ctx.name_ctx)?;
+        let location = name.location;
+        let mut fields = Vec::<(Ident, Expression)>::new();
 
         for (expr_ctx, _) in ctx.elements.iter() {
             let Some(expr_ctx) = expr_ctx else {
                 continue;
             };
 
-            let id = Name::from(expr_ctx.name_ctx.identifier());
+            let id = expr_ctx.name_ctx.identifier();
 
             match self.low_expression_ctx(&expr_ctx.expression_ctx) {
                 Err(err) => self.error(err),
@@ -121,7 +121,7 @@ impl AstLowering {
 
         Ok(StructLiteral {
             location,
-            id,
+            name,
             fields,
         })
     }

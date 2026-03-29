@@ -1,8 +1,8 @@
-use tanitc_hir::hir::types::Type;
+use tanitc_hir::hir::type_spec::Type;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
-use crate::Analyzer;
+use crate::{AnalyzeResult, Analyzer};
 
 impl Analyzer {
     pub(crate) fn compare_types(
@@ -10,7 +10,8 @@ impl Analyzer {
         lhs_type: &Type,
         rhs_type: &Type,
         location: Location,
-    ) -> Result<(), Message> {
+    ) -> AnalyzeResult<()> {
+        println!("Compare: {lhs_type} vs {rhs_type}");
         let mut alias_to = self.find_alias_value(lhs_type);
 
         if lhs_type == rhs_type {
@@ -21,7 +22,7 @@ impl Analyzer {
             && lhs_type != rhs_type
             && !self.try_coerce(rhs_type, lhs_type, location)
         {
-            return Err(Message::from_string(
+            return Err(Message::new(
                     location,
                     format!(
                         "Cannot perform operation on objects with different types: {lhs_type} and {rhs_type}",
@@ -30,7 +31,7 @@ impl Analyzer {
         } else if alias_to.as_ref().is_some_and(|ty| rhs_type != ty)
             && !self.try_coerce(rhs_type, lhs_type, location)
         {
-            return Err(Message::from_string(
+            return Err(Message::new(
                     location,
                     format!(
                         "Cannot perform operation on objects with different types: {lhs_type} (aka: {}) and {rhs_type}",

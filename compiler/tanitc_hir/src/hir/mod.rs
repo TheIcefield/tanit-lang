@@ -7,14 +7,14 @@ pub mod blocks;
 pub mod branches;
 pub mod control_flows;
 pub mod expressions;
-pub mod types;
+pub mod type_spec;
 pub mod uses;
 
 use crate::{
     attributes,
     hir::{
         blocks::Block, branches::Branch, control_flows::ControlFlow, definitions::Definition,
-        expressions::Expression, types::TypeSpec, uses::Use,
+        expressions::Expression, type_spec::TypeSpec, uses::Use,
     },
     visitor::{Visitor, VisitorMut},
 };

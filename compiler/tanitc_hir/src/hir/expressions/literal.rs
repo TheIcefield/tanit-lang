@@ -1,6 +1,7 @@
 use crate::hir::expressions::Expression;
-use tanitc_ident::Name;
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Integer {
@@ -35,8 +36,8 @@ pub struct TupleLiteral {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructLiteral {
     pub location: Location,
-    pub id: Name,
-    pub fields: Vec<(Name, Expression)>,
+    pub name: NameSpec,
+    pub fields: Vec<(Ident, Expression)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

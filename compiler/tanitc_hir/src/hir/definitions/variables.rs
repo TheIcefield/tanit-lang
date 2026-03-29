@@ -2,7 +2,7 @@ use tanitc_attributes::{Mutability, Publicity, Visibility};
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 
-use crate::hir::{definitions::Definition, expressions::Expression, types::Type, Hir};
+use crate::hir::{definitions::Definition, expressions::Expression, type_spec::Type, Hir};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct VariableAttributes {

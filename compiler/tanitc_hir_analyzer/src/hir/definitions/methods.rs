@@ -5,10 +5,10 @@ use crate::Analyzer;
 
 impl Analyzer {
     pub(crate) fn analyze_impl_def(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
-        if self.table.lookup_mut(impl_def.identifier).is_none() {
-            return Err(Message::undefined_id(
+        if self.table.lookup_name_spec(&impl_def.name).is_err() {
+            return Err(Message::new(
                 impl_def.location,
-                impl_def.identifier,
+                format!("Cannot find object named \"{}\"", impl_def.name),
             ));
         };
 
@@ -39,7 +39,7 @@ mod tests {
     use tanitc_hir::hir::{
         blocks::Block,
         definitions::{functions::FunctionParam, variables::VariableDef},
-        types::Type,
+        type_spec::Type,
         Hir,
     };
     use tanitc_hir_test::{create_func_def, create_impl_def, create_struct_def};

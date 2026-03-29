@@ -1,8 +1,8 @@
-use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variable {
     pub location: Location,
-    pub id: Ident,
+    pub name: NameSpec,
 }

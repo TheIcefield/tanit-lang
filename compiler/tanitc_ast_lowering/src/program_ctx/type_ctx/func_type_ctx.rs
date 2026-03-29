@@ -2,7 +2,7 @@ use tanitc_ast::program_ctx::type_ctx::func_type_ctx::{
     FuncTypeCtx, FuncTypeParamCtx, FuncTypeParamsCtx,
 };
 use tanitc_attributes::Safety;
-use tanitc_hir::hir::types::{FuncType, FuncTypeParam, Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{FuncType, FuncTypeParam, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 

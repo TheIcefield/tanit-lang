@@ -1,24 +1,20 @@
 use std::collections::BTreeMap;
 
 use crate::symbol_table::entry::{
-    Entry, StructFieldData, StructFieldsData, SymbolKind, VariantData, VariantDefData, VariantKind,
+    Entry, StructFieldData, StructFieldsData, VariantData, VariantDefData, VariantKind,
     VariantStruct, VariantTuple,
 };
 use tanitc_hir::hir::{
     definitions::{
         structs::StructFieldsInfo,
-        variants::{get_variant_data_type_id, VariantDef, VariantField},
+        variants::{VariantDef, VariantField},
     },
-    expressions::{
-        literal::{Literal, StructLiteral, TupleLiteral},
-        variable::Variable,
-        Expression,
-    },
-    types::Type,
+    type_spec::Type,
 };
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
+use tanitc_name::NameSpec;
 
 use crate::{AnalyzeResult, Analyzer};
 
@@ -29,29 +25,29 @@ impl Analyzer {
     ) -> AnalyzeResult<()> {
         self.check_variants_are_allowed(variant_def.location)?;
 
-        if self.has_symbol(variant_def.name.id) {
-            return Err(Message::multiple_ids(
-                variant_def.location,
-                variant_def.name.id,
-            ));
+        let variant_id = variant_def
+            .name
+            .get_id()
+            .ok_or(Message::empty_name_spec(variant_def.location))?;
+
+        if self.has_symbol(variant_id) {
+            return Err(Message::multiple_ids(variant_def.location, variant_id));
         }
 
-        variant_def.name.prefix = self.table.get_id();
-
-        for internal in variant_def.internals.iter_mut() {
-            internal.accept_mut(self)?;
-        }
+        variant_def.name.path.splice(0..0, self.table.get_path());
 
         let variants = self.get_variants_from_definition(variant_def)?;
-
-        self.add_symbol(Entry {
-            name: variant_def.name.id,
+        let variant_def_data = VariantDefData {
+            name: variant_def.name.clone(),
+            variants,
+        };
+        let entry = Entry {
+            id: variant_id,
             is_static: true,
-            kind: SymbolKind::from(VariantDefData {
-                name: variant_def.name,
-                variants,
-            }),
-        });
+            kind: variant_def_data.into(),
+        };
+
+        self.add_symbol(entry);
 
         Ok(())
     }
@@ -67,64 +63,43 @@ impl Analyzer {
         Ok(())
     }
 
-    fn get_enum_variant_from_def(&self) -> VariantData {
-        VariantData {
-            variant_name: Name::default(),
-            variant_unit_name: Ident::default(),
-            variant_kind: VariantKind::Enum,
-            variant_kind_num: 0,
-        }
-    }
-
-    fn get_struct_variant_from_def(
+    fn get_struct_variant_kind(
         &self,
-        variant_name: Name,
+        variant_name: &NameSpec,
         variant_struct_fields: &StructFieldsInfo,
-    ) -> VariantData {
-        VariantData {
-            variant_name,
-            variant_unit_name: Ident::default(),
-            variant_kind: VariantKind::Struct(VariantStruct {
-                variant_name,
-                fields: {
-                    let mut variant_fields = StructFieldsData::new();
-                    for (field_name, field_ty) in variant_struct_fields.iter() {
-                        variant_fields.insert(
-                            *field_name,
-                            StructFieldData {
-                                struct_name: Name::default(),
-                                ty: field_ty.ty.get_type(),
-                            },
-                        );
-                    }
-                    variant_fields
+    ) -> VariantKind {
+        let mut variant_fields = StructFieldsData::new();
+        for (field_name, field_ty) in variant_struct_fields.iter() {
+            variant_fields.insert(
+                *field_name,
+                StructFieldData {
+                    name: NameSpec::default(),
+                    ty: field_ty.ty.get_type(),
                 },
-            }),
-            variant_kind_num: 0,
+            );
         }
+
+        VariantKind::Struct(VariantStruct {
+            name: variant_name.clone(),
+            fields: variant_fields,
+        })
     }
 
-    fn get_tuple_variant_from_def(&self, variant_tuple_components: &[Type]) -> VariantData {
-        VariantData {
-            variant_name: Name::default(),
-            variant_unit_name: Ident::default(),
-            variant_kind: VariantKind::Tuple(VariantTuple {
-                fields: {
-                    let mut variant_fields = BTreeMap::<usize, StructFieldData>::new();
-                    for (field_num, field_ty) in variant_tuple_components.iter().enumerate() {
-                        variant_fields.insert(
-                            field_num,
-                            StructFieldData {
-                                struct_name: Name::default(),
-                                ty: field_ty.clone(),
-                            },
-                        );
-                    }
-                    variant_fields
+    fn get_tuple_variant_kind(&self, variant_tuple_components: &[Type]) -> VariantKind {
+        let mut variant_fields = BTreeMap::<usize, StructFieldData>::new();
+        for (field_num, field_ty) in variant_tuple_components.iter().enumerate() {
+            variant_fields.insert(
+                field_num,
+                StructFieldData {
+                    name: NameSpec::default(),
+                    ty: field_ty.clone(),
                 },
-            }),
-            variant_kind_num: 0,
+            );
         }
+
+        VariantKind::Tuple(VariantTuple {
+            fields: variant_fields,
+        })
     }
 
     fn get_variants_from_definition(
@@ -133,225 +108,34 @@ impl Analyzer {
     ) -> Result<BTreeMap<Ident, Entry>, Message> {
         let mut res: BTreeMap<Ident, Entry> = BTreeMap::new();
 
-        for (variant_kind_num, (variant_unit_name, variant)) in
-            variant_def.fields.iter().enumerate()
+        for (variant_kind_num, (variant_unit_id, variant)) in variant_def.fields.iter().enumerate()
         {
-            let name = variant_def.name;
-            let mut variant_data = match variant {
-                VariantField::Enum => self.get_enum_variant_from_def(),
-                VariantField::Struct(fields) => self.get_struct_variant_from_def(name, fields),
-                VariantField::Tuple(fields) => self.get_tuple_variant_from_def(fields),
+            let variant_name = variant_def.name.clone();
+
+            let variant_data = VariantData {
+                variant_kind: match variant {
+                    VariantField::Enum => VariantKind::Enum,
+                    VariantField::Tuple(fields) => self.get_tuple_variant_kind(fields),
+                    VariantField::Struct(fields) => {
+                        self.get_struct_variant_kind(&variant_name, fields)
+                    }
+                },
+                variant_unit_id: *variant_unit_id,
+                variant_kind_num,
+                variant_name,
             };
 
-            variant_data.variant_name = variant_def.name;
-            variant_data.variant_kind_num = variant_kind_num;
-            variant_data.variant_unit_name = *variant_unit_name;
-
             res.insert(
-                *variant_unit_name,
+                *variant_unit_id,
                 Entry {
-                    name: *variant_unit_name,
+                    id: *variant_unit_id,
                     is_static: true,
-                    kind: SymbolKind::Variant(variant_data),
+                    kind: variant_data.into(),
                 },
             );
         }
 
         Ok(res)
-    }
-
-    fn access_variant_enum(
-        &mut self,
-        variant_data: &VariantData,
-        rhs: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let location = rhs.location();
-
-        if !matches!(rhs, Expression::Variable(_)) {
-            return Err(Message::no_id_in_namespace(
-                location,
-                variant_data.variant_name.id,
-                variant_data.variant_unit_name,
-            ));
-        }
-
-        *rhs = Expression::Literal(Literal::Struct(StructLiteral {
-            location,
-            id: variant_data.variant_name,
-            fields: vec![
-                (
-                    Name::from("__kind__".to_string()),
-                    Expression::Variable(Variable {
-                        location,
-                        id: Ident::from(format!(
-                            "__{}__kind__{}__",
-                            variant_data.variant_name, variant_data.variant_unit_name
-                        )),
-                    }),
-                ),
-                (
-                    Name::from("__data__".to_string()),
-                    Expression::Literal(Literal::Struct(StructLiteral {
-                        location,
-                        id: get_variant_data_type_id(variant_data.variant_name),
-                        fields: vec![(
-                            Name::from(variant_data.variant_unit_name),
-                            Expression::Literal(Literal::Struct(StructLiteral {
-                                location,
-                                id: Name::from(format!(
-                                    "__{}__data__{}__",
-                                    variant_data.variant_name, variant_data.variant_unit_name
-                                )),
-                                fields: vec![],
-                            })),
-                        )],
-                    })),
-                ),
-            ],
-        }));
-
-        Ok(())
-    }
-
-    fn access_variant_struct(
-        &mut self,
-        variant_data: &VariantData,
-        variant_struct_data: &VariantStruct,
-        rhs: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let location = rhs.location();
-
-        let Expression::Literal(Literal::Struct(StructLiteral { fields, .. })) = rhs else {
-            return Err(Message::no_id_in_namespace(
-                location,
-                variant_data.variant_name.id,
-                variant_data.variant_unit_name,
-            ));
-        };
-
-        self.check_variant_struct_components(fields, variant_struct_data, location)?;
-
-        let fields = fields.clone();
-
-        *rhs = Expression::Literal(Literal::Struct(StructLiteral {
-            location,
-            id: variant_data.variant_name,
-            fields: vec![
-                (
-                    Name::from("__kind__".to_string()),
-                    Expression::Variable(Variable {
-                        location,
-                        id: Ident::from(format!(
-                            "__{}__kind__{}__",
-                            variant_data.variant_name, variant_data.variant_unit_name
-                        )),
-                    }),
-                ),
-                (
-                    Name::from("__data__".to_string()),
-                    Expression::Literal(Literal::Struct(StructLiteral {
-                        location,
-                        id: get_variant_data_type_id(variant_data.variant_name),
-                        fields: vec![(
-                            Name::from(variant_data.variant_unit_name),
-                            Expression::Literal(Literal::Struct(StructLiteral {
-                                location,
-                                id: Name::from(format!(
-                                    "__{}__data__{}__",
-                                    variant_data.variant_name, variant_data.variant_unit_name
-                                )),
-                                fields,
-                            })),
-                        )],
-                    })),
-                ),
-            ],
-        }));
-
-        Ok(())
-    }
-
-    fn access_variant_tuple(
-        &self,
-        variant_data: &VariantData,
-        tuple_data: &VariantTuple,
-        rhs: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let location = rhs.location();
-
-        let Expression::Literal(Literal::Tuple(TupleLiteral { units, .. })) = rhs else {
-            return Err(Message::no_id_in_namespace(
-                location,
-                variant_data.variant_name.id,
-                variant_data.variant_unit_name,
-            ));
-        };
-
-        self.check_tuple_components(
-            units,
-            Some(variant_data.variant_name.id),
-            &tuple_data.fields,
-            location,
-        )?;
-
-        *rhs = Expression::Literal(Literal::Struct(StructLiteral {
-            location,
-            id: variant_data.variant_name,
-            fields: vec![
-                (
-                    Name::from("__kind__".to_string()),
-                    Expression::Variable(Variable {
-                        location,
-                        id: Ident::from(format!(
-                            "__{}__kind__{}__",
-                            variant_data.variant_name, variant_data.variant_name
-                        )),
-                    }),
-                ),
-                (
-                    Name::from("__data__".to_string()),
-                    Expression::Literal(Literal::Struct(StructLiteral {
-                        location,
-                        id: get_variant_data_type_id(variant_data.variant_name),
-                        fields: vec![(
-                            variant_data.variant_name,
-                            Expression::Literal(Literal::Struct(StructLiteral {
-                                location,
-                                id: Name::from(format!(
-                                    "__{}__data__{}__",
-                                    variant_data.variant_name, variant_data.variant_name
-                                )),
-                                fields: {
-                                    let mut res: Vec<(Name, Expression)> =
-                                        Vec::with_capacity(units.len());
-
-                                    for (value_num, value_comp) in units.iter().enumerate() {
-                                        let field_id = Name::from(format!("_{value_num}"));
-                                        res.push((field_id, value_comp.clone()));
-                                    }
-
-                                    res
-                                },
-                            })),
-                        )],
-                    })),
-                ),
-            ],
-        }));
-
-        Ok(())
-    }
-
-    pub(crate) fn access_variant(
-        &mut self,
-        variant_data: &VariantData,
-        rhs: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        match &variant_data.variant_kind {
-            VariantKind::Enum => self.access_variant_enum(variant_data, rhs),
-            VariantKind::Struct(data) => self.access_variant_struct(variant_data, data, rhs),
-            VariantKind::Tuple(data) => self.access_variant_tuple(variant_data, data, rhs),
-        }
     }
 }
 

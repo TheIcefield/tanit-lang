@@ -1,8 +1,8 @@
 use tanitc_attributes::Publicity;
-use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
-use crate::hir::{definitions::Definition, types::TypeSpec, Hir};
+use crate::hir::{definitions::Definition, type_spec::TypeSpec, Hir};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AliasAttributes {
@@ -13,7 +13,7 @@ pub struct AliasAttributes {
 pub struct AliasDef {
     pub location: Location,
     pub attributes: AliasAttributes,
-    pub identifier: Ident,
+    pub name: NameSpec,
     pub value: TypeSpec,
 }
 

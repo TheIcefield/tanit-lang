@@ -9,13 +9,14 @@ use tanitc_hir::{
             variables::VariableDef, variants::VariantDef,
         },
         expressions::Expression,
-        types::TypeSpec,
+        type_spec::TypeSpec,
         uses::Use,
         Hir,
     },
     visitor::Visitor,
 };
 use tanitc_messages::Message;
+use tanitc_name::{NamePathSegment, NameSpec};
 
 use super::CodeGenStream;
 
@@ -119,6 +120,41 @@ impl CodeGenStream<'_> {
             Hir::TypeSpec(node) => self.generate_type_spec(node),
             Hir::Use(node) => self.generate_use(node),
             Hir::Block(node) => self.generate_block(node),
+        }
+    }
+
+    fn generate_name_spec(&mut self, name: &NameSpec) -> std::io::Result<()> {
+        use std::io::Write;
+
+        if name.path.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "NameSpec is empty",
+            ));
+        }
+
+        self.generate_name_path_segment(&name.path[0])?;
+        for segment in name.path.iter().skip(1) {
+            write!(self, "__")?;
+            self.generate_name_path_segment(segment)?;
+        }
+
+        Ok(())
+    }
+
+    fn generate_name_path_segment(&mut self, segm: &NamePathSegment) -> std::io::Result<()> {
+        use std::io::Write;
+
+        match segm {
+            NamePathSegment::Id(id) => write!(self, "{id}"),
+            NamePathSegment::CrateNameSpace => {
+                let crate_name = self.compile_options.crate_name.clone();
+                write!(self, "{crate_name}")
+            }
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "NameSpec is empty",
+            )),
         }
     }
 }

@@ -1,11 +1,11 @@
 use tanitc_attributes::{Mutability, Publicity, Safety};
-use tanitc_ident::Name;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
 use crate::hir::{
     blocks::Block,
     definitions::{variables::VariableDef, Definition},
-    types::Type,
+    type_spec::Type,
     Hir,
 };
 
@@ -27,7 +27,7 @@ pub enum FunctionParam {
 pub struct FunctionDef {
     pub location: Location,
     pub attributes: FunctionAttributes,
-    pub name: Name,
+    pub name: NameSpec,
     pub return_type: Type,
     pub parameters: Vec<FunctionParam>,
     pub body: Option<Box<Block>>,

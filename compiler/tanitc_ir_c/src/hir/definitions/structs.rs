@@ -27,9 +27,8 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{types::Type, Hir};
-    use tanitc_hir_test::create_struct_def;
-    use tanitc_ident::Name;
+    use tanitc_hir::hir::{type_spec::Type, Hir};
+    use tanitc_hir_test::{create_custom_type, create_struct_def};
 
     use pretty_assertions::assert_str_eq;
 
@@ -98,10 +97,7 @@ mod tests {
             vec![
                 (FIELD_1_NAME, Type::I32),
                 (FIELD_2_NAME, Type::F32),
-                (
-                    FIELD_3_NAME,
-                    Name::from(FIELD_3_TYPE_NAME.to_string()).into(),
-                ),
+                (FIELD_3_NAME, create_custom_type(&[FIELD_3_TYPE_NAME])),
             ],
         ));
 

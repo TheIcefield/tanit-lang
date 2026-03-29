@@ -1,4 +1,4 @@
-use tanitc_lexer::token::Token;
+use crate::program_ctx::name_ctx::NameSpecCtx;
 
 pub mod binary_ctx;
 pub mod call_ctx;
@@ -19,7 +19,7 @@ pub enum ExpressionCtx {
     ParenCtx(paren_ctx::ParenCtx),
     Indexing(indexing_ctx::IndexingCtx),
     Literal(literal_ctx::LiteralCtx),
-    Variable(Token),
+    Variable(NameSpecCtx),
 }
 
 impl ExpressionCtx {

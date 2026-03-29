@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 tanitc_hir = { path = "../tanitc_hir" }
 tanitc_ident = { path = "../tanitc_ident" }
+tanitc_name = { path = "../tanitc_name" }
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_attributes = { path = "../tanitc_attributes" }

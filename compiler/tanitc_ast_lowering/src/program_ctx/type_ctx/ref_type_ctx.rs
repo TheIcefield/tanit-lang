@@ -1,6 +1,6 @@
 use tanitc_ast::program_ctx::type_ctx::ref_type_ctx::RefTypeCtx;
 use tanitc_attributes::Mutability;
-use tanitc_hir::hir::types::{RefType, Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{RefType, Type, TypeSpec};
 use tanitc_lexer::token::lexeme::Lexeme;
 
 use crate::{AstLowResult, AstLowering};

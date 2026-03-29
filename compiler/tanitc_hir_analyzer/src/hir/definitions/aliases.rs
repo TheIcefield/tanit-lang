@@ -1,4 +1,4 @@
-use tanitc_hir::hir::{definitions::aliases::AliasDef, types::Type};
+use tanitc_hir::hir::{definitions::aliases::AliasDef, type_spec::Type};
 use tanitc_messages::Message;
 
 use crate::{
@@ -8,30 +8,36 @@ use crate::{
 
 impl Analyzer {
     pub(crate) fn analyze_alias_def(&mut self, alias_def: &mut AliasDef) -> AnalyzeResult<()> {
-        if self.has_symbol(alias_def.identifier) {
-            return Err(Message::multiple_ids(
-                alias_def.location,
-                alias_def.identifier,
-            ));
+        let alias_id = alias_def
+            .name
+            .get_id()
+            .ok_or(Message::empty_name_spec(alias_def.location))?;
+
+        if self.has_symbol(alias_id) {
+            return Err(Message::multiple_ids(alias_def.location, alias_id));
         }
 
+        // Copies table.table_path to start of alias_def.name.path
+        alias_def.name.path.splice(0..0, self.table.get_path());
+
         self.add_symbol(Entry {
-            name: alias_def.identifier,
+            id: alias_id,
             is_static: true,
-            kind: SymbolKind::AliasDef(AliasDefData {
+            kind: AliasDefData {
                 ty: alias_def.value.get_type(),
-            }),
+            }
+            .into(),
         });
 
         Ok(())
     }
 
     pub(crate) fn find_alias_value(&self, alias_type: &Type) -> Option<Type> {
-        let Type::Custom(type_id) = alias_type else {
+        let Type::Custom(type_name) = alias_type else {
             return None;
         };
 
-        let entry = self.table.lookup(type_id.id)?;
+        let entry = self.table.lookup_name_spec(type_name).ok()?;
 
         let SymbolKind::AliasDef(alias_data) = &entry.kind else {
             return None;
@@ -51,10 +57,9 @@ mod tests {
 
     use tanitc_attributes::Mutability;
     use tanitc_hir_test::{
-        create_alias_def, create_decimal_lit, create_integer_lit, create_main_func_def,
-        create_program, create_struct_def, create_struct_lit, create_var_def,
+        create_alias_def, create_custom_type, create_decimal_lit, create_integer_lit,
+        create_main_func_def, create_program, create_struct_def, create_struct_lit, create_var_def,
     };
-    use tanitc_ident::Name;
 
     #[test]
     fn struct_with_alias_typed_fields_test() {
@@ -65,20 +70,21 @@ mod tests {
         const STRUCT_NAME: &str = "Vec2";
         const FIELD_1_NAME: &str = "x";
         const FIELD_2_NAME: &str = "y";
+
         let struct_def = create_struct_def(
             STRUCT_NAME,
             vec![
-                (FIELD_1_NAME, Name::from(FIRST_ALIAS.to_string()).into()),
-                (FIELD_2_NAME, Name::from(FIRST_ALIAS.to_string()).into()),
+                (FIELD_1_NAME, create_custom_type(&[FIRST_ALIAS])),
+                (FIELD_2_NAME, create_custom_type(&[FIRST_ALIAS])),
             ],
         );
 
         const SECOND_ALIAS: &str = "Vec";
-        let alias_to_struct = create_alias_def(SECOND_ALIAS, Name::from("Vec2".to_string()).into());
+        let alias_to_struct = create_alias_def(SECOND_ALIAS, create_custom_type(&[STRUCT_NAME]));
 
         let var_value = Some(create_struct_lit(
-            SECOND_ALIAS,
-            &[
+            &[SECOND_ALIAS],
+            vec![
                 (FIELD_1_NAME, create_decimal_lit(10.0)),
                 (FIELD_2_NAME, create_decimal_lit(10.0)),
             ],
@@ -125,8 +131,8 @@ mod tests {
         let alias_def = create_alias_def(ALIAS_NAME, Type::I32);
 
         let var_value = Some(create_struct_lit(
-            ALIAS_NAME,
-            &[
+            &[ALIAS_NAME],
+            vec![
                 ("x", create_decimal_lit(10.0)),
                 ("y", create_decimal_lit(10.0)),
             ],
@@ -168,7 +174,7 @@ mod tests {
         let var_def = create_var_def(
             "a",
             Mutability::Immutable,
-            Name::from(ALIAS_NAME.to_string()).into(),
+            create_custom_type(&[ALIAS_NAME]),
             var_value,
         );
 
@@ -194,16 +200,14 @@ mod tests {
     #[test]
     fn bad_alias_common_type_test() {
         // Given
-        const VAR_NAME: &str = "a";
-
         const ALIAS_NAME: &str = "A";
         let alias_def = create_alias_def(ALIAS_NAME, Type::I32);
 
         let var_value = Some(create_decimal_lit(3.14));
         let var_def = create_var_def(
-            VAR_NAME,
+            "a",
             Mutability::Immutable,
-            Type::Custom(Name::from(ALIAS_NAME.to_string())),
+            create_custom_type(&[ALIAS_NAME]),
             var_value,
         );
 
@@ -239,13 +243,13 @@ mod tests {
         let struct_def = create_struct_def(STRUCT_NAME, vec![]);
 
         const ALIAS_NAME: &str = "A";
-        let alias_def = create_alias_def(ALIAS_NAME, Name::from(STRUCT_NAME.to_string()).into());
+        let alias_def = create_alias_def(ALIAS_NAME, create_custom_type(&[STRUCT_NAME]));
 
-        let var_value = Some(create_struct_lit(STRUCT_NAME, &[]));
+        let var_value = Some(create_struct_lit(&[STRUCT_NAME], vec![]));
         let var_def = create_var_def(
             "a",
             Mutability::Immutable,
-            Type::Custom(Name::from(ALIAS_NAME.to_string())),
+            create_custom_type(&[ALIAS_NAME]),
             var_value,
         );
 
@@ -273,14 +277,17 @@ mod tests {
     #[test]
     fn bad_alias_custom_type_test() {
         // Given
-        let struct_def = create_struct_def("S", vec![]);
-        let alias_def = create_alias_def("A", Name::from("S".to_string()).into());
+        const STRUCT_NAME: &str = "S";
+        let struct_def = create_struct_def(STRUCT_NAME, vec![]);
+
+        const ALIAS_NAME: &str = "A";
+        let alias_def = create_alias_def(ALIAS_NAME, create_custom_type(&[STRUCT_NAME]));
 
         let var_value = Some(create_integer_lit(100));
         let var_def = create_var_def(
             "a",
             Mutability::Immutable,
-            Name::from("A".to_string()).into(),
+            create_custom_type(&[ALIAS_NAME]),
             var_value,
         );
 
@@ -317,15 +324,24 @@ mod tests {
     #[test]
     fn alias_to_alias_type_test() {
         // Given
-        let struct_def = create_struct_def("S", vec![]);
-        let alias_to_struct = create_alias_def("A", Name::from("S".to_string()).into());
-        let alias_to_alias = create_alias_def("B", Name::from("A".to_string()).into());
+        const STRUCT_NAME: &str = "S";
+        let struct_def = create_struct_def(STRUCT_NAME, vec![]);
 
-        let var_value = Some(create_struct_lit("S", &[]));
+        const ALIAS_TO_STRUCT_NAME: &str = "A";
+        let alias_to_struct =
+            create_alias_def(ALIAS_TO_STRUCT_NAME, create_custom_type(&[STRUCT_NAME]));
+
+        const ALIAS_TO_ALIAS_NAME: &str = "B";
+        let alias_to_alias = create_alias_def(
+            ALIAS_TO_ALIAS_NAME,
+            create_custom_type(&[ALIAS_TO_STRUCT_NAME]),
+        );
+
+        let var_value = Some(create_struct_lit(&[STRUCT_NAME], vec![]));
         let var_def = create_var_def(
             "b",
             Mutability::Immutable,
-            Name::from("B".to_string()).into(),
+            create_custom_type(&[ALIAS_TO_ALIAS_NAME]),
             var_value,
         );
 
@@ -357,24 +373,22 @@ mod tests {
     }
 
     #[test]
-    fn incorrect_alias_to_alias_type_test() {
+    fn bad_alias_to_alias_type_test() {
         // Given
         const STRUCT_NAME: &str = "S";
         let struct_def = create_struct_def(STRUCT_NAME, vec![]);
 
         const ALIAS_1_NAME: &str = "A";
-        let alias_1_def =
-            create_alias_def(ALIAS_1_NAME, Name::from(STRUCT_NAME.to_string()).into());
+        let alias_1_def = create_alias_def(ALIAS_1_NAME, create_custom_type(&[STRUCT_NAME]));
 
         const ALIAS_2_NAME: &str = "B";
-        let alias_2_def =
-            create_alias_def(ALIAS_2_NAME, Name::from(ALIAS_1_NAME.to_string()).into());
+        let alias_2_def = create_alias_def(ALIAS_2_NAME, create_custom_type(&[ALIAS_1_NAME]));
 
         let var_value = Some(create_integer_lit(50));
         let var_def = create_var_def(
             "b",
             Mutability::Immutable,
-            Name::from(ALIAS_2_NAME.to_string()).into(),
+            create_custom_type(&[ALIAS_2_NAME]),
             var_value,
         );
 

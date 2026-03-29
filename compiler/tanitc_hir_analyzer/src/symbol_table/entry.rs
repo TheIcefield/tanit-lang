@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Mutability;
-use tanitc_hir::hir::types::{FuncType, Type};
-use tanitc_ident::{Ident, Name};
+use tanitc_hir::hir::type_spec::{FuncType, Type};
+use tanitc_ident::Ident;
+use tanitc_name::NameSpec;
 
-use crate::symbol_table::table::Table;
+use crate::symbol_table::table::{Table, TableEntries};
 
 #[derive(Debug, Clone)]
 pub struct AliasDefData {
@@ -13,6 +14,7 @@ pub struct AliasDefData {
 
 #[derive(Debug, Clone)]
 pub struct ModuleDefData {
+    pub name: NameSpec,
     pub table: Box<Table>,
 }
 
@@ -34,7 +36,7 @@ pub struct VarDefData {
 
 #[derive(Debug, Clone)]
 pub struct FuncDefData {
-    pub name: Name,
+    pub name: NameSpec,
     pub ty: FuncType,
     pub is_virtual: bool,
     pub is_inline: bool,
@@ -43,7 +45,7 @@ pub struct FuncDefData {
 
 #[derive(Debug, Clone)]
 pub struct StructFieldData {
-    pub struct_name: Name,
+    pub name: NameSpec,
     pub ty: Type,
 }
 
@@ -51,32 +53,34 @@ pub type StructFieldsData = BTreeMap<Ident, StructFieldData>;
 
 #[derive(Debug, Clone)]
 pub struct StructDefData {
-    pub name: Name,
+    pub name: NameSpec,
     pub fields: StructFieldsData,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnionDefData {
-    pub name: Name,
-    pub fields: BTreeMap<Ident, StructFieldData>,
+    pub name: NameSpec,
+    pub fields: StructFieldsData,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumData {
-    pub enum_name: Name,
+    pub name: NameSpec,
     pub value: usize,
 }
 
+pub type EnumDefEntries = std::collections::BTreeMap<Ident, Entry>;
+
 #[derive(Debug, Clone)]
 pub struct EnumDefData {
-    pub name: Name,
-    pub enums: BTreeMap<Ident, Entry /* Only Enum */>,
+    pub name: NameSpec,
+    pub units: EnumDefEntries,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariantStruct {
-    pub variant_name: Name,
-    pub fields: BTreeMap<Ident, StructFieldData>,
+    pub name: NameSpec,
+    pub fields: StructFieldsData,
 }
 
 #[derive(Debug, Clone)]
@@ -93,16 +97,16 @@ pub enum VariantKind {
 
 #[derive(Debug, Clone)]
 pub struct VariantData {
-    pub variant_name: Name,
-    pub variant_unit_name: Ident,
-    pub variant_kind: VariantKind,
-    pub variant_kind_num: usize,
+    pub variant_name: NameSpec,    // name specified for a type
+    pub variant_unit_id: Ident,    // ident of concrete unit
+    pub variant_kind: VariantKind, // kind of concrete unit
+    pub variant_kind_num: usize,   // index of concrete unit
 }
 
 #[derive(Debug, Clone)]
 pub struct VariantDefData {
-    pub name: Name,
-    pub variants: BTreeMap<Ident, Entry>,
+    pub name: NameSpec,
+    pub variants: TableEntries,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -123,7 +127,7 @@ pub enum SymbolKind {
 
 #[derive(Default, Debug, Clone)]
 pub struct Entry {
-    pub name: Ident,
+    pub id: Ident,
     pub is_static: bool,
     pub kind: SymbolKind,
 }
@@ -179,5 +183,11 @@ impl From<EnumData> for SymbolKind {
 impl From<VariantDefData> for SymbolKind {
     fn from(value: VariantDefData) -> Self {
         Self::VariantDef(value)
+    }
+}
+
+impl From<VariantData> for SymbolKind {
+    fn from(value: VariantData) -> Self {
+        Self::Variant(value)
     }
 }

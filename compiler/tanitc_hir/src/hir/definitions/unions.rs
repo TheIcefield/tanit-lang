@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
-use crate::hir::{definitions::Definition, types::TypeSpec, Hir};
+use crate::hir::{definitions::Definition, type_spec::TypeSpec, Hir};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct UnionFieldAttributes {
@@ -17,7 +18,7 @@ pub struct UnionFieldInfo {
     pub attributes: UnionFieldAttributes,
 }
 
-pub type UnionFields = BTreeMap<Ident, UnionFieldInfo>;
+pub type UnionFieldsInfo = BTreeMap<Ident, UnionFieldInfo>;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct UnionAttributes {
@@ -28,8 +29,8 @@ pub struct UnionAttributes {
 pub struct UnionDef {
     pub location: Location,
     pub attributes: UnionAttributes,
-    pub name: Name,
-    pub fields: UnionFields,
+    pub name: NameSpec,
+    pub fields: UnionFieldsInfo,
     pub internals: Vec<Hir>,
 }
 

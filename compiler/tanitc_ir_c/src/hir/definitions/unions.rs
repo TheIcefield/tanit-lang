@@ -27,51 +27,27 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{
-        definitions::unions::{UnionFieldInfo, UnionFields},
-        types::{Type, TypeSpec},
-        Hir,
-    };
-    use tanitc_ident::{Ident, Name};
+    use tanitc_hir::hir::type_spec::Type;
+    use tanitc_hir_test::{create_custom_type, create_program, create_union_def};
 
     use pretty_assertions::assert_str_eq;
 
-    fn get_union(name: &str, user_fields: Vec<(String, Type)>) -> UnionDef {
-        let mut fields = UnionFields::new();
-
-        for (field_name, field_ty) in user_fields {
-            fields.insert(
-                Ident::from(field_name),
-                UnionFieldInfo {
-                    ty: TypeSpec {
-                        ty: field_ty,
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            );
-        }
-
-        UnionDef {
-            name: Name::from(name.to_string()),
-            fields,
-            ..Default::default()
-        }
-    }
-
     #[test]
     fn empty_union() {
-        const UNION_NAME: &str = "EmptyUnion";
-        const HEADER_EXPECTED: &str = "typedef union {\
-                                     \n} EmptyUnion;\n";
-
-        let node = Hir::from(get_union(UNION_NAME, Vec::new()));
+        // Given
+        let union_def = create_union_def("EmptyUnion", vec![]);
+        let node = create_program(vec![union_def.into()]);
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
 
+        // When
         node.accept(&mut writer).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "typedef union {\
+                                     \n} EmptyUnion;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
@@ -82,22 +58,21 @@ mod tests {
 
     #[test]
     fn union_with_1_field() {
-        const UNION_NAME: &str = "MyUnion";
-        const FIELD_1_NAME: &str = "a";
-        const HEADER_EXPECTED: &str = "typedef union {\
-                                     \n    signed int a;\
-                                     \n} MyUnion;\n";
-
-        let node = Hir::from(get_union(
-            UNION_NAME,
-            vec![(FIELD_1_NAME.to_string(), Type::I32)],
-        ));
+        // Given
+        let union_def = create_union_def("MyUnion", vec![("a", Type::I32)]);
+        let node = create_program(vec![union_def.into()]);
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
 
+        // When
         node.accept(&mut writer).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "typedef union {\
+                                     \n    signed int a;\
+                                     \n} MyUnion;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
@@ -108,34 +83,30 @@ mod tests {
 
     #[test]
     fn union_with_3_fields() {
-        const UNION_NAME: &str = "MyUnion";
-        const FIELD_1_NAME: &str = "a";
-        const FIELD_2_NAME: &str = "b";
-        const FIELD_3_NAME: &str = "c";
-        const FIELD_3_TYPE_NAME: &str = "C";
-        const HEADER_EXPECTED: &str = "typedef union {\
-                                     \n    signed int a;\
-                                     \n    float b;\
-                                     \n    C c;\
-                                     \n} MyUnion;\n";
-
-        let node = Hir::from(get_union(
-            UNION_NAME,
+        // Given
+        let union_def = create_union_def(
+            "MyUnion",
             vec![
-                (FIELD_1_NAME.to_string(), Type::I32),
-                (FIELD_2_NAME.to_string(), Type::F32),
-                (
-                    FIELD_3_NAME.to_string(),
-                    Type::Custom(Name::from(FIELD_3_TYPE_NAME.to_string())),
-                ),
+                ("a", Type::I32),
+                ("b", Type::F32),
+                ("c", create_custom_type(&["C"])),
             ],
-        ));
+        );
+        let node = create_program(vec![union_def.into()]);
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
         let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
 
+        // When
         node.accept(&mut writer).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "typedef union {\
+                                     \n    signed int a;\
+                                     \n    float b;\
+                                     \n    C c;\
+                                     \n} MyUnion;\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);

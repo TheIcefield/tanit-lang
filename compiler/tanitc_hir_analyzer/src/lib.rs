@@ -3,7 +3,7 @@ use crate::symbol_table::{
     table::Table,
 };
 use tanitc_attributes::Safety;
-use tanitc_hir::hir::{types::Type, Hir};
+use tanitc_hir::hir::{type_spec::Type, Hir};
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::{listener::MessageListener, Message};
@@ -75,8 +75,8 @@ impl Analyzer {
         &self.table
     }
 
-    pub fn has_symbol(&self, name: Ident) -> bool {
-        self.table.lookup(name).is_some()
+    pub fn has_symbol(&self, id: Ident) -> bool {
+        self.table.lookup(id).is_some()
     }
 
     pub fn add_symbol(&mut self, entry: Entry) {
@@ -99,7 +99,7 @@ impl Analyzer {
         };
 
         if *data.ty.return_type != Type::I32 && !data.ty.return_type.is_unit() {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 Location::default(),
                 format!("Bad type of main function: {}", data.ty.return_type),
             ));

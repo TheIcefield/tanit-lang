@@ -37,7 +37,7 @@ impl AstLowering {
                         Err(err) => self.error(err),
                     }
                 }
-                Some(stmt) => self.error(Message::from_string(
+                Some(stmt) => self.error(Message::new(
                     location,
                     format!("{} is now allowed in extern", stmt.kind_str()),
                 )),
