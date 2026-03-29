@@ -3,14 +3,9 @@ use tanitc_lexer::{
     location::Location,
     token::{lexeme::Lexeme, Token},
 };
+use tanitc_name::NameSpec;
 
-use std::{
-    char::ParseCharError,
-    error::Error,
-    fmt::Display,
-    num::{ParseFloatError, ParseIntError},
-    str::ParseBoolError,
-};
+use std::{error::Error, fmt::Display};
 
 #[derive(Default, Debug, Clone)]
 pub struct Message {
@@ -19,19 +14,16 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(location: Location, text: &str) -> Self {
-        Self::from_string(location, text.to_string())
-    }
-
-    pub fn from_string(location: Location, text: String) -> Self {
+    pub fn new<E>(location: Location, text: E) -> Self
+    where
+        E: Display,
+    {
         Self {
             location: Some(location),
-            text,
+            text: text.to_string(),
         }
     }
-}
 
-impl Message {
     pub fn reached_eof() -> Self {
         Self {
             location: None,
@@ -52,26 +44,30 @@ impl Message {
             text.push('.');
         }
 
-        Self::from_string(token.get_location(), text)
+        Self::new(token.get_location(), text)
     }
 
     pub fn multiple_ids(location: Location, id: Ident) -> Self {
-        Self::from_string(
+        Self::new(
             location,
             format!("Identifier \"{id}\" defined multiple times"),
         )
     }
 
     pub fn undefined_id(location: Location, id: Ident) -> Self {
-        Self::from_string(location, format!("Undefined name \"{id}\""))
+        Self::new(location, format!("Undefined name \"{id}\""))
+    }
+
+    pub fn undefined_name(location: Location, name: &NameSpec) -> Self {
+        Self::new(location, format!("Undefined name \"{name}\""))
     }
 
     pub fn undefined_type(location: Location, type_str: String) -> Self {
-        Self::from_string(location, format!("Undefined type \"{type_str}\""))
+        Self::new(location, format!("Undefined type \"{type_str}\""))
     }
 
-    pub fn undefined_variable(location: Location, var_name: Ident) -> Self {
-        Self::from_string(location, format!("No variable \"{var_name}\" found"))
+    pub fn undefined_variable(location: Location, var_name: &NameSpec) -> Self {
+        Self::new(location, format!("No variable \"{var_name}\" found"))
     }
 
     pub fn in_func_def(func_name: Ident, mut msg: Self) -> Self {
@@ -80,73 +76,61 @@ impl Message {
     }
 
     pub fn undefined_func(location: Location, func_name: Ident) -> Self {
-        Self::from_string(location, format!("No function \"{func_name}\" found"))
+        Self::new(location, format!("No function \"{func_name}\" found"))
     }
 
     pub fn undefined_struct(location: Location, struct_name: Ident) -> Self {
-        Self::from_string(location, format!("No struct \"{struct_name}\" found"))
+        Self::new(location, format!("No struct \"{struct_name}\" found"))
     }
 
     pub fn undefined_union(location: Location, union_name: Ident) -> Self {
-        Self::from_string(location, format!("No struct \"{union_name}\" found"))
+        Self::new(location, format!("No struct \"{union_name}\" found"))
     }
 
     pub fn const_mutation(location: Location, s: &str) -> Self {
-        Self::from_string(
+        Self::new(
             location,
             format!("Cannot mutate immutable object of type \"{s}\" is immutable in current scope"),
         )
     }
 
-    pub fn const_var_mutation(location: Location, var_name: Ident) -> Self {
-        Self::from_string(
+    pub fn const_var_mutation(location: Location, var_name: &NameSpec) -> Self {
+        Self::new(
             location,
             format!("Variable \"{var_name}\" is immutable in current scope"),
         )
     }
 
-    pub fn const_ref_mutation(location: Location, var_name: Ident) -> Self {
-        Self::from_string(
+    pub fn const_ref_mutation(location: Location, var_name: &NameSpec) -> Self {
+        Self::new(
             location,
             format!("Reference \"{var_name}\" is immutable in current scope"),
         )
     }
 
-    pub fn no_id_in_namespace(location: Location, namespace: Ident, id: Ident) -> Self {
-        Self::from_string(
+    pub fn no_id_in_namespace(location: Location, namespace: &NameSpec, id: Ident) -> Self {
+        Self::new(
             location,
             format!("No object named \"{id}\" in namespace {namespace}"),
         )
     }
 
-    pub fn parse_int_error(location: Location, err: ParseIntError) -> Self {
-        Self::from_string(location, err.to_string())
-    }
-
-    pub fn parse_float_error(location: Location, err: ParseFloatError) -> Self {
-        Self::from_string(location, err.to_string())
-    }
-
-    pub fn parse_char_error(location: Location, err: ParseCharError) -> Self {
-        Self::from_string(location, err.to_string())
-    }
-
-    pub fn parse_bool_error(location: Location, err: ParseBoolError) -> Self {
-        Self::from_string(location, err.to_string())
-    }
-
     pub fn unreachable(location: Location, msg: String) -> Self {
-        Self::from_string(
+        Self::new(
             location,
             format!("Compiler reached unreachable code: {msg}"),
         )
     }
 
     pub fn codegen_err(location: Location, err: std::io::Error) -> Self {
-        Self::from_string(location, format!("Codegen error: {err}"))
+        Self::new(location, format!("Codegen error: {err}"))
     }
 
-    pub fn map_in_func_def(mut self, func_name: Ident) -> Self {
+    pub fn empty_name_spec(location: Location) -> Self {
+        Self::new(location, "Empty Name Specifier")
+    }
+
+    pub fn map_in_func_def(mut self, func_name: &NameSpec) -> Self {
         self.text = format!("In definition of function \"{func_name}\": {}", self.text);
         self
     }

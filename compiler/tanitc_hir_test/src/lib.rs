@@ -1,5 +1,3 @@
-use std::{iter::Peekable, slice::Iter};
-
 use tanitc_attributes::Mutability;
 use tanitc_hir::hir::{
     blocks::Block,
@@ -10,19 +8,17 @@ use tanitc_hir::hir::{
         methods::ImplDef,
         modules::ModuleDef,
         structs::{StructDef, StructFieldsInfo},
-        unions::UnionDef,
+        unions::{UnionDef, UnionFieldsInfo},
         variables::VariableDef,
         variants::{VariantAttributes, VariantDef, VariantField, VariantFields},
     },
-    expressions::{
-        binary::{BinaryExpr, BinaryOperation},
-        Expression,
-    },
-    types::{Type, TypeSpec},
+    expressions::{variable::Variable, Expression},
+    type_spec::{Type, TypeSpec},
     Hir,
 };
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::{NamePathSegment, NameSpec};
 
 /* Creates: program with global block of recieved statements */
 pub fn create_program(statements: Vec<Hir>) -> Hir {
@@ -49,7 +45,10 @@ pub fn create_module_def(name: &str, definitions: Vec<Hir>) -> ModuleDef {
     ModuleDef {
         location: Location::default(),
         attributes: ModuleAttributes::default(),
-        name: name.to_string().into(),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         body: ModuleDefBody::Internal(Box::new(create_block(definitions))),
     }
 }
@@ -63,7 +62,10 @@ pub fn create_enum_def_units(units: Vec<(&str, Option<usize>)>) -> EnumUnits {
 
 pub fn create_enum_def(name: &str, units: Vec<(&str, Option<usize>)>) -> EnumDef {
     EnumDef {
-        name: Name::from(name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         units: create_enum_def_units(units),
         ..Default::default()
     }
@@ -95,10 +97,32 @@ pub fn create_struct_fields(fields: Vec<(&str, Type)>) -> StructFieldsInfo {
  */
 pub fn create_struct_def(name: &str, fields: Vec<(&str, Type)>) -> StructDef {
     StructDef {
-        name: Name::from(name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         fields: create_struct_fields(fields),
         ..Default::default()
     }
+}
+
+pub fn create_union_fields(fields: Vec<(&str, Type)>) -> UnionFieldsInfo {
+    use tanitc_hir::hir::definitions::unions::UnionFieldInfo;
+
+    let mut local_fields = UnionFieldsInfo::new();
+    for (field_name, field_ty) in fields {
+        local_fields.insert(
+            Ident::from(field_name.to_string()),
+            UnionFieldInfo {
+                ty: TypeSpec {
+                    ty: field_ty,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+        );
+    }
+    local_fields
 }
 
 /* Creates:
@@ -106,27 +130,13 @@ pub fn create_struct_def(name: &str, fields: Vec<(&str, Type)>) -> StructDef {
  *     fields[i].0: fields[i].1
  * }
  */
-pub fn create_union_def(name: &str, fields: &[(&str, Type)]) -> UnionDef {
-    use tanitc_hir::hir::definitions::unions::{UnionFieldInfo, UnionFields};
-
+pub fn create_union_def(name: &str, fields: Vec<(&str, Type)>) -> UnionDef {
     UnionDef {
-        name: Name::from(name.to_string()),
-        fields: {
-            let mut local_fields = UnionFields::new();
-            for (field_name, field_ty) in fields.iter() {
-                local_fields.insert(
-                    Ident::from(field_name.to_string()),
-                    UnionFieldInfo {
-                        ty: TypeSpec {
-                            ty: field_ty.clone(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    },
-                );
-            }
-            local_fields
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
         },
+        fields: create_union_fields(fields),
         ..Default::default()
     }
 }
@@ -144,7 +154,10 @@ pub fn create_variant_def(name: &str, variants: Vec<(&str, VariantField)>) -> Va
     }
 
     VariantDef {
-        name: Name::from(name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         fields,
         internals: vec![],
         location: Location::default(),
@@ -179,7 +192,10 @@ pub fn create_func_def(
     statements: Vec<Hir>,
 ) -> FunctionDef {
     FunctionDef {
-        name: Name::from(name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         parameters,
         return_type,
         body: Some(Box::new(Block {
@@ -189,6 +205,19 @@ pub fn create_func_def(
         })),
         ..Default::default()
     }
+}
+
+pub fn create_common_func_param(
+    name: &str,
+    mutability: Mutability,
+    var_type: Type,
+) -> FunctionParam {
+    FunctionParam::Common(VariableDef {
+        identifier: name.to_string().into(),
+        var_type,
+        mutability,
+        ..Default::default()
+    })
 }
 
 /* Creates:
@@ -205,7 +234,10 @@ pub fn create_main_func_def(statements: Vec<Hir>) -> FunctionDef {
  */
 pub fn create_alias_def(name: &str, ty: Type) -> AliasDef {
     AliasDef {
-        identifier: Ident::from(name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(name.to_string()).into()],
+        },
         value: TypeSpec {
             ty,
             ..Default::default()
@@ -268,17 +300,17 @@ pub fn create_decimal_lit(value: f64) -> Expression {
  *     fields_raw[N].0: fields_raw[N].1
  * }
  */
-pub fn create_struct_lit(struct_name: &str, fields_raw: &[(&str, Expression)]) -> Expression {
+pub fn create_struct_lit(struct_name: &[&str], fields_raw: Vec<(&str, Expression)>) -> Expression {
     use tanitc_hir::hir::expressions::literal::{Literal, StructLiteral};
 
-    let mut fields = Vec::<(Name, Expression)>::new();
+    let mut fields = Vec::<(Ident, Expression)>::new();
     for (field_id, field_val) in fields_raw {
-        fields.push((field_id.to_string().into(), field_val.clone()));
+        fields.push((field_id.to_string().into(), field_val));
     }
 
     Expression::Literal(Literal::Struct(StructLiteral {
         location: Location::default(),
-        id: struct_name.to_string().into(),
+        name: create_name_spec(struct_name),
         fields,
     }))
 }
@@ -307,19 +339,19 @@ pub fn create_tuple_lit(units: Vec<Expression>) -> Expression {
     }))
 }
 
-pub fn create_var(name: &str) -> Expression {
+pub fn create_var(var_name: &[&str]) -> Expression {
     use tanitc_hir::hir::expressions::variable::Variable;
 
     Expression::Variable(Variable {
         location: Location::default(),
-        id: name.to_string().into(),
+        name: create_name_spec(var_name),
     })
 }
 
 /* Creates:
  * func_name(args[0], args[1], ... args[N])
  */
-pub fn create_call_expr(func_name: &str, args: Vec<Expression>) -> Expression {
+pub fn create_call_expr(func_name: &[&str], args: Vec<Expression>) -> Expression {
     use tanitc_hir::hir::expressions::call::{CallArg, CallExpr, PositionalCallArg};
 
     let arguments = args
@@ -351,29 +383,40 @@ pub fn create_call_expr(func_name: &str, args: Vec<Expression>) -> Expression {
  */
 pub fn create_impl_def(struct_name: &str, methods: Vec<FunctionDef>) -> ImplDef {
     ImplDef {
-        identifier: Ident::from(struct_name.to_string()),
+        name: NameSpec {
+            location: Location::default(),
+            path: vec![Ident::from(struct_name.to_string()).into()],
+        },
         methods,
         ..Default::default()
     }
 }
 
-fn create_scope_resolutions_expr_from_iter(mut ids: Peekable<Iter<&str>>) -> Expression {
-    let Some(first) = ids.next() else {
-        panic!("ids is empty");
-    };
+pub fn create_name_spec(ids: &[&str]) -> NameSpec {
+    let path = ids
+        .iter()
+        .map(|id| match &id[..] {
+            "crate" => NamePathSegment::CrateNameSpace,
+            "super" => NamePathSegment::SuperNameSpace,
+            "self" => NamePathSegment::SelfNameSpace,
+            "*" => NamePathSegment::AllIdents,
+            id => NamePathSegment::Id(id.to_string().into()),
+        })
+        .collect();
 
-    if ids.peek().is_none() {
-        return create_var(first);
+    NameSpec {
+        location: Location::default(),
+        path,
     }
+}
 
-    Expression::Binary(BinaryExpr {
-        operation: BinaryOperation::ScopeRes,
-        lhs: Box::new(create_var(first)),
-        rhs: Box::new(create_scope_resolutions_expr_from_iter(ids)),
+pub fn create_scope_resolutions_expr(ids: &[&str]) -> Expression {
+    Expression::Variable(Variable {
+        name: create_name_spec(ids),
         location: Location::default(),
     })
 }
 
-pub fn create_scope_resolutions_expr(ids: &[&str]) -> Expression {
-    create_scope_resolutions_expr_from_iter(ids.into_iter().peekable())
+pub fn create_custom_type(ids: &[&str]) -> Type {
+    Type::Custom(create_name_spec(ids))
 }

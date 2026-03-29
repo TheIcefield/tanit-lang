@@ -4,7 +4,7 @@ use tanitc_ast::program_ctx::statement_ctx::{
 };
 
 use tanitc_hir::hir::definitions::unions::{
-    UnionAttributes, UnionDef, UnionFieldAttributes, UnionFieldInfo, UnionFields,
+    UnionAttributes, UnionDef, UnionFieldAttributes, UnionFieldInfo, UnionFieldsInfo,
 };
 use tanitc_ident::Ident;
 
@@ -27,8 +27,8 @@ impl AstLowering {
     fn low_union_def_body_ctx(
         &mut self,
         union_def_body_ctx: &UnionDefBodyCtx,
-    ) -> AstLowResult<UnionFields> {
-        let mut fields = UnionFields::new();
+    ) -> AstLowResult<UnionFieldsInfo> {
+        let mut fields = UnionFieldsInfo::new();
 
         for (field_ctx, _) in union_def_body_ctx.fields_ctx.iter() {
             let Some(field_ctx) = field_ctx else {

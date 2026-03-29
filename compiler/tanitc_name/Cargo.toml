@@ -1,5 +1,5 @@
 [package]
-name = "tanitc_messages"
+name = "tanitc_name"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,3 @@ edition = "2021"
 [dependencies]
 tanitc_lexer = { path = "../tanitc_lexer" }
 tanitc_ident = { path = "../tanitc_ident" }
-tanitc_name = { path = "../tanitc_name" }

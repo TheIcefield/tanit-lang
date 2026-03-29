@@ -1,38 +1,50 @@
-use std::collections::BTreeMap;
-
-use tanitc_hir::hir::{
-    definitions::structs::StructDef,
-    expressions::{
-        literal::{Literal, StructLiteral},
-        Expression,
-    },
-};
-use tanitc_ident::Ident;
+use tanitc_hir::hir::definitions::structs::{StructDef, StructFieldsInfo};
 use tanitc_messages::Message;
+use tanitc_name::NameSpec;
 
 use crate::{
-    symbol_table::entry::{Entry, StructDefData, StructFieldData, SymbolKind},
+    symbol_table::entry::{Entry, StructDefData, StructFieldData, StructFieldsData},
     AnalyzeResult, Analyzer,
 };
 
 impl Analyzer {
     pub(crate) fn analyze_struct_def(&mut self, struct_def: &mut StructDef) -> AnalyzeResult<()> {
-        if self.has_symbol(struct_def.name.id) {
-            return Err(Message::multiple_ids(
-                struct_def.location,
-                struct_def.name.id,
-            ));
+        let struct_id = struct_def
+            .name
+            .get_id()
+            .ok_or(Message::empty_name_spec(struct_def.location))?;
+
+        if self.has_symbol(struct_id) {
+            return Err(Message::multiple_ids(struct_def.location, struct_id));
         }
 
-        struct_def.name.prefix = self.table.get_id();
+        // Copies table.table_path to start of struct_def.name.path
+        struct_def.name.path.splice(0..0, self.table.get_path());
 
-        for internal in struct_def.internals.iter_mut() {
-            internal.accept_mut(self)?;
-        }
+        let fields = self.analyze_struct_def_fields(&struct_def.name, &struct_def.fields)?;
+        let struct_def_data = StructDefData {
+            name: struct_def.name.clone(),
+            fields,
+        };
+        let entry = Entry {
+            id: struct_id,
+            is_static: true,
+            kind: struct_def_data.into(),
+        };
 
-        let mut fields = BTreeMap::<Ident, StructFieldData>::new();
-        for (field_id, field_info) in struct_def.fields.iter() {
-            let Some(ty) = self.table.lookup_type(&field_info.ty.ty) else {
+        self.add_symbol(entry);
+
+        Ok(())
+    }
+
+    fn analyze_struct_def_fields(
+        &mut self,
+        struct_name: &NameSpec,
+        struct_fields: &StructFieldsInfo,
+    ) -> AnalyzeResult<StructFieldsData> {
+        let mut fields = StructFieldsData::new();
+        for (field_id, field_info) in struct_fields.iter() {
+            let Some(type_info) = self.table.lookup_type(&field_info.ty.ty) else {
                 self.error(Message::undefined_type(
                     field_info.ty.location,
                     field_info.ty.ty.to_string(),
@@ -43,48 +55,13 @@ impl Analyzer {
             fields.insert(
                 *field_id,
                 StructFieldData {
-                    struct_name: struct_def.name,
-                    ty: ty.ty,
+                    name: struct_name.clone(),
+                    ty: type_info.ty,
                 },
             );
         }
 
-        self.add_symbol(Entry {
-            name: struct_def.name.id,
-            is_static: true,
-            kind: SymbolKind::from(StructDefData {
-                name: struct_def.name,
-                fields,
-            }),
-        });
-
-        Ok(())
-    }
-
-    pub(crate) fn access_struct_def(
-        &mut self,
-        struct_data: &StructDefData,
-        node: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let location = node.location();
-
-        let Expression::Literal(Literal::Struct(StructLiteral {
-            id: struct_name,
-            fields: value_comps,
-            ..
-        })) = node
-        else {
-            return Err(Message::unreachable(
-                node.location(),
-                format!("expected StructLiteral, actually: {node:?}"),
-            ));
-        };
-
-        self.check_struct_literal_components(value_comps, struct_data, location)?;
-
-        *struct_name = struct_data.name;
-
-        Ok(())
+        Ok(fields)
     }
 }
 
@@ -94,16 +71,33 @@ mod tests {
 
     use tanitc_attributes::Mutability;
     use tanitc_hir::hir::{
-        types::{ArraySize, Type},
+        type_spec::{ArraySize, Type},
         Hir,
     };
     use tanitc_hir_test::{
         create_array_lit, create_block, create_decimal_lit, create_integer_lit,
-        create_main_func_def, create_struct_def, create_struct_lit, create_var_def,
+        create_main_func_def, create_module_def, create_program, create_struct_def,
+        create_struct_lit, create_var_def,
     };
 
+    const STRUCT_NAME: &str = "Vector2";
+    const STRUCT_FIELD_X_NAME: &str = "x";
+    const STRUCT_FIELD_X_TYPE: Type = Type::F32;
+    const STRUCT_FIELD_Y_NAME: &str = "y";
+    const STRUCT_FIELD_Y_TYPE: Type = Type::F32;
+
+    fn create_vector2_struct_def() -> StructDef {
+        create_struct_def(
+            STRUCT_NAME,
+            vec![
+                (STRUCT_FIELD_X_NAME, STRUCT_FIELD_X_TYPE),
+                (STRUCT_FIELD_Y_NAME, STRUCT_FIELD_Y_TYPE),
+            ],
+        )
+    }
+
     #[test]
-    fn struct_work_test() {
+    fn good_access_struct_test() {
         // Given
         const STRUCT_NAME: &str = "MyStruct";
         const STRUCT_FIELD_1_NAME: &str = "f1";
@@ -130,8 +124,8 @@ mod tests {
             Mutability::Mutable,
             Type::Auto,
             Some(create_struct_lit(
-                STRUCT_NAME,
-                &[
+                &[STRUCT_NAME],
+                vec![
                     (STRUCT_FIELD_1_NAME, field_1_val),
                     (STRUCT_FIELD_2_NAME, field_2_val),
                 ],
@@ -166,46 +160,23 @@ mod tests {
         res.expect("Expected no errors");
     }
 
-    /*
     #[test]
-    fn struct_in_module_work_test() {
+    fn good_access_struct_in_module_test() {
         // Given
-        const STRUCT_NAME: &str = "Vector2";
-        const STRUCT_FIELD_X_NAME: &str = "x";
-        const STRUCT_FIELD_X_TYPE: Type = Type::F32;
-        const STRUCT_FIELD_Y_NAME: &str = "y";
-        const STRUCT_FIELD_Y_TYPE: Type = Type::F32;
-        let vector_2_struct = create_struct_def(
-            STRUCT_NAME,
-            &[
-                (STRUCT_FIELD_X_NAME, STRUCT_FIELD_X_TYPE),
-                (STRUCT_FIELD_Y_NAME, STRUCT_FIELD_Y_TYPE),
-            ],
-        );
-
         const MODULE_NAME: &str = "math";
-        let module_math = create_module_def(MODULE_NAME, vec![vector_2_struct.into()]);
+        let module_math = create_module_def(MODULE_NAME, vec![create_vector2_struct_def().into()]);
 
-        /*
-         * var mut vec = math::Vector2 {
-         *     x: 0.0, y: 2.0
-         * }
-         */
         const VAR_NAME: &str = "vec";
         const FIELD_X_VAL: f64 = 0.0;
         const FIELD_Y_VAL: f64 = 2.0;
-        let var_def_vec = create_var_def(
-            VAR_NAME,
-            Mutability::Mutable,
-            Type::Auto,
-            Some(create_struct_lit(
-                STRUCT_NAME,
-                &[
-                    (STRUCT_FIELD_X_NAME, create_decimal_lit(FIELD_X_VAL)),
-                    (STRUCT_FIELD_Y_NAME, create_decimal_lit(FIELD_Y_VAL)),
-                ],
-            )),
-        );
+        let var_value = Some(create_struct_lit(
+            &[MODULE_NAME, STRUCT_NAME],
+            vec![
+                (STRUCT_FIELD_X_NAME, create_decimal_lit(FIELD_X_VAL)),
+                (STRUCT_FIELD_Y_NAME, create_decimal_lit(FIELD_Y_VAL)),
+            ],
+        ));
+        let var_def_vec = create_var_def(VAR_NAME, Mutability::Mutable, Type::Auto, var_value);
 
         let main_func = create_main_func_def(vec![var_def_vec.into()]);
 
@@ -217,15 +188,14 @@ mod tests {
          *     }
          * }
          * func main() {
-         *
+         *     var mut vec = math::Vector2 {
+         *                       x: 0.0,
+         *                       y: 2.0,
+         *                   }
          *     vec.x = 2.0
          * }";
          */
-        let mut program = Hir::from(Block {
-            is_global: true,
-            statements: vec![module_math.into(), main_func.into()],
-            ..Default::default()
-        });
+        let mut program = create_program(vec![module_math.into(), main_func.into()]);
 
         let mut analyzer = Analyzer::new();
 
@@ -236,6 +206,57 @@ mod tests {
         res.expect("Expected no errors");
     }
 
+    #[test]
+    fn bad_access_struct_in_module_test() {
+        // Given
+        const MODULE_NAME: &str = "math";
+        let module_math = create_module_def(MODULE_NAME, vec![create_vector2_struct_def().into()]);
+
+        const VAR_NAME: &str = "vec";
+        const FIELD_X_VAL: f64 = 0.0;
+        const FIELD_Y_VAL: f64 = 2.0;
+        let var_value = Some(create_struct_lit(
+            &[STRUCT_NAME],
+            vec![
+                (STRUCT_FIELD_X_NAME, create_decimal_lit(FIELD_X_VAL)),
+                (STRUCT_FIELD_Y_NAME, create_decimal_lit(FIELD_Y_VAL)),
+            ],
+        ));
+        let var_def_vec = create_var_def(VAR_NAME, Mutability::Mutable, Type::Auto, var_value);
+
+        let main_func = create_main_func_def(vec![var_def_vec.into()]);
+
+        /*
+         * module math {
+         *     struct Vector2 {
+         *         x: f32
+         *         y: f32
+         *     }
+         * }
+         * func main() {
+         *     var vec = Vector2 {
+         *                   x: 0.0,
+         *                   y: 2.0,
+         *               }
+         * }";
+         */
+        let mut program = create_program(vec![module_math.into(), main_func.into()]);
+
+        let mut analyzer = Analyzer::new();
+
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        const EXPECTED_ERR: &str = "Semantic error: undefined id: \"Vector2\"";
+        let messages = res.expect_err("Expected no errors");
+        let errors = messages.errors_ref();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].text, EXPECTED_ERR);
+    }
+
+    /*
     #[test]
     fn incorrect_struct_work_test() {
         // Given

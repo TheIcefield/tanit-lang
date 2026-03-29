@@ -1,9 +1,9 @@
-use tanitc_hir::hir::{definitions::variables::VariableDef, types::Type};
+use tanitc_hir::hir::{definitions::variables::VariableDef, type_spec::Type};
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
 use crate::{
-    symbol_table::entry::{Entry, SymbolKind, VarDefData, VarStorageType},
+    symbol_table::entry::{Entry, VarDefData, VarStorageType},
     AnalyzeResult, Analyzer,
 };
 
@@ -14,7 +14,7 @@ impl Analyzer {
         }
 
         if Type::Auto == var_def.var_type && var_def.value.is_none() {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 var_def.location,
                 format!(
                     "Type annotation needed for variable named \"{}\"",
@@ -41,16 +41,19 @@ impl Analyzer {
             }
         }
 
-        self.add_symbol(Entry {
-            name: var_def.identifier,
+        let var_def_data = VarDefData {
+            storage: VarStorageType::Auto,
+            var_type: var_def.var_type.clone(),
+            mutability: var_def.mutability,
+            is_initialization: true,
+        };
+        let entry = Entry {
+            id: var_def.identifier,
             is_static: false,
-            kind: SymbolKind::from(VarDefData {
-                storage: VarStorageType::Auto,
-                var_type: var_def.var_type.clone(),
-                mutability: var_def.mutability,
-                is_initialization: true,
-            }),
-        });
+            kind: var_def_data.into(),
+        };
+
+        self.add_symbol(entry);
 
         Ok(())
     }

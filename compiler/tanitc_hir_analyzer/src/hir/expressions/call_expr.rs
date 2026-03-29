@@ -2,8 +2,11 @@ use std::cmp::Ordering;
 
 use tanitc_attributes::Mutability;
 use tanitc_hir::hir::{
-    expressions::call::{CallArg, CallExpr, NamedCallArg, PositionalCallArg},
-    types::{FuncType, FuncTypeParam, Type},
+    expressions::{
+        call::{CallArg, CallExpr, NamedCallArg, PositionalCallArg},
+        Expression,
+    },
+    type_spec::{FuncType, FuncTypeParam, Type},
 };
 
 use tanitc_lexer::location::Location;
@@ -13,11 +16,15 @@ use crate::{symbol_table::type_info::TypeInfo, AnalyzeResult, Analyzer};
 
 impl Analyzer {
     pub(crate) fn analyze_call_expr(&mut self, expr: &mut CallExpr) -> AnalyzeResult<()> {
+        if let Expression::Variable(var) = expr.expr.as_ref() {
+            self.analyze_variable_usage(var)?;
+        }
+
         let expr_type = self.get_expr_type(&expr.expr);
         let Type::Func(func_type) = &expr_type.ty else {
             return Err(Message::new(
                 expr.location,
-                "Call something that is not a function",
+                format!("call something that is not a function: \"{expr_type}\""),
             ));
         };
 
@@ -35,8 +42,8 @@ impl Analyzer {
         };
 
         let expr_type = self.get_expr_type(&expr.expr);
-        if matches!(expr_type.ty, Type::Func(_)) {
-            type_info.ty = expr_type.ty;
+        if let Type::Func(func_type) = expr_type.ty {
+            type_info.ty = *(func_type.return_type);
         }
 
         type_info
@@ -74,14 +81,14 @@ impl Analyzer {
         };
 
         if *positional_skipped {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 *location,
                 format!("Call: positional parameter \"{arg_idx}\" must be passed before notified",),
             ));
         }
 
         let Some(func_param) = func_type.parameters.get(*arg_idx) else {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 *location,
                 format!("Mismatched parameters: type \"{func_type}\" has no parameter {arg_idx}"),
             ));
@@ -89,7 +96,7 @@ impl Analyzer {
 
         let expr_type = self.get_expr_type(arg_value);
         if expr_type.ty != *func_param.ty {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 *location,
                 format!("Mismatched types. Call: positional parameter \"{arg_idx}\" has type \"{}\" but expected \"{}\"",
                     expr_type.ty, func_param.ty),
@@ -132,7 +139,7 @@ impl Analyzer {
             if *param_name == Some(*arg_id) {
                 let arg_type = self.get_expr_type(arg_value);
                 if **param_type != arg_type.ty {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         *location,
                         format!("Mismatched types. Notified parameter \"{arg_id}\" has type \"{arg_type}\" but expected \"{param_type}\"", ),
                     ));
@@ -142,7 +149,7 @@ impl Analyzer {
             }
         }
 
-        Err(Message::from_string(
+        Err(Message::new(
             *location,
             format!("No parameter named \"{arg_id}\" in function \"{func_type}\""),
         ))
@@ -196,7 +203,7 @@ impl Analyzer {
         };
 
         if actual_len != expected_len {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 location,
                 format!(
                     "Too {many_or_few} arguments passed in function, expected: {expected_len}, actually: {actual_len}",
@@ -240,7 +247,7 @@ mod tests {
         let mut unsafe_func = create_func_def(FUNC_NAME, vec![], Type::unit(), vec![]);
         unsafe_func.attributes.safety = Safety::Unsafe;
 
-        let main_func = create_main_func_def(vec![create_call_expr(FUNC_NAME, vec![]).into()]);
+        let main_func = create_main_func_def(vec![create_call_expr(&[FUNC_NAME], vec![]).into()]);
 
         /*
          * unsafe func unsafe_func() { }
@@ -281,7 +288,7 @@ mod tests {
             attributes: BlockAttributes {
                 safety: Safety::Unsafe,
             },
-            statements: vec![create_call_expr(FUNC_NAME, vec![]).into()],
+            statements: vec![create_call_expr(&[FUNC_NAME], vec![]).into()],
             ..Default::default()
         }
         .into()]);
@@ -308,10 +315,10 @@ mod tests {
             FUNC_PTR_NAME,
             Mutability::Immutable,
             Type::Auto,
-            Some(create_var(SOME_FUNC_NAME)),
+            Some(create_var(&[SOME_FUNC_NAME])),
         );
 
-        let call_expr = create_call_expr(FUNC_PTR_NAME, vec![]);
+        let call_expr = create_call_expr(&[FUNC_PTR_NAME], vec![]);
         let main_func = create_main_func_def(vec![var_def.into(), call_expr.into()]);
 
         /*
@@ -345,7 +352,7 @@ mod tests {
             Some(create_decimal_lit(VAR_VALUE)),
         );
 
-        let call_expr = create_call_expr(VAR_NAME, vec![]);
+        let call_expr = create_call_expr(&[VAR_NAME], vec![]);
         let main_func = create_main_func_def(vec![var_def.into(), call_expr.into()]);
 
         /*
@@ -362,7 +369,7 @@ mod tests {
         let res = analyzer.analyze_program(&mut program);
 
         // Then
-        const EXPECTED_ERR: &str = "Semantic error: Call something that is not a function";
+        const EXPECTED_ERR: &str = "Semantic error: call something that is not a function: \"f32\"";
 
         let messages = res.expect_err("Expected errors");
         let errors = messages.errors_ref();

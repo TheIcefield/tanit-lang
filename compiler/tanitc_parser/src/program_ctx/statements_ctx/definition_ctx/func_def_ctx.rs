@@ -1,8 +1,10 @@
-use tanitc_ast::program_ctx::statement_ctx::definition_ctx::func_def_ctx::{
-    FuncDefCommonParamCtx, FuncDefCtx, FuncDefParamCtx, FuncDefParamKindCtx, FuncDefParamsCtx,
-    FuncDefSelfRefParamCtx, FuncDefSelfValParamCtx,
+use tanitc_ast::program_ctx::{
+    name_ctx::NameCtx,
+    statement_ctx::definition_ctx::func_def_ctx::{
+        FuncDefCommonParamCtx, FuncDefCtx, FuncDefParamCtx, FuncDefParamKindCtx, FuncDefParamsCtx,
+        FuncDefSelfRefParamCtx, FuncDefSelfValParamCtx,
+    },
 };
-use tanitc_ident::Ident;
 use tanitc_lexer::token::{lexeme::Lexeme, Token};
 use tanitc_messages::Message;
 
@@ -12,12 +14,11 @@ impl Parser {
     pub fn parse_func_def_ctx(&mut self) -> ParseResult<FuncDefCtx> {
         let func_tkn = self.consume_token(Lexeme::KwFunc)?;
         let name_ctx = Box::new(self.parse_name_ctx()?);
-        let name_id = name_ctx.identifier();
 
         Ok(FuncDefCtx {
             func_tkn,
+            params_ctx: self.parse_func_def_params_ctx(&name_ctx)?,
             name_ctx,
-            params_ctx: self.parse_func_def_params_ctx(name_id)?,
             return_type_ctx: self.parse_func_type_return_type_ctx()?,
             body_ctx: {
                 let old_opt = self.does_ignore_nl();
@@ -102,7 +103,7 @@ impl Parser {
         }
     }
 
-    fn parse_func_def_params_ctx(&mut self, func_id: Ident) -> ParseResult<FuncDefParamsCtx> {
+    fn parse_func_def_params_ctx(&mut self, name_ctx: &NameCtx) -> ParseResult<FuncDefParamsCtx> {
         Ok(FuncDefParamsCtx {
             lparen_tkn: self.consume_token(Lexeme::LParen)?,
             params_ctx: {
@@ -113,7 +114,14 @@ impl Parser {
                         break;
                     }
 
-                    let param_ctx = self.parse_func_def_param_kind_ctx();
+                    let param_ctx = self.parse_func_def_param_kind_ctx().map_err(|mut msg| {
+                        msg.text = format!(
+                            "In definition of function \"{}\": {}",
+                            name_ctx.identifier(),
+                            msg.text
+                        );
+                        msg
+                    });
 
                     match param_ctx {
                         Ok(param_ctx) => {
@@ -129,7 +137,7 @@ impl Parser {
                             params.push(ctx);
                         }
                         Err(err) => {
-                            self.error(err.map_in_func_def(func_id));
+                            self.error(err);
                             self.skip_until(&[Lexeme::Comma, Lexeme::RParen]);
                         }
                     }
@@ -311,7 +319,7 @@ mod tests {
         const SRC_TEXT: &str = "func with_mut_self(self mut) { }";
 
         const ERR_1: &str =
-            "Syntax error: In definition of function \"with_mut_self\": Unexpected token: ). ";
+            "Syntax error: In definition of function \"with_mut_self\": Unexpected token: ')'. ";
 
         let mut parser = Parser::from_text(SRC_TEXT);
 
@@ -327,7 +335,7 @@ mod tests {
         const SRC_TEXT: &str = "func with_mut_self_ref(mut & self) { }";
 
         const ERR_1: &str =
-            "Syntax error: In definition of function \"with_mut_self_ref\": Unexpected token: &. ";
+            "Syntax error: In definition of function \"with_mut_self_ref\": Unexpected token: '&'. ";
 
         let mut parser = Parser::from_text(SRC_TEXT);
 

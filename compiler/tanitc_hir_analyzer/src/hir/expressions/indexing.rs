@@ -1,6 +1,6 @@
 use tanitc_hir::hir::{
     expressions::{indexing::IndexingExpr, variable::Variable, Expression},
-    types::Type,
+    type_spec::Type,
 };
 use tanitc_messages::Message;
 
@@ -17,27 +17,28 @@ impl Analyzer {
         self.analyze_expression(expr.index.as_mut())?;
 
         match expr.lhs.as_ref() {
-            Expression::Variable(Variable { id: var_name, .. }) => {
-                let Some(var_entry) = self.table.lookup(*var_name) else {
-                    return Err(Message::undefined_id(location, *var_name));
-                };
+            Expression::Variable(Variable { name: var_name, .. }) => {
+                let var_entry = self
+                    .table
+                    .lookup_name_spec(var_name)
+                    .map_err(|err| Message::new(location, err))?;
 
                 let SymbolKind::VarDef(var_data) = &var_entry.kind else {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         location,
                         format!("{var_name} is not an variable"),
                     ));
                 };
 
                 let Type::Array { .. } = &var_data.var_type else {
-                    return Err(Message::from_string(
+                    return Err(Message::new(
                         location,
                         format!("{var_name} is not an array"),
                     ));
                 };
             }
             _ => {
-                return Err(Message::from_string(
+                return Err(Message::new(
                     location,
                     format!("Can't index {}", expr.lhs.kind_str()),
                 ));
@@ -46,7 +47,7 @@ impl Analyzer {
 
         let index_ty = self.get_expr_type(&expr.index);
         if !index_ty.ty.is_integer() {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 expr.index.location(),
                 format!("Invalid index type: {}", index_ty.ty),
             ));

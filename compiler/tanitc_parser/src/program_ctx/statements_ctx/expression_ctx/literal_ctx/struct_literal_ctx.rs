@@ -1,5 +1,5 @@
 use tanitc_ast::program_ctx::{
-    name_ctx::NameCtx,
+    name_ctx::NameSpecCtx,
     statement_ctx::expression_ctx::literal_ctx::struct_literal_ctx::{
         StructFieldLiteralCtx, StructLiteralCtx,
     },
@@ -12,10 +12,10 @@ use crate::{ParseResult, Parser};
 impl Parser {
     pub(crate) fn parse_struct_literal_ctx(
         &mut self,
-        name_tkn: Token,
+        name_ctx: NameSpecCtx,
     ) -> ParseResult<StructLiteralCtx> {
         Ok(StructLiteralCtx {
-            name_ctx: Box::new(NameCtx { name_tkn }),
+            name_ctx,
             lcb_tkn: self.consume_token(Lexeme::Lcb)?,
             elements: self.parse_struct_literal_elements()?,
             rcb_tkn: self.consume_token(Lexeme::Rcb)?,
@@ -57,7 +57,7 @@ impl Parser {
 
     fn parse_struct_field_literal_ctx(&mut self) -> ParseResult<StructFieldLiteralCtx> {
         Ok(StructFieldLiteralCtx {
-            name_ctx: Box::new(self.parse_name_ctx()?),
+            name_ctx: self.parse_name_ctx()?,
             colon_tkn: self.consume_token(Lexeme::Colon)?,
             expression_ctx: Box::new(self.parse_expression_ctx()?),
         })

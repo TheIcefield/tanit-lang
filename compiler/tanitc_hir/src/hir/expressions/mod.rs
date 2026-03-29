@@ -3,7 +3,7 @@ use tanitc_lexer::location::Location;
 use crate::hir::{
     expressions::{
         binary::BinaryExpr, call::CallExpr, conversion::ConversionExpr, indexing::IndexingExpr,
-        literal::Literal, unary::UnaryExpr, variable::Variable,
+        literal::Literal, member_access::MemberAccessExpr, unary::UnaryExpr, variable::Variable,
     },
     Hir,
 };
@@ -13,6 +13,7 @@ pub mod call;
 pub mod conversion;
 pub mod indexing;
 pub mod literal;
+pub mod member_access;
 pub mod unary;
 pub mod variable;
 
@@ -20,6 +21,7 @@ pub mod variable;
 pub enum Expression {
     Unary(UnaryExpr),
     Binary(BinaryExpr),
+    MemberAccess(MemberAccessExpr),
     Conversion(ConversionExpr),
     Indexing(IndexingExpr),
     Call(CallExpr),
@@ -30,8 +32,9 @@ pub enum Expression {
 impl Expression {
     pub fn location(&self) -> Location {
         match self {
-            Self::Binary(expr) => expr.location,
             Self::Unary(expr) => expr.location,
+            Self::Binary(expr) => expr.location,
+            Self::MemberAccess(expr) => expr.location,
             Self::Conversion(expr) => expr.location,
             Self::Indexing(expr) => expr.location,
             Self::Call(call) => call.location,
@@ -42,8 +45,9 @@ impl Expression {
 
     pub fn kind_str(&self) -> &'static str {
         match self {
-            Self::Binary(_) => "binary-expression",
             Self::Unary(_) => "unary-expression",
+            Self::Binary(_) => "binary-expression",
+            Self::MemberAccess(_) => "member-access-expression",
             Self::Conversion(_) => "conversion",
             Self::Indexing(_) => "indexing",
             Self::Call(_) => "call",

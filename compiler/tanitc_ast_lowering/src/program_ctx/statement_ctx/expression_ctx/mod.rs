@@ -1,6 +1,7 @@
-use tanitc_ast::program_ctx::statement_ctx::expression_ctx::ExpressionCtx;
+use tanitc_ast::program_ctx::{
+    name_ctx::NameSpecCtx, statement_ctx::expression_ctx::ExpressionCtx,
+};
 use tanitc_hir::hir::expressions::{variable::Variable, Expression};
-use tanitc_lexer::token::Token;
 
 use crate::{AstLowResult, AstLowering};
 
@@ -27,14 +28,14 @@ impl AstLowering {
                 .low_indexing_expression_ctx(ctx)
                 .map(Expression::Indexing),
             ExpressionCtx::Call(ctx) => self.low_call_ctx(ctx).map(Expression::Call),
-            ExpressionCtx::Variable(tkn) => self.low_variable_ctx(tkn).map(Expression::Variable),
+            ExpressionCtx::Variable(ctx) => self.low_variable_ctx(ctx).map(Expression::Variable),
         }
     }
 
-    fn low_variable_ctx(&self, tkn: &Token) -> AstLowResult<Variable> {
-        Ok(Variable {
-            location: tkn.get_location(),
-            id: tkn.identifier(),
-        })
+    fn low_variable_ctx(&self, var_name_spec_ctx: &NameSpecCtx) -> AstLowResult<Variable> {
+        let name = self.low_name_spec_ctx(var_name_spec_ctx)?;
+        let location = name.location;
+
+        Ok(Variable { location, name })
     }
 }

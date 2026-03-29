@@ -126,7 +126,7 @@ impl Parser {
                 Ok(tkn)
             }
 
-            _ => Err(Message::from_string(
+            _ => Err(Message::new(
                 tkn.get_location(),
                 format!("Unexpected token {tkn}. Expected identifier."),
             )),
@@ -141,7 +141,7 @@ impl Parser {
                 self.get_token();
                 Ok(tkn)
             }
-            _ => Err(Message::from_string(
+            _ => Err(Message::new(
                 tkn.get_location(),
                 format!("Unexpected token {tkn}. Expected integer number."),
             )),
@@ -156,7 +156,7 @@ impl Parser {
                 self.get_token();
                 Ok(tkn)
             }
-            _ => Err(Message::from_string(
+            _ => Err(Message::new(
                 tkn.get_location(),
                 format!("Unexpected token {tkn}. Expected decimal number."),
             )),
@@ -171,7 +171,7 @@ impl Parser {
                 self.get_token();
                 Ok(tkn)
             }
-            _ => Err(Message::from_string(
+            _ => Err(Message::new(
                 tkn.get_location(),
                 format!("Unexpected token {tkn}. Expected text."),
             )),

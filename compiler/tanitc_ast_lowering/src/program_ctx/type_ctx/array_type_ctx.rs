@@ -1,5 +1,5 @@
 use tanitc_ast::program_ctx::type_ctx::array_type_ctx::ArrayTypeCtx;
-use tanitc_hir::hir::types::{ArraySize, Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{ArraySize, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 

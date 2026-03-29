@@ -2,6 +2,7 @@ use tanitc_ast::program_ctx::statement_ctx::expression_ctx::call_ctx::{
     CallCtx, CallParamCtx, CallParamsCtx, NamedCallParamCtx, PositionalCallParamCtx,
 };
 use tanitc_hir::hir::expressions::call::{CallArg, CallExpr, NamedCallArg, PositionalCallArg};
+use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
@@ -47,7 +48,10 @@ impl AstLowering {
     fn low_named_call_param_ctx(&mut self, ctx: &NamedCallParamCtx) -> AstLowResult<NamedCallArg> {
         let expr = Box::new(self.low_expression_ctx(&ctx.expression_ctx)?);
         let location = expr.location();
-        let id = self.low_name_ctx(&ctx.name_ctx).id;
+        let id = self
+            .low_name_ctx(&ctx.name_ctx)
+            .get_id()
+            .ok_or(Message::empty_name_spec(location))?;
 
         Ok(NamedCallArg { location, id, expr })
     }

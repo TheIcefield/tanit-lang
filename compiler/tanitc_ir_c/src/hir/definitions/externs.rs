@@ -21,36 +21,50 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{definitions::functions::FunctionDef, types::Type, Hir};
-    use tanitc_ident::Name;
+    use tanitc_hir::hir::{type_spec::Type, Hir};
+    use tanitc_hir_test::create_func_def;
 
     use pretty_assertions::assert_str_eq;
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn extern_test() {
-        const HEADER_EXPECTED: &str = "signed int c_func();\n";
+        // Given
+        let mut func_def = create_func_def("c_func", vec![], Type::I32, vec![]);
+        func_def.body = None;
 
-        let extern_node = Hir::from(ExternDef {
+        /*
+         * extern "C" {
+         *     func c_func() -> i32;
+         * }
+         */
+        let program = Hir::from(ExternDef {
             abi_name: "C".to_string(),
-            functions: vec![FunctionDef {
-                name: Name::from("c_func".to_string()),
-                parameters: vec![],
-                return_type: Type::I32,
-                ..Default::default()
-            }],
+            functions: vec![func_def],
             ..Default::default()
         });
 
         let mut header_buffer = Vec::<u8>::new();
         let mut source_buffer = Vec::<u8>::new();
-        let mut writer = CodeGenStream::new(&mut header_buffer, &mut source_buffer);
+        let mut writer = CodeGenStream::with_compile_options(
+            &mut header_buffer,
+            &mut source_buffer,
+            CompileOptions {
+                crate_name: "extern_test".into(),
+                ..Default::default()
+            },
+        );
 
-        extern_node.accept(&mut writer).unwrap();
+        writer.codegen_program(&program).unwrap();
+
+        // Then
+        const HEADER_EXPECTED: &str = "signed int c_func();\n";
+        const SOURCE_EXPECTED: &str = "#include \"extern_test.tt.h\"\n\n";
 
         let header_res = String::from_utf8(header_buffer).unwrap();
         assert_str_eq!(header_res, HEADER_EXPECTED);
 
         let source_res = String::from_utf8(source_buffer).unwrap();
-        assert!(source_res.is_empty());
+        assert_str_eq!(source_res, SOURCE_EXPECTED);
     }
 }

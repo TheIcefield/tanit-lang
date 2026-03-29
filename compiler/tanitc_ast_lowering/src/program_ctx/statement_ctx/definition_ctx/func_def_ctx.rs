@@ -12,11 +12,11 @@ use tanitc_hir::hir::{
         functions::{FunctionAttributes, FunctionDef, FunctionParam},
         variables::{VariableAttributes, VariableDef},
     },
-    types::Type,
+    type_spec::Type,
 };
-use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
+use tanitc_name::NameSpec;
 
 use crate::{AstLowResult, AstLowering};
 
@@ -28,7 +28,7 @@ impl AstLowering {
         let location = func_def_ctx.func_tkn.get_location();
         let attributes = self.low_func_def_attributes(&func_def_ctx.attributes_ctx)?;
         let name = self.low_name_ctx(&func_def_ctx.name_ctx);
-        let parameters = self.low_func_def_params_ctx(&func_def_ctx.params_ctx, name.id)?;
+        let parameters = self.low_func_def_params_ctx(&func_def_ctx.params_ctx, &name)?;
 
         let return_type = if let Some(type_ctx) = &func_def_ctx.return_type_ctx {
             self.low_type_ctx(&type_ctx.type_ctx)?.ty
@@ -62,14 +62,14 @@ impl AstLowering {
     fn low_func_def_params_ctx(
         &mut self,
         params_ctx: &FuncDefParamsCtx,
-        func_id: Ident,
+        func_name: &NameSpec,
     ) -> AstLowResult<Vec<FunctionParam>> {
         let mut params = Vec::<FunctionParam>::new();
 
         for (idx, param_ctx) in params_ctx.params_ctx.iter().enumerate() {
             match self.low_func_def_param_ctx(param_ctx, idx) {
                 Ok(param) => params.push(param),
-                Err(msg) => self.error(msg.map_in_func_def(func_id)),
+                Err(msg) => self.error(msg.map_in_func_def(func_name)),
             }
         }
 
@@ -132,10 +132,13 @@ impl AstLowering {
     ) -> AstLowResult<FunctionParam> {
         let location = param_ctx.name_ctx.name_tkn.get_location();
         let attributes = VariableAttributes::default();
-        let identifier = self.low_name_ctx(&param_ctx.name_ctx).id;
         let var_type = self.low_type_ctx(&param_ctx.type_ctx)?.ty;
         let visibility = Visibility::Local;
         let mutability = self.low_mut_token(&param_ctx.mut_tkn);
+        let identifier = self
+            .low_name_ctx(&param_ctx.name_ctx)
+            .get_id()
+            .ok_or(Message::empty_name_spec(location))?;
 
         Ok(FunctionParam::Common(VariableDef {
             location,

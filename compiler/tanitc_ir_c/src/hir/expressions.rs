@@ -1,9 +1,5 @@
 use tanitc_hir::hir::expressions::{
-    binary::{BinaryExpr, BinaryOperation},
-    call::CallArg,
-    literal::Literal,
-    unary::UnaryOperation,
-    Expression,
+    binary::BinaryExpr, call::CallArg, literal::Literal, unary::UnaryOperation, Expression,
 };
 
 use crate::{CodeGenMode, CodeGenStream};
@@ -35,13 +31,13 @@ impl CodeGenStream<'_> {
             }) => {
                 self.generate_expression(lhs)?;
 
-                if BinaryOperation::ScopeRes == *operation {
-                    write!(self, "__")?;
-                } else {
-                    write!(self, " {operation} ")?;
-                }
+                write!(self, " {operation} ")?;
 
                 self.generate_expression(rhs)?;
+            }
+            Expression::MemberAccess(expr) => {
+                self.generate_expression(expr.lhs.as_ref())?;
+                write!(self, ".{}", expr.id)?;
             }
             Expression::Conversion(conversion) => {
                 write!(self, "(({})", conversion.ty.get_c_type())?;
@@ -73,7 +69,7 @@ impl CodeGenStream<'_> {
                 write!(self, ")")?;
             }
             Expression::Literal(lit) => self.generate_literal(lit)?,
-            Expression::Variable(var) => write!(self, "{}", var.id)?,
+            Expression::Variable(var) => write!(self, "{}", var.name)?,
         }
 
         self.mode = old_mode;
@@ -89,7 +85,7 @@ impl CodeGenStream<'_> {
             Literal::Text(val) => write!(self, "\"{}\"", val.value)?,
             Literal::Struct(struct_lit) => {
                 // create anonimous variable
-                write!(self, "({})", struct_lit.id)?;
+                write!(self, "({})", struct_lit.name)?;
 
                 if struct_lit.fields.is_empty() {
                     write!(self, " {{ }}")?;
@@ -165,7 +161,7 @@ impl CodeGenStream<'_> {
 mod tests {
     use super::*;
 
-    use tanitc_hir::hir::{blocks::Block, types::Type, Hir};
+    use tanitc_hir::hir::{blocks::Block, type_spec::Type, Hir};
     use tanitc_hir_test::{
         create_array_lit, create_call_expr, create_decimal_lit, create_func_def,
         create_integer_lit, create_struct_lit, create_text_lit, create_tuple_lit, create_var,
@@ -188,19 +184,20 @@ mod tests {
                 Type::unit(),
                 vec![
                     create_text_lit("text").into(),
-                    create_var("var_name").into(),
-                    create_call_expr("empty_func_name", vec![]).into(),
-                    create_call_expr("func_with_1p", vec![create_decimal_lit(0.0)]).into(),
+                    create_var(&["var_name"]).into(),
+                    create_call_expr(&["empty_func_name"], vec![]).into(),
+                    create_call_expr(&["func_with_1p"], vec![create_decimal_lit(0.0)]).into(),
                     create_call_expr(
-                        "func_with_2p",
+                        &["func_with_2p"],
                         vec![create_decimal_lit(0.0), create_decimal_lit(2.0)],
                     )
                     .into(),
-                    create_struct_lit("MyEmptyStruct", &[]).into(),
-                    create_struct_lit("StructWith1F", &[("f1", create_decimal_lit(1.1))]).into(),
+                    create_struct_lit(&["MyEmptyStruct"], vec![]).into(),
+                    create_struct_lit(&["StructWith1F"], vec![("f1", create_decimal_lit(1.1))])
+                        .into(),
                     create_struct_lit(
-                        "StructWith2F",
-                        &[
+                        &["StructWith2F"],
+                        vec![
                             ("f1", create_integer_lit(0)),
                             ("f2", create_decimal_lit(2.2)),
                         ],

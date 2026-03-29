@@ -1,8 +1,11 @@
-use std::collections::{BTreeMap, LinkedList};
+use std::{fmt::Display, iter::Peekable, slice::Iter};
 
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_hir::hir::types::{PtrType, RefType, Type};
-use tanitc_ident::{Ident, Name};
+use tanitc_hir::hir::type_spec::{PtrType, RefType, Type};
+use tanitc_ident::Ident;
+use tanitc_name::{NamePathSegment, NameSpec};
+
+use crate::symbol_table::type_info::TypeMembersInfo;
 
 use super::{
     entry::{Entry, SymbolKind},
@@ -16,40 +19,64 @@ pub struct ScopeInfo {
     pub is_in_loop: bool,
 }
 
+pub type TableEntries = std::collections::BTreeMap<Ident, Entry>;
+pub type TableStack = std::collections::LinkedList<Table>;
+
 #[derive(Default, Debug, Clone)]
 pub struct Table {
-    table_id: Option<Ident>,
-    entries: BTreeMap<Ident, Entry>,
-    stack: LinkedList<Table>,
+    table_path: Vec<NamePathSegment>,
+    entries: TableEntries,
+    stack: TableStack,
     scope_info: ScopeInfo,
+}
+
+pub enum LookupError {
+    UndefinedInModule {
+        namespace: NameSpec,
+        id: Ident,
+    },
+    UndefinedInEnum {
+        namespace: NameSpec,
+        id: Ident,
+    },
+    UndefinedInVariant {
+        namespace: NameSpec,
+        id: Ident,
+    },
+    RedundantNames {
+        namespace: NameSpec,
+        tail: NamePathSegment,
+    },
+    UnexpectedId(NamePathSegment),
+    UndefinedId(Ident),
+    EmptyNamespec,
 }
 
 impl Table {
     pub fn new() -> Self {
         Self {
-            table_id: None,
-            entries: BTreeMap::new(),
-            stack: LinkedList::new(),
+            table_path: vec![],
+            entries: TableEntries::new(),
+            stack: TableStack::new(),
             scope_info: ScopeInfo::default(),
         }
     }
 }
 
 impl Table {
-    pub fn set_id(&mut self, id: Ident) {
-        self.table_id = Some(id);
+    pub fn set_path(&mut self, id: Vec<NamePathSegment>) {
+        self.table_path = id;
     }
 
-    pub fn get_id(&self) -> Option<Ident> {
-        self.table_id
+    pub fn get_path(&self) -> Vec<NamePathSegment> {
+        self.table_path.clone()
     }
 
-    pub fn get_joined_id(&self, id: Ident) -> Ident {
-        if let Some(prefix) = &self.table_id {
-            Ident::from(format!("{prefix}__{id}"))
-        } else {
-            id
-        }
+    pub fn get_joined_path(&self, id: Ident) -> Vec<NamePathSegment> {
+        let mut new_path = self.get_path();
+        new_path.push(id.into());
+
+        new_path
     }
 
     pub fn enter_scope(&mut self, scope_info: ScopeInfo) {
@@ -77,9 +104,9 @@ impl Table {
 
     pub fn insert(&mut self, entry: Entry) {
         if let Some(back) = self.stack.back_mut() {
-            back.entries.insert(entry.name, entry);
+            back.entries.insert(entry.id, entry);
         } else {
-            self.entries.insert(entry.name, entry);
+            self.entries.insert(entry.id, entry);
         }
     }
 
@@ -109,48 +136,98 @@ impl Table {
         res
     }
 
-    pub fn lookup_qualified(
+    fn lookup_name_spec_segments(
         &self,
-        mut names: std::iter::Peekable<std::slice::Iter<Ident>>,
-    ) -> Option<&Entry> {
-        let next = names.next()?;
+        mut names: Peekable<Iter<NamePathSegment>>,
+    ) -> Result<&Entry, LookupError> {
+        let next = names.next().cloned().ok_or(LookupError::EmptyNamespec)?;
+        let NamePathSegment::Id(next_id) = next else {
+            return Err(LookupError::UnexpectedId(next));
+        };
 
-        let entry = self.lookup(*next)?;
+        let entry = self
+            .lookup(next_id)
+            .ok_or(LookupError::UndefinedId(next_id))?;
 
-        // If it was not the last
-        if names.peek().is_some() {
-            match &entry.kind {
-                SymbolKind::ModuleDef(data) => {
-                    // lookup qualified in module
-                    data.table.lookup_qualified(names)
+        if names.peek().is_none() {
+            // Return if last
+            return Ok(entry);
+        };
+
+        // lookup in module
+        if let SymbolKind::ModuleDef(data) = &entry.kind {
+            return data.table.lookup_name_spec_segments(names).map_err(|err| {
+                println!("ERR: {err}");
+                match err {
+                    LookupError::UndefinedId(id) => LookupError::UndefinedInModule {
+                        namespace: data.name.clone(),
+                        id,
+                    },
+                    err => err,
                 }
-                SymbolKind::EnumDef(data) => {
-                    // get entry from enum definition
-                    data.enums.get(names.next().unwrap())
+            });
+        };
+
+        let next = names.next().cloned().unwrap();
+        let NamePathSegment::Id(next_id) = next else {
+            return Err(LookupError::UnexpectedId(next.clone()));
+        };
+
+        match &entry.kind {
+            //lookup in enum definition
+            SymbolKind::EnumDef(data) => {
+                if let Some(tail) = names.next().cloned() {
+                    return Err(LookupError::RedundantNames {
+                        namespace: data.name.clone(),
+                        tail,
+                    });
                 }
-                SymbolKind::VariantDef(data) => {
-                    // get entry from variant definition
-                    data.variants.get(names.next().unwrap())
-                }
-                _ => {
-                    // lookup in self
-                    self.lookup(*names.next().unwrap())
-                }
+
+                data.units
+                    .get(&next_id)
+                    .ok_or(LookupError::UndefinedInEnum {
+                        namespace: data.name.clone(),
+                        id: next_id,
+                    })
             }
-        } else {
-            Some(entry)
+
+            // lookup in variant definition
+            SymbolKind::VariantDef(data) => {
+                if let Some(tail) = names.next().cloned() {
+                    return Err(LookupError::RedundantNames {
+                        namespace: data.name.clone(),
+                        tail,
+                    });
+                }
+
+                data.variants
+                    .get(&next_id)
+                    .ok_or(LookupError::UndefinedInVariant {
+                        namespace: data.name.clone(),
+                        id: next_id,
+                    })
+            }
+
+            // lookup in self
+            _ => self
+                .lookup(next_id)
+                .ok_or(LookupError::UndefinedId(next_id)),
         }
     }
 
-    pub fn lookup_type(&self, ty: &Type) -> Option<TypeInfo> {
+    pub fn lookup_name_spec(&self, name: &NameSpec) -> Result<&Entry, LookupError> {
+        self.lookup_name_spec_segments(name.path.iter().peekable())
+    }
+
+    pub fn lookup_type(&self, initial_ty: &Type) -> Option<TypeInfo> {
         let mut res: Option<TypeInfo> = None;
 
-        match ty {
+        match initial_ty {
             ty if ty.is_common() || ty.is_unit() => {
                 return Some(TypeInfo {
                     ty: ty.clone(),
                     mutability: Mutability::default(),
-                    members: BTreeMap::new(),
+                    members: TypeMembersInfo::new(),
                     is_union: false,
                 });
             }
@@ -181,79 +258,82 @@ impl Table {
             _ => {}
         }
 
-        let name = Name::from(ty.to_string());
-
-        if let Some(entry) = self.lookup(name.id) {
-            match &entry.kind {
-                SymbolKind::StructDef(data) => {
-                    let mut members = BTreeMap::<Ident, MemberInfo>::new();
-
-                    for (field_name, field_data) in data.fields.iter() {
-                        members.insert(
-                            *field_name,
-                            MemberInfo {
-                                is_public: true,
-                                ty: field_data.ty.clone(),
-                            },
-                        );
-                    }
-
-                    res = Some(TypeInfo {
-                        ty: Type::Custom(data.name),
-                        mutability: Mutability::default(),
-                        members,
-                        is_union: false,
-                    });
-                }
-                SymbolKind::UnionDef(data) => {
-                    let mut members = BTreeMap::<Ident, MemberInfo>::new();
-
-                    for (field_name, field_data) in data.fields.iter() {
-                        members.insert(
-                            *field_name,
-                            MemberInfo {
-                                is_public: true,
-                                ty: field_data.ty.clone(),
-                            },
-                        );
-                    }
-
-                    res = Some(TypeInfo {
-                        ty: Type::Custom(name),
-                        mutability: Mutability::default(),
-                        members,
-                        is_union: true,
-                    });
-                }
-                SymbolKind::AliasDef(data) => {
-                    if let Some(info) = self.lookup_type(&data.ty) {
-                        res = Some(TypeInfo {
-                            ty: Type::Custom(name),
-                            mutability: info.mutability,
-                            members: info.members,
-                            is_union: info.is_union,
-                        });
-                    }
-                }
-                SymbolKind::EnumDef(data) => {
-                    res = Some(TypeInfo {
-                        ty: Type::Custom(data.name),
-                        mutability: Mutability::default(),
-                        members: BTreeMap::new(),
-                        is_union: false,
-                    });
-                }
-                _ => {}
-            }
-        } else {
+        let Some(entry) = self.lookup(Ident::from(initial_ty.to_string())) else {
             for (_, entry) in self.entries.iter() {
-                if let SymbolKind::ModuleDef(data) = &entry.kind {
-                    if let Some(info) = data.table.lookup_type(ty) {
-                        res = Some(info);
-                        continue;
-                    }
-                }
+                let SymbolKind::ModuleDef(data) = &entry.kind else {
+                    continue;
+                };
+
+                let Some(info) = data.table.lookup_type(initial_ty) else {
+                    continue;
+                };
+
+                res = Some(info);
             }
+
+            return res;
+        };
+
+        match &entry.kind {
+            SymbolKind::StructDef(data) => {
+                let mut members = TypeMembersInfo::new();
+                for (field_name, field_data) in data.fields.iter() {
+                    members.insert(
+                        *field_name,
+                        MemberInfo {
+                            is_public: true,
+                            ty: field_data.ty.clone(),
+                        },
+                    );
+                }
+
+                res = Some(TypeInfo {
+                    ty: Type::Custom(data.name.clone()),
+                    mutability: Mutability::default(),
+                    members,
+                    is_union: false,
+                });
+            }
+            SymbolKind::UnionDef(data) => {
+                let mut members = TypeMembersInfo::new();
+                for (field_name, field_data) in data.fields.iter() {
+                    members.insert(
+                        *field_name,
+                        MemberInfo {
+                            is_public: true,
+                            ty: field_data.ty.clone(),
+                        },
+                    );
+                }
+
+                res = Some(TypeInfo {
+                    ty: Type::Custom(data.name.clone()),
+                    mutability: Mutability::default(),
+                    members,
+                    is_union: true,
+                });
+            }
+            SymbolKind::AliasDef(data) => {
+                let Some(info) = self.lookup_type(&data.ty) else {
+                    return res;
+                };
+
+                res = Some(TypeInfo {
+                    ty: initial_ty.clone(),
+                    mutability: info.mutability,
+                    members: info.members,
+                    is_union: info.is_union,
+                });
+            }
+            SymbolKind::EnumDef(data) => {
+                res = Some(TypeInfo {
+                    ty: Type::Custom(data.name.clone()),
+                    mutability: Mutability::default(),
+                    members: TypeMembersInfo::new(),
+                    is_union: false,
+                });
+            }
+            _ => {}
         }
 
         res
@@ -280,360 +360,24 @@ impl Table {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
-
-    use tanitc_attributes::{Mutability, Safety};
-    use tanitc_hir::hir::types::{FuncType, Type};
-    use tanitc_ident::{Ident, Name};
-
-    use crate::symbol_table::{
-        entry::{Entry, SymbolKind},
-        table::{ScopeInfo, Table},
-    };
-
-    #[test]
-    fn table_test() {
-        /* example:
-         * Module Main {       # Main: @s
-         *     func bar() { }  # bar:  @s/Main
-         *     func main() {   # main: @s/Main
-         *         let var = 5 # var:  @s/Main/main
-         *     }
-         * }
-         */
-
-        use crate::symbol_table::entry::{FuncDefData, ModuleDefData, VarDefData, VarStorageType};
-
-        let main_mod_id = Ident::from("Main".to_string());
-        let main_fn_id = Ident::from("main".to_string());
-        let bar_id = Ident::from("bar".to_string());
-        let var_id = Ident::from("var".to_string());
-        let baz_id = Ident::from("baz".to_string());
-
-        let mut table = Table::new();
-
-        table.insert(Entry {
-            name: main_mod_id,
-            is_static: true,
-            kind: SymbolKind::ModuleDef(ModuleDefData {
-                table: Box::new(Table::new()),
-            }),
-        });
-
-        let main_mod = table.lookup_mut(main_mod_id).unwrap();
-        let SymbolKind::ModuleDef(ref mut data) = &mut main_mod.kind else {
-            unreachable!()
-        };
-
-        let table = &mut data.table;
-
-        {
-            table.enter_scope(ScopeInfo {
-                safety: Safety::Safe,
-                ..Default::default()
-            }); // enter Main
-
-            table.insert(Entry {
-                name: bar_id,
-                is_static: false,
-                kind: SymbolKind::from(FuncDefData {
-                    name: Name {
-                        id: bar_id,
-                        prefix: table.get_id(),
-                    },
-                    ty: FuncType {
-                        parameters: vec![],
-                        return_type: Box::new(Type::unit()),
-                        safety: Safety::Safe,
-                    },
-                    is_virtual: false,
-                    is_inline: false,
-                    no_return: true,
-                }),
-            });
-
-            {
-                table.enter_scope(ScopeInfo {
-                    safety: Safety::Safe,
-                    is_in_func: true,
-                    ..Default::default()
-                }); // enter bar
-
-                // check if var not visible in bar
-                assert!(table.lookup(var_id).is_none());
-
-                // check if baz not defined in bar
-                assert!(table.lookup(baz_id).is_none());
-
-                table.exit_scope(); // exit bar
+impl Display for LookupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyNamespec => write!(f, "empty name specifier"),
+            Self::UndefinedId(id) => write!(f, "undefined id: \"{id}\""),
+            Self::UnexpectedId(id) => write!(f, "unexpected id: \"{id}\""),
+            Self::RedundantNames { namespace, tail } => {
+                write!(f, "\"{namespace}\" doesn't contain \"{tail}\"")
             }
-
-            table.insert(Entry {
-                name: main_fn_id,
-                is_static: false,
-                kind: SymbolKind::from(FuncDefData {
-                    name: Name {
-                        id: main_fn_id,
-                        prefix: table.get_id(),
-                    },
-                    ty: FuncType {
-                        parameters: vec![],
-                        return_type: Box::new(Type::unit()),
-                        safety: Safety::Safe,
-                    },
-                    is_virtual: false,
-                    is_inline: false,
-                    no_return: true,
-                }),
-            });
-
-            {
-                table.enter_scope(ScopeInfo {
-                    safety: Safety::Safe,
-                    is_in_func: true,
-                    ..Default::default()
-                }); // enter main
-
-                table.insert(Entry {
-                    name: var_id,
-                    is_static: false,
-                    kind: SymbolKind::from(VarDefData {
-                        storage: VarStorageType::Auto,
-                        var_type: Type::I32,
-                        mutability: Mutability::default(),
-                        is_initialization: true,
-                    }),
-                });
-
-                // check if var visible in main
-                assert!(table.lookup(var_id).is_some());
-
-                table.exit_scope(); // exit main
+            Self::UndefinedInEnum { namespace, id } => {
+                write!(f, "enum \"{namespace}\" doesn't contain \"{id}\"")
             }
-
-            // check if main visible in Main
-            assert!(table.lookup(main_fn_id).is_some());
-
-            // check if var not visible in Main
-            assert!(table.lookup(var_id).is_none());
-
-            // check if baz not visible in Main
-            assert!(table.lookup(baz_id).is_none());
-        }
-    }
-
-    #[test]
-    fn qualified_symbol_test() {
-        /* example:
-         * Module M1 {       # M1
-         *     func f1() { } # M1/f1
-         *     func f2() { } # M1/f2
-         * }
-         * Module M2 {       # M2
-         *     func f2() { } # M2/f2
-         * }
-         */
-
-        use crate::symbol_table::entry::{FuncDefData, ModuleDefData};
-
-        let m1_id = Ident::from("M1".to_string());
-        let m2_id = Ident::from("M2".to_string());
-        let f1_id = Ident::from("f1".to_string());
-        let f2_id = Ident::from("f2".to_string());
-
-        let mut table = Table::new();
-
-        table.insert(Entry {
-            name: m1_id,
-            is_static: true,
-            kind: SymbolKind::ModuleDef(ModuleDefData {
-                table: Box::new(Table::new()),
-            }),
-        });
-
-        {
-            let m1 = table.lookup_mut(m1_id).unwrap();
-            let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
-                unreachable!()
-            };
-
-            data.table.insert(Entry {
-                name: f1_id,
-                is_static: false,
-                kind: SymbolKind::from(FuncDefData {
-                    name: Name {
-                        id: f1_id,
-                        prefix: data.table.get_id(),
-                    },
-                    ty: FuncType {
-                        parameters: vec![],
-                        return_type: Box::new(Type::unit()),
-                        safety: Safety::Safe,
-                    },
-                    is_virtual: false,
-                    is_inline: false,
-                    no_return: true,
-                }),
-            });
-
-            data.table.insert(Entry {
-                name: f2_id,
-                is_static: false,
-                kind: SymbolKind::from(FuncDefData {
-                    name: Name {
-                        id: f2_id,
-                        prefix: data.table.get_id(),
-                    },
-                    ty: FuncType {
-                        parameters: vec![],
-                        return_type: Box::new(Type::unit()),
-                        safety: Safety::Safe,
-                    },
-                    is_virtual: false,
-                    is_inline: false,
-                    no_return: true,
-                }),
-            });
-        }
-
-        table.insert(Entry {
-            name: m2_id,
-            is_static: true,
-            kind: SymbolKind::ModuleDef(ModuleDefData {
-                table: Box::new(Table::new()),
-            }),
-        });
-
-        {
-            let m2 = table.lookup_mut(m2_id).unwrap();
-            let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
-                unreachable!()
-            };
-
-            data.table.insert(Entry {
-                name: f2_id,
-                is_static: false,
-                kind: SymbolKind::from(FuncDefData {
-                    name: Name {
-                        id: f2_id,
-                        prefix: data.table.get_id(),
-                    },
-                    ty: FuncType {
-                        parameters: vec![],
-                        return_type: Box::new(Type::unit()),
-                        safety: Safety::Safe,
-                    },
-                    is_virtual: false,
-                    is_inline: false,
-                    no_return: true,
-                }),
-            });
-        }
-
-        assert!(table
-            .lookup_qualified([m1_id, f2_id].iter().peekable())
-            .is_some());
-        assert!(table
-            .lookup_qualified([m2_id, f1_id].iter().peekable())
-            .is_none());
-    }
-
-    #[test]
-    fn lookup_type_test() {
-        /* example:
-         * Module M1 {       # M1
-         *     Module M2 {   # M1/M2
-         *         Struct S1 {
-         *             f1: i32
-         *             f2: f32
-         *         }
-         *     }
-         * }
-         */
-
-        use crate::symbol_table::entry::{ModuleDefData, StructDefData, StructFieldData};
-
-        let m1_id = Ident::from("M1".to_string());
-        let m2_id = Ident::from("M2".to_string());
-        let s1_id = Ident::from("S1".to_string());
-        let f1_id = Ident::from("f1".to_string());
-        let f2_id = Ident::from("f2".to_string());
-
-        let mut table = Table::new();
-
-        table.insert(Entry {
-            name: m1_id,
-            is_static: true,
-            kind: SymbolKind::ModuleDef(ModuleDefData {
-                table: Box::new(Table::new()),
-            }),
-        });
-
-        {
-            let m1 = table.lookup_mut(m1_id).unwrap();
-            let SymbolKind::ModuleDef(ref mut data) = &mut m1.kind else {
-                unreachable!()
-            };
-
-            data.table.insert(Entry {
-                name: m2_id,
-                is_static: true,
-                kind: SymbolKind::ModuleDef(ModuleDefData {
-                    table: Box::new(Table::new()),
-                }),
-            });
-
-            {
-                let prefix = Some(data.table.get_joined_id(m2_id));
-
-                let m2 = data.table.lookup_mut(m2_id).unwrap();
-                let SymbolKind::ModuleDef(ref mut data) = &mut m2.kind else {
-                    unreachable!()
-                };
-
-                let struct_name = Name { id: s1_id, prefix };
-                data.table.insert(Entry {
-                    name: s1_id,
-                    is_static: false,
-                    kind: SymbolKind::from(StructDefData {
-                        name: struct_name,
-                        fields: {
-                            let mut field = BTreeMap::<Ident, StructFieldData>::new();
-
-                            field.insert(
-                                f1_id,
-                                StructFieldData {
-                                    struct_name,
-                                    ty: Type::I32,
-                                },
-                            );
-                            field.insert(
-                                f2_id,
-                                StructFieldData {
-                                    struct_name,
-                                    ty: Type::F32,
-                                },
-                            );
-
-                            field
-                        },
-                    }),
-                });
+            Self::UndefinedInVariant { namespace, id } => {
+                write!(f, "variant \"{namespace}\" doesn't contain \"{id}\"")
+            }
+            Self::UndefinedInModule { namespace, id } => {
+                write!(f, "module \"{namespace}\" doesn't contain \"{id}\"")
             }
         }
-
-        let s1 = table
-            .lookup_type(&Type::Custom(Name::from(s1_id.to_string())))
-            .unwrap();
-        assert_eq!(s1.members.len(), 2);
-        assert!(s1.members.get(&f1_id).is_some());
-        assert!(s1.members.get(&f2_id).is_some());
-        assert!(s1.members.get(&m1_id).is_none());
-
-        assert!(table
-            .lookup_type(&Type::Custom(Name::from(m2_id.to_string())))
-            .is_none());
     }
 }

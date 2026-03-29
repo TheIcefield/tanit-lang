@@ -1,6 +1,6 @@
 use tanitc_hir::hir::{
     definitions::variables::VariableDef,
-    types::{ArraySize, Type},
+    type_spec::{ArraySize, Type},
 };
 
 use crate::CodeGenStream;

@@ -12,7 +12,7 @@ use crate::{
             variables::VariableDef, variants::VariantDef,
         },
         expressions::Expression,
-        types::TypeSpec,
+        type_spec::TypeSpec,
         uses::Use,
     },
     visitor::VisitorMut,

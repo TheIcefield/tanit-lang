@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use tanitc_attributes::Publicity;
-use tanitc_ident::{Ident, Name};
+use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
+use tanitc_name::NameSpec;
 
-use crate::hir::{definitions::Definition, types::TypeSpec, Hir};
+use crate::hir::{definitions::Definition, type_spec::TypeSpec, Hir};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct StructFieldAttributes {
@@ -28,7 +29,7 @@ pub struct StructAttributes {
 pub struct StructDef {
     pub location: Location,
     pub attributes: StructAttributes,
-    pub name: Name,
+    pub name: NameSpec,
     pub fields: StructFieldsInfo,
     pub internals: Vec<Hir>,
 }

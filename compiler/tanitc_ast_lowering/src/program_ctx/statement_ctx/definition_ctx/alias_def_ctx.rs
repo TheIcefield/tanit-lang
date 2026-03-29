@@ -9,13 +9,13 @@ impl AstLowering {
     pub(crate) fn low_alias_def_ctx(&self, alias_def_ctx: &AliasDefCtx) -> AstLowResult<AliasDef> {
         let location = alias_def_ctx.alias_tkn.get_location();
         let attributes = self.low_alias_def_attributes(&alias_def_ctx.attributes_ctx)?;
-        let identifier = self.low_name_ctx(&alias_def_ctx.name_ctx).id;
+        let name = self.low_name_ctx(&alias_def_ctx.name_ctx);
         let value = self.low_type_ctx(&alias_def_ctx.type_ctx)?;
 
         Ok(AliasDef {
             location,
             attributes,
-            identifier,
+            name,
             value,
         })
     }

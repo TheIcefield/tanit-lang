@@ -93,7 +93,7 @@ impl Parser {
         }
 
         if !file_exists {
-            return Err(Message::from_string(
+            return Err(Message::new(
                 module_tkn.get_location(),
                 format!("Module \"{name}\" not found"),
             ));
@@ -107,12 +107,7 @@ impl Parser {
 
         let mut file = match std::fs::File::open(&path) {
             Ok(file) => file,
-            Err(err) => {
-                return Err(Message::from_string(
-                    module_tkn.get_location(),
-                    format!("{err}"),
-                ))
-            }
+            Err(err) => return Err(Message::new(module_tkn.get_location(), err.to_string())),
         };
 
         let mut buffer = String::new();

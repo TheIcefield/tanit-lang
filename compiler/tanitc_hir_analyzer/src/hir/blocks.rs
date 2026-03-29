@@ -29,7 +29,7 @@ impl Analyzer {
             );
 
             if is_denied {
-                self.error(Message::from_string(
+                self.error(Message::new(
                     stmt.location(),
                     format!(
                         "Node \"{}\" is not allowed in global scope",

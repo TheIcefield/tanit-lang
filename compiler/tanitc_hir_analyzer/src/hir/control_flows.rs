@@ -22,7 +22,7 @@ impl Analyzer {
         if (!is_ret && !is_in_loop) || (is_ret && !is_in_func) {
             return Err(Message::new(
                 cf.location,
-                &format!("Unexpected {} statement", cf.kind.to_str()),
+                format!("Unexpected {} statement", cf.kind.to_str()),
             ));
         }
 

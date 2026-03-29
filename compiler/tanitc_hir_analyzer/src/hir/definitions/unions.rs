@@ -1,34 +1,50 @@
-use tanitc_hir::hir::{
-    definitions::unions::UnionDef,
-    expressions::{
-        literal::{Literal, StructLiteral},
-        Expression,
-    },
-};
-use tanitc_ident::Ident;
+use tanitc_hir::hir::definitions::unions::{UnionDef, UnionFieldsInfo};
 use tanitc_messages::Message;
-
-use std::collections::BTreeMap;
+use tanitc_name::NameSpec;
 
 use crate::{
-    symbol_table::entry::{Entry, StructFieldData, SymbolKind, UnionDefData},
+    symbol_table::entry::{Entry, StructFieldData, StructFieldsData, UnionDefData},
     AnalyzeResult, Analyzer,
 };
 
 impl Analyzer {
     pub(crate) fn analyze_union_def(&mut self, union_def: &mut UnionDef) -> AnalyzeResult<()> {
-        if self.has_symbol(union_def.name.id) {
-            return Err(Message::multiple_ids(union_def.location, union_def.name.id));
+        let union_id = union_def
+            .name
+            .get_id()
+            .ok_or(Message::empty_name_spec(union_def.location))?;
+
+        if self.has_symbol(union_id) {
+            return Err(Message::multiple_ids(union_def.location, union_id));
         }
 
-        union_def.name.prefix = self.table.get_id();
+        // Copies table.table_path to start of union_def.name.path
+        union_def.name.path.splice(0..0, self.table.get_path());
 
-        for internal in union_def.internals.iter_mut() {
-            internal.accept_mut(self)?;
-        }
+        let fields = self.analyze_union_def_fields(&union_def.name, &union_def.fields)?;
+        let union_def_data = UnionDefData {
+            name: union_def.name.clone(),
+            fields,
+        };
+        let entry = Entry {
+            id: union_id,
+            is_static: true,
+            kind: union_def_data.into(),
+        };
 
-        let mut fields = BTreeMap::<Ident, StructFieldData>::new();
-        for (field_id, field_info) in union_def.fields.iter() {
+        self.add_symbol(entry);
+
+        Ok(())
+    }
+
+    fn analyze_union_def_fields(
+        &mut self,
+        union_name: &NameSpec,
+        union_fields: &UnionFieldsInfo,
+    ) -> AnalyzeResult<StructFieldsData> {
+        let mut fields = StructFieldsData::new();
+
+        for (field_id, field_info) in union_fields.iter() {
             let Some(ty) = self.table.lookup_type(&field_info.ty.ty) else {
                 self.error(Message::undefined_type(
                     field_info.ty.location,
@@ -40,46 +56,13 @@ impl Analyzer {
             fields.insert(
                 *field_id,
                 StructFieldData {
-                    struct_name: union_def.name,
+                    name: union_name.clone(),
                     ty: ty.ty,
                 },
             );
         }
 
-        self.add_symbol(Entry {
-            name: union_def.name.id,
-            is_static: true,
-            kind: SymbolKind::from(UnionDefData {
-                name: union_def.name,
-                fields,
-            }),
-        });
-
-        Ok(())
-    }
-
-    pub(crate) fn access_union_def(
-        &mut self,
-        union_data: &UnionDefData,
-        node: &mut Expression,
-    ) -> AnalyzeResult<()> {
-        let Expression::Literal(Literal::Struct(StructLiteral {
-            location,
-            id: union_name,
-            fields: value_comps,
-        })) = node
-        else {
-            return Err(Message::unreachable(
-                node.location(),
-                format!("expected StructLiteral, actually: {}", node.kind_str()),
-            ));
-        };
-
-        self.check_union_literal_components(value_comps, union_data, *location)?;
-
-        *union_name = union_data.name;
-
-        Ok(())
+        Ok(fields)
     }
 }
 

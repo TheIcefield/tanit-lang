@@ -1,5 +1,5 @@
 use tanitc_ast::program_ctx::type_ctx::never_type_ctx::NeverTypeCtx;
-use tanitc_hir::hir::types::{Type, TypeSpec};
+use tanitc_hir::hir::type_spec::{Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
