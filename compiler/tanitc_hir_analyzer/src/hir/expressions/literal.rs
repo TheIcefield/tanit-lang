@@ -15,10 +15,7 @@ use tanitc_messages::Message;
 use crate::{
     hir::expressions::get_ordinal_number_suffix,
     symbol_table::{
-        entry::{
-            StructDefData, StructFieldData, StructFieldsData, SymbolKind, UnionDefData,
-            VariantStruct,
-        },
+        entry::{StructDefData, StructFieldsData, SymbolKind, UnionDefData},
         type_info::{MemberInfo, TypeInfo},
     },
     AnalyzeResult, Analyzer,
@@ -186,96 +183,6 @@ impl Analyzer {
             {
                 msg.text = format!("Union {}", msg.text);
                 self.error(msg);
-            }
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn check_variant_struct_components(
-        &mut self,
-        value_comps: &mut [(Ident, Expression)],
-        variant_struct_data: &VariantStruct,
-        location: Location,
-    ) -> AnalyzeResult<()> {
-        let struct_comps = &variant_struct_data.fields;
-        if value_comps.len() != struct_comps.len() {
-            return Err(Message::new(
-                location,
-                format!(
-                    "Variant struct \"{}\" consists of {} fields, but {} were supplied",
-                    variant_struct_data.name,
-                    struct_comps.len(),
-                    value_comps.len()
-                ),
-            ));
-        }
-
-        for comp_id in 0..value_comps.len() {
-            if let Err(mut msg) =
-                self.check_struct_component(comp_id, value_comps, &variant_struct_data.fields)
-            {
-                msg.text = format!("Variant {}", msg.text);
-                self.error(msg);
-            }
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn check_tuple_components(
-        &self,
-        value_comps: &[Expression],
-        tuple_comps: &BTreeMap<usize, StructFieldData>,
-        location: Location,
-    ) -> AnalyzeResult<()> {
-        if value_comps.len() != tuple_comps.len() {
-            return Err(Message::new(
-                location,
-                format!(
-                    "Tuple consists of {} fields, but {} were supplied",
-                    tuple_comps.len(),
-                    value_comps.len()
-                ),
-            ));
-        }
-
-        for comp_id in 0..value_comps.len() {
-            let Some(value_comp) = value_comps.get(comp_id) else {
-                continue;
-            };
-            let Some(tuple_comp_type) = tuple_comps.get(&comp_id) else {
-                continue;
-            };
-
-            let value_comp_type = self.get_expr_type(value_comp);
-
-            let mut alias_to = self.find_alias_value(&tuple_comp_type.ty);
-
-            if value_comp_type.ty == tuple_comp_type.ty {
-                alias_to = None;
-            }
-
-            if alias_to.is_none() && value_comp_type.ty != tuple_comp_type.ty {
-                return Err(Message::new(
-                    value_comp.location(),
-                    format!(
-                        "Tuple component with index \"{comp_id}\" is {}, but initialized like {}",
-                        tuple_comp_type.ty, value_comp_type.ty
-                    ),
-                ));
-            }
-
-            if let Some(alias_to_ty) = &alias_to {
-                if value_comp_type.ty != *alias_to_ty {
-                    return Err(Message::new(
-                        value_comp.location(),
-                        format!(
-                        "Tuple component with index \"{comp_id}\" is {} (aka: {}), but initialized like {value_comp_type}",
-                        tuple_comp_type.ty,
-                        alias_to_ty
-                    )));
-                }
             }
         }
 
