@@ -94,7 +94,7 @@ impl Table {
 
     pub fn exit_scope(&mut self) {
         if let Some(mut old_scope) = self.stack.pop_back() {
-            for (_entry_name, entry) in old_scope.entries.iter_mut() {
+            for entry in old_scope.entries.values_mut() {
                 if entry.is_static {
                     self.insert(std::mem::take(entry));
                 }
@@ -259,7 +259,7 @@ impl Table {
         }
 
         let Some(entry) = self.lookup(Ident::from(initial_ty.to_string())) else {
-            for (_, entry) in self.entries.iter() {
+            for entry in self.entries.values() {
                 let SymbolKind::ModuleDef(data) = &entry.kind else {
                     continue;
                 };
