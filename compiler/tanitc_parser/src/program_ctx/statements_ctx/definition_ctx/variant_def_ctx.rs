@@ -41,11 +41,7 @@ impl Parser {
     ) -> ParseResult<Vec<(Option<VariantDefFieldCtx>, Option<Token>)>> {
         let mut fields = Vec::<(Option<VariantDefFieldCtx>, Option<Token>)>::new();
 
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             let field_ctx = match next.lexeme_ref() {
                 Lexeme::Rcb => break,
                 Lexeme::EndOfLine => None,

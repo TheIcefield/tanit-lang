@@ -19,11 +19,7 @@ impl Parser {
 
         let old_opt = self.does_ignore_nl();
         self.set_ignore_nl_option(true);
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             if *next.lexeme_ref() == Lexeme::Rcb {
                 break;
             }

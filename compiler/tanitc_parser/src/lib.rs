@@ -193,12 +193,8 @@ impl Parser {
             self.ignore_nl_opt = false;
         }
 
-        loop {
-            let Some(token) = self.peek_token() else {
-                break;
-            };
-
-            if until.contains(token.lexeme_ref()) {
+        while let Some(next) = self.peek_token() {
+            if until.contains(next.lexeme_ref()) {
                 break;
             }
 

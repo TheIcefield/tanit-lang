@@ -414,9 +414,9 @@ mod tests {
         let s1_ty = Type::Custom(name_spec.clone());
         let s1 = table.lookup_type(&s1_ty).unwrap();
         assert_eq!(s1.members.len(), 2);
-        assert!(s1.members.get(&f1_id).is_some());
-        assert!(s1.members.get(&f2_id).is_some());
-        assert!(s1.members.get(&m1_id).is_none());
+        assert!(s1.members.contains_key(&f1_id));
+        assert!(s1.members.contains_key(&f2_id));
+        assert!(!s1.members.contains_key(&m1_id));
 
         name_spec.path = vec![m2_id.into()];
         let m2_ty = Type::Custom(name_spec.clone());

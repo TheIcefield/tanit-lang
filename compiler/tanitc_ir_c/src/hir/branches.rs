@@ -100,14 +100,14 @@ mod tests {
         If {
             location: Location::default(),
             body: Box::new(Block::default()),
-            condition: Box::new(get_cond().into()),
+            condition: Box::new(get_cond()),
         }
     }
 
     fn get_else() -> Else {
         Else {
             location: Location::default(),
-            body: ElseBody::Block(Box::new(Block::default())),
+            body: ElseBody::Block(Box::default()),
         }
     }
 
