@@ -203,7 +203,7 @@ mod tests {
         const ALIAS_NAME: &str = "A";
         let alias_def = create_alias_def(ALIAS_NAME, Type::I32);
 
-        let var_value = Some(create_decimal_lit(3.14));
+        let var_value = Some(create_decimal_lit(std::f64::consts::PI));
         let var_def = create_var_def(
             "a",
             Mutability::Immutable,

@@ -34,11 +34,7 @@ impl<'a> Lexer<'a> {
     pub fn tokenize(&mut self) -> Tokens {
         let mut tokens = Tokens::new();
 
-        loop {
-            let Some(token) = self.get() else {
-                break;
-            };
-
+        while let Some(token) = self.get() {
             tokens.push(token);
         }
 

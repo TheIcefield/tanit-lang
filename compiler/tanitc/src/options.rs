@@ -336,7 +336,7 @@ mod tests {
 
         let options = parser.parse().unwrap();
 
-        assert_eq!(options.verbose_tokens, true);
+        assert!(options.verbose_tokens);
     }
 
     #[test]

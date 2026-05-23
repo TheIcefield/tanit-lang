@@ -7,11 +7,7 @@ impl Parser {
     pub fn parse_attributes_ctx(&mut self) -> ParseResult<AttributesCtx> {
         let mut attrs = AttributesCtx::default();
 
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             match next.lexeme_ref() {
                 Lexeme::KwSafe => {
                     self.get_token();

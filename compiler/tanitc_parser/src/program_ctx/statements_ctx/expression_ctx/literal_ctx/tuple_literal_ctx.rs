@@ -10,11 +10,7 @@ impl Parser {
     ) -> ParseResult<Vec<(Option<ExpressionCtx>, Option<Token>)>> {
         let mut elements = Vec::<(Option<ExpressionCtx>, Option<Token>)>::new();
 
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             let element = match next.lexeme_ref() {
                 Lexeme::Rcb => break,
 

@@ -19,11 +19,7 @@ impl Parser {
     pub fn parse_statements_ctx(&mut self) -> ParseResult<StatementsCtx> {
         let mut statements = StatementsCtx::default();
 
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             if matches!(next.lexeme_ref(), Lexeme::Rcb) {
                 break;
             }

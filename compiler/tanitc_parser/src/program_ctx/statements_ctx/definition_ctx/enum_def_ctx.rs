@@ -38,11 +38,7 @@ impl Parser {
     ) -> ParseResult<Vec<(Option<EnumDefUnitCtx>, Option<Token>)>> {
         let mut units = Vec::<(Option<EnumDefUnitCtx>, Option<Token>)>::new();
 
-        loop {
-            let Some(next) = self.peek_token() else {
-                break;
-            };
-
+        while let Some(next) = self.peek_token() {
             let unit_ctx = match next.lexeme_ref() {
                 Lexeme::Rcb => break,
                 Lexeme::EndOfLine => None,
