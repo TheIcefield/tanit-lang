@@ -2,7 +2,7 @@ use tanitc_hir::hir::expressions::member_access::MemberAccessExpr;
 
 use crate::{symbol_table::type_info::TypeInfo, AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_member_access_expr(&self, _expr: &MemberAccessExpr) -> AnalyzeResult<()> {
         Ok(())
     }

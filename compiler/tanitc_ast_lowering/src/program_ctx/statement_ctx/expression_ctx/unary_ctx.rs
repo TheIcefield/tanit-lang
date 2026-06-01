@@ -3,7 +3,7 @@ use tanitc_hir::hir::expressions::unary::{UnaryExpr, UnaryOperation};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_unary_expression_ctx(&mut self, ctx: &UnaryCtx) -> AstLowResult<UnaryExpr> {
         let operation = self.low_unary_operator(&ctx.unary_op_ctx);
         let node = Box::new(self.low_expression_ctx(&ctx.expression_ctx)?);

@@ -11,7 +11,7 @@ pub(crate) mod definition_ctx;
 pub(crate) mod expression_ctx;
 pub(crate) mod use_ctx;
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_statements_ctx(
         &mut self,
         statements_ctx: &StatementsCtx,

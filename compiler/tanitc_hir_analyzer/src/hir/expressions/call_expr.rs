@@ -14,7 +14,7 @@ use tanitc_messages::Message;
 
 use crate::{symbol_table::type_info::TypeInfo, AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_call_expr(&mut self, expr: &mut CallExpr) -> AnalyzeResult<()> {
         if let Expression::Variable(var) = expr.expr.as_ref() {
             self.analyze_variable_usage(var)?;
@@ -239,6 +239,7 @@ mod tests {
         create_block, create_call_expr, create_decimal_lit, create_func_def, create_main_func_def,
         create_var, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn unsafe_call_bad_test() {
@@ -261,8 +262,10 @@ mod tests {
             ..Default::default()
         });
 
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
+
         // When
-        let mut analyzer = Analyzer::new();
         let res = analyzer.analyze_program(&mut program);
 
         // Then
@@ -295,7 +298,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![unsafe_func.into(), main_func.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -330,7 +334,8 @@ mod tests {
          */
         let mut program = Hir::from(create_block(vec![some_func.into(), main_func.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -363,7 +368,8 @@ mod tests {
          */
         let mut program = Hir::from(create_block(vec![main_func.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);

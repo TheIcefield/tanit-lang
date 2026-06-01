@@ -10,7 +10,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_module_def(&mut self, module_def: &mut ModuleDef) -> AnalyzeResult<()> {
         let module_id = module_def
             .name
@@ -45,8 +45,7 @@ impl Analyzer {
     ) -> AnalyzeResult<()> {
         let joined_path = self.table.get_joined_path(module_id);
 
-        let mut analyzer = Analyzer::new();
-        analyzer.set_compile_options(self.compile_options.clone());
+        let mut analyzer = Analyzer::new(self.compile_options);
         analyzer.table.set_path(joined_path);
 
         match body {
@@ -73,6 +72,7 @@ mod tests {
         create_enum_def, create_main_func_def, create_module_def, create_program,
         create_scope_resolutions_expr, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     use super::*;
 
@@ -119,7 +119,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);

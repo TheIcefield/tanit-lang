@@ -6,7 +6,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_alias_def(&mut self, alias_def: &mut AliasDef) -> AnalyzeResult<()> {
         let alias_id = alias_def
             .name
@@ -60,6 +60,7 @@ mod tests {
         create_alias_def, create_custom_type, create_decimal_lit, create_integer_lit,
         create_main_func_def, create_program, create_struct_def, create_struct_lit, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn struct_with_alias_typed_fields_test() {
@@ -115,7 +116,8 @@ mod tests {
             main_func.into(),
         ]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -149,7 +151,8 @@ mod tests {
          */
         let mut program = create_program(vec![alias_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -188,7 +191,8 @@ mod tests {
          */
         let mut program = create_program(vec![alias_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -221,7 +225,8 @@ mod tests {
          */
         let mut program = create_program(vec![alias_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -265,7 +270,8 @@ mod tests {
         let mut program =
             create_program(vec![struct_def.into(), alias_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -306,7 +312,8 @@ mod tests {
             main_func_def.into(),
         ]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -363,7 +370,8 @@ mod tests {
             main_func.into(),
         ]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -409,7 +417,8 @@ mod tests {
             main_func.into(),
         ]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);

@@ -21,7 +21,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_literal(&mut self, lit: &mut Literal) -> AnalyzeResult<()> {
         match lit {
             Literal::Integer(_) => Ok(()),

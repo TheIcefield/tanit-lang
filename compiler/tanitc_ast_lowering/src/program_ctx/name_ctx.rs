@@ -4,7 +4,7 @@ use tanitc_name::NameSpec;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_name_ctx(&self, name_ctx: &NameCtx) -> NameSpec {
         NameSpec {
             location: name_ctx.name_tkn.get_location(),

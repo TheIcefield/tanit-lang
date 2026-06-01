@@ -6,7 +6,7 @@ use tanitc_hir::hir::definitions::enums::{EnumDef, EnumUnits};
 use tanitc_messages::Message;
 use tanitc_name::NameSpec;
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_enum_def(&mut self, enum_def: &mut EnumDef) -> AnalyzeResult<()> {
         let enum_id = enum_def
             .name
@@ -77,6 +77,7 @@ mod tests {
         create_enum_def, create_main_func_def, create_module_def, create_program,
         create_scope_resolutions_expr, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     use crate::Analyzer;
 
@@ -116,7 +117,8 @@ mod tests {
          */
         let mut program = create_program(vec![enum_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -168,7 +170,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -210,7 +213,8 @@ mod tests {
          */
         let mut program = create_program(vec![enum_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -267,7 +271,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -325,7 +330,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);

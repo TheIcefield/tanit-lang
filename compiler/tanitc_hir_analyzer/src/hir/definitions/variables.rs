@@ -7,7 +7,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_variable_def(&mut self, var_def: &mut VariableDef) -> AnalyzeResult<()> {
         if self.has_symbol(var_def.identifier) {
             return Err(Message::multiple_ids(var_def.location, var_def.identifier));
@@ -76,13 +76,12 @@ mod tests {
     use tanitc_hir::hir::{blocks::Block, Hir};
     use tanitc_hir_test::create_main_func_def;
     use tanitc_ident::Ident;
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn var_without_type_and_rhs_bad_test() {
+        // Given
         const VAR_NAME: &str = "var";
-
-        const EXPECTED_ERR: &str =
-            "Semantic error: Type annotation needed for variable named \"var\"";
 
         let var = VariableDef {
             identifier: Ident::from(VAR_NAME.to_string()),
@@ -99,10 +98,19 @@ mod tests {
             ..Default::default()
         });
 
-        let mut analyzer = Analyzer::new();
-        program.accept_mut(&mut analyzer).unwrap();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
-        let errors = analyzer.messages_ref().errors_ref();
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        const EXPECTED_ERR: &str =
+            "Semantic error: Type annotation needed for variable named \"var\"";
+
+        let messages = res.expect_err("Expected errors");
+        let errors = messages.errors_ref();
+
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].text, EXPECTED_ERR);
     }

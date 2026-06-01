@@ -25,7 +25,7 @@ pub(crate) mod definitions;
 pub(crate) mod expressions;
 pub(crate) mod types;
 
-impl VisitorMut for Analyzer {
+impl<'a> VisitorMut for Analyzer<'a> {
     fn visit_module_def(&mut self, module_def: &mut ModuleDef) -> Result<(), Message> {
         self.analyze_module_def(module_def)
     }

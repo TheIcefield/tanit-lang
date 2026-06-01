@@ -18,7 +18,7 @@ pub(crate) mod literal;
 pub(crate) mod member_access;
 pub(crate) mod unary;
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_expression(&mut self, expr: &mut Expression) -> AnalyzeResult<()> {
         match expr {
             Expression::Unary(expr) => self.analyze_unary_expr(expr),

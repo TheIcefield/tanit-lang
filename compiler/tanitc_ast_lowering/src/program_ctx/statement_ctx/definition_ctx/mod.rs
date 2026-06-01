@@ -16,7 +16,7 @@ pub(crate) mod union_def_ctx;
 pub(crate) mod variable_def_ctx;
 pub(crate) mod variant_def_ctx;
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_definition_ctx(
         &mut self,
         definition_ctx: &DefinitionCtx,

@@ -3,7 +3,7 @@ use tanitc_messages::Message;
 
 use crate::{AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_branch(&mut self, branch: &mut Branch) -> Result<(), Message> {
         match branch {
             Branch::While(while_branch) => self.analyze_while_branch(while_branch),

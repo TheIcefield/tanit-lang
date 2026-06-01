@@ -18,7 +18,7 @@ use tanitc_name::NameSpec;
 
 use crate::{AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_variant_def(
         &mut self,
         variant_def: &mut VariantDef,
@@ -173,7 +173,8 @@ mod tests {
             ..Default::default()
         });
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -196,10 +197,11 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![variant_def.into(), main_func.into()]));
 
-        let mut analyzer = Analyzer::with_compile_options(CompileOptions {
+        let compile_options = CompileOptions {
             allow_variants: true,
             ..Default::default()
-        });
+        };
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -391,7 +393,8 @@ mod tests {
             {
                 const EXPECTED_ERR: &str = "Semantic error: Variants not supported in 0.1.0 (use \"--variants\" to enable variants)";
 
-                let mut analyzer = Analyzer::new();
+                let compile_options = CompileOptions::default();
+                let mut analyzer = Analyzer::new(&compile_options);
                 let messages = analyzer.analyze_program(hir.as_mut()).err().unwrap();
                 let errors = messages.errors_ref();
 

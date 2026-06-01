@@ -3,7 +3,7 @@ use tanitc_hir::hir::expressions::conversion::ConversionExpr;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_conversion_expression_ctx(
         &mut self,
         ctx: &ConversionCtx,

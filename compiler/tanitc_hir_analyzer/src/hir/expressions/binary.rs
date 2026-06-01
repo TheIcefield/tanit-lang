@@ -14,7 +14,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_binary_expr(&mut self, expr: &mut BinaryExpr) -> AnalyzeResult<()> {
         self.analyze_expression(&mut expr.rhs)?;
 

@@ -3,7 +3,7 @@ use tanitc_messages::Message;
 
 use crate::Analyzer;
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_impl_def(&mut self, impl_def: &mut ImplDef) -> Result<(), Message> {
         if self.table.lookup_name_spec(&impl_def.name).is_err() {
             return Err(Message::new(
@@ -37,13 +37,14 @@ mod tests {
 
     use tanitc_attributes::Mutability;
     use tanitc_hir::hir::{
-        blocks::Block,
         definitions::{functions::FunctionParam, variables::VariableDef},
         type_spec::Type,
-        Hir,
     };
-    use tanitc_hir_test::{create_func_def, create_impl_def, create_struct_def};
+    use tanitc_hir_test::{
+        create_func_def, create_impl_def, create_main_func_def, create_program, create_struct_def,
+    };
     use tanitc_ident::Ident;
+    use tanitc_options::CompileOptions;
 
     fn get_common_param(name: &str) -> FunctionParam {
         FunctionParam::Common(VariableDef {
@@ -55,6 +56,7 @@ mod tests {
 
     #[test]
     fn self_in_beginning_good_test() {
+        // Given
         const STRUCT_NAME: &str = "MyStruct";
 
         let impl_def_node = create_impl_def(
@@ -70,26 +72,26 @@ mod tests {
             )],
         );
 
-        let mut program = Hir::from(Block {
-            is_global: true,
-            statements: vec![
-                create_struct_def(STRUCT_NAME, vec![]).into(),
-                impl_def_node.into(),
-            ],
-            ..Default::default()
-        });
+        let mut program = create_program(vec![
+            create_struct_def(STRUCT_NAME, vec![]).into(),
+            impl_def_node.into(),
+            create_main_func_def(vec![]).into(),
+        ]);
 
-        let mut analyzer = Analyzer::new();
-        program.accept_mut(&mut analyzer).unwrap();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
-        let messages = analyzer.messages_ref();
-        assert!(!messages.has_errors());
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        res.expect("Expected no errors.")
     }
 
     #[test]
     fn self_in_middle_test() {
+        // Given
         const STRUCT_NAME: &str = "MyStruct";
-        const EXPECTED_ERR: &str = "Semantic error: In definition of function \"by_self\": Unexpected \"self\" parameter. Must be the first parameter of the associated function";
 
         let impl_def_node = create_impl_def(
             STRUCT_NAME,
@@ -104,19 +106,22 @@ mod tests {
             )],
         );
 
-        let mut program = Hir::from(Block {
-            is_global: true,
-            statements: vec![
-                create_struct_def(STRUCT_NAME, vec![]).into(),
-                impl_def_node.into(),
-            ],
-            ..Default::default()
-        });
+        let mut program = create_program(vec![
+            create_struct_def(STRUCT_NAME, vec![]).into(),
+            impl_def_node.into(),
+            create_main_func_def(vec![]).into(),
+        ]);
 
-        let mut analyzer = Analyzer::new();
-        program.accept_mut(&mut analyzer).unwrap();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
-        let messages = analyzer.messages_ref();
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
+        const EXPECTED_ERR: &str = "Semantic error: In definition of function \"by_self\": Unexpected \"self\" parameter. Must be the first parameter of the associated function";
+
+        let messages = res.expect_err("Expected errors");
         let errors = messages.errors_ref();
 
         assert_eq!(errors.len(), 1);
@@ -125,27 +130,29 @@ mod tests {
 
     #[test]
     fn self_in_func_test() {
+        // Given
+        let func_def = create_func_def(
+            "by_self",
+            vec![
+                FunctionParam::SelfVal(Mutability::Immutable),
+                get_common_param("hello"),
+            ],
+            Type::unit(),
+            vec![],
+        );
+
+        let mut program =
+            create_program(vec![func_def.into(), create_main_func_def(vec![]).into()]);
+
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
+
+        // When
+        let res = analyzer.analyze_program(&mut program);
+
+        // Then
         const EXPECTED_ERR: &str = "Semantic error: In definition of function \"by_self\": \"self\" parameter is allowed only in associated functions";
-
-        let mut program = Hir::from(Block {
-            is_global: true,
-            statements: vec![create_func_def(
-                "by_self",
-                vec![
-                    FunctionParam::SelfVal(Mutability::Immutable),
-                    get_common_param("hello"),
-                ],
-                Type::unit(),
-                vec![],
-            )
-            .into()],
-            ..Default::default()
-        });
-
-        let mut analyzer = Analyzer::new();
-        program.accept_mut(&mut analyzer).unwrap();
-
-        let messages = analyzer.messages_ref();
+        let messages = res.expect_err("Expected errors");
         let errors = messages.errors_ref();
 
         assert_eq!(errors.len(), 1);

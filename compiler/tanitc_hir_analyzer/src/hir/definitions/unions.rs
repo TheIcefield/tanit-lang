@@ -7,7 +7,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_union_def(&mut self, union_def: &mut UnionDef) -> AnalyzeResult<()> {
         let union_id = union_def
             .name
@@ -124,7 +124,8 @@ mod tests {
             ..Default::default()
         });
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
         program.accept_mut(&mut analyzer).unwrap();
 
         let messages = analyzer.messages_ref();
@@ -161,7 +162,8 @@ mod tests {
             ..Default::default()
         });
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
         program.accept_mut(&mut analyzer).unwrap();
 
         let messages = analyzer.messages_ref();
@@ -196,7 +198,8 @@ mod tests {
         };
 
         {
-            let mut analyzer = Analyzer::new();
+            let compile_options = CompileOptions::default();
+            let mut analyzer = Analyzer::new(&compile_options);
             analyzer.analyze_program(hir.as_mut()).unwrap();
         }
 

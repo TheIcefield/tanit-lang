@@ -6,7 +6,7 @@ use tanitc_hir::hir::type_spec::{FuncType, FuncTypeParam, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_func_type_ctx(&self, type_ctx: &FuncTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.func_tkn.get_location();
 

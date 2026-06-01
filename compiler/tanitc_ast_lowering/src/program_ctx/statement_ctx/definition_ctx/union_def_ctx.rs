@@ -10,7 +10,7 @@ use tanitc_ident::Ident;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_union_def_ctx(
         &mut self,
         union_def_ctx: &UnionDefCtx,

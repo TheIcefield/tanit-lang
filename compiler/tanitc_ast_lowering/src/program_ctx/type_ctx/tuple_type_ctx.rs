@@ -3,7 +3,7 @@ use tanitc_hir::hir::type_spec::{TupleType, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_tuple_type_ctx(&self, type_ctx: &TupleTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.lparen_tkn.get_location();
 

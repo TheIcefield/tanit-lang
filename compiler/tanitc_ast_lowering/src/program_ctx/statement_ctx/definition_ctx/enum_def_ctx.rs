@@ -12,7 +12,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_enum_def_ctx(&mut self, enum_def_ctx: &EnumDefCtx) -> AstLowResult<EnumDef> {
         let location = enum_def_ctx.enum_tkn.get_location();
         let attributes = self.low_enum_def_attributes(&enum_def_ctx.attributes_ctx)?;

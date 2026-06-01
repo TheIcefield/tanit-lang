@@ -4,7 +4,7 @@ use tanitc_messages::Message;
 
 use crate::{AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn compare_types(
         &self,
         lhs_type: &Type,

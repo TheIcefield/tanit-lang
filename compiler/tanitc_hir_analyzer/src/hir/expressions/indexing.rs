@@ -9,7 +9,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_indexing_expr(&mut self, expr: &mut IndexingExpr) -> AnalyzeResult<()> {
         let location = expr.location;
 

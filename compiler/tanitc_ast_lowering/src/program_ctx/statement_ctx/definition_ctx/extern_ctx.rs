@@ -9,7 +9,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_extern_def_ctx(&mut self, ctx: &ExternCtx) -> AstLowResult<ExternDef> {
         let location = ctx.extern_tkn.get_location();
         let abi_name = ctx.abi_tkn.to_string();

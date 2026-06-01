@@ -3,7 +3,7 @@ use tanitc_hir::hir::expressions::conversion::ConversionExpr;
 
 use crate::{symbol_table::type_info::TypeInfo, AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_conversion_expr(
         &mut self,
         _expr: &mut ConversionExpr,

@@ -5,7 +5,7 @@ use tanitc_hir::hir::definitions::aliases::{AliasAttributes, AliasDef};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_alias_def_ctx(&self, alias_def_ctx: &AliasDefCtx) -> AstLowResult<AliasDef> {
         let location = alias_def_ctx.alias_tkn.get_location();
         let attributes = self.low_alias_def_attributes(&alias_def_ctx.attributes_ctx)?;

@@ -12,7 +12,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_literal_ctx(&mut self, ctx: &LiteralCtx) -> AstLowResult<Literal> {
         match ctx {
             LiteralCtx::Text(tkn) => self.low_text_literal_ctx(tkn).map(Literal::Text),

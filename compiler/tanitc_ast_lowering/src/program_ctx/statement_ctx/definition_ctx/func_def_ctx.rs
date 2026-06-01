@@ -20,7 +20,7 @@ use tanitc_name::NameSpec;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_func_def_ctx(
         &mut self,
         func_def_ctx: &FuncDefCtx,

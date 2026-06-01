@@ -7,7 +7,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_static_def_ctx(
         &mut self,
         static_def_ctx: &StaticDefCtx,

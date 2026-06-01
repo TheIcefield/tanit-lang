@@ -4,7 +4,7 @@ use tanitc_messages::Message;
 
 use crate::{AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_block(&mut self, block: &mut Block) -> AnalyzeResult<()> {
         if block.is_global {
             self.analyze_global_block(block)?;
@@ -84,13 +84,6 @@ mod tests {
     #[test]
     fn if_in_global_scope_test() {
         // Given
-        let compile_options = CompileOptions {
-            crate_type: CrateType::StaticLib,
-            ..Default::default()
-        };
-
-        let mut analyzer = Analyzer::with_compile_options(compile_options);
-
         let branch = Branch::If(If {
             location: Location::default(),
             condition: Box::new(create_integer_lit(1)),
@@ -102,6 +95,13 @@ mod tests {
 
         // if 1 { }
         let mut program = Hir::Block(create_block(vec![branch.into()]));
+
+        let compile_options = CompileOptions {
+            crate_type: CrateType::StaticLib,
+            ..Default::default()
+        };
+
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -134,7 +134,8 @@ mod tests {
             ..Default::default()
         });
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut hir);

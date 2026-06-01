@@ -6,7 +6,7 @@ use tanitc_hir::hir::definitions::modules::{ModuleAttributes, ModuleDef, ModuleD
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_module_def_ctx(
         &mut self,
         module_def_ctx: &ModuleDefCtx,

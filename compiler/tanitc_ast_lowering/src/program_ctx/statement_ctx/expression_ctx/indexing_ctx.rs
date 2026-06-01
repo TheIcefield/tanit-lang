@@ -3,7 +3,7 @@ use tanitc_hir::hir::expressions::indexing::IndexingExpr;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_indexing_expression_ctx(
         &mut self,
         ctx: &IndexingCtx,

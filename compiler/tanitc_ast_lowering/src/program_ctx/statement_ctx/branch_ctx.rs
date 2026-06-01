@@ -9,7 +9,7 @@ use tanitc_hir::hir::branches::{Branch, Else, ElseBody, If, Loop, While};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_branch_ctx(&mut self, ctx: &BranchCtx) -> AstLowResult<Branch> {
         match ctx {
             BranchCtx::Loop(ctx) => self.low_loop_ctx(ctx).map(Branch::Loop),

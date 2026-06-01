@@ -3,7 +3,7 @@ use tanitc_hir::hir::type_spec::{Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_named_type_ctx(&self, type_ctx: &NamedTypeCtx) -> AstLowResult<TypeSpec> {
         let ty_id = type_ctx.name_ctx.identifier();
         let ty = match &ty_id.to_string()[..] {

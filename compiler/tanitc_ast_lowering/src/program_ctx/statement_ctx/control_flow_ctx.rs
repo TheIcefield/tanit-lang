@@ -5,7 +5,7 @@ use tanitc_hir::hir::control_flows::{ControlFlow, ControlFlowKind};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_control_flow_ctx(
         &mut self,
         ctx: &ControlFlowCtx,

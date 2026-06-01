@@ -11,7 +11,7 @@ pub(crate) mod ptr_type_ctx;
 pub(crate) mod ref_type_ctx;
 pub(crate) mod tuple_type_ctx;
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_type_ctx(&self, type_ctx: &TypeCtx) -> AstLowResult<TypeSpec> {
         match type_ctx {
             TypeCtx::Array(ctx) => self.low_array_type_ctx(ctx),

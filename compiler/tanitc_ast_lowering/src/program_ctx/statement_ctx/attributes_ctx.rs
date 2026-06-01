@@ -4,7 +4,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_publicity_token(&self, tkn: &Option<Token>) -> Publicity {
         let Some(tkn) = tkn else {
             return Publicity::default();

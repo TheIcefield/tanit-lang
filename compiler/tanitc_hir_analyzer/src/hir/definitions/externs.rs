@@ -2,7 +2,7 @@ use tanitc_hir::{hir::definitions::externs::ExternDef, visitor::VisitorMut};
 
 use crate::{AnalyzeResult, Analyzer};
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_extern_def(&mut self, extern_def: &mut ExternDef) -> AnalyzeResult<()> {
         for func_def in extern_def.functions.iter_mut() {
             if let Err(err) = self.visit_func_def(func_def) {
@@ -37,7 +37,8 @@ mod tests {
         };
 
         {
-            let mut analyzer = Analyzer::new();
+            let compile_options = CompileOptions::default();
+            let mut analyzer = Analyzer::new(&compile_options);
             analyzer.analyze_program(hir.as_mut()).unwrap();
         }
 

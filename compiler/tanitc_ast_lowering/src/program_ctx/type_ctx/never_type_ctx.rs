@@ -3,7 +3,7 @@ use tanitc_hir::hir::type_spec::{Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_never_type_ctx(&self, type_ctx: &NeverTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.excm_tkn.get_location();
         let ty = Type::Never;

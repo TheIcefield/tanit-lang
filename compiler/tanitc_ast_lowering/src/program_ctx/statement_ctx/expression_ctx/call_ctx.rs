@@ -6,7 +6,7 @@ use tanitc_messages::Message;
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_call_ctx(&mut self, ctx: &CallCtx) -> AstLowResult<CallExpr> {
         let expr = Box::new(self.low_expression_ctx(&ctx.expression_ctx)?);
         let location = expr.location();

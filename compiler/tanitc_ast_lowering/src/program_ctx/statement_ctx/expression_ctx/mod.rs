@@ -12,7 +12,7 @@ pub(crate) mod indexing_ctx;
 pub(crate) mod literal_ctx;
 pub(crate) mod unary_ctx;
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_expression_ctx(&mut self, ctx: &ExpressionCtx) -> AstLowResult<Expression> {
         match ctx {
             ExpressionCtx::ParenCtx(ctx) => self.low_expression_ctx(&ctx.expression_ctx),

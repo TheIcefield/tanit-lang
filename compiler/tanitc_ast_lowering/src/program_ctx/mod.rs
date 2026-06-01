@@ -12,7 +12,7 @@ pub(crate) mod name_ctx;
 pub(crate) mod statement_ctx;
 pub(crate) mod type_ctx;
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_program_ctx(&mut self, program_ctx: &ProgramCtx) -> AstLowResult<Hir> {
         let statements = self.low_statements_ctx(&program_ctx.statements_ctx)?;
 

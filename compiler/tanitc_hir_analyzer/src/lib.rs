@@ -16,23 +16,21 @@ pub type AnalyzeResult<T> = Result<T, Message>;
 
 pub type Counter = usize;
 
-#[derive(Default)]
-pub struct Analyzer {
+pub struct Analyzer<'a> {
     pub table: Box<Table>,
-    compile_options: CompileOptions,
+    compile_options: &'a CompileOptions,
     counter: Counter,
     messages: MessageListener,
 }
 
-impl Analyzer {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_compile_options(compile_options: CompileOptions) -> Self {
-        let mut analyzer = Self::new();
-        analyzer.set_compile_options(compile_options);
-        analyzer
+impl<'a> Analyzer<'a> {
+    pub fn new(compile_options: &'a CompileOptions) -> Self {
+        Self {
+            table: Box::default(),
+            compile_options,
+            counter: Counter::default(),
+            messages: MessageListener::new(),
+        }
     }
 
     pub fn analyze_program(&mut self, hir: &mut Hir) -> Result<(), MessageListener> {
@@ -51,10 +49,6 @@ impl Analyzer {
         }
 
         Ok(())
-    }
-
-    pub fn set_compile_options(&mut self, compile_options: CompileOptions) {
-        self.compile_options = compile_options;
     }
 
     pub fn set_message_listener(&mut self, messages: MessageListener) {

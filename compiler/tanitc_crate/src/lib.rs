@@ -97,9 +97,9 @@ impl Crate {
     }
 
     fn process_ast_lowering(&mut self, program_ctx: &ProgramCtx) -> Result<Box<Hir>, String> {
-        let mut lowering = AstLowering::new();
+        let mut lowering = AstLowering::new(program_ctx);
 
-        let hir = lowering.low(program_ctx).map_err(|messages| {
+        let hir = lowering.low().map_err(|messages| {
             messages.print_errors();
             "Failed to analyze program".to_string()
         })?;
@@ -112,7 +112,7 @@ impl Crate {
     }
 
     fn process_analyze(&mut self, hir: &mut Hir) -> Result<(), String> {
-        let mut analyzer = Analyzer::with_compile_options(self.compile_options.clone());
+        let mut analyzer = Analyzer::new(&self.compile_options);
 
         analyzer.analyze_program(hir).map_err(|messages| {
             messages.print_errors();

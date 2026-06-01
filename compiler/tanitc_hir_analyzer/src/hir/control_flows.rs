@@ -3,7 +3,7 @@ use tanitc_messages::Message;
 
 use crate::Analyzer;
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_control_flow(&mut self, cf: &mut ControlFlow) -> Result<(), Message> {
         let is_in_func = self.table.get_scope_info().is_in_func;
         let is_in_loop = self.table.get_scope_info().is_in_loop;

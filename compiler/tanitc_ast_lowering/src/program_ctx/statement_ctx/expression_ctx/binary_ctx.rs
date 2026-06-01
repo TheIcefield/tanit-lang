@@ -6,7 +6,7 @@ use tanitc_hir::hir::expressions::{
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_binary_expression_ctx(
         &mut self,
         ctx: &BinaryCtx,

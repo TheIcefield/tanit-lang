@@ -1,41 +1,32 @@
 use tanitc_ast::program_ctx::ProgramCtx;
 use tanitc_hir::hir::Hir;
 use tanitc_messages::{listener::MessageListener, Message};
-use tanitc_options::CompileOptions;
 
 pub(crate) mod program_ctx;
 
-#[derive(Default)]
-pub struct AstLowering {
-    compile_options: CompileOptions,
+pub struct AstLowering<'ast> {
+    ast: &'ast ProgramCtx,
     messages: MessageListener,
 }
 
 pub type AstLowResult<T> = Result<T, Message>;
 
-impl AstLowering {
-    pub fn new() -> Self {
-        Self::default()
+impl<'ast> AstLowering<'ast> {
+    pub fn new(ast: &'ast ProgramCtx) -> Self {
+        Self {
+            ast,
+            messages: MessageListener::new(),
+        }
     }
 
-    pub fn with_compile_options(compile_options: CompileOptions) -> Self {
-        let mut analyzer = Self::new();
-        analyzer.set_compile_options(compile_options);
-        analyzer
-    }
-
-    pub fn low(&mut self, program_ctx: &ProgramCtx) -> Result<Box<Hir>, MessageListener> {
-        match self.low_program_ctx(program_ctx) {
+    pub fn low(&mut self) -> Result<Box<Hir>, MessageListener> {
+        match self.low_program_ctx(self.ast) {
             Ok(hir) => Ok(Box::new(hir)),
             Err(msg) => {
                 self.error(msg);
                 Err(std::mem::take(self.messages_mut()))
             }
         }
-    }
-
-    pub fn set_compile_options(&mut self, compile_options: CompileOptions) {
-        self.compile_options = compile_options;
     }
 
     pub fn set_message_listener(&mut self, messages: MessageListener) {

@@ -11,7 +11,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_func_def(
         &mut self,
         func_def: &mut FunctionDef,
@@ -142,6 +142,7 @@ mod tests {
         create_block, create_call_expr, create_func_def, create_integer_lit, create_main_func_def,
         create_module_def, create_program, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     #[test]
     fn good_func_access_test() {
@@ -159,7 +160,8 @@ mod tests {
          */
         let mut program = create_program(vec![func_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -189,7 +191,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -221,7 +224,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -253,7 +257,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -276,7 +281,8 @@ mod tests {
          */
         let mut program = create_program(vec![main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -312,7 +318,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -348,7 +355,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -385,7 +393,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -422,7 +431,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -466,7 +476,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_def.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -493,7 +504,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![func_1_def.into(), func_2_def.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -517,7 +529,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![func_def.into(), main_func_def.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         program.accept_mut(&mut analyzer).unwrap();
@@ -539,7 +552,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![func_def.into(), main_func_def.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -563,7 +577,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![func_def.into(), main_func_def.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -583,7 +598,8 @@ mod tests {
 
         let mut program = Hir::from(create_block(vec![func_def.into(), main_func_def.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);

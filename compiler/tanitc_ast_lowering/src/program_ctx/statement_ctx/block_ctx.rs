@@ -3,7 +3,7 @@ use tanitc_hir::hir::blocks::{Block, BlockAttributes};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_block_ctx(&mut self, block_ctx: &BlockCtx) -> AstLowResult<Block> {
         Ok(Block {
             location: block_ctx.lcb_tkn.get_location(),

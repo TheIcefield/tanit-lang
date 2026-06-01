@@ -7,7 +7,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_struct_def(&mut self, struct_def: &mut StructDef) -> AnalyzeResult<()> {
         let struct_id = struct_def
             .name
@@ -79,6 +79,7 @@ mod tests {
         create_main_func_def, create_module_def, create_program, create_struct_def,
         create_struct_lit, create_var_def,
     };
+    use tanitc_options::CompileOptions;
 
     const STRUCT_NAME: &str = "Vector2";
     const STRUCT_FIELD_X_NAME: &str = "x";
@@ -151,7 +152,8 @@ mod tests {
          */
         let mut program = Hir::from(create_block(vec![struct_def.into(), main_func.into()]));
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -197,7 +199,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_math.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -242,7 +245,8 @@ mod tests {
          */
         let mut program = create_program(vec![module_math.into(), main_func.into()]);
 
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         // When
         let res = analyzer.analyze_program(&mut program);
@@ -260,7 +264,8 @@ mod tests {
     #[test]
     fn incorrect_struct_work_test() {
         // Given
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         /* struct MyStruct\
          * {\
@@ -336,7 +341,8 @@ mod tests {
     #[test]
     fn internal_struct_work_test() {
         // Given
-        let mut analyzer = Analyzer::new();
+        let compile_options = CompileOptions::default();
+        let mut analyzer = Analyzer::new(&compile_options);
 
         /*
          * struct Unit {
@@ -463,7 +469,8 @@ mod tests {
         };
 
         {
-            let mut analyzer = Analyzer::new();
+            let compile_options = CompileOptions::default();
+            let mut analyzer = Analyzer::new(&compile_options);
             analyzer.analyze_program(hir.as_mut()).unwrap();
         }
 

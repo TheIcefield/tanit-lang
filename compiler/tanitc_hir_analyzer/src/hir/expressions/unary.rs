@@ -13,7 +13,7 @@ use crate::{
     AnalyzeResult, Analyzer,
 };
 
-impl Analyzer {
+impl<'a> Analyzer<'a> {
     pub(crate) fn analyze_unary_expr(&mut self, expr: &mut UnaryExpr) -> AnalyzeResult<()> {
         let location = expr.location;
 

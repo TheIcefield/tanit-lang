@@ -3,7 +3,7 @@ use tanitc_hir::hir::type_spec::{ArraySize, Type, TypeSpec};
 
 use crate::{AstLowResult, AstLowering};
 
-impl AstLowering {
+impl<'ast> AstLowering<'ast> {
     pub(crate) fn low_array_type_ctx(&self, type_ctx: &ArrayTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.lsb_tkn.get_location();
 
