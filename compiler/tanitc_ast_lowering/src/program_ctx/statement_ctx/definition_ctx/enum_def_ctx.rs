@@ -5,7 +5,7 @@ use tanitc_ast::program_ctx::statement_ctx::{
     },
 };
 
-use tanitc_hir::hir::definitions::enums::{EnumAttributes, EnumDef, EnumUnits};
+use tanitc_hir::hir::definitions::enums::{EnumAttributes, EnumDef, EnumUnit};
 use tanitc_ident::Ident;
 use tanitc_lexer::token::lexeme::Lexeme;
 use tanitc_messages::Message;
@@ -39,8 +39,9 @@ impl<'ast> AstLowering<'ast> {
     fn low_enum_def_body_ctx(
         &mut self,
         enum_def_body_ctx: &EnumDefBodyCtx,
-    ) -> AstLowResult<EnumUnits> {
-        let mut units = EnumUnits::new();
+    ) -> AstLowResult<Vec<EnumUnit>> {
+        let mut units = Vec::<EnumUnit>::new();
+        let mut last_value = 0usize;
 
         for (units_ctx, _) in enum_def_body_ctx.units_ctx.iter() {
             let Some(unit_ctx) = units_ctx else {
@@ -50,8 +51,16 @@ impl<'ast> AstLowering<'ast> {
             let unit_res = self.low_enum_def_unit_ctx(unit_ctx);
 
             match unit_res {
-                Ok((id, unit)) => {
-                    units.insert(id, unit);
+                Ok((ident, value)) => {
+                    // mark enum field it is unmarked
+                    last_value = value.unwrap_or(last_value);
+
+                    units.push(EnumUnit {
+                        ident,
+                        value: last_value,
+                    });
+
+                    last_value += 1;
                 }
                 Err(err) => self.error(err),
             }

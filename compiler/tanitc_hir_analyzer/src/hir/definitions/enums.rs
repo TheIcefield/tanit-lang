@@ -2,7 +2,7 @@ use crate::{
     symbol_table::entry::{Entry, EnumData, EnumDefData, EnumDefEntries, SymbolKind},
     AnalyzeResult, Analyzer,
 };
-use tanitc_hir::hir::definitions::enums::{EnumDef, EnumUnits};
+use tanitc_hir::hir::definitions::enums::{EnumDef, EnumUnit};
 use tanitc_messages::Message;
 use tanitc_name::NameSpec;
 
@@ -37,32 +37,22 @@ impl<'a> Analyzer<'a> {
     fn analyze_enum_def_units(
         &mut self,
         enum_name: &NameSpec,
-        enum_units: &mut EnumUnits,
+        enum_units: &mut [EnumUnit],
     ) -> AnalyzeResult<EnumDefEntries> {
-        let mut counter = 0usize;
         let mut enums_entries = EnumDefEntries::new();
 
-        for (unit_id, unit_value) in enum_units.iter_mut() {
-            if let Some(value) = unit_value {
-                counter = *value;
-            }
-
-            // mark unmarked enum fields
-            *unit_value = Some(counter);
-
+        for unit in enum_units.iter() {
             let unit_data = EnumData {
                 name: enum_name.clone(),
-                value: counter,
+                value: unit.value,
             };
             let entry = Entry {
-                id: *unit_id,
+                id: unit.ident,
                 is_static: true,
                 kind: unit_data.into(),
             };
 
-            enums_entries.insert(*unit_id, entry);
-
-            counter += 1;
+            enums_entries.insert(unit.ident, entry);
         }
 
         Ok(enums_entries)

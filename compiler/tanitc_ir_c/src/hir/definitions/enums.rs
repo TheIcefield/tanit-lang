@@ -1,4 +1,4 @@
-use tanitc_hir::hir::definitions::enums::EnumDef;
+use tanitc_hir::hir::definitions::enums::{EnumDef, EnumUnit};
 
 use crate::{CodeGenMode, CodeGenStream};
 
@@ -13,13 +13,12 @@ impl CodeGenStream<'_> {
 
         writeln!(self, "{indentation}typedef enum {{")?;
 
-        for field in enum_def.units.iter() {
-            writeln!(
-                self,
-                "{indentation}    {} = {},",
-                field.0,
-                field.1.unwrap_or_default()
-            )?;
+        for EnumUnit {
+            ident: unit_id,
+            value: unit_value,
+        } in enum_def.units.iter()
+        {
+            writeln!(self, "{indentation}    {unit_id} = {unit_value},")?;
         }
 
         writeln!(self, "{indentation}}} {};", enum_def.name)?;

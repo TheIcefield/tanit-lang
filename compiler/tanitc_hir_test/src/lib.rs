@@ -3,7 +3,7 @@ use tanitc_hir::hir::{
     blocks::Block,
     definitions::{
         aliases::AliasDef,
-        enums::{EnumDef, EnumUnits},
+        enums::{EnumDef, EnumUnit},
         functions::{FunctionDef, FunctionParam},
         methods::ImplDef,
         modules::ModuleDef,
@@ -53,11 +53,14 @@ pub fn create_module_def(name: &str, definitions: Vec<Hir>) -> ModuleDef {
     }
 }
 
-pub fn create_enum_def_units(units: Vec<(&str, Option<usize>)>) -> EnumUnits {
+pub fn create_enum_def_units(units: Vec<(&str, Option<usize>)>) -> Vec<EnumUnit> {
     units
         .into_iter()
-        .map(|(unit_name, unit_value)| (unit_name.to_string().into(), unit_value))
-        .collect::<EnumUnits>()
+        .map(|(unit_name, unit_value)| EnumUnit {
+            ident: unit_name.to_string().into(),
+            value: unit_value.unwrap_or_default(),
+        })
+        .collect::<Vec<EnumUnit>>()
 }
 
 pub fn create_enum_def(name: &str, units: Vec<(&str, Option<usize>)>) -> EnumDef {
