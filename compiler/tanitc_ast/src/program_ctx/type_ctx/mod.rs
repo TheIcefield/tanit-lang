@@ -1,3 +1,8 @@
+//! Type annotation AST nodes.
+//!
+//! Every type annotation in Tanit — from a simple named type to a complex
+//! function pointer — is represented as a [`TypeCtx`].
+
 use crate::program_ctx::type_ctx::{
     array_type_ctx::ArrayTypeCtx, func_type_ctx::FuncTypeCtx, named_type_ctx::NamedTypeCtx,
     never_type_ctx::NeverTypeCtx, ptr_type_ctx::PtrTypeCtx, ref_type_ctx::RefTypeCtx,
@@ -12,6 +17,19 @@ pub mod ptr_type_ctx;
 pub mod ref_type_ctx;
 pub mod tuple_type_ctx;
 
+/// A type annotation in a Tanit program.
+///
+/// Covers all type forms:
+///
+/// | Variant  | Syntax example             |
+/// |----------|----------------------------|
+/// | `Named`  | `i32`, `Vec<i32>`          |
+/// | `Never`  | `!`                        |
+/// | `Ref`    | `&i32`, `&mut String`      |
+/// | `Ptr`    | `*mut i32`, `*const u8`    |
+/// | `Func`   | `func(i32, f32): bool`     |
+/// | `Tuple`  | `(i32, f32)`               |
+/// | `Array`  | `[i32; 4]`                 |
 #[derive(Debug, Clone)]
 pub enum TypeCtx {
     Named(NamedTypeCtx),
@@ -24,6 +42,7 @@ pub enum TypeCtx {
 }
 
 impl TypeCtx {
+    /// Returns a human-readable tag identifying the variant.
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::Named(_) => "named-type-ctx",
