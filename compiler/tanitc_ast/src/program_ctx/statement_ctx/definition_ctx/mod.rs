@@ -1,3 +1,9 @@
+//! Definition AST nodes — every kind of top-level or local declaration.
+//!
+//! Tanit supports a rich set of definitions: type aliases, constants,
+//! enums, functions, modules, statics, structs, unions, variables,
+//! variants (tagged unions), impl blocks, and extern blocks.
+
 use crate::program_ctx::statement_ctx::{
     attributes_ctx::AttributesCtx,
     definition_ctx::{
@@ -21,6 +27,10 @@ pub mod union_def_ctx;
 pub mod var_def_ctx;
 pub mod variant_def_ctx;
 
+/// A definition (declaration) in a Tanit program.
+///
+/// Every declaration — from a simple `var` binding to a full `struct` or
+/// `func` definition — is represented as a variant of this enum.
 #[derive(Debug, Clone)]
 pub enum DefinitionCtx {
     Alias(AliasDefCtx),
@@ -38,6 +48,8 @@ pub enum DefinitionCtx {
 }
 
 impl DefinitionCtx {
+    /// Returns a human-readable tag identifying the variant (e.g.
+    /// `"func-def-ctx"`, `"struct-def-ctx"`).
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::Alias(_) => "alias-def-ctx",
@@ -55,6 +67,7 @@ impl DefinitionCtx {
         }
     }
 
+    /// Replaces the attributes on this definition.
     pub fn set_attributes(&mut self, attrs: AttributesCtx) {
         match self {
             Self::Alias(ctx) => *ctx.attributes_ctx = attrs,

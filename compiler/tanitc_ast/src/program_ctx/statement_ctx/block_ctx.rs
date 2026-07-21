@@ -2,6 +2,11 @@ use tanitc_lexer::token::Token;
 
 use crate::program_ctx::statement_ctx::{attributes_ctx::AttributesCtx, StatementsCtx};
 
+/// A brace-delimited block of statements: `{ stmts... }`.
+///
+/// Blocks are used as function bodies, branch bodies, and standalone
+/// block expressions. An optional set of [`AttributesCtx`] can precede the
+/// opening brace.
 #[derive(Default, Debug, Clone)]
 pub struct BlockCtx {
     pub attributes_ctx: Box<AttributesCtx>,

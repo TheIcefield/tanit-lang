@@ -1,3 +1,9 @@
+//! Expression AST nodes.
+//!
+//! Every value-producing construct in Tanit — from a simple integer literal
+//! to a complex chained member access — is represented as an
+//! [`ExpressionCtx`].
+
 use crate::program_ctx::name_ctx::NameSpecCtx;
 
 pub mod binary_ctx;
@@ -10,6 +16,11 @@ pub mod operator_ctx;
 pub mod paren_ctx;
 pub mod unary_ctx;
 
+/// An expression in a Tanit program.
+///
+/// Covers all expression forms: binary operations, unary operators,
+/// type conversions (`as`), function calls, parenthesized expressions,
+/// indexing (`[]`), literals, and variable (name) references.
 #[derive(Debug, Clone)]
 pub enum ExpressionCtx {
     Binary(binary_ctx::BinaryCtx),
@@ -23,6 +34,7 @@ pub enum ExpressionCtx {
 }
 
 impl ExpressionCtx {
+    /// Returns a human-readable tag identifying the variant.
     pub fn kind_str(&self) -> &'static str {
         match self {
             Self::Binary(_) => "binary-expression-ctx",

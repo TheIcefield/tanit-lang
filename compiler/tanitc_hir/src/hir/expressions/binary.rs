@@ -67,7 +67,6 @@ impl Display for BinaryOperation {
                 Self::LogicalGe => ">=",
                 Self::LogicalLt => "<",
                 Self::LogicalLe => "<=",
-
                 // Special
                 Self::ScopeRes => "::",
                 Self::Access => ".",

@@ -6,6 +6,10 @@ use crate::program_ctx::{
     ProgramCtx,
 };
 
+/// The body of a module definition.
+///
+/// An `Internal` module has an explicit brace-delimited block. An `External`
+/// module (file-level implicit module) contains a nested [`ProgramCtx`].
 #[derive(Debug, Clone)]
 pub enum ModuleDefBodyCtx {
     Internal(Box<BlockCtx>),   // '{' statements* '}'
@@ -21,6 +25,11 @@ impl ModuleDefBodyCtx {
     }
 }
 
+/// A module definition: `module Name { ... }` or `module Name`.
+///
+/// Modules group related definitions. An explicit module uses braces;
+/// an external module (at file level) implicitly wraps the remaining
+/// statements.
 #[derive(Debug, Clone)]
 pub struct ModuleDefCtx {
     pub attributes_ctx: Box<AttributesCtx>,
@@ -31,6 +40,7 @@ pub struct ModuleDefCtx {
 }
 
 impl ModuleDefCtx {
+    /// Returns `true` if this is a file-level (external) module.
     pub fn is_external(&self) -> bool {
         matches!(self.body_ctx, ModuleDefBodyCtx::External(_))
     }
