@@ -16,6 +16,10 @@ use crate::{
 
 impl Analyzer {
     pub(crate) fn analyze_binary_expr(&mut self, expr: &mut BinaryExpr) -> AnalyzeResult<()> {
+        if matches!(expr.operation, BinaryOperation::Access) {
+            return self.analyze_member_access_binary(expr);
+        }
+
         self.analyze_expression(&mut expr.rhs)?;
 
         let rhs_type = self.get_expr_type(&expr.rhs);
@@ -67,13 +71,8 @@ impl Analyzer {
                 ))
             }
             expr => {
-                return Err(Message::new(
-                    expr.location(),
-                    format!(
-                        "Cannot perform operation with {} in this context",
-                        expr.kind_str()
-                    ),
-                ))
+                self.analyze_expression(expr)?;
+                self.get_expr_type(expr).ty
             }
         };
 
@@ -83,6 +82,51 @@ impl Analyzer {
                 format!(
                     "Cannot perform operation on objects with different types: {} and {rhs_type}",
                     lhs_type
+                ),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn analyze_member_access_binary(&mut self, expr: &mut BinaryExpr) -> AnalyzeResult<()> {
+        self.analyze_expression(&mut expr.lhs)?;
+
+        let lhs_type_info = self.get_expr_type(&expr.lhs);
+
+        let member_name = match expr.rhs.as_ref() {
+            Expression::Variable(var) => var.name.get_id().ok_or_else(|| {
+                Message::new(
+                    expr.rhs.location(),
+                    "Member access requires a simple identifier on the right side",
+                )
+            })?,
+            _ => {
+                return Err(Message::new(
+                    expr.rhs.location(),
+                    "Member access requires a simple identifier on the right side",
+                ));
+            }
+        };
+
+        let member_location = expr.rhs.location();
+
+        let Some(member_info) = lhs_type_info.members.get(&member_name) else {
+            return Err(Message::new(
+                member_location,
+                format!(
+                    "\"{}\" doesn't have member named \"{}\"",
+                    lhs_type_info.ty, member_name
+                ),
+            ));
+        };
+
+        if !member_info.is_public {
+            return Err(Message::new(
+                member_location,
+                format!(
+                    "Member \"{}\" of type \"{}\" is private",
+                    member_name, lhs_type_info.ty
                 ),
             ));
         }
@@ -102,6 +146,27 @@ impl Analyzer {
                 mutability: Mutability::Mutable,
                 ..Default::default()
             },
+
+            BinaryOperation::Access => {
+                let lhs_type_info = self.get_expr_type(&expr.lhs);
+                let member_name = match expr.rhs.as_ref() {
+                    Expression::Variable(var) => match var.name.get_id() {
+                        Some(id) => id,
+                        None => return TypeInfo::default(),
+                    },
+                    _ => return TypeInfo::default(),
+                };
+                lhs_type_info
+                    .members
+                    .get(&member_name)
+                    .and_then(|m| {
+                        self.table.lookup_type(&m.ty).map(|mut ti| {
+                            ti.mutability = lhs_type_info.mutability;
+                            ti
+                        })
+                    })
+                    .unwrap_or_default()
+            }
 
             _ => self.get_expr_type(&expr.lhs),
         }

@@ -59,13 +59,12 @@ impl Parser {
                 expression_ctx: Box::new(self.parse_expression_ctx()?),
             })),
 
-            lexem if lexem.is_integer() || lexem.is_integer() || *lexem == Lexeme::Lsb => {
+            lexem if lexem.is_integer() || lexem.is_decimal() || *lexem == Lexeme::Lsb => {
                 self.parse_literal_ctx().map(ExpressionCtx::Literal)
             }
 
             lexem if lexem.is_identifier() => {
                 let name_spec_ctx = self.parse_name_spec_ctx()?;
-                println!("{name_spec_ctx:?}");
 
                 let old_opt = self.does_ignore_nl();
                 self.set_ignore_nl_option(true);
@@ -169,7 +168,7 @@ impl Parser {
             op if *op == Lexeme::RShiftAssign => {
                 BinaryOpCtx::RightShiftAssign(self.consume_token(op.clone())?)
             }
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -189,7 +188,7 @@ impl Parser {
         let binary_op_ctx = match next.lexeme_ref() {
             exp if *exp == Lexeme::Or => BinaryOpCtx::LogicOr(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -209,7 +208,7 @@ impl Parser {
         let binary_op_ctx = match next.lexeme_ref() {
             exp if *exp == Lexeme::And => BinaryOpCtx::Lt(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -229,7 +228,7 @@ impl Parser {
         let binary_op_ctx = match next.lexeme_ref() {
             exp if *exp == Lexeme::Stick => BinaryOpCtx::BitOr(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -249,7 +248,7 @@ impl Parser {
         let binary_op_ctx = match next.lexeme_ref() {
             exp if *exp == Lexeme::Xor => BinaryOpCtx::BitXor(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -271,7 +270,7 @@ impl Parser {
                 BinaryOpCtx::BitAnd(self.consume_token(exp.clone())?)
             }
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -292,7 +291,7 @@ impl Parser {
             exp if *exp == Lexeme::Eq => BinaryOpCtx::Eq(self.consume_token(exp.clone())?),
             exp if *exp == Lexeme::Neq => BinaryOpCtx::Ne(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -315,7 +314,7 @@ impl Parser {
             exp if *exp == Lexeme::Lte => BinaryOpCtx::Le(self.consume_token(exp.clone())?),
             exp if *exp == Lexeme::Gte => BinaryOpCtx::Ge(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -336,7 +335,7 @@ impl Parser {
             exp if *exp == Lexeme::LShift => BinaryOpCtx::Shl(self.consume_token(exp.clone())?),
             exp if *exp == Lexeme::RShift => BinaryOpCtx::Shr(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -357,7 +356,7 @@ impl Parser {
             exp if *exp == Lexeme::Plus => BinaryOpCtx::Add(self.consume_token(exp.clone())?),
             exp if *exp == Lexeme::Minus => BinaryOpCtx::Sub(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -379,7 +378,7 @@ impl Parser {
             exp if *exp == Lexeme::Slash => BinaryOpCtx::Div(self.consume_token(exp.clone())?),
             exp if *exp == Lexeme::Percent => BinaryOpCtx::Mod(self.consume_token(exp.clone())?),
 
-            _ => return Err(Message::unexpected_token(&next, &[])),
+            _ => return Ok(lhs),
         };
 
         Ok(ExpressionCtx::Binary(BinaryCtx {
@@ -390,38 +389,33 @@ impl Parser {
     }
 
     fn parse_dot_or_as(&mut self) -> ParseResult<ExpressionCtx> {
-        let lhs = self.parse_factor()?;
+        let mut lhs = self.parse_factor()?;
 
-        let Some(next) = self.peek_token() else {
-            return Ok(lhs);
-        };
+        while let Some(next) = self.peek_token() {
+            match next.lexeme_ref() {
+                lexem if *lexem == Lexeme::KwAs => {
+                    lhs = ExpressionCtx::Conversion(ConversionCtx {
+                        expression_ctx: Box::new(lhs),
+                        as_tkn: self.consume_token(lexem.clone())?,
+                        type_ctx: Box::new(self.parse_type_ctx()?),
+                    });
+                    break;
+                }
 
-        match next.lexeme_ref() {
-            lexem if *lexem == Lexeme::KwAs => Ok(ExpressionCtx::Conversion(ConversionCtx {
-                expression_ctx: Box::new(lhs),
-                as_tkn: self.consume_token(lexem.clone())?,
-                type_ctx: Box::new(self.parse_type_ctx()?),
-            })),
+                lexem if *lexem == Lexeme::Dot => {
+                    let binary_op_ctx = BinaryOpCtx::Access(self.consume_token(lexem.clone())?);
+                    lhs = ExpressionCtx::Binary(BinaryCtx {
+                        left_ctx: Box::new(lhs),
+                        binary_op_ctx,
+                        right_ctx: Box::new(self.parse_factor()?),
+                    });
+                }
 
-            lexem if *lexem == Lexeme::Dot => {
-                let binary_op_ctx = BinaryOpCtx::Access(self.consume_token(lexem.clone())?);
-                Ok(ExpressionCtx::Binary(BinaryCtx {
-                    left_ctx: Box::new(lhs),
-                    binary_op_ctx,
-                    right_ctx: Box::new(self.parse_expression_ctx()?),
-                }))
+                _ => break,
             }
-
-            lexem if *lexem == Lexeme::EndOfLine => {
-                self.get_token();
-                Ok(lhs)
-            }
-
-            _ => Err(Message::unexpected_token(
-                &next,
-                &[Lexeme::Dot, Lexeme::KwAs],
-            )),
         }
+
+        Ok(lhs)
     }
 }
 
