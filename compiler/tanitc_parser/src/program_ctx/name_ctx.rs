@@ -1,6 +1,5 @@
 use tanitc_ast::program_ctx::name_ctx::{NameCtx, NameSpecCtx, NameSpecSegmentCtx};
 use tanitc_lexer::token::lexeme::Lexeme;
-use tanitc_messages::Message;
 
 use crate::{ParseResult, Parser};
 
@@ -37,21 +36,10 @@ impl Parser {
                     names.push((id, Some(token)));
                 }
 
-                Some(token) if *token.lexeme_ref() == Lexeme::EndOfLine => {
-                    self.get_token();
+                _ => {
                     names.push((id, None));
                     break;
                 }
-
-                Some(token) => {
-                    return Err(Message::new(
-                        token.get_location(),
-                        format!(
-                            "Unexpected token in name-spec: \"{token}\", expected \"::\" or ID"
-                        ),
-                    ))
-                }
-                None => return Err(Message::reached_eof()),
             }
         }
 

@@ -59,7 +59,7 @@ impl CodeGenStream<'_> {
         let enum_name = VariantDef::get_variant_data_kind_name(variant_id);
 
         writeln!(self, "typedef enum {{")?;
-        for (field_id, _) in fields.iter() {
+        for field_id in fields.keys() {
             write!(self, "    __")?;
             self.generate_name_spec(&enum_name)?;
             writeln!(self, "__{field_id}__,")?;
@@ -93,7 +93,7 @@ impl CodeGenStream<'_> {
         writeln!(self, "// union type that stores any data of variant fields")?;
         writeln!(self, "typedef union {{")?;
 
-        for (field_id, _) in fields.iter() {
+        for field_id in fields.keys() {
             write!(self, "    __")?;
             self.generate_name_spec(&union_name)?;
             writeln!(self, "__{field_id}__ {field_id};")?;

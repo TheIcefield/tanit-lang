@@ -11,7 +11,6 @@ impl Analyzer {
         rhs_type: &Type,
         location: Location,
     ) -> AnalyzeResult<()> {
-        println!("Compare: {lhs_type} vs {rhs_type}");
         let mut alias_to = self.find_alias_value(lhs_type);
 
         if lhs_type == rhs_type {

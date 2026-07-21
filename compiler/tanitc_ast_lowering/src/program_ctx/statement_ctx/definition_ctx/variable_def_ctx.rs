@@ -26,7 +26,7 @@ impl AstLowering {
         let var_type = if let Some(type_ctx) = &var_def_ctx.type_ctx {
             self.low_type_ctx(&type_ctx.type_ctx)?.ty
         } else {
-            Type::unit()
+            Type::Auto
         };
         let value = if let Some(value_ctx) = &var_def_ctx.value_ctx {
             Some(Box::new(self.low_expression_ctx(&value_ctx.value_ctx)?))

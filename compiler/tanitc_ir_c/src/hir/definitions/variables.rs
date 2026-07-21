@@ -26,6 +26,11 @@ impl CodeGenStream<'_> {
             var_def.identifier
         )?;
 
+        if let Some(value) = &var_def.value {
+            write!(self, " = ")?;
+            self.generate_expression(value)?;
+        }
+
         Ok(())
     }
 

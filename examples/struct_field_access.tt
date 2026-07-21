@@ -1,0 +1,22 @@
+module M {
+    struct Inner {
+        value: i32
+    }
+}
+
+struct Outer {
+    first: M::Inner
+    second: f32
+}
+
+func main() {
+    var mut h = Outer {
+        first: Inner {
+            value: 0
+        }
+        second: 0.0
+    }
+
+    var h_first = h.first.value + 1
+    h.first.value += h.first.value * 2
+}

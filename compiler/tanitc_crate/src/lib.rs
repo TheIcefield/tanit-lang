@@ -61,7 +61,7 @@ impl Crate {
     fn serialize_ast(&mut self, program_ctx: &ProgramCtx) -> Result<(), String> {
         use std::io::Write;
 
-        let file_name = format!("{}.ast.ron", &self.name);
+        let file_name = format!("{}.ast.ron", self.name);
         let mut file = std::fs::File::create(&file_name)
             .map_err(|err| format!("Failed to open \"{file_name}\": {err}"))?;
 
@@ -128,7 +128,7 @@ impl Crate {
 
     #[cfg(feature = "backend_C")]
     fn process_codegen(&self, hir: &Hir) -> Result<(), String> {
-        let header_name = format!("{}.tt.h", &self.name);
+        let header_name = format!("{}.tt.h", self.name);
         let mut header_stream = std::fs::File::create(&header_name)
             .map_err(|err| format!("Failed to create \"{header_name}\": {err}"))?;
 
@@ -148,7 +148,7 @@ impl Crate {
     }
 
     fn process_building(&mut self) -> Result<(), String> {
-        let built_path = PathBuf::from(format!("{}.o", &self.name));
+        let built_path = PathBuf::from(format!("{}.o", self.name));
 
         build_object_file(&self.output_path, &built_path, &self.compile_options)?;
 
