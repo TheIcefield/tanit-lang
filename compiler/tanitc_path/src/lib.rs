@@ -1,6 +1,55 @@
+//! String interning for file paths in the Tanit compiler.
+//!
+//! This crate provides an efficient mechanism for representing file-system
+//! paths as cheaply copyable integer indices ([`PathId`]) instead of
+//! heap-allocated [`PathBuf`] values. When a path is converted to a
+//! `PathId`, it is stored in a global thread-safe interning table. Duplicate
+//! paths are deduplicated so that the same path always maps to the same
+//! `PathId` value, and `PathId` values can be compared for equality in O(1).
+//!
+//! The interning table is pre-seeded with a `"TestLocation"` entry at index 0,
+//! which serves as the default (placeholder) path.
+//!
+//! # Key Types
+//!
+//! - [`PathId`] — an interned file path. It is a `Copy` type, making it
+//!   extremely cheap to store, pass, and compare.
+//!
+//! # Example
+//!
+//! ```
+//! use tanitc_path::PathId;
+//! use std::path::PathBuf;
+//!
+//! let a = PathId::from(PathBuf::from("src/main.tan"));
+//! let b = PathId::from(PathBuf::from("src/main.tan"));
+//! assert_eq!(a, b); // same path → same PathId
+//!
+//! assert_eq!(a.to_string(), "src/main.tan");
+//! ```
+
 use lazy_static::lazy_static;
 use std::{fmt::Display, path::PathBuf, sync::Mutex};
 
+/// An interned file-system path.
+///
+/// `PathId` is a newtype wrapper around `usize` representing an index into
+/// the global path interning table. Because `PathId` is `Copy`, it is copied
+/// in O(1) and can be used efficiently as a key in hash maps and trees.
+///
+/// Paths are interned via [`From<PathBuf>`]: if the path already exists in
+/// the table, the existing `PathId` is returned, ensuring deduplication.
+///
+/// # Example
+///
+/// ```
+/// use tanitc_path::PathId;
+/// use std::path::PathBuf;
+///
+/// let a = PathId::from(PathBuf::from("lib/core.tan"));
+/// let b = PathId::from(PathBuf::from("lib/core.tan"));
+/// assert_eq!(a, b); // same path → same PathId
+/// ```
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PathId(usize);
 
@@ -26,10 +75,16 @@ impl From<PathId> for PathBuf {
 }
 
 impl PathId {
+    /// Returns the raw index of this path in the interning table.
+    ///
+    /// This is useful when using `PathId` as a key in external data structures.
     pub fn index(&self) -> usize {
         self.0
     }
 
+    /// Resolves this `PathId` back to its original [`PathBuf`].
+    ///
+    /// Returns an empty path if the index is out of bounds.
     pub fn as_path_buf(&self) -> PathBuf {
         let ids = PATHS.lock().unwrap();
 
