@@ -1,3 +1,37 @@
+//! Lexical analyzer (tokenizer) for the Tanit language.
+//!
+//! This crate converts a raw character stream into a sequence of [`Token`]s,
+//! each carrying a [`Lexeme`] (the token kind) and a [`Location`] (its source
+//! position). The lexer handles:
+//!
+//! - Single-line comments (prefixed with `#`)
+//! - Whitespace skipping (spaces and tabs; newlines produce `EndOfLine` tokens)
+//! - Multi-character operators (e.g. `+=`, `<<=`, `==`)
+//! - Keywords (`def`, `func`, `if`, `while`, etc.)
+//! - Identifiers, integer/decimal literals, and string literals
+//!
+//! # Key Types
+//!
+//! - [`Lexer`] — the main tokenizer. Wraps a `Peekable<Chars>` input stream
+//!   and produces tokens on demand.
+//! - [`Token`] — a lexeme paired with its source location.
+//! - [`Lexeme`] — the kind of a token (operator, keyword, identifier, etc.).
+//! - [`Location`] — a source position (file path, line, column).
+//!
+//! # Example
+//!
+//! ```
+//! use tanitc_lexer::Lexer;
+//! use std::path::PathBuf;
+//!
+//! let src = "var x = 42";
+//! let path = PathBuf::from("example.tt");
+//! let mut lexer = Lexer::new(src.chars().peekable(), &path);
+//!
+//! let tokens = lexer.tokenize();
+//! assert_eq!(tokens.len(), 4); // var, x, =, 42
+//! ```
+
 pub mod location;
 pub mod token;
 
@@ -12,16 +46,52 @@ use tanitc_ident::Ident;
 
 use crate::token::{lexeme::Lexeme, Token};
 
+/// A vector of tokens produced by the lexer.
 pub type Tokens = Vec<Token>;
 
+/// The Tanit language lexer.
+///
+/// `Lexer` wraps a `Peekable<Chars>` input stream and produces [`Token`]s
+/// one at a time. It tracks the current source [`Location`] (file, line,
+/// column) as it consumes characters.
+///
+/// # Modes
+///
+/// The lexer supports two tokenization modes:
+///
+/// - **Normal mode** — multi-character operators are recognized
+///   (e.g. `+=`, `<<=`, `==`).
+/// - **Singular mode** — only single-character tokens are emitted;
+///   compound operators are split into their individual characters
+///   (e.g. `+=` becomes `+` followed by `=`).
+///
+/// # Example
+///
+/// ```
+/// use tanitc_lexer::Lexer;
+/// use std::path::PathBuf;
+///
+/// let path = PathBuf::from("main.tt");
+/// let mut lexer = Lexer::new("1 + 2".chars().peekable(), &path);
+///
+/// let t1 = lexer.get().unwrap();
+/// assert_eq!(t1.lexeme_ref().to_string(), "1");
+///
+/// let t2 = lexer.get().unwrap();
+/// assert_eq!(t2.lexeme_ref().to_string(), "'+'");
+/// ```
 pub struct Lexer<'a> {
     location: Location,
     next_token: Option<Token>,
     input: Peekable<Chars<'a>>,
+    /// When `true`, each token is printed to stdout as it is produced.
     pub verbose_tokens: bool,
 }
 
 impl<'a> Lexer<'a> {
+    /// Creates a new lexer from a character iterator and a file path.
+    ///
+    /// The `path` is used for source-location tracking in error messages.
     pub fn new(input: Peekable<Chars<'a>>, path: &Path) -> Self {
         Self {
             location: Location::new(path),
@@ -31,6 +101,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Consumes the entire input and returns all produced tokens.
     pub fn tokenize(&mut self) -> Tokens {
         let mut tokens = Tokens::new();
 
@@ -41,6 +112,11 @@ impl<'a> Lexer<'a> {
         tokens
     }
 
+    /// Returns the next token from the input stream, or `None` at EOF.
+    ///
+    /// Multi-character operators are recognized in this mode.
+    /// If [`verbose_tokens`](Self::verbose_tokens) is enabled, the token is
+    /// also printed to stdout.
     pub fn get(&mut self) -> Option<Token> {
         let tkn = self.get_next(false);
 
@@ -55,6 +131,10 @@ impl<'a> Lexer<'a> {
         tkn
     }
 
+    /// Returns the next token, using singular (single-character) mode.
+    ///
+    /// In this mode compound operators are not recognized; for example `+=`
+    /// is split into `+` and `=`.
     pub fn get_singular(&mut self) -> Option<Token> {
         let tkn = self.get_next(true);
 
@@ -69,6 +149,10 @@ impl<'a> Lexer<'a> {
         tkn
     }
 
+    /// Peeks at the next token without consuming it.
+    ///
+    /// The peeked token is cached and returned by the subsequent call to
+    /// [`get`](Self::get) or [`peek`](Self::peek).
     pub fn peek(&mut self) -> Option<Token> {
         if self.next_token.is_some() {
             let tkn = self.next_token.clone().unwrap();
@@ -79,6 +163,7 @@ impl<'a> Lexer<'a> {
         self.next_token.clone()
     }
 
+    /// Peeks at the next token in singular mode without consuming it.
     pub fn peek_singular(&mut self) -> Option<Token> {
         if self.next_token.is_some() {
             let tkn = self.next_token.clone().unwrap();
@@ -89,14 +174,21 @@ impl<'a> Lexer<'a> {
         self.next_token.clone()
     }
 
+    /// Returns a reference to the current source location.
     pub fn location_ref(&self) -> &Location {
         &self.location
     }
 
+    /// Returns a mutable reference to the current source location.
     pub fn location_mut(&mut self) -> &mut Location {
         &mut self.location
     }
 
+    /// Returns the file path associated with this lexer's input.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lexer was not created with a file path (i.e. the path is empty).
     pub fn get_path(&self) -> PathBuf {
         if self.location.path.as_path_buf().as_os_str().is_empty() {
             panic!("Lexer input stream is not a file");
