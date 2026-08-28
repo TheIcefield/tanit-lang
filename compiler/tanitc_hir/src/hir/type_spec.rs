@@ -65,11 +65,17 @@ pub struct TupleType {
     pub units: Vec<Type>,
 }
 
+#[derive(Default, Clone, PartialEq)]
+pub struct SliceType {
+    pub internal_type: Box<Type>,
+}
+
 #[derive(Clone, PartialEq)]
 pub enum Type {
     Ref(RefType),
     Ptr(PtrType),
     Tuple(TupleType),
+    Slice(SliceType),
     Array {
         size: ArraySize,
         value_type: Box<Type>,
@@ -330,6 +336,12 @@ impl std::fmt::Display for FuncType {
     }
 }
 
+impl std::fmt::Display for SliceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}]", self.internal_type)
+    }
+}
+
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -346,6 +358,7 @@ impl std::fmt::Display for Type {
                 }
                 write!(f, ">")
             }
+            Self::Slice(slice_type) => write!(f, "{slice_type}"),
             Self::Array { value_type, .. } => write!(f, "[{value_type}]"),
             Self::Func(func_type) => write!(f, "{func_type}"),
             Self::Custom(s) => write!(f, "{s}"),
