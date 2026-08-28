@@ -3,10 +3,10 @@ use std::collections::BTreeMap;
 use tanitc_attributes::Mutability;
 use tanitc_hir::hir::{
     expressions::{
-        literal::{ArrayLiteral, Literal, StructLiteral, TupleLiteral},
+        literal::{ArrayLiteral, Integer, Literal, StructLiteral, TupleLiteral},
         Expression,
     },
-    type_spec::{ArraySize, RefType, TupleType, Type},
+    type_spec::{ArrayType, RefType, TupleType, Type},
 };
 use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
@@ -92,14 +92,17 @@ impl Analyzer {
                     ..Default::default()
                 }
             }
-            Literal::Array(ArrayLiteral { elements, .. }) => {
+            Literal::Array(ArrayLiteral { elements, location }) => {
                 let len = elements.len();
                 if len == 0 {
                     return TypeInfo {
-                        ty: Type::Array {
-                            size: ArraySize::Unknown,
-                            value_type: Box::new(Type::Auto),
-                        },
+                        ty: Type::Array(ArrayType {
+                            size: Box::new(Expression::Literal(Literal::Integer(Integer {
+                                value: elements.len(),
+                                location: *location,
+                            }))),
+                            internal_type: Box::new(Type::Auto),
+                        }),
                         mutability: Mutability::Mutable,
                         members: BTreeMap::new(),
                         ..Default::default()
@@ -107,10 +110,13 @@ impl Analyzer {
                 }
 
                 TypeInfo {
-                    ty: Type::Array {
-                        size: ArraySize::Fixed(len),
-                        value_type: Box::new(self.get_expr_type(&elements[0]).ty),
-                    },
+                    ty: Type::Array(ArrayType {
+                        internal_type: Box::new(self.get_expr_type(&elements[0]).ty),
+                        size: Box::new(Expression::Literal(Literal::Integer(Integer {
+                            value: len,
+                            location: *location,
+                        }))),
+                    }),
                     mutability: Mutability::Mutable,
                     ..Default::default()
                 }

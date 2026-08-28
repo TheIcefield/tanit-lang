@@ -4,7 +4,7 @@ use tanitc_hir::hir::type_spec::{TupleType, Type, TypeSpec};
 use crate::{AstLowResult, AstLowering};
 
 impl AstLowering {
-    pub(crate) fn low_tuple_type_ctx(&self, type_ctx: &TupleTypeCtx) -> AstLowResult<TypeSpec> {
+    pub(crate) fn low_tuple_type_ctx(&mut self, type_ctx: &TupleTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.lparen_tkn.get_location();
 
         let units = self.low_tuple_type_units(&type_ctx.units_ctx)?;
@@ -14,7 +14,7 @@ impl AstLowering {
         Ok(TypeSpec { location, ty })
     }
 
-    fn low_tuple_type_units(&self, units_ctx: &[TupleTypeUnitCtx]) -> AstLowResult<Vec<Type>> {
+    fn low_tuple_type_units(&mut self, units_ctx: &[TupleTypeUnitCtx]) -> AstLowResult<Vec<Type>> {
         let mut units = Vec::<Type>::new();
 
         for unit in units_ctx.iter() {

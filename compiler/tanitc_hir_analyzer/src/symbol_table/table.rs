@@ -1,7 +1,7 @@
 use std::{fmt::Display, iter::Peekable, slice::Iter};
 
 use tanitc_attributes::{Mutability, Safety};
-use tanitc_hir::hir::type_spec::{PtrType, RefType, Type};
+use tanitc_hir::hir::type_spec::{ArrayType, PtrType, RefType, Type};
 use tanitc_ident::Ident;
 use tanitc_name::{NamePathSegment, NameSpec};
 
@@ -231,12 +231,14 @@ impl Table {
                     is_union: false,
                 });
             }
-            Type::Array { value_type, size } => {
-                let mut internal = self.lookup_type(value_type)?;
-                internal.ty = Type::Array {
-                    value_type: Box::new(internal.ty),
-                    size: *size,
-                };
+            Type::Array(array_type) => {
+                let mut internal = self.lookup_type(&array_type.internal_type)?;
+
+                internal.ty = Type::Array(ArrayType {
+                    internal_type: Box::new(internal.ty),
+                    size: array_type.size.clone(),
+                });
+
                 return Some(internal);
             }
             Type::Ref(ref_type) => {

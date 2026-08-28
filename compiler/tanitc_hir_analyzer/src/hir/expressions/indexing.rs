@@ -58,11 +58,11 @@ impl Analyzer {
 
     pub(crate) fn get_indexing_expr_type(&self, expr: &IndexingExpr) -> TypeInfo {
         let mut lhs_type = self.get_expr_type(&expr.lhs);
-        let Type::Array { ref value_type, .. } = &lhs_type.ty else {
+        let Type::Array(array_type) = &lhs_type.ty else {
             unreachable!()
         };
 
-        lhs_type.ty = value_type.as_ref().clone();
+        lhs_type.ty = array_type.internal_type.as_ref().clone();
         lhs_type
     }
 }

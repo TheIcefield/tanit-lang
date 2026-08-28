@@ -71,7 +71,7 @@ mod tests {
 
     use tanitc_attributes::Mutability;
     use tanitc_hir::hir::{
-        type_spec::{ArraySize, Type},
+        type_spec::{ArrayType, Type},
         Hir,
     };
     use tanitc_hir_test::{
@@ -104,10 +104,10 @@ mod tests {
         const STRUCT_FIELD_1_TYPE: Type = Type::I32;
         const STRUCT_FIELD_2_NAME: &str = "f2";
 
-        let struct_field_2_type = Type::Array {
-            size: ArraySize::Fixed(2),
-            value_type: Box::new(Type::F32),
-        };
+        let struct_field_2_type = Type::Array(ArrayType {
+            size: Box::new(create_integer_lit(2)),
+            internal_type: Box::new(Type::F32),
+        });
         let struct_def = create_struct_def(
             STRUCT_NAME,
             vec![

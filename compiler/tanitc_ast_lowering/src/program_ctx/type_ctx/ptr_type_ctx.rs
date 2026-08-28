@@ -6,7 +6,7 @@ use tanitc_lexer::token::lexeme::Lexeme;
 use crate::{AstLowResult, AstLowering};
 
 impl AstLowering {
-    pub(crate) fn low_ptr_type_ctx(&self, type_ctx: &PtrTypeCtx) -> AstLowResult<TypeSpec> {
+    pub(crate) fn low_ptr_type_ctx(&mut self, type_ctx: &PtrTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.star_tkn.get_location();
 
         let ptr_to = Box::new(self.low_type_ctx(&type_ctx.type_ctx)?.ty);

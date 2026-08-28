@@ -7,7 +7,7 @@ use tanitc_hir::hir::type_spec::{FuncType, FuncTypeParam, Type, TypeSpec};
 use crate::{AstLowResult, AstLowering};
 
 impl AstLowering {
-    pub(crate) fn low_func_type_ctx(&self, type_ctx: &FuncTypeCtx) -> AstLowResult<TypeSpec> {
+    pub(crate) fn low_func_type_ctx(&mut self, type_ctx: &FuncTypeCtx) -> AstLowResult<TypeSpec> {
         let location = type_ctx.func_tkn.get_location();
 
         let parameters = self.low_func_type_params_ctx(&type_ctx.params_ctx)?;
@@ -27,7 +27,7 @@ impl AstLowering {
     }
 
     fn low_func_type_params_ctx(
-        &self,
+        &mut self,
         params_ctx: &FuncTypeParamsCtx,
     ) -> AstLowResult<Vec<FuncTypeParam>> {
         let mut params = Vec::<FuncTypeParam>::new();
@@ -39,7 +39,10 @@ impl AstLowering {
         Ok(params)
     }
 
-    fn low_func_type_param_ctx(&self, param_ctx: &FuncTypeParamCtx) -> AstLowResult<FuncTypeParam> {
+    fn low_func_type_param_ctx(
+        &mut self,
+        param_ctx: &FuncTypeParamCtx,
+    ) -> AstLowResult<FuncTypeParam> {
         Ok(FuncTypeParam {
             ty: Box::new(self.low_type_ctx(&param_ctx.type_ctx)?.ty),
             id: None,

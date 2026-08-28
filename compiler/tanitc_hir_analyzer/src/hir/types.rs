@@ -1,4 +1,4 @@
-use tanitc_hir::hir::type_spec::Type;
+use tanitc_hir::hir::type_spec::{ArrayType, Type};
 use tanitc_lexer::location::Location;
 use tanitc_messages::Message;
 
@@ -71,10 +71,10 @@ impl Analyzer {
         dst_type: &Type,
         location: Location,
     ) -> Result<(), Message> {
-        let Type::Array {
-            value_type: src_type,
+        let Type::Array(ArrayType {
+            internal_type: src_type,
             ..
-        } = src_type
+        }) = src_type
         else {
             return Err(Message::unreachable(
                 location,
@@ -82,10 +82,10 @@ impl Analyzer {
             ));
         };
 
-        let Type::Array {
-            value_type: dst_type,
+        let Type::Array(ArrayType {
+            internal_type: dst_type,
             ..
-        } = dst_type
+        }) = dst_type
         else {
             return Err(Message::unreachable(
                 location,

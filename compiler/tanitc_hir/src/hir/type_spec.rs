@@ -4,7 +4,7 @@ use tanitc_ident::Ident;
 use tanitc_lexer::location::Location;
 use tanitc_name::NameSpec;
 
-use crate::hir::Hir;
+use crate::hir::{expressions::Expression, Hir};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct TypeSpec {
@@ -26,13 +26,6 @@ impl From<TypeSpec> for Hir {
     fn from(value: TypeSpec) -> Self {
         Self::TypeSpec(value)
     }
-}
-
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub enum ArraySize {
-    #[default]
-    Unknown,
-    Fixed(usize),
 }
 
 #[derive(Clone, PartialEq)]
@@ -71,15 +64,18 @@ pub struct SliceType {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct ArrayType {
+    pub internal_type: Box<Type>,
+    pub size: Box<Expression>,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum Type {
     Ref(RefType),
     Ptr(PtrType),
     Tuple(TupleType),
     Slice(SliceType),
-    Array {
-        size: ArraySize,
-        value_type: Box<Type>,
-    },
+    Array(ArrayType),
     Template {
         identifier: Ident,
         generics: Vec<Type>,
@@ -228,7 +224,11 @@ impl Type {
                     res
                 }
             }
-            Self::Array { value_type, .. } => value_type.get_c_type(),
+            Self::Slice(slice_type) => {
+                let elem_c_type = slice_type.internal_type.get_c_type();
+                format!("*{elem_c_type}",)
+            }
+            Self::Array(array_type) => array_type.internal_type.get_c_type(),
             _ => unimplemented!(),
         }
     }
@@ -342,6 +342,12 @@ impl std::fmt::Display for SliceType {
     }
 }
 
+impl std::fmt::Display for ArrayType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}; ...]", self.internal_type)
+    }
+}
+
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -359,7 +365,7 @@ impl std::fmt::Display for Type {
                 write!(f, ">")
             }
             Self::Slice(slice_type) => write!(f, "{slice_type}"),
-            Self::Array { value_type, .. } => write!(f, "[{value_type}]"),
+            Self::Array(array_type) => write!(f, "{array_type}"),
             Self::Func(func_type) => write!(f, "{func_type}"),
             Self::Custom(s) => write!(f, "{s}"),
             Self::Auto => write!(f, "@auto"),
